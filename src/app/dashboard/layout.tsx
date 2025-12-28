@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Menu Items based on your VB.NET frmBackOffice
+// Menu Items for Alpha Plus Hotel System
 const menuItems = [
     {
         category: 'Main',
@@ -66,11 +66,11 @@ const menuItems = [
         ]
     },
     {
-        category: 'Settings',
+        category: 'Administration',
         items: [
             { name: 'Users', icon: '👥', href: '/dashboard/users', badge: null },
-            { name: 'Roles', icon: '🛡️', href: '/dashboard/roles', badge: null },
-            { name: 'Company', icon: '🏪', href: '/dashboard/company', badge: null },
+            { name: 'User Roles', icon: '🛡️', href: '/dashboard/user-roles', badge: null },
+            { name: 'Company', icon: '🏨', href: '/dashboard/company', badge: null },
         ]
     },
 ];
@@ -118,13 +118,13 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 {/* Logo Section */}
                 <div className="h-16 flex items-center justify-between px-4 border-b border-gray-100">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg">
-                            <span className="text-xl">🛒</span>
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg">
+                            <span className="text-xl">🏨</span>
                         </div>
                         {sidebarOpen && (
                             <div>
-                                <h1 className="font-bold text-gray-800 text-lg">Alpha Plus</h1>
-                                <span className="text-xs text-blue-500 font-medium">v3.5</span>
+                                <h1 className="font-bold text-gray-800 text-lg">Alpha Plus Hotel</h1>
+                                <span className="text-xs text-indigo-500 font-medium">v3.5</span>
                             </div>
                         )}
                     </div>

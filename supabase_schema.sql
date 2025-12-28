@@ -11,19 +11,60 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. USERS & AUTHENTICATION
 -- ============================================================
 
--- Users table (matches mobile app User model)
+-- Users table (matches mobile app User model with extended fields)
 CREATE TABLE IF NOT EXISTS users (
     user_id SERIAL PRIMARY KEY,
+    user_code VARCHAR(20) UNIQUE,
     user_name VARCHAR(100) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(150) NOT NULL,
-    user_type VARCHAR(50) NOT NULL DEFAULT 'Cashier', -- Admin, Manager, Cashier, Salesman
+    user_type VARCHAR(50) NOT NULL DEFAULT 'Cashier', -- Super Admin, Manager, Supervisor, Cashier, Waiter
     email VARCHAR(150),
-    contact_no VARCHAR(20),
+    phone VARCHAR(20),
+    national_id VARCHAR(50),
+    salary_type VARCHAR(20) DEFAULT 'Monthly', -- Monthly, Weekly
+    salary_amount DECIMAL(15,2) DEFAULT 0,
+    pin VARCHAR(6), -- 4 or 6 digit PIN for cashiers
     active BOOLEAN DEFAULT true,
+    is_super_admin BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- User Roles Definition Table
+CREATE TABLE IF NOT EXISTS user_roles (
+    role_id SERIAL PRIMARY KEY,
+    role_name VARCHAR(100) UNIQUE NOT NULL,
+    description TEXT,
+    can_view BOOLEAN DEFAULT true,
+    can_create BOOLEAN DEFAULT false,
+    can_update BOOLEAN DEFAULT false,
+    can_delete BOOLEAN DEFAULT false,
+    can_make_sales BOOLEAN DEFAULT false,
+    can_receive_payments BOOLEAN DEFAULT false,
+    can_view_reports BOOLEAN DEFAULT false,
+    can_manage_users BOOLEAN DEFAULT false,
+    can_manage_products BOOLEAN DEFAULT false,
+    can_manage_inventory BOOLEAN DEFAULT false,
+    can_manage_settings BOOLEAN DEFAULT false,
+    is_super_admin BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Insert default roles
+INSERT INTO user_roles (role_name, description, can_view, can_create, can_update, can_delete, can_make_sales, can_receive_payments, can_view_reports, can_manage_users, can_manage_products, can_manage_inventory, can_manage_settings, is_super_admin) VALUES
+('Super Admin', 'Full system control - Cannot be modified', true, true, true, true, true, true, true, true, true, true, true, true),
+('Manager', 'General management functions', true, true, true, false, true, true, true, false, true, true, false, false),
+('Supervisor', 'User management & access control', true, true, true, false, true, true, true, true, false, false, false, false),
+('Cashier', 'Sales and payment processing only', true, false, false, false, true, true, false, false, false, false, false, false),
+('Waiter', 'Order taking only', true, false, false, false, true, false, false, false, false, false, false, false)
+ON CONFLICT (role_name) DO NOTHING;
+
+-- Create Super Admin account (cannot be deleted)
+-- Username: superuser, Password: @JIm47jhC_7%#
+INSERT INTO users (user_code, user_name, password_hash, name, user_type, email, active, is_super_admin) VALUES
+('US-001', 'superuser', '@JIm47jhC_7%#', 'Super Administrator', 'Super Admin', 'admin@alphaplus.com', true, true)
+ON CONFLICT (user_name) DO NOTHING;
 
 -- User Rights (modules permissions)
 CREATE TABLE IF NOT EXISTS user_rights (
