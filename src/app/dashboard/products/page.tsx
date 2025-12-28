@@ -305,18 +305,43 @@ export default function ProductsPage() {
         try {
             const margin = calculateMargin(formData.purchase_cost, formData.sales_cost);
 
+            // Prepare product data for database
+            const productData = {
+                product_name: formData.product_name,
+                alias: formData.alias || null,
+                vat_commodity: formData.vat_commodity,
+                description: formData.description || null,
+                barcode: formData.barcode || null,
+                category: formData.category || null,
+                purchase_unit: formData.purchase_unit,
+                sales_unit: formData.sales_unit,
+                purchase_cost: formData.purchase_cost || 0,
+                sales_cost: formData.sales_cost || 0,
+                reorder_point: formData.reorder_point || 10,
+                margin_per: margin,
+                show_ps: formData.show_ps !== false,
+                button_ui_color: formData.button_ui_color,
+                photo: formData.photo || null,
+                hscode: formData.hscode || null,
+                batch_no: formData.batch_no || null,
+                supplier_name: formData.supplier_name || null,
+                active: formData.active !== false,
+            };
+
             if (editingProduct) {
                 // Update existing product
                 const { error } = await supabase
                     .from('products')
                     .update({
-                        ...formData,
-                        margin_per: margin,
+                        ...productData,
                         updated_at: new Date().toISOString(),
                     })
                     .eq('pid', editingProduct.pid);
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase update error:', error);
+                    throw new Error(error.message);
+                }
                 toast.success('Product updated! ✓');
             } else {
                 // Create new product
@@ -324,21 +349,24 @@ export default function ProductsPage() {
                 const { error } = await supabase
                     .from('products')
                     .insert({
-                        ...formData,
+                        ...productData,
                         product_code: newCode,
-                        margin_per: margin,
                         added_date: new Date().toISOString(),
                     });
 
-                if (error) throw error;
+                if (error) {
+                    console.error('Supabase insert error:', error);
+                    throw new Error(error.message);
+                }
                 toast.success(`Product ${newCode} created! ✓`);
             }
 
             setShowModal(false);
             loadProducts();
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('Error saving product:', err);
-            toast.error('Failed to save product');
+            const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+            toast.error(`Failed to save: ${errorMessage}`);
         }
         setIsSaving(false);
     };
