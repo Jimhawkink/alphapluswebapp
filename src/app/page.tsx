@@ -228,7 +228,7 @@ export default function LoginPage() {
                     </div>
 
                     <p className="text-gray-400 text-xs">
-                        © 2026 Alpha Plus Hotel System • v3.0
+                        © 2025 Alpha Plus Hotel System • v3.1 🚀
                     </p>
                 </div>
             </div>
