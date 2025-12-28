@@ -312,7 +312,7 @@ export default function UsersPage() {
 
                     <button
                         onClick={openAddModal}
-                        className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white font-semibold rounded-2xl shadow-lg shadow-blue-400/30 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
                     >
                         <span className="text-xl">➕</span>
                         Add New User
@@ -354,7 +354,7 @@ export default function UsersPage() {
                             placeholder="🔍 Search users by name, username, code, or phone..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-5 py-3 pl-12 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all"
+                            className="w-full px-5 py-3 pl-12 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 transition-all"
                         />
                         <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🔎</span>
                     </div>
@@ -363,7 +363,7 @@ export default function UsersPage() {
                     <select
                         value={filterRole}
                         onChange={(e) => setFilterRole(e.target.value)}
-                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all cursor-pointer"
+                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 transition-all cursor-pointer"
                     >
                         <option value="All">🏷️ All Roles</option>
                         {defaultRoles.map(role => (
@@ -377,7 +377,7 @@ export default function UsersPage() {
                     <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
-                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 transition-all cursor-pointer"
+                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 transition-all cursor-pointer"
                     >
                         <option value="All">📊 All Status</option>
                         <option value="Active">✅ Active</option>
@@ -400,7 +400,7 @@ export default function UsersPage() {
                 <div className="overflow-x-auto">
                     <table className="w-full">
                         <thead>
-                            <tr className="bg-gradient-to-r from-sky-400 to-blue-500 text-white">
+                            <tr className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
                                 <th className="px-4 py-4 text-left text-sm font-semibold">👤 User</th>
                                 <th className="px-4 py-4 text-left text-sm font-semibold hidden md:table-cell">📧 Contact</th>
                                 <th className="px-4 py-4 text-left text-sm font-semibold">🎭 Role</th>
@@ -414,7 +414,7 @@ export default function UsersPage() {
                                 <tr>
                                     <td colSpan={6} className="px-4 py-12 text-center">
                                         <div className="flex flex-col items-center gap-3">
-                                            <div className="w-10 h-10 border-4 border-sky-500/30 border-t-sky-500 rounded-full animate-spin"></div>
+                                            <div className="w-10 h-10 border-4 border-blue-400/30 border-t-blue-500 rounded-full animate-spin"></div>
                                             <span className="text-gray-500">Loading users...</span>
                                         </div>
                                     </td>
@@ -520,7 +520,7 @@ export default function UsersPage() {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
                         {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-5 text-white sticky top-0">
+                        <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 text-white sticky top-0">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-bold flex items-center gap-2">
                                     {editingUser ? '✏️ Edit User' : '➕ Add New User'}
@@ -558,7 +558,7 @@ export default function UsersPage() {
                                         value={formData.user_name}
                                         onChange={(e) => setFormData({ ...formData, user_name: e.target.value })}
                                         placeholder="Enter username"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
                                         required
                                     />
                                 </div>
@@ -574,7 +574,7 @@ export default function UsersPage() {
                                     value={formData.name}
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     placeholder="Enter full name"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
                                     required
                                 />
                             </div>
@@ -588,7 +588,7 @@ export default function UsersPage() {
                                     <select
                                         value={formData.user_type}
                                         onChange={(e) => setFormData({ ...formData, user_type: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 cursor-pointer"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 cursor-pointer"
                                     >
                                         <option value="Manager">💼 Manager</option>
                                         <option value="Supervisor">🎯 Supervisor</option>
@@ -605,7 +605,7 @@ export default function UsersPage() {
                                         value={formData.national_id}
                                         onChange={(e) => setFormData({ ...formData, national_id: e.target.value })}
                                         placeholder="Enter national ID"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
                                     />
                                 </div>
                             </div>
@@ -621,7 +621,7 @@ export default function UsersPage() {
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                         placeholder="user@company.com"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
                                     />
                                 </div>
                                 <div>
@@ -633,7 +633,7 @@ export default function UsersPage() {
                                         value={formData.phone}
                                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                         placeholder="0712345678"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
                                     />
                                 </div>
                             </div>
@@ -647,7 +647,7 @@ export default function UsersPage() {
                                     <select
                                         value={formData.salary_type}
                                         onChange={(e) => setFormData({ ...formData, salary_type: e.target.value as 'Monthly' | 'Weekly' })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 cursor-pointer"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 cursor-pointer"
                                     >
                                         <option value="Monthly">📅 Monthly</option>
                                         <option value="Weekly">📆 Weekly</option>
@@ -663,7 +663,7 @@ export default function UsersPage() {
                                         onChange={(e) => setFormData({ ...formData, salary_amount: parseFloat(e.target.value) || 0 })}
                                         placeholder="0.00"
                                         min="0"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
                                     />
                                 </div>
                             </div>
@@ -679,7 +679,7 @@ export default function UsersPage() {
                                         value={formData.password}
                                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                         placeholder={editingUser ? 'Leave blank to keep current' : 'Enter password'}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
                                     />
                                 </div>
                                 <div>
@@ -692,7 +692,7 @@ export default function UsersPage() {
                                         onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
                                         placeholder="For cashiers"
                                         maxLength={6}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
                                     />
                                     {formData.pin && (
                                         <p className="text-xs text-gray-500 mt-1">
@@ -728,7 +728,7 @@ export default function UsersPage() {
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white font-semibold rounded-xl shadow-lg shadow-blue-400/30 transition-all flex items-center justify-center gap-2"
+                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-300/40 transition-all flex items-center justify-center gap-2"
                                 >
                                     <span>{editingUser ? '💾' : '➕'}</span>
                                     {editingUser ? 'Update User' : 'Create User'}

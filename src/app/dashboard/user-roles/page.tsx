@@ -304,7 +304,7 @@ export default function UserRolesPage() {
 
                     <button
                         onClick={openAddModal}
-                        className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white font-semibold rounded-2xl shadow-lg shadow-blue-400/30 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
                     >
                         <span className="text-xl">➕</span>
                         Add Custom Role
@@ -313,7 +313,7 @@ export default function UserRolesPage() {
             </div>
 
             {/* Info Card */}
-            <div className="bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-5 mb-6 text-white shadow-lg shadow-indigo-500/20">
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 rounded-2xl p-5 mb-6 text-white shadow-lg shadow-indigo-500/20">
                 <div className="flex items-start gap-4">
                     <span className="text-4xl">💡</span>
                     <div>
@@ -330,7 +330,7 @@ export default function UserRolesPage() {
             {isLoading ? (
                 <div className="flex items-center justify-center py-20">
                     <div className="flex flex-col items-center gap-4">
-                        <div className="w-12 h-12 border-4 border-sky-500/30 border-t-sky-500 rounded-full animate-spin"></div>
+                        <div className="w-12 h-12 border-4 border-blue-400/30 border-t-blue-500 rounded-full animate-spin"></div>
                         <span className="text-gray-500">Loading roles...</span>
                     </div>
                 </div>
@@ -460,7 +460,7 @@ export default function UserRolesPage() {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                         {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-5 text-white sticky top-0">
+                        <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 text-white sticky top-0">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-bold flex items-center gap-2">
                                     {editingRole ? '✏️ Edit Role' : '➕ Add Custom Role'}
@@ -486,7 +486,7 @@ export default function UserRolesPage() {
                                     value={formData.role_name || ''}
                                     onChange={(e) => setFormData({ ...formData, role_name: e.target.value })}
                                     placeholder="e.g., Senior Cashier"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
                                     required
                                 />
                             </div>
@@ -501,7 +501,7 @@ export default function UserRolesPage() {
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     placeholder="Brief description of this role"
                                     rows={2}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 resize-none"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 resize-none"
                                 />
                             </div>
 

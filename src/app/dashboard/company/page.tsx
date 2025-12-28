@@ -103,37 +103,41 @@ export default function CompanyPage() {
 
     const saveSettings = async () => {
         if (!settings.company_name.trim()) {
-            toast.error('Company/Hotel name is required!');
+            toast.error('Company name required!');
             return;
         }
 
         setIsSaving(true);
         try {
-            // Save each setting
-            const settingsToSave = Object.entries(settings).map(([key, value]) => ({
-                setting_key: key,
-                setting_value: String(value),
-            }));
+            // Save each setting individually
+            const settingsToSave = Object.entries(settings);
+            let savedCount = 0;
 
-            for (const setting of settingsToSave) {
+            for (const [key, value] of settingsToSave) {
                 const { error } = await supabase
                     .from('organisation_settings')
                     .upsert(
                         {
-                            setting_key: setting.setting_key,
-                            setting_value: setting.setting_value,
+                            setting_key: key,
+                            setting_value: String(value),
                             updated_at: new Date().toISOString()
                         },
                         { onConflict: 'setting_key' }
                     );
 
-                if (error) throw error;
+                if (error) {
+                    console.error(`Error saving ${key}:`, error);
+                    throw new Error(`Failed to save ${key}`);
+                }
+                savedCount++;
             }
 
-            toast.success('Settings saved successfully! ✅');
-        } catch (err) {
-            console.error('Error saving settings:', err);
-            toast.error('Failed to save settings');
+            console.log(`Saved ${savedCount} settings successfully`);
+            toast.success('Settings saved! ✓');
+        } catch (err: unknown) {
+            console.error('Save error:', err);
+            const errorMessage = err instanceof Error ? err.message : 'Save failed';
+            toast.error(errorMessage);
         }
         setIsSaving(false);
     };
@@ -185,7 +189,7 @@ export default function CompanyPage() {
                     <button
                         onClick={saveSettings}
                         disabled={isSaving}
-                        className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white font-semibold rounded-2xl shadow-lg shadow-blue-400/30 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-60"
+                        className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-60"
                     >
                         {isSaving ? (
                             <>
@@ -202,21 +206,21 @@ export default function CompanyPage() {
                 </div>
             </div>
 
-            {/* Preview Card */}
+            {/* Preview Card - Soft Blue Gradient */}
             {settings.company_name && (
-                <div className="bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-6 mb-6 text-white shadow-lg">
+                <div className="bg-gradient-to-r from-sky-50 via-blue-50 to-cyan-50 border border-blue-100 rounded-2xl p-6 mb-6 shadow-sm">
                     <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-3xl">
+                        <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-500 rounded-2xl flex items-center justify-center text-3xl text-white shadow-lg shadow-blue-200">
                             🏨
                         </div>
                         <div>
-                            <h2 className="text-2xl font-bold">{settings.company_name}</h2>
-                            <p className="text-blue-100 text-sm mt-1">
+                            <h2 className="text-2xl font-bold text-gray-800">{settings.company_name}</h2>
+                            <p className="text-gray-600 text-sm mt-1">
                                 {settings.address && `${settings.address}, `}
                                 {settings.city && `${settings.city}, `}
                                 {settings.country}
                             </p>
-                            <p className="text-blue-200 text-xs mt-1">
+                            <p className="text-gray-500 text-xs mt-1">
                                 📞 {settings.phone || 'No phone'} • 📧 {settings.email || 'No email'}
                             </p>
                         </div>
@@ -232,8 +236,8 @@ export default function CompanyPage() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as typeof activeTab)}
                             className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === tab.id
-                                ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow-lg'
-                                : 'text-gray-600 hover:bg-gray-100'
+                                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md'
+                                : 'text-gray-600 hover:bg-blue-50'
                                 }`}
                         >
                             <span className="text-xl">{tab.icon}</span>
