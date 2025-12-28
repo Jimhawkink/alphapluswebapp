@@ -207,26 +207,19 @@ export default function RecipePage() {
         return Math.max(0, currentStock - qtyInBase);
     };
 
-    // Generate batch number
+    // Generate batch number with timestamp for guaranteed uniqueness
     const generateBatchNumber = async (): Promise<string> => {
         if (!selectedDish) return '';
 
-        const dateCode = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-        let seq = 1;
+        const now = new Date();
+        const dateCode = now.toISOString().slice(0, 10).replace(/-/g, '');
+        const timeCode = now.getHours().toString().padStart(2, '0') +
+            now.getMinutes().toString().padStart(2, '0') +
+            now.getSeconds().toString().padStart(2, '0');
 
-        try {
-            const { count } = await supabase
-                .from('production_batches')
-                .select('*', { count: 'exact', head: true })
-                .eq('product_id', selectedDish.pid)
-                .gte('created_at', new Date().toISOString().slice(0, 10));
-
-            seq = (count || 0) + 1;
-        } catch {
-            seq = 1;
-        }
-
-        return `BATCH-${dateCode}-${selectedDish.pid}-${String(seq).padStart(3, '0')}`;
+        // Format: BATCH-YYYYMMDD-HHMMSS-PID
+        // e.g., BATCH-20251228-205740-3
+        return `BATCH-${dateCode}-${timeCode}-${selectedDish.pid}`;
     };
 
     // ============================================
