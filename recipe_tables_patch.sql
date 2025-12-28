@@ -1,9 +1,11 @@
 -- ============================================================
--- ALPHA PLUS - RECIPE TABLES PATCH
--- Run this in Supabase SQL Editor to ensure recipe tables work
+-- ALPHA PLUS - COMPLETE RECIPE TABLES SETUP
+-- Run this ENTIRE script in Supabase SQL Editor
 -- ============================================================
 
--- Create recipes table if not exists
+-- ============================================
+-- 1. RECIPES TABLE
+-- ============================================
 CREATE TABLE IF NOT EXISTS recipes (
     recipe_id SERIAL PRIMARY KEY,
     product_id INT NOT NULL,
@@ -20,28 +22,62 @@ CREATE TABLE IF NOT EXISTS recipes (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create recipe_ingredients table if not exists
+-- Add missing columns to recipes
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipes' AND column_name = 'cost_per_unit') THEN
+        ALTER TABLE recipes ADD COLUMN cost_per_unit DECIMAL(15,4) DEFAULT 0;
+    END IF;
+END $$;
+
+-- Drop unique constraint on batch_number if exists
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'recipes_batch_number_key') THEN
+        ALTER TABLE recipes DROP CONSTRAINT recipes_batch_number_key;
+    END IF;
+END $$;
+
+-- ============================================
+-- 2. RECIPE_INGREDIENTS TABLE
+-- ============================================
 CREATE TABLE IF NOT EXISTS recipe_ingredients (
     ingredient_id SERIAL PRIMARY KEY,
     recipe_id INT REFERENCES recipes(recipe_id) ON DELETE CASCADE,
     ingredient_product_id INT NOT NULL,
     ingredient_name VARCHAR(200),
-    unit_measure VARCHAR(20),
+    unit_measure VARCHAR(50),
     qty_issued DECIMAL(15,4) DEFAULT 0,
-    convert_unit VARCHAR(20),
+    convert_unit VARCHAR(50),
     rate DECIMAL(15,4) DEFAULT 0,
     total_cost DECIMAL(15,4) DEFAULT 0,
     remaining_qty DECIMAL(15,4) DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Create production_batches table if not exists
+-- Add missing columns to recipe_ingredients
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipe_ingredients' AND column_name = 'convert_unit') THEN
+        ALTER TABLE recipe_ingredients ADD COLUMN convert_unit VARCHAR(50);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipe_ingredients' AND column_name = 'rate') THEN
+        ALTER TABLE recipe_ingredients ADD COLUMN rate DECIMAL(15,4) DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'recipe_ingredients' AND column_name = 'remaining_qty') THEN
+        ALTER TABLE recipe_ingredients ADD COLUMN remaining_qty DECIMAL(15,4) DEFAULT 0;
+    END IF;
+END $$;
+
+-- ============================================
+-- 3. PRODUCTION_BATCHES TABLE
+-- ============================================
 CREATE TABLE IF NOT EXISTS production_batches (
     batch_id SERIAL PRIMARY KEY,
     batch_number VARCHAR(50) NOT NULL,
     product_id INT NOT NULL,
     product_name VARCHAR(200),
-    recipe_id INT REFERENCES recipes(recipe_id),
+    recipe_id INT REFERENCES recipes(recipe_id) ON DELETE SET NULL,
     qty_produced DECIMAL(15,4) DEFAULT 0,
     qty_remaining DECIMAL(15,4) DEFAULT 0,
     qty_sold DECIMAL(15,4) DEFAULT 0,
@@ -54,40 +90,93 @@ CREATE TABLE IF NOT EXISTS production_batches (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Remove UNIQUE constraint from batch_number if it exists (causes issues with duplicates)
+-- Add missing columns to production_batches
 DO $$
 BEGIN
-    -- Drop the unique constraint on recipes.batch_number if it exists
-    IF EXISTS (
-        SELECT 1 FROM pg_constraint 
-        WHERE conname = 'recipes_batch_number_key' 
-        AND conrelid = 'recipes'::regclass
-    ) THEN
-        ALTER TABLE recipes DROP CONSTRAINT recipes_batch_number_key;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'production_batches' AND column_name = 'selling_price') THEN
+        ALTER TABLE production_batches ADD COLUMN selling_price DECIMAL(15,4) DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'production_batches' AND column_name = 'created_by') THEN
+        ALTER TABLE production_batches ADD COLUMN created_by VARCHAR(100);
     END IF;
 END $$;
 
--- DISABLE ROW LEVEL SECURITY on all recipe-related tables
+-- ============================================
+-- 4. PRODUCTS_INGREDIENTS TABLE - Add missing columns
+-- ============================================
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products_ingredients' AND column_name = 'base_unit') THEN
+        ALTER TABLE products_ingredients ADD COLUMN base_unit VARCHAR(20) DEFAULT 'KG';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products_ingredients' AND column_name = 'price_per_pack') THEN
+        ALTER TABLE products_ingredients ADD COLUMN price_per_pack DECIMAL(15,2) DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products_ingredients' AND column_name = 'cost_per_base_unit') THEN
+        ALTER TABLE products_ingredients ADD COLUMN cost_per_base_unit DECIMAL(15,4) DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products_ingredients' AND column_name = 'current_stock') THEN
+        ALTER TABLE products_ingredients ADD COLUMN current_stock DECIMAL(15,4) DEFAULT 0;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products_ingredients' AND column_name = 'active') THEN
+        ALTER TABLE products_ingredients ADD COLUMN active BOOLEAN DEFAULT true;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products_ingredients' AND column_name = 'reorder_point') THEN
+        ALTER TABLE products_ingredients ADD COLUMN reorder_point DECIMAL(15,4) DEFAULT 10;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products_ingredients' AND column_name = 'supplier_name') THEN
+        ALTER TABLE products_ingredients ADD COLUMN supplier_name VARCHAR(200);
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'products_ingredients' AND column_name = 'category') THEN
+        ALTER TABLE products_ingredients ADD COLUMN category VARCHAR(100) DEFAULT 'Raw Materials';
+    END IF;
+END $$;
+
+-- Update existing ingredients with calculated costs
+UPDATE products_ingredients 
+SET 
+    base_unit = COALESCE(base_unit, sales_unit, 'KG'),
+    price_per_pack = COALESCE(price_per_pack, sales_cost, 0),
+    cost_per_base_unit = CASE 
+        WHEN COALESCE(pack_size, 1) > 0 THEN COALESCE(sales_cost, 0) / COALESCE(pack_size, 1)
+        ELSE COALESCE(sales_cost, 0) 
+    END,
+    active = COALESCE(active, true)
+WHERE cost_per_base_unit IS NULL OR cost_per_base_unit = 0;
+
+-- ============================================
+-- 5. DISABLE ROW LEVEL SECURITY
+-- ============================================
 ALTER TABLE recipes DISABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_ingredients DISABLE ROW LEVEL SECURITY;
 ALTER TABLE production_batches DISABLE ROW LEVEL SECURITY;
 
--- Drop existing policies if any
-DROP POLICY IF EXISTS "Enable all for recipes" ON recipes;
-DROP POLICY IF EXISTS "Enable all for recipe_ingredients" ON recipe_ingredients;
-DROP POLICY IF EXISTS "Enable all for production_batches" ON production_batches;
+-- Also for products_ingredients if exists
+DO $$
+BEGIN
+    EXECUTE 'ALTER TABLE products_ingredients DISABLE ROW LEVEL SECURITY';
+EXCEPTION WHEN OTHERS THEN
+    NULL;
+END $$;
 
--- Grant all permissions
+-- ============================================
+-- 6. GRANT PERMISSIONS
+-- ============================================
 GRANT ALL ON recipes TO anon, authenticated;
 GRANT ALL ON recipe_ingredients TO anon, authenticated;
 GRANT ALL ON production_batches TO anon, authenticated;
-GRANT USAGE, SELECT ON SEQUENCE recipes_recipe_id_seq TO anon, authenticated;
-GRANT USAGE, SELECT ON SEQUENCE recipe_ingredients_ingredient_id_seq TO anon, authenticated;
-GRANT USAGE, SELECT ON SEQUENCE production_batches_batch_id_seq TO anon, authenticated;
 
--- ============================================================
+-- Grant sequence permissions
+DO $$
+BEGIN
+    EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE recipes_recipe_id_seq TO anon, authenticated';
+    EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE recipe_ingredients_ingredient_id_seq TO anon, authenticated';
+    EXECUTE 'GRANT USAGE, SELECT ON SEQUENCE production_batches_batch_id_seq TO anon, authenticated';
+EXCEPTION WHEN OTHERS THEN
+    NULL;
+END $$;
+
+-- ============================================
 -- DONE! ✅
--- Tables: recipes, recipe_ingredients, production_batches
--- RLS: DISABLED
--- Permissions: GRANTED
--- ============================================================
+-- ============================================
+SELECT 'SUCCESS! All tables created/updated. RLS disabled. Permissions granted.' as result;

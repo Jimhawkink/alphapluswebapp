@@ -452,7 +452,7 @@ export default function RecipePage() {
                 ingredient_name: entry.ingredient_name,
                 unit_measure: entry.unit_measure,
                 qty_issued: entry.qty_issued,
-                convert_unit: convertUnit,
+                convert_unit: convertUnit || entry.unit_measure,
                 rate: entry.rate,
                 total_cost: entry.total_cost,
                 remaining_qty: entry.remaining_qty,
