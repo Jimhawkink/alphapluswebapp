@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useCompanyName } from '@/context/SettingsContext';
 
 interface Sale {
     id: number;
@@ -31,6 +32,7 @@ export default function SalesPage() {
     const [filterPayment, setFilterPayment] = useState('All');
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
+    const companyName = useCompanyName();
 
     const filteredSales = sales.filter(s => {
         const matchesSearch = s.invoiceNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -179,8 +181,8 @@ export default function SalesPage() {
                                 <td className="py-4 px-4 text-center text-gray-600">{sale.items}</td>
                                 <td className="py-4 px-4">
                                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${sale.paymentMode === 'Cash' ? 'bg-yellow-100 text-yellow-700' :
-                                            sale.paymentMode === 'M-Pesa' ? 'bg-green-100 text-green-700' :
-                                                'bg-orange-100 text-orange-700'
+                                        sale.paymentMode === 'M-Pesa' ? 'bg-green-100 text-green-700' :
+                                            'bg-orange-100 text-orange-700'
                                         }`}>
                                         {sale.paymentMode}
                                     </span>
@@ -190,8 +192,8 @@ export default function SalesPage() {
                                 </td>
                                 <td className="py-4 px-4 text-center">
                                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${sale.status === 'paid' ? 'bg-green-100 text-green-700' :
-                                            sale.status === 'credit' ? 'bg-yellow-100 text-yellow-700' :
-                                                'bg-red-100 text-red-700'
+                                        sale.status === 'credit' ? 'bg-yellow-100 text-yellow-700' :
+                                            'bg-red-100 text-red-700'
                                         }`}>
                                         {sale.status === 'paid' ? '✅ Paid' : sale.status === 'credit' ? '🔄 Credit' : '❌ Voided'}
                                     </span>
@@ -221,7 +223,7 @@ export default function SalesPage() {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
                     <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
                         <div className="text-center border-b border-dashed border-gray-300 pb-4 mb-4">
-                            <h2 className="text-xl font-bold text-gray-800">Alpha Plus POS</h2>
+                            <h2 className="text-xl font-bold text-gray-800">{companyName}</h2>
                             <p className="text-sm text-gray-500">Sales Receipt</p>
                         </div>
 

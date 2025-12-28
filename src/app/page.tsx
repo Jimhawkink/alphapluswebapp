@@ -13,6 +13,7 @@ export default function LoginPage() {
     const [showPassword, setShowPassword] = useState(false);
     const [currentTime, setCurrentTime] = useState('');
     const [currentDate, setCurrentDate] = useState('');
+    const [licensedTo, setLicensedTo] = useState('');
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -22,6 +23,24 @@ export default function LoginPage() {
         };
         updateDateTime();
         const interval = setInterval(updateDateTime, 1000);
+
+        // Load company name for license display
+        const loadCompanyName = async () => {
+            try {
+                const { data } = await supabase
+                    .from('organisation_settings')
+                    .select('setting_value')
+                    .eq('setting_key', 'company_name')
+                    .single();
+                if (data?.setting_value) {
+                    setLicensedTo(data.setting_value);
+                }
+            } catch (err) {
+                console.log('Could not load company name');
+            }
+        };
+        loadCompanyName();
+
         return () => clearInterval(interval);
     }, []);
 
@@ -120,6 +139,14 @@ export default function LoginPage() {
                                 <span>📅</span> {currentDate}
                             </span>
                         </div>
+
+                        {/* Licensed To */}
+                        {licensedTo && (
+                            <div className="mt-3 text-center">
+                                <span className="text-white/60 text-xs">Licensed to:</span>
+                                <p className="text-white font-semibold text-sm">{licensedTo}</p>
+                            </div>
+                        )}
                     </div>
 
                     {/* Form Section */}
