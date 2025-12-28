@@ -185,7 +185,7 @@ export default function CompanyPage() {
                     <button
                         onClick={saveSettings}
                         disabled={isSaving}
-                        className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-60"
+                        className="flex items-center justify-center gap-2 px-8 py-3 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white font-semibold rounded-2xl shadow-lg shadow-blue-400/30 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300 disabled:opacity-60"
                     >
                         {isSaving ? (
                             <>
@@ -204,7 +204,7 @@ export default function CompanyPage() {
 
             {/* Preview Card */}
             {settings.company_name && (
-                <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-6 mb-6 text-white shadow-lg">
+                <div className="bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-6 mb-6 text-white shadow-lg">
                     <div className="flex items-center gap-4">
                         <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center text-3xl">
                             🏨
@@ -232,8 +232,8 @@ export default function CompanyPage() {
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id as typeof activeTab)}
                             className={`flex-1 min-w-[140px] flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-medium transition-all ${activeTab === tab.id
-                                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg'
-                                    : 'text-gray-600 hover:bg-gray-100'
+                                ? 'bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow-lg'
+                                : 'text-gray-600 hover:bg-gray-100'
                                 }`}
                         >
                             <span className="text-xl">{tab.icon}</span>
@@ -257,8 +257,8 @@ export default function CompanyPage() {
                         </div>
 
                         {/* Company Name - Most Important */}
-                        <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-2xl p-5 border-2 border-indigo-200">
-                            <label className="block text-sm font-bold text-indigo-700 mb-2">
+                        <div className="bg-gradient-to-r from-sky-50 to-blue-50 rounded-2xl p-5 border-2 border-sky-200">
+                            <label className="block text-sm font-bold text-sky-700 mb-2">
                                 🏨 Company / Hotel Name <span className="text-red-500">*</span>
                             </label>
                             <input
@@ -266,9 +266,9 @@ export default function CompanyPage() {
                                 value={settings.company_name}
                                 onChange={(e) => setSettings({ ...settings, company_name: e.target.value })}
                                 placeholder="Enter your hotel/company name"
-                                className="w-full px-5 py-4 bg-white border-2 border-indigo-300 rounded-xl text-lg font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/20"
+                                className="w-full px-5 py-4 bg-white border-2 border-sky-300 rounded-xl text-lg font-semibold text-gray-800 placeholder-gray-400 focus:outline-none focus:border-sky-500 focus:ring-4 focus:ring-sky-500/20"
                             />
-                            <p className="text-xs text-indigo-600 mt-2">
+                            <p className="text-xs text-sky-600 mt-2">
                                 ⚠️ This name will appear on all receipts, reports, and throughout the system
                             </p>
                         </div>
@@ -284,7 +284,7 @@ export default function CompanyPage() {
                                     value={settings.email}
                                     onChange={(e) => setSettings({ ...settings, email: e.target.value })}
                                     placeholder="info@yourhotel.com"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
                                 />
                             </div>
 
@@ -298,7 +298,7 @@ export default function CompanyPage() {
                                     value={settings.website}
                                     onChange={(e) => setSettings({ ...settings, website: e.target.value })}
                                     placeholder="www.yourhotel.com"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
                                 />
                             </div>
 
@@ -312,7 +312,7 @@ export default function CompanyPage() {
                                     value={settings.phone}
                                     onChange={(e) => setSettings({ ...settings, phone: e.target.value })}
                                     placeholder="0720316175"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
                                 />
                             </div>
 
@@ -326,7 +326,7 @@ export default function CompanyPage() {
                                     value={settings.phone2}
                                     onChange={(e) => setSettings({ ...settings, phone2: e.target.value })}
                                     placeholder="Optional"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
                                 />
                             </div>
 
@@ -340,7 +340,7 @@ export default function CompanyPage() {
                                     value={settings.kra_pin}
                                     onChange={(e) => setSettings({ ...settings, kra_pin: e.target.value.toUpperCase() })}
                                     placeholder="P051234567X"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 uppercase"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 uppercase"
                                 />
                             </div>
 
@@ -352,7 +352,7 @@ export default function CompanyPage() {
                                 <select
                                     value={settings.currency_code}
                                     onChange={(e) => handleCurrencyChange(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 cursor-pointer"
                                 >
                                     {currencies.map((currency) => (
                                         <option key={currency.code} value={currency.code}>
@@ -374,7 +374,7 @@ export default function CompanyPage() {
                                     placeholder="16"
                                     min="0"
                                     max="100"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
                                 />
                             </div>
                         </div>
@@ -401,8 +401,8 @@ export default function CompanyPage() {
                                 <button
                                     onClick={() => setSettings({ ...settings, location_type: 'single' })}
                                     className={`flex-1 flex items-center justify-center gap-3 px-5 py-4 rounded-xl border-2 transition-all ${settings.location_type === 'single'
-                                            ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
-                                            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                                        ? 'bg-indigo-100 border-indigo-500 text-sky-700'
+                                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                                         }`}
                                 >
                                     <span className="text-2xl">🏠</span>
@@ -414,8 +414,8 @@ export default function CompanyPage() {
                                 <button
                                     onClick={() => setSettings({ ...settings, location_type: 'multi' })}
                                     className={`flex-1 flex items-center justify-center gap-3 px-5 py-4 rounded-xl border-2 transition-all ${settings.location_type === 'multi'
-                                            ? 'bg-indigo-100 border-indigo-500 text-indigo-700'
-                                            : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                                        ? 'bg-indigo-100 border-indigo-500 text-sky-700'
+                                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                                         }`}
                                 >
                                     <span className="text-2xl">🏢</span>
@@ -438,7 +438,7 @@ export default function CompanyPage() {
                                     value={settings.location_name}
                                     onChange={(e) => setSettings({ ...settings, location_name: e.target.value })}
                                     placeholder="Main Branch / Downtown Location"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
                                 />
                             </div>
 
@@ -452,7 +452,7 @@ export default function CompanyPage() {
                                     onChange={(e) => setSettings({ ...settings, address: e.target.value })}
                                     placeholder="Building name, Street, Area..."
                                     rows={2}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 resize-none"
                                 />
                             </div>
 
@@ -466,7 +466,7 @@ export default function CompanyPage() {
                                     value={settings.city}
                                     onChange={(e) => setSettings({ ...settings, city: e.target.value })}
                                     placeholder="Nairobi"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
                                 />
                             </div>
 
@@ -480,7 +480,7 @@ export default function CompanyPage() {
                                     value={settings.country}
                                     onChange={(e) => setSettings({ ...settings, country: e.target.value })}
                                     placeholder="Kenya"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
                                 />
                             </div>
                         </div>
@@ -510,7 +510,7 @@ export default function CompanyPage() {
                                         onChange={(e) => setSettings({ ...settings, receipt_header: e.target.value })}
                                         placeholder="Welcome to our hotel! / Any text to show at the top"
                                         rows={2}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 resize-none"
                                     />
                                 </div>
 
@@ -524,7 +524,7 @@ export default function CompanyPage() {
                                         onChange={(e) => setSettings({ ...settings, footer_note: e.target.value })}
                                         placeholder="Your satisfaction is our priority!"
                                         rows={2}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 resize-none"
                                     />
                                 </div>
 
@@ -538,7 +538,7 @@ export default function CompanyPage() {
                                         onChange={(e) => setSettings({ ...settings, receipt_footer: e.target.value })}
                                         placeholder="Thank you for visiting us! Come again soon."
                                         rows={2}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 resize-none"
                                     />
                                 </div>
                             </div>
@@ -555,7 +555,7 @@ export default function CompanyPage() {
                                         <p className="text-gray-500">Tel: {settings.phone || '0720316175'}</p>
                                         {settings.kra_pin && <p className="text-gray-500">PIN: {settings.kra_pin}</p>}
                                         {settings.receipt_header && (
-                                            <p className="text-indigo-600 mt-2">{settings.receipt_header}</p>
+                                            <p className="text-sky-600 mt-2">{settings.receipt_header}</p>
                                         )}
                                     </div>
                                     <div className="py-3 border-b border-dashed border-gray-300 space-y-1">

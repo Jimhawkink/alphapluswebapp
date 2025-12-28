@@ -304,7 +304,7 @@ export default function UserRolesPage() {
 
                     <button
                         onClick={openAddModal}
-                        className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+                        className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-sky-400 to-blue-500 hover:from-sky-500 hover:to-blue-600 text-white font-semibold rounded-2xl shadow-lg shadow-blue-400/30 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
                     >
                         <span className="text-xl">➕</span>
                         Add Custom Role
@@ -313,7 +313,7 @@ export default function UserRolesPage() {
             </div>
 
             {/* Info Card */}
-            <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl p-5 mb-6 text-white shadow-lg shadow-indigo-500/20">
+            <div className="bg-gradient-to-r from-sky-400 to-blue-500 rounded-2xl p-5 mb-6 text-white shadow-lg shadow-indigo-500/20">
                 <div className="flex items-start gap-4">
                     <span className="text-4xl">💡</span>
                     <div>
@@ -330,7 +330,7 @@ export default function UserRolesPage() {
             {isLoading ? (
                 <div className="flex items-center justify-center py-20">
                     <div className="flex flex-col items-center gap-4">
-                        <div className="w-12 h-12 border-4 border-indigo-500/30 border-t-indigo-500 rounded-full animate-spin"></div>
+                        <div className="w-12 h-12 border-4 border-sky-500/30 border-t-sky-500 rounded-full animate-spin"></div>
                         <span className="text-gray-500">Loading roles...</span>
                     </div>
                 </div>
@@ -367,8 +367,8 @@ export default function UserRolesPage() {
                                         <div
                                             key={perm.key}
                                             className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all ${role[perm.key as keyof UserRole]
-                                                    ? 'bg-emerald-100 text-emerald-700'
-                                                    : 'bg-gray-100 text-gray-400'
+                                                ? 'bg-emerald-100 text-emerald-700'
+                                                : 'bg-gray-100 text-gray-400'
                                                 }`}
                                         >
                                             <span>{role[perm.key as keyof UserRole] ? '✅' : '❌'}</span>
@@ -385,8 +385,8 @@ export default function UserRolesPage() {
                                         onClick={() => openEditModal(role)}
                                         disabled={role.is_super_admin}
                                         className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${role.is_super_admin
-                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
                                             }`}
                                     >
                                         ✏️ Edit
@@ -395,8 +395,8 @@ export default function UserRolesPage() {
                                         onClick={() => deleteRole(role)}
                                         disabled={role.is_super_admin}
                                         className={`flex-1 py-2.5 rounded-xl font-medium text-sm transition-all flex items-center justify-center gap-2 ${role.is_super_admin
-                                                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                                                : 'bg-red-100 text-red-600 hover:bg-red-200'
+                                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                            : 'bg-red-100 text-red-600 hover:bg-red-200'
                                             }`}
                                     >
                                         🗑️ Delete
@@ -441,8 +441,8 @@ export default function UserRolesPage() {
                                     {roles.map((role, idx) => (
                                         <td key={idx} className="px-4 py-3 text-center">
                                             <span className={`inline-flex items-center justify-center w-8 h-8 rounded-lg ${role[perm.key as keyof UserRole]
-                                                    ? 'bg-emerald-100 text-emerald-600'
-                                                    : 'bg-red-100 text-red-600'
+                                                ? 'bg-emerald-100 text-emerald-600'
+                                                : 'bg-red-100 text-red-600'
                                                 }`}>
                                                 {role[perm.key as keyof UserRole] ? '✓' : '✕'}
                                             </span>
@@ -460,7 +460,7 @@ export default function UserRolesPage() {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
                         {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 px-6 py-5 text-white sticky top-0">
+                        <div className="bg-gradient-to-r from-sky-400 to-blue-500 px-6 py-5 text-white sticky top-0">
                             <div className="flex items-center justify-between">
                                 <h2 className="text-xl font-bold flex items-center gap-2">
                                     {editingRole ? '✏️ Edit Role' : '➕ Add Custom Role'}
@@ -486,7 +486,7 @@ export default function UserRolesPage() {
                                     value={formData.role_name || ''}
                                     onChange={(e) => setFormData({ ...formData, role_name: e.target.value })}
                                     placeholder="e.g., Senior Cashier"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
                                     required
                                 />
                             </div>
@@ -501,7 +501,7 @@ export default function UserRolesPage() {
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     placeholder="Brief description of this role"
                                     rows={2}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20 resize-none"
                                 />
                             </div>
 
@@ -515,8 +515,8 @@ export default function UserRolesPage() {
                                         <label
                                             key={perm.key}
                                             className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-all ${formData[perm.key as keyof typeof formData]
-                                                    ? 'bg-emerald-50 border-emerald-200'
-                                                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                                                ? 'bg-emerald-50 border-emerald-200'
+                                                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
                                                 }`}
                                         >
                                             <div className="flex items-center gap-3">
