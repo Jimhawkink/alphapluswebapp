@@ -33,6 +33,8 @@ interface ProductionBatch {
     productionDate: string;
     expiryDate?: string;
     daysOld: number;
+    createdBy?: string;
+    totalValue?: number;
 }
 
 interface CartItem extends Product {
@@ -345,8 +347,10 @@ const BatchSelectionModal = ({
                                 <th className="p-3 text-center text-xs font-bold text-gray-600">PRODUCED</th>
                                 <th className="p-3 text-center text-xs font-bold text-gray-600">AVAILABLE</th>
                                 <th className="p-3 text-right text-xs font-bold text-gray-600">COST/UNIT</th>
-                                <th className="p-3 text-center text-xs font-bold text-gray-600">DATE</th>
-                                <th className="p-3 text-center text-xs font-bold text-gray-600">AGE</th>
+                                <th className="p-3 text-right text-xs font-bold text-gray-600">TOTAL</th>
+                                <th className="p-3 text-center text-xs font-bold text-gray-600">PROD. DATE</th>
+                                <th className="p-3 text-center text-xs font-bold text-gray-600">PRODUCED BY</th>
+                                <th className="p-3 text-center text-xs font-bold text-gray-600">AGE (Days)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -368,18 +372,25 @@ const BatchSelectionModal = ({
                                         </span>
                                     </td>
                                     <td className="p-3 text-right font-medium text-gray-700">
-                                        Ksh {batch.costPerUnit.toLocaleString()}
+                                        {batch.costPerUnit.toFixed(2)}
+                                    </td>
+                                    <td className="p-3 text-right font-bold text-orange-600">
+                                        {(batch.qtyRemaining * batch.costPerUnit).toFixed(2)}
                                     </td>
                                     <td className="p-3 text-center text-gray-600">
-                                        {new Date(batch.productionDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                        {new Date(batch.productionDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                    </td>
+                                    <td className="p-3 text-center text-blue-600 font-medium">
+                                        {batch.createdBy || 'Unknown'}
                                     </td>
                                     <td className="p-3 text-center">
                                         <span className={`px-2 py-1 rounded-lg text-xs font-bold ${batch.daysOld === 0 ? 'bg-green-500 text-white' :
                                             batch.daysOld <= 1 ? 'bg-green-100 text-green-700' :
-                                                batch.daysOld <= 3 ? 'bg-yellow-100 text-yellow-700' :
-                                                    'bg-orange-100 text-orange-700'
+                                                batch.daysOld <= 7 ? 'bg-yellow-100 text-yellow-700' :
+                                                    batch.daysOld <= 30 ? 'bg-orange-100 text-orange-700' :
+                                                        'bg-red-100 text-red-700'
                                             }`}>
-                                            {batch.daysOld === 0 ? 'Today' : `${batch.daysOld}d`}
+                                            {batch.daysOld}
                                         </span>
                                     </td>
                                 </tr>
@@ -735,6 +746,7 @@ export default function POSPage() {
     const loadProducts = useCallback(async () => {
         setIsLoadingProducts(true);
         try {
+            // Load products
             const { data, error } = await supabase
                 .from('products')
                 .select('*')
@@ -744,6 +756,20 @@ export default function POSPage() {
 
             if (error) throw error;
 
+            // Load batch stock for all products
+            const { data: batchData } = await supabase
+                .from('production_batches')
+                .select('product_id, qty_remaining')
+                .eq('status', 'In Stock')
+                .gt('qty_remaining', 0);
+
+            // Calculate total available stock per product from batches
+            const stockByProduct: Record<number, number> = {};
+            (batchData || []).forEach((batch) => {
+                const pid = batch.product_id;
+                stockByProduct[pid] = (stockByProduct[pid] || 0) + (batch.qty_remaining || 0);
+            });
+
             // Transform database products to POS format
             const posProducts: Product[] = (data || []).map(p => ({
                 id: p.pid,
@@ -751,10 +777,10 @@ export default function POSPage() {
                 price: p.sales_cost || 0,
                 purchasePrice: p.purchase_cost || 0,
                 category: p.category || 'Uncategorized',
-                stock: 999, // TODO: Implement stock tracking
+                stock: stockByProduct[p.pid] || 0, // Stock from production batches
                 color: p.button_ui_color || 'from-blue-400 to-blue-600',
                 barcode: p.barcode,
-                hasBatches: false, // TODO: Implement batch tracking
+                hasBatches: (stockByProduct[p.pid] || 0) > 0, // Has batches if stock > 0
             }));
 
             setProducts(posProducts);
@@ -804,18 +830,46 @@ export default function POSPage() {
     });
 
     // Add to cart - with batch selection for products with batches
-    const addToCart = (product: Product) => {
-        if (product.stock === 0) return;
+    const addToCart = async (product: Product) => {
+        if (product.stock === 0) {
+            toast.error('Product out of stock!');
+            return;
+        }
 
-        // Check if product has production batches
-        if (product.hasBatches && sampleBatches[product.id]) {
-            const batches = sampleBatches[product.id].filter(b => b.qtyRemaining > 0);
-            if (batches.length > 0) {
-                // Show batch selection modal
-                setPendingProduct(product);
-                setProductBatches(batches);
-                setShowBatchModal(true);
-                return;
+        // Check if product has production batches - load from database
+        if (product.hasBatches) {
+            try {
+                const { data: batchData } = await supabase
+                    .from('production_batches')
+                    .select('*')
+                    .eq('product_id', product.id)
+                    .eq('status', 'In Stock')
+                    .gt('qty_remaining', 0)
+                    .order('production_date', { ascending: true });
+
+                if (batchData && batchData.length > 0) {
+                    // Convert to ProductionBatch format
+                    const batches: ProductionBatch[] = batchData.map(b => ({
+                        batchId: b.batch_id,
+                        batchNumber: b.batch_number,
+                        qtyProduced: b.qty_produced || 0,
+                        qtyRemaining: b.qty_remaining || 0,
+                        costPerUnit: b.cost_per_unit || 0,
+                        productionDate: b.production_date,
+                        expiryDate: b.expiry_date,
+                        daysOld: Math.floor((Date.now() - new Date(b.production_date).getTime()) / (1000 * 60 * 60 * 24)),
+                        createdBy: b.created_by || 'Unknown',
+                        totalValue: (b.qty_remaining || 0) * (b.cost_per_unit || 0),
+                    }));
+
+                    // Show batch selection modal
+                    setPendingProduct(product);
+                    setProductBatches(batches);
+                    setShowBatchModal(true);
+                    return;
+                }
+            } catch (err) {
+                console.error('Error loading batches:', err);
             }
         }
 
