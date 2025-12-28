@@ -49,7 +49,7 @@ const defaultProduct: Omit<Product, 'pid' | 'product_code'> = {
     reorder_point: 10,
     margin_per: 0,
     show_ps: true,
-    button_ui_color: '#3B82F6',
+    button_ui_color: 'from-blue-400 to-blue-600',
     photo: '',
     hscode: '',
     batch_no: '',
@@ -59,6 +59,24 @@ const defaultProduct: Omit<Product, 'pid' | 'product_code'> = {
 
 const units = ['Piece', 'Kg', 'Gram', 'Liter', 'ml', 'Box', 'Pack', 'Dozen', 'Bottle', 'Plate', 'Serving', 'Cup'];
 const vatOptions = ['Standard', 'Zero Rated', 'Exempt', 'Inclusive'];
+
+// POS Button Color Presets (matching POS page)
+const colorPresets = [
+    { name: 'Orange', gradient: 'from-orange-400 to-orange-600', hex: '#F97316' },
+    { name: 'Red', gradient: 'from-red-400 to-red-600', hex: '#EF4444' },
+    { name: 'Yellow Orange', gradient: 'from-yellow-500 to-orange-500', hex: '#F59E0B' },
+    { name: 'Pink', gradient: 'from-red-500 to-pink-600', hex: '#EC4899' },
+    { name: 'Rose', gradient: 'from-rose-500 to-red-600', hex: '#F43F5E' },
+    { name: 'Green', gradient: 'from-green-400 to-emerald-600', hex: '#10B981' },
+    { name: 'Yellow', gradient: 'from-yellow-400 to-yellow-600', hex: '#EAB308' },
+    { name: 'Amber', gradient: 'from-amber-400 to-amber-600', hex: '#F59E0B' },
+    { name: 'Blue', gradient: 'from-blue-400 to-blue-600', hex: '#3B82F6' },
+    { name: 'Cyan', gradient: 'from-cyan-400 to-cyan-600', hex: '#06B6D4' },
+    { name: 'Teal', gradient: 'from-teal-400 to-teal-600', hex: '#14B8A6' },
+    { name: 'Purple', gradient: 'from-purple-400 to-purple-600', hex: '#A855F7' },
+    { name: 'Brown', gradient: 'from-amber-600 to-amber-800', hex: '#92400E' },
+    { name: 'Red Dark', gradient: 'from-red-600 to-red-800', hex: '#DC2626' },
+];
 
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
@@ -155,7 +173,7 @@ export default function ProductsPage() {
             reorder_point: product.reorder_point || 10,
             margin_per: product.margin_per || 0,
             show_ps: product.show_ps !== false,
-            button_ui_color: product.button_ui_color || '#3B82F6',
+            button_ui_color: product.button_ui_color || 'from-blue-400 to-blue-600',
             photo: product.photo || '',
             hscode: product.hscode || '',
             batch_no: product.batch_no || '',
@@ -400,8 +418,7 @@ export default function ProductsPage() {
                                         <td className="px-4 py-4">
                                             <div className="flex items-center gap-3">
                                                 <div
-                                                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold"
-                                                    style={{ backgroundColor: product.button_ui_color || '#3B82F6' }}
+                                                    className={`w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold bg-gradient-to-br ${product.button_ui_color || 'from-blue-400 to-blue-600'}`}
                                                 >
                                                     {product.product_name.charAt(0).toUpperCase()}
                                                 </div>
@@ -426,8 +443,8 @@ export default function ProductsPage() {
                                         </td>
                                         <td className="px-4 py-4 text-center hidden lg:table-cell">
                                             <span className={`px-2 py-1 rounded-full text-xs font-semibold ${product.margin_per >= 30 ? 'bg-green-100 text-green-700' :
-                                                    product.margin_per >= 15 ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-red-100 text-red-700'
+                                                product.margin_per >= 15 ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-red-100 text-red-700'
                                                 }`}>
                                                 {product.margin_per?.toFixed(1) || '0'}%
                                             </span>
@@ -651,16 +668,33 @@ export default function ProductsPage() {
                                     />
                                 </div>
 
-                                <div>
+                                <div className="md:col-span-3">
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🎨 Button Color
+                                        🎨 POS Button Color (same as POS screen)
                                     </label>
-                                    <input
-                                        type="color"
-                                        value={formData.button_ui_color}
-                                        onChange={(e) => setFormData({ ...formData, button_ui_color: e.target.value })}
-                                        className="w-full h-12 rounded-xl cursor-pointer border border-gray-200"
-                                    />
+                                    <div className="grid grid-cols-7 gap-2">
+                                        {colorPresets.map((preset) => (
+                                            <button
+                                                key={preset.name}
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, button_ui_color: preset.gradient })}
+                                                className={`h-10 rounded-xl bg-gradient-to-br ${preset.gradient} transition-all hover:scale-110 ${formData.button_ui_color === preset.gradient
+                                                    ? 'ring-2 ring-offset-2 ring-blue-500 scale-110'
+                                                    : ''
+                                                    }`}
+                                                title={preset.name}
+                                            />
+                                        ))}
+                                    </div>
+                                    {formData.button_ui_color && (
+                                        <div className="mt-3 flex items-center gap-3">
+                                            <span className="text-sm text-gray-600">Preview:</span>
+                                            <div className={`w-20 h-12 rounded-xl bg-gradient-to-br ${formData.button_ui_color} flex items-center justify-center text-white font-bold text-lg`}>
+                                                {formData.product_name?.charAt(0)?.toUpperCase() || 'A'}
+                                            </div>
+                                            <span className="text-xs text-gray-500">{formData.button_ui_color}</span>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div>
