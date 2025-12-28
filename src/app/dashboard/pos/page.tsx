@@ -760,7 +760,8 @@ export default function POSPage() {
             setProducts(posProducts);
 
             // Extract unique categories from products
-            const uniqueCategories = ['All', ...new Set(posProducts.map(p => p.category).filter(Boolean))];
+            const categorySet = new Set(posProducts.map(p => p.category).filter(Boolean));
+            const uniqueCategories = ['All', ...Array.from(categorySet)];
             setCategories(uniqueCategories);
 
         } catch (err) {
