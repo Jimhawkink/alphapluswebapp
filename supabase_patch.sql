@@ -97,6 +97,31 @@ FOR EACH ROW EXECUTE FUNCTION prevent_superadmin_modify();
 -- 8. Disable RLS for easy access
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE user_roles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE organisation_settings DISABLE ROW LEVEL SECURITY;
+
+-- 9. Insert all company settings
+INSERT INTO organisation_settings (setting_key, setting_value, description) VALUES
+('company_name', '', 'Company/Hotel name used across the system'),
+('address', '', 'Physical address'),
+('city', '', 'City or town'),
+('country', 'Kenya', 'Country'),
+('phone', '', 'Main phone number'),
+('phone2', '', 'Secondary phone number'),
+('email', '', 'Company email'),
+('website', '', 'Website URL'),
+('kra_pin', '', 'KRA PIN / Tax ID'),
+('currency_code', 'KES', 'Currency code'),
+('currency_symbol', 'KSh', 'Currency symbol'),
+('location_type', 'single', 'Single or multi location'),
+('location_name', '', 'Branch/Location name'),
+('footer_note', 'Thank you for your business!', 'Company motto/footer'),
+('receipt_header', '', 'Receipt header text'),
+('receipt_footer', 'Thank you for visiting us!', 'Receipt footer text'),
+('logo_url', '', 'Logo URL'),
+('enable_shifts', 'true', 'Enable shift management'),
+('enable_loyalty', 'false', 'Enable loyalty program'),
+('vat_rate', '16', 'VAT rate percentage')
+ON CONFLICT (setting_key) DO NOTHING;
 
 -- ============================================================
 -- DONE! ✅
