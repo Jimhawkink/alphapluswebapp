@@ -87,30 +87,52 @@ export default function RecipePage() {
     // ALL-ROUND UNIT CONVERSION LOGIC
     // ============================================
 
-    // Unit conversion table - how to convert TO base unit
+    /**
+     * Normalize unit name to standard format
+     * Handles all variations: "Liter", "LITER", "L", "LTR", "Liters" all become "L"
+     */
+    const normalizeUnit = (unit: string): string => {
+        const u = unit.toUpperCase().trim();
+
+        // Volume - normalize to L or ML
+        if (u === 'L' || u === 'LTR' || u === 'LITER' || u === 'LITERS' || u === 'LITRE' || u === 'LITRES') return 'L';
+        if (u === 'ML' || u === 'MLS' || u === 'MILLILITER' || u === 'MILLILITERS') return 'ML';
+
+        // Mass - normalize to KG or G
+        if (u === 'KG' || u === 'KGS' || u === 'KILOGRAM' || u === 'KILOGRAMS' || u === 'KILO') return 'KG';
+        if (u === 'G' || u === 'GM' || u === 'GMS' || u === 'GRAM' || u === 'GRAMS') return 'G';
+
+        // Count - normalize to PCS
+        if (u === 'PCS' || u === 'PC' || u === 'PIECE' || u === 'PIECES' || u === 'EACH' || u === 'EA') return 'PCS';
+
+        // Eggs
+        if (u === 'EGG' || u === 'EGGS') return 'EGGS';
+        if (u === 'TRAY' || u === 'TRAYS') return 'TRAY';
+
+        // Packages
+        if (u === 'PKT' || u === 'PACKET' || u === 'PACKETS') return 'PKT';
+        if (u === 'BOX' || u === 'BOXES') return 'BOX';
+        if (u === 'BTL' || u === 'BOTTLE' || u === 'BOTTLES') return 'BTL';
+
+        return u; // Return as-is if not recognized
+    };
+
+    // Unit conversion table - how to convert TO base unit (after normalization)
     const UNIT_CONVERSIONS: Record<string, { baseUnit: string; toBase: number }> = {
         // Mass (Base: KG)
         'KG': { baseUnit: 'KG', toBase: 1 },
-        'G': { baseUnit: 'KG', toBase: 0.001 },
-        'GM': { baseUnit: 'KG', toBase: 0.001 },
-        'GRAMS': { baseUnit: 'KG', toBase: 0.001 },
+        'G': { baseUnit: 'KG', toBase: 0.001 },  // 1000g = 1kg
 
         // Volume (Base: L)
         'L': { baseUnit: 'L', toBase: 1 },
-        'LTR': { baseUnit: 'L', toBase: 1 },
-        'ML': { baseUnit: 'L', toBase: 0.001 },
-        'MLS': { baseUnit: 'L', toBase: 0.001 },
+        'ML': { baseUnit: 'L', toBase: 0.001 },  // 1000ml = 1L
 
         // Count (Base: PCS)
         'PCS': { baseUnit: 'PCS', toBase: 1 },
-        'PC': { baseUnit: 'PCS', toBase: 1 },
-        'PIECES': { baseUnit: 'PCS', toBase: 1 },
-        'EACH': { baseUnit: 'PCS', toBase: 1 },
 
         // Eggs
         'EGGS': { baseUnit: 'EGGS', toBase: 1 },
-        'EGG': { baseUnit: 'EGGS', toBase: 1 },
-        'TRAY': { baseUnit: 'EGGS', toBase: 30 },
+        'TRAY': { baseUnit: 'EGGS', toBase: 30 },  // 1 tray = 30 eggs
 
         // Packages
         'PKT': { baseUnit: 'PKT', toBase: 1 },
@@ -120,40 +142,45 @@ export default function RecipePage() {
 
     /**
      * Convert quantity from issuedUnit TO baseUnit
+     * Example: 100ml issued, base is Liter -> returns 0.1
      * Example: 500g issued, base is KG -> returns 0.5
-     * Example: 100ml issued, base is L -> returns 0.1
      * Example: 2 PCS issued, base is PCS -> returns 2
      */
     const convertToBaseUnit = (qty: number, issuedUnit: string, baseUnit: string): number => {
-        const issued = issuedUnit.toUpperCase().trim();
-        const base = baseUnit.toUpperCase().trim();
+        // Normalize both units to standard format
+        const issued = normalizeUnit(issuedUnit);
+        const base = normalizeUnit(baseUnit);
 
-        // Same unit - no conversion
-        if (issued === base || !issued) return qty;
+        console.log(`Converting: ${qty} ${issuedUnit} (normalized: ${issued}) to base ${baseUnit} (normalized: ${base})`);
+
+        // Same unit after normalization - no conversion needed
+        if (issued === base || !issued) {
+            console.log(`Same unit, no conversion: ${qty}`);
+            return qty;
+        }
 
         const issuedConfig = UNIT_CONVERSIONS[issued];
 
         if (!issuedConfig) {
-            console.warn(`Unknown issued unit: ${issued}`);
+            console.warn(`Unknown issued unit: ${issued} (original: ${issuedUnit})`);
             return qty;
         }
 
-        // Check if compatible (e.g., G and KG are both mass)
+        // Check if compatible (e.g., ML and L are both volume)
         if (issuedConfig.baseUnit !== base) {
-            console.warn(`Incompatible units: ${issued} -> ${base}`);
+            console.warn(`Incompatible units: ${issued} (${issuedConfig.baseUnit}) -> ${base}`);
             return qty;
         }
 
         // Convert: qty * toBase factor
-        return qty * issuedConfig.toBase;
+        const result = qty * issuedConfig.toBase;
+        console.log(`Converted: ${qty} ${issued} = ${result} ${base} (factor: ${issuedConfig.toBase})`);
+        return result;
     };
 
     /**
      * Calculate cost for issued quantity
-     * @param qtyIssued - Quantity issued (e.g., 500)
-     * @param issuedUnit - Unit of issued quantity (e.g., 'G', 'ML', 'PCS')
-     * @param costPerBaseUnit - Cost per base unit (from ingredient)
-     * @param baseUnit - Base unit of ingredient (e.g., 'KG', 'L', 'PCS')
+     * Example: 100ml of oil at 150/L = 100 * 0.001 * 150 = 15 KES
      */
     const calculateRate = (
         qtyIssued: number,
@@ -162,7 +189,9 @@ export default function RecipePage() {
         baseUnit: string
     ): number => {
         const qtyInBase = convertToBaseUnit(qtyIssued, issuedUnit, baseUnit);
-        return qtyInBase * costPerBaseUnit;
+        const cost = qtyInBase * costPerBaseUnit;
+        console.log(`Rate calculation: ${qtyIssued} ${issuedUnit} = ${qtyInBase} ${baseUnit} × ${costPerBaseUnit} = ${cost}`);
+        return cost;
     };
 
     /**
