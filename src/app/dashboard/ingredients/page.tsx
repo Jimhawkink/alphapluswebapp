@@ -4,78 +4,189 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
+// ============================================
+// INTERFACES
+// ============================================
+
 interface Ingredient {
     pid: number;
     product_code: string;
     product_name: string;
-    alias: string;
-    vat_commodity: string;
-    description: string;
-    barcode: string;
     category: string;
-    purchase_unit: string;
-    sales_unit: string;
-    purchase_cost: number;
-    sales_cost: number;
-    reorder_point: number;
-    margin_per: number;
-    show_ps: boolean;
-    button_ui_color: string;
-    photo: string;
-    hscode: string;
-    batch_no: string;
-    supplier_name: string;
-    // Ingredient-specific fields
-    pack_size: number;
     base_unit: string;
+    pack_size: number;
     price_per_pack: number;
     cost_per_base_unit: number;
+    current_stock: number;
+    reorder_point: number;
+    supplier_name: string;
     active: boolean;
+    created_at: string;
 }
 
 interface Category {
     category_id: number;
     category_name: string;
-    icon: string;
 }
 
-const defaultIngredient: Omit<Ingredient, 'pid' | 'product_code' | 'cost_per_base_unit'> = {
-    product_name: '',
-    alias: '',
-    vat_commodity: 'Standard',
-    description: '',
-    barcode: '',
-    category: 'Raw Materials',
-    purchase_unit: 'Kg',
-    sales_unit: 'Kg',
-    purchase_cost: 0,
-    sales_cost: 0,
-    reorder_point: 10,
-    margin_per: 0,
-    show_ps: false,
-    button_ui_color: '#10B981',
-    photo: '',
-    hscode: '',
-    batch_no: '',
-    supplier_name: '',
-    pack_size: 1,
-    base_unit: 'Kg',
-    price_per_pack: 0,
-    active: true,
+// ============================================
+// UNIT DEFINITIONS - All-Round Logic
+// ============================================
+
+const UNIT_CONFIG = {
+    // Mass Units (Base: KG)
+    KG: { baseUnit: 'KG', toBase: 1, displayName: 'Kilograms', group: 'mass' },
+    G: { baseUnit: 'KG', toBase: 0.001, displayName: 'Grams', group: 'mass' },
+    GM: { baseUnit: 'KG', toBase: 0.001, displayName: 'Grams', group: 'mass' },
+    GRAMS: { baseUnit: 'KG', toBase: 0.001, displayName: 'Grams', group: 'mass' },
+
+    // Volume Units (Base: L)
+    L: { baseUnit: 'L', toBase: 1, displayName: 'Liters', group: 'volume' },
+    LTR: { baseUnit: 'L', toBase: 1, displayName: 'Liters', group: 'volume' },
+    LITERS: { baseUnit: 'L', toBase: 1, displayName: 'Liters', group: 'volume' },
+    ML: { baseUnit: 'L', toBase: 0.001, displayName: 'Milliliters', group: 'volume' },
+    MLS: { baseUnit: 'L', toBase: 0.001, displayName: 'Milliliters', group: 'volume' },
+
+    // Count Units (Base: PCS)
+    PCS: { baseUnit: 'PCS', toBase: 1, displayName: 'Pieces', group: 'count' },
+    PC: { baseUnit: 'PCS', toBase: 1, displayName: 'Pieces', group: 'count' },
+    PIECES: { baseUnit: 'PCS', toBase: 1, displayName: 'Pieces', group: 'count' },
+    EACH: { baseUnit: 'PCS', toBase: 1, displayName: 'Each', group: 'count' },
+
+    // Eggs (Base: EGGS - sold in trays of 30)
+    EGGS: { baseUnit: 'EGGS', toBase: 1, displayName: 'Eggs', group: 'count' },
+    EGG: { baseUnit: 'EGGS', toBase: 1, displayName: 'Egg', group: 'count' },
+    TRAY: { baseUnit: 'EGGS', toBase: 30, displayName: 'Tray (30)', group: 'count' },
+
+    // Packets/Boxes
+    PKT: { baseUnit: 'PKT', toBase: 1, displayName: 'Packet', group: 'package' },
+    PACKET: { baseUnit: 'PKT', toBase: 1, displayName: 'Packet', group: 'package' },
+    BOX: { baseUnit: 'BOX', toBase: 1, displayName: 'Box', group: 'package' },
+    CARTON: { baseUnit: 'CARTON', toBase: 1, displayName: 'Carton', group: 'package' },
+
+    // Bottles
+    BTL: { baseUnit: 'BTL', toBase: 1, displayName: 'Bottle', group: 'package' },
+    BOTTLE: { baseUnit: 'BTL', toBase: 1, displayName: 'Bottle', group: 'package' },
 };
 
-const baseUnits = ['Kg', 'Gram', 'Liter', 'ml', 'Piece', 'Unit', 'Meter', 'cm'];
-const purchaseUnits = ['Bag', 'Box', 'Carton', 'Pack', 'Sack', 'Bottle', 'Tin', 'Drum', 'Piece', 'Kg', 'Liter'];
+// Base units list for dropdown
+const BASE_UNITS = [
+    { value: 'KG', label: 'Kilograms (KG)', subUnits: ['KG', 'G'] },
+    { value: 'L', label: 'Liters (L)', subUnits: ['L', 'ML'] },
+    { value: 'PCS', label: 'Pieces (PCS)', subUnits: ['PCS'] },
+    { value: 'EGGS', label: 'Eggs', subUnits: ['EGGS', 'TRAY'] },
+    { value: 'PKT', label: 'Packets', subUnits: ['PKT'] },
+    { value: 'BTL', label: 'Bottles', subUnits: ['BTL'] },
+    { value: 'BOX', label: 'Boxes', subUnits: ['BOX'] },
+];
+
+// ============================================
+// UTILITY FUNCTIONS
+// ============================================
+
+/**
+ * Convert quantity from any unit to base unit
+ * @param qty - The quantity to convert
+ * @param fromUnit - The unit to convert from (e.g., 'G', 'ML', 'PCS')
+ * @param baseUnit - The base unit of the ingredient (e.g., 'KG', 'L', 'PCS')
+ * @returns Quantity in base units
+ */
+const convertToBaseUnit = (qty: number, fromUnit: string, baseUnit: string): number => {
+    const from = fromUnit.toUpperCase().trim();
+    const base = baseUnit.toUpperCase().trim();
+
+    // Same unit - no conversion needed
+    if (from === base) return qty;
+
+    // Get unit config
+    const fromConfig = UNIT_CONFIG[from as keyof typeof UNIT_CONFIG];
+    const baseConfig = UNIT_CONFIG[base as keyof typeof UNIT_CONFIG];
+
+    if (!fromConfig || !baseConfig) {
+        console.warn(`Unknown unit conversion: ${from} -> ${base}`);
+        return qty;
+    }
+
+    // Check if compatible (same group or same base)
+    if (fromConfig.baseUnit !== base && fromConfig.baseUnit !== baseConfig.baseUnit) {
+        console.warn(`Incompatible units: ${from} (${fromConfig.group}) -> ${base} (${baseConfig.group})`);
+        return qty;
+    }
+
+    // Convert: qty * toBase gives us the amount in base units
+    return qty * fromConfig.toBase;
+};
+
+/**
+ * Calculate the cost for a given quantity
+ * @param qtyIssued - Quantity issued
+ * @param issuedUnit - Unit of issued quantity (e.g., 'G', 'ML', 'PCS')
+ * @param costPerBaseUnit - Cost per base unit
+ * @param baseUnit - Base unit of the ingredient
+ * @returns Total cost for the issued quantity
+ */
+const calculateCost = (
+    qtyIssued: number,
+    issuedUnit: string,
+    costPerBaseUnit: number,
+    baseUnit: string
+): number => {
+    const qtyInBase = convertToBaseUnit(qtyIssued, issuedUnit, baseUnit);
+    return qtyInBase * costPerBaseUnit;
+};
+
+/**
+ * Calculate remaining stock after issuing
+ * @param currentStock - Current stock in base units
+ * @param qtyIssued - Quantity issued
+ * @param issuedUnit - Unit of issued quantity
+ * @param baseUnit - Base unit of the ingredient
+ * @returns Remaining stock in base units
+ */
+const calculateRemainingStock = (
+    currentStock: number,
+    qtyIssued: number,
+    issuedUnit: string,
+    baseUnit: string
+): number => {
+    const qtyInBase = convertToBaseUnit(qtyIssued, issuedUnit, baseUnit);
+    return Math.max(0, currentStock - qtyInBase);
+};
+
+// ============================================
+// DEFAULT FORM DATA
+// ============================================
+
+const defaultFormData = {
+    product_name: '',
+    category: 'Raw Materials',
+    base_unit: 'KG',
+    pack_size: 1,
+    price_per_pack: 0,
+    opening_stock: 0,
+    reorder_point: 10,
+    supplier_name: '',
+};
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
 
 export default function IngredientsPage() {
+    // State
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isSaving, setIsSaving] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editingIngredient, setEditingIngredient] = useState<Ingredient | null>(null);
-    const [formData, setFormData] = useState(defaultIngredient);
+    const [formData, setFormData] = useState(defaultFormData);
     const [searchQuery, setSearchQuery] = useState('');
-    const [isSaving, setIsSaving] = useState(false);
+    const [filterCategory, setFilterCategory] = useState('All');
+
+    // ============================================
+    // LOAD DATA
+    // ============================================
 
     const loadIngredients = useCallback(async () => {
         setIsLoading(true);
@@ -83,7 +194,7 @@ export default function IngredientsPage() {
             const { data, error } = await supabase
                 .from('products_ingredients')
                 .select('*')
-                .order('pid', { ascending: false });
+                .order('product_name');
 
             if (error) throw error;
             setIngredients(data || []);
@@ -96,13 +207,10 @@ export default function IngredientsPage() {
 
     const loadCategories = useCallback(async () => {
         try {
-            const { data, error } = await supabase
+            const { data } = await supabase
                 .from('product_categories')
                 .select('*')
-                .eq('active', true)
                 .order('category_name');
-
-            if (error) throw error;
             setCategories(data || []);
         } catch (err) {
             console.error('Error loading categories:', err);
@@ -114,35 +222,17 @@ export default function IngredientsPage() {
         loadCategories();
     }, [loadIngredients, loadCategories]);
 
-    const generateIngredientCode = async (): Promise<string> => {
-        try {
-            const { data } = await supabase
-                .from('products_ingredients')
-                .select('product_code')
-                .like('product_code', 'PIG-%')
-                .order('product_code', { ascending: false })
-                .limit(1);
+    // ============================================
+    // FORM HANDLERS
+    // ============================================
 
-            if (data && data.length > 0) {
-                const lastCode = data[0].product_code;
-                const lastNum = parseInt(lastCode.replace('PIG-', '')) || 0;
-                return `PIG-${String(lastNum + 1).padStart(2, '0')}`;
-            }
-            return 'PIG-01';
-        } catch {
-            return 'PIG-01';
-        }
-    };
-
-    // Calculate cost per base unit from pack
-    const calculateCostPerBaseUnit = (pricePerPack: number, packSize: number): number => {
-        if (packSize <= 0) return 0;
-        return Math.round((pricePerPack / packSize) * 10000) / 10000;
+    const handleInputChange = (field: string, value: string | number | boolean) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
     };
 
     const openAddModal = () => {
         setEditingIngredient(null);
-        setFormData(defaultIngredient);
+        setFormData(defaultFormData);
         setShowModal(true);
     };
 
@@ -150,37 +240,34 @@ export default function IngredientsPage() {
         setEditingIngredient(ingredient);
         setFormData({
             product_name: ingredient.product_name,
-            alias: ingredient.alias || '',
-            vat_commodity: ingredient.vat_commodity || 'Standard',
-            description: ingredient.description || '',
-            barcode: ingredient.barcode || '',
             category: ingredient.category || 'Raw Materials',
-            purchase_unit: ingredient.purchase_unit || 'Kg',
-            sales_unit: ingredient.sales_unit || 'Kg',
-            purchase_cost: ingredient.purchase_cost || 0,
-            sales_cost: ingredient.sales_cost || 0,
-            reorder_point: ingredient.reorder_point || 10,
-            margin_per: ingredient.margin_per || 0,
-            show_ps: ingredient.show_ps !== false,
-            button_ui_color: ingredient.button_ui_color || '#10B981',
-            photo: ingredient.photo || '',
-            hscode: ingredient.hscode || '',
-            batch_no: ingredient.batch_no || '',
-            supplier_name: ingredient.supplier_name || '',
+            base_unit: ingredient.base_unit || 'KG',
             pack_size: ingredient.pack_size || 1,
-            base_unit: ingredient.base_unit || 'Kg',
             price_per_pack: ingredient.price_per_pack || 0,
-            active: ingredient.active !== false,
+            opening_stock: ingredient.current_stock || 0,
+            reorder_point: ingredient.reorder_point || 10,
+            supplier_name: ingredient.supplier_name || '',
         });
         setShowModal(true);
     };
 
+    // Auto-calculate cost per base unit
+    const costPerBaseUnit = formData.pack_size > 0
+        ? formData.price_per_pack / formData.pack_size
+        : 0;
+
+    // ============================================
+    // SAVE INGREDIENT
+    // ============================================
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
         if (!formData.product_name.trim()) {
-            toast.error('Ingredient name required!');
+            toast.error('Product name is required');
             return;
         }
+
         if (formData.pack_size <= 0) {
             toast.error('Pack size must be greater than 0');
             return;
@@ -188,16 +275,27 @@ export default function IngredientsPage() {
 
         setIsSaving(true);
         try {
-            const costPerBase = calculateCostPerBaseUnit(formData.price_per_pack, formData.pack_size);
+            const ingredientData = {
+                product_name: formData.product_name.trim(),
+                category: formData.category,
+                base_unit: formData.base_unit,
+                sales_unit: formData.base_unit, // Same as base unit for compatibility
+                pack_size: formData.pack_size,
+                price_per_pack: formData.price_per_pack,
+                cost_per_base_unit: costPerBaseUnit,
+                sales_cost: costPerBaseUnit, // For compatibility with recipe page
+                current_stock: formData.opening_stock,
+                reorder_point: formData.reorder_point,
+                supplier_name: formData.supplier_name,
+                active: true,
+            };
 
             if (editingIngredient) {
-                // Update existing ingredient
+                // Update
                 const { error } = await supabase
                     .from('products_ingredients')
                     .update({
-                        ...formData,
-                        cost_per_base_unit: costPerBase,
-                        purchase_cost: costPerBase, // Set purchase cost to cost per base unit
+                        ...ingredientData,
                         updated_at: new Date().toISOString(),
                     })
                     .eq('pid', editingIngredient.pid);
@@ -205,16 +303,18 @@ export default function IngredientsPage() {
                 if (error) throw error;
                 toast.success('Ingredient updated! ✓');
             } else {
-                // Create new ingredient
-                const newCode = await generateIngredientCode();
+                // Generate product code
+                const { count } = await supabase
+                    .from('products_ingredients')
+                    .select('*', { count: 'exact', head: true });
+
+                const newCode = `PIG-${String((count || 0) + 1).padStart(3, '0')}`;
+
                 const { error } = await supabase
                     .from('products_ingredients')
                     .insert({
-                        ...formData,
+                        ...ingredientData,
                         product_code: newCode,
-                        cost_per_base_unit: costPerBase,
-                        purchase_cost: costPerBase,
-                        added_date: new Date().toISOString(),
                     });
 
                 if (error) throw error;
@@ -248,16 +348,23 @@ export default function IngredientsPage() {
         }
     };
 
+    // ============================================
+    // FILTER
+    // ============================================
+
     const filteredIngredients = ingredients.filter(i => {
-        return i.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            i.product_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (i.supplier_name && i.supplier_name.toLowerCase().includes(searchQuery.toLowerCase()));
+        const matchesSearch = i.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            i.product_code?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesCategory = filterCategory === 'All' || i.category === filterCategory;
+        return matchesSearch && matchesCategory;
     });
 
-    // Real-time cost calculation preview
-    const previewCostPerUnit = formData.pack_size > 0
-        ? calculateCostPerBaseUnit(formData.price_per_pack, formData.pack_size)
-        : 0;
+    // Get unique categories from ingredients
+    const uniqueCategories = ['All', ...Array.from(new Set(ingredients.map(i => i.category).filter(Boolean)))];
+
+    // ============================================
+    // UI
+    // ============================================
 
     return (
         <div className="space-y-6">
@@ -266,497 +373,358 @@ export default function IngredientsPage() {
                 <div>
                     <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-3">
                         <span className="text-3xl">🥬</span>
-                        Products Ingredients (Raw Materials)
+                        Ingredients Management
                     </h1>
                     <p className="text-gray-500 text-sm mt-1">
-                        Manage raw materials with pack sizes • Code format: PIG-XX • Auto-calculates cost per unit
+                        Raw materials with automatic cost calculation per unit
                     </p>
                 </div>
-
                 <button
                     onClick={openAddModal}
-                    className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold rounded-2xl shadow-lg shadow-emerald-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:scale-105 transition-all flex items-center gap-2"
                 >
-                    <span className="text-xl">➕</span>
-                    Add Ingredient
+                    <span>➕</span> Add Ingredient
                 </button>
             </div>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-emerald-50 to-green-100 border border-emerald-200 rounded-2xl p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-emerald-500 flex items-center justify-center text-white text-2xl">
-                            🥬
-                        </div>
-                        <div>
-                            <p className="text-sm text-emerald-600 font-medium">Total Ingredients</p>
-                            <p className="text-2xl font-bold text-gray-800">{ingredients.length}</p>
-                        </div>
-                    </div>
+                <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-4 text-white">
+                    <p className="text-green-100 text-sm">Total Ingredients</p>
+                    <p className="text-3xl font-bold">{ingredients.length}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center text-white text-2xl">
-                            📦
-                        </div>
-                        <div>
-                            <p className="text-sm text-blue-600 font-medium">Active</p>
-                            <p className="text-2xl font-bold text-gray-800">{ingredients.filter(i => i.active).length}</p>
-                        </div>
-                    </div>
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white">
+                    <p className="text-blue-100 text-sm">Active</p>
+                    <p className="text-3xl font-bold">{ingredients.filter(i => i.active !== false).length}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-2xl p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center text-white text-2xl">
-                            🏭
-                        </div>
-                        <div>
-                            <p className="text-sm text-purple-600 font-medium">Suppliers</p>
-                            <p className="text-2xl font-bold text-gray-800">
-                                {new Set(ingredients.map(i => i.supplier_name).filter(Boolean)).size}
-                            </p>
-                        </div>
-                    </div>
+                <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-4 text-white">
+                    <p className="text-amber-100 text-sm">Low Stock</p>
+                    <p className="text-3xl font-bold">
+                        {ingredients.filter(i => (i.current_stock || 0) <= (i.reorder_point || 10)).length}
+                    </p>
                 </div>
-                <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-2xl p-5">
-                    <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 rounded-xl bg-orange-500 flex items-center justify-center text-white text-2xl">
-                            💰
-                        </div>
-                        <div>
-                            <p className="text-sm text-orange-600 font-medium">Total Value</p>
-                            <p className="text-2xl font-bold text-gray-800">
-                                Ksh {ingredients.reduce((sum, i) => sum + (i.price_per_pack || 0), 0).toLocaleString()}
-                            </p>
-                        </div>
-                    </div>
+                <div className="bg-gradient-to-br from-purple-500 to-purple-600 rounded-2xl p-4 text-white">
+                    <p className="text-purple-100 text-sm">Total Value</p>
+                    <p className="text-2xl font-bold">
+                        {ingredients.reduce((sum, i) =>
+                            sum + ((i.current_stock || 0) * (i.cost_per_base_unit || 0)), 0
+                        ).toLocaleString()}
+                    </p>
                 </div>
             </div>
 
-            {/* Info Card */}
-            <div className="bg-gradient-to-r from-emerald-50 via-green-50 to-teal-50 border border-emerald-200 rounded-2xl p-5">
-                <div className="flex items-start gap-4">
-                    <span className="text-3xl">💡</span>
-                    <div>
-                        <h3 className="font-bold text-emerald-800">How Cost Per Unit Works</h3>
-                        <p className="text-sm text-emerald-700 mt-1">
-                            When you enter a <strong>Pack Size</strong> (e.g., 50 Kg) and <strong>Price Per Pack</strong> (e.g., Ksh 5000),
-                            the system automatically calculates the <strong>Cost Per Base Unit</strong> (e.g., Ksh 100 per Kg).
-                            This cost is used in recipes to accurately calculate dish costs.
-                        </p>
-                    </div>
-                </div>
-            </div>
-
-            {/* Filters */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+            {/* Search & Filter */}
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 p-4">
                 <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 relative">
+                    <div className="flex-1">
                         <input
                             type="text"
-                            placeholder="🔍 Search by name, code, or supplier..."
+                            placeholder="🔍 Search ingredients..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-5 py-3 pl-12 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20 transition-all"
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500"
                         />
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🔎</span>
                     </div>
-                    <button
-                        onClick={loadIngredients}
-                        className="px-5 py-3 bg-emerald-50 text-emerald-600 rounded-xl hover:bg-emerald-100 font-medium transition-all flex items-center gap-2"
+                    <select
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl cursor-pointer"
                     >
-                        🔄 Refresh
-                    </button>
+                        {uniqueCategories.map(cat => (
+                            <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                    </select>
                 </div>
             </div>
 
             {/* Ingredients Table */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="bg-gradient-to-r from-emerald-500 to-green-600 text-white">
-                                <th className="px-4 py-4 text-left text-sm font-semibold">Code</th>
-                                <th className="px-4 py-4 text-left text-sm font-semibold">Ingredient Name</th>
-                                <th className="px-4 py-4 text-center text-sm font-semibold">Pack Size</th>
-                                <th className="px-4 py-4 text-right text-sm font-semibold">Price/Pack</th>
-                                <th className="px-4 py-4 text-right text-sm font-semibold">Cost/Unit</th>
-                                <th className="px-4 py-4 text-left text-sm font-semibold hidden lg:table-cell">Supplier</th>
-                                <th className="px-4 py-4 text-center text-sm font-semibold">Status</th>
-                                <th className="px-4 py-4 text-center text-sm font-semibold">Actions</th>
+                    <table className="w-full text-sm">
+                        <thead className="bg-gradient-to-r from-green-500 to-emerald-600 text-white">
+                            <tr>
+                                <th className="px-4 py-4 text-left font-semibold">Code</th>
+                                <th className="px-4 py-4 text-left font-semibold">Ingredient Name</th>
+                                <th className="px-4 py-4 text-center font-semibold">Base Unit</th>
+                                <th className="px-4 py-4 text-center font-semibold">Pack Size</th>
+                                <th className="px-4 py-4 text-right font-semibold">Pack Price</th>
+                                <th className="px-4 py-4 text-right font-semibold">Cost/Unit</th>
+                                <th className="px-4 py-4 text-right font-semibold">Stock</th>
+                                <th className="px-4 py-4 text-right font-semibold">Value</th>
+                                <th className="px-4 py-4 text-center font-semibold">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {isLoading ? (
                                 <tr>
-                                    <td colSpan={8} className="px-4 py-12 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <div className="w-10 h-10 border-4 border-emerald-400/30 border-t-emerald-500 rounded-full animate-spin"></div>
-                                            <span className="text-gray-500">Loading ingredients...</span>
-                                        </div>
+                                    <td colSpan={9} className="text-center py-8 text-gray-400">
+                                        Loading ingredients...
                                     </td>
                                 </tr>
                             ) : filteredIngredients.length === 0 ? (
                                 <tr>
-                                    <td colSpan={8} className="px-4 py-12 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <span className="text-5xl">🥬</span>
-                                            <p className="text-gray-500">No ingredients found</p>
-                                            <button
-                                                onClick={openAddModal}
-                                                className="px-4 py-2 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-colors"
-                                            >
-                                                Add First Ingredient
-                                            </button>
-                                        </div>
+                                    <td colSpan={9} className="text-center py-8 text-gray-400">
+                                        No ingredients found. Add your first ingredient!
                                     </td>
                                 </tr>
                             ) : (
-                                filteredIngredients.map((ingredient) => (
-                                    <tr key={ingredient.pid} className="border-t border-gray-50 hover:bg-emerald-50/50 transition-colors">
-                                        <td className="px-4 py-4">
-                                            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-semibold">
-                                                {ingredient.product_code}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div
-                                                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold"
-                                                    style={{ backgroundColor: ingredient.button_ui_color || '#10B981' }}
-                                                >
-                                                    {ingredient.product_name.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-gray-800">{ingredient.product_name}</p>
-                                                    {ingredient.alias && (
-                                                        <p className="text-xs text-gray-500">{ingredient.alias}</p>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4 text-center">
-                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
-                                                {ingredient.pack_size} {ingredient.base_unit}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-4 text-right font-medium text-gray-600">
-                                            Ksh {ingredient.price_per_pack?.toLocaleString() || '0'}
-                                        </td>
-                                        <td className="px-4 py-4 text-right">
-                                            <div className="flex flex-col items-end">
-                                                <span className="font-bold text-emerald-600">
-                                                    Ksh {ingredient.cost_per_base_unit?.toFixed(2) || '0.00'}
+                                filteredIngredients.map((ingredient) => {
+                                    const stockValue = (ingredient.current_stock || 0) * (ingredient.cost_per_base_unit || 0);
+                                    const isLowStock = (ingredient.current_stock || 0) <= (ingredient.reorder_point || 10);
+
+                                    return (
+                                        <tr key={ingredient.pid} className="border-t border-gray-100 hover:bg-gray-50">
+                                            <td className="px-4 py-3 font-mono text-sm">{ingredient.product_code}</td>
+                                            <td className="px-4 py-3 font-medium">{ingredient.product_name}</td>
+                                            <td className="px-4 py-3 text-center">
+                                                <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-lg text-xs font-bold">
+                                                    {ingredient.base_unit}
                                                 </span>
-                                                <span className="text-xs text-gray-500">per {ingredient.base_unit}</span>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4 hidden lg:table-cell text-gray-600">
-                                            {ingredient.supplier_name || '-'}
-                                        </td>
-                                        <td className="px-4 py-4 text-center">
-                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${ingredient.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                                                }`}>
-                                                {ingredient.active ? '✅ Active' : '⏸️ Inactive'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => openEditModal(ingredient)}
-                                                    className="p-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-600 rounded-xl transition-all hover:scale-110"
-                                                    title="Edit"
-                                                >
-                                                    ✏️
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteIngredient(ingredient)}
-                                                    className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-all hover:scale-110"
-                                                    title="Delete"
-                                                >
-                                                    🗑️
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                            <td className="px-4 py-3 text-center">{ingredient.pack_size}</td>
+                                            <td className="px-4 py-3 text-right">{(ingredient.price_per_pack || 0).toFixed(2)}</td>
+                                            <td className="px-4 py-3 text-right font-bold text-green-600">
+                                                {(ingredient.cost_per_base_unit || 0).toFixed(2)}
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <span className={`font-bold ${isLowStock ? 'text-red-600' : 'text-gray-700'}`}>
+                                                    {(ingredient.current_stock || 0).toFixed(2)}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3 text-right font-semibold text-orange-600">
+                                                {stockValue.toFixed(2)}
+                                            </td>
+                                            <td className="px-4 py-3 text-center">
+                                                <div className="flex items-center justify-center gap-2">
+                                                    <button
+                                                        onClick={() => openEditModal(ingredient)}
+                                                        className="px-2 py-1 bg-blue-100 text-blue-600 rounded-lg hover:bg-blue-200 transition-colors"
+                                                    >
+                                                        ✏️
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteIngredient(ingredient)}
+                                                        className="px-2 py-1 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors"
+                                                    >
+                                                        🗑️
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })
                             )}
                         </tbody>
                     </table>
                 </div>
             </div>
 
+            {/* Cost Calculation Examples */}
+            <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-2xl p-6 border border-blue-200">
+                <h3 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    <span>📊</span> Unit Conversion Reference
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div className="bg-white p-4 rounded-xl border border-gray-200">
+                        <p className="font-semibold text-gray-700 mb-2">Mass (KG)</p>
+                        <p className="text-gray-600">Sugar 50 KG = 3500</p>
+                        <p className="text-green-600 font-medium">→ Cost/KG = 70</p>
+                        <p className="text-orange-600">→ 500g = 70 × 0.5 = <strong>35</strong></p>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-gray-200">
+                        <p className="font-semibold text-gray-700 mb-2">Volume (L)</p>
+                        <p className="text-gray-600">Oil 20 L = 3000</p>
+                        <p className="text-green-600 font-medium">→ Cost/L = 150</p>
+                        <p className="text-orange-600">→ 100ml = 150 × 0.1 = <strong>15</strong></p>
+                    </div>
+                    <div className="bg-white p-4 rounded-xl border border-gray-200">
+                        <p className="font-semibold text-gray-700 mb-2">Count (PCS)</p>
+                        <p className="text-gray-600">Tomatoes 20 PCS = 60</p>
+                        <p className="text-green-600 font-medium">→ Cost/PCS = 3</p>
+                        <p className="text-orange-600">→ 2 PCS = 3 × 2 = <strong>6</strong></p>
+                    </div>
+                </div>
+            </div>
+
             {/* Add/Edit Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
-                        {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-emerald-500 to-green-600 px-6 py-5 text-white sticky top-0">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold flex items-center gap-2">
-                                    {editingIngredient ? '✏️ Edit Ingredient' : '➕ Add New Ingredient'}
-                                </h2>
-                                <button
-                                    onClick={() => setShowModal(false)}
-                                    className="p-2 hover:bg-white/20 rounded-full transition-colors"
-                                >
-                                    ✕
-                                </button>
-                            </div>
-                            {editingIngredient && (
-                                <p className="text-emerald-100 text-sm mt-1">Code: {editingIngredient.product_code}</p>
-                            )}
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-auto">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                <span>🥬</span>
+                                {editingIngredient ? 'Edit Ingredient' : 'Add New Ingredient'}
+                            </h2>
+                            <button
+                                onClick={() => setShowModal(false)}
+                                className="text-2xl text-gray-400 hover:text-gray-600"
+                            >
+                                ✕
+                            </button>
                         </div>
 
-                        {/* Modal Form */}
-                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                            {/* Basic Info */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="md:col-span-2">
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🥬 Ingredient Name <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.product_name}
-                                        onChange={(e) => setFormData({ ...formData, product_name: e.target.value })}
-                                        placeholder="e.g., Sugar"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20"
-                                        required
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        📝 Alias / Short Name
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.alias}
-                                        onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
-                                        placeholder="e.g., White Sugar"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🏭 Supplier
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.supplier_name}
-                                        onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
-                                        placeholder="Supplier name"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-400/20"
-                                    />
-                                </div>
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            {/* Ingredient Name */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    Ingredient Name *
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.product_name}
+                                    onChange={(e) => handleInputChange('product_name', e.target.value)}
+                                    placeholder="e.g., SUGAR 50KG, COOKING OIL 20L, TOMATOES"
+                                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500"
+                                    required
+                                />
                             </div>
 
-                            {/* Pack Size & Cost Calculation - MAIN FEATURE */}
-                            <div className="bg-gradient-to-r from-emerald-50 via-green-50 to-teal-50 rounded-2xl p-6 border-2 border-emerald-300">
-                                <h3 className="font-bold text-emerald-800 mb-4 flex items-center gap-2 text-lg">
-                                    📦 Pack Size & Cost Calculation
-                                </h3>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Purchase Unit
-                                        </label>
-                                        <select
-                                            value={formData.purchase_unit}
-                                            onChange={(e) => setFormData({ ...formData, purchase_unit: e.target.value })}
-                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500"
-                                        >
-                                            {purchaseUnits.map(u => <option key={u} value={u}>{u}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Pack Size <span className="text-red-500">*</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={formData.pack_size}
-                                            onChange={(e) => setFormData({ ...formData, pack_size: parseFloat(e.target.value) || 1 })}
-                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500"
-                                            min="0.01"
-                                            step="0.01"
-                                            placeholder="e.g., 50"
-                                            required
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Base Unit
-                                        </label>
-                                        <select
-                                            value={formData.base_unit}
-                                            onChange={(e) => setFormData({ ...formData, base_unit: e.target.value })}
-                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500"
-                                        >
-                                            {baseUnits.map(u => <option key={u} value={u}>{u}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            Price Per Pack (Ksh)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={formData.price_per_pack}
-                                            onChange={(e) => setFormData({ ...formData, price_per_pack: parseFloat(e.target.value) || 0 })}
-                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500"
-                                            min="0"
-                                            step="0.01"
-                                            placeholder="e.g., 5000"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Cost Preview */}
-                                <div className="mt-4 p-4 bg-white rounded-xl border-2 border-emerald-400 shadow-sm">
-                                    <div className="flex items-center justify-between">
-                                        <div>
-                                            <p className="text-sm text-gray-600">Example:</p>
-                                            <p className="text-gray-700">
-                                                1 {formData.purchase_unit} = {formData.pack_size} {formData.base_unit} @ Ksh {formData.price_per_pack.toLocaleString()}
-                                            </p>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="text-sm text-gray-600">Cost Per {formData.base_unit}:</p>
-                                            <p className="text-2xl font-bold text-emerald-600">
-                                                Ksh {previewCostPerUnit.toFixed(2)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Additional Info */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {/* Category & Supplier */}
+                            <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🏷️ Category
-                                    </label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Category</label>
                                     <select
                                         value={formData.category}
-                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500"
+                                        onChange={(e) => handleInputChange('category', e.target.value)}
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl"
                                     >
-                                        <option value="Raw Materials">🥬 Raw Materials</option>
+                                        <option value="Raw Materials">Raw Materials</option>
                                         {categories.map(cat => (
                                             <option key={cat.category_id} value={cat.category_name}>
-                                                {cat.icon} {cat.category_name}
+                                                {cat.category_name}
                                             </option>
                                         ))}
                                     </select>
                                 </div>
-
                                 <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        📊 Barcode
-                                    </label>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">Supplier</label>
                                     <input
                                         type="text"
-                                        value={formData.barcode}
-                                        onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                                        placeholder="Scan or enter"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500"
+                                        value={formData.supplier_name}
+                                        onChange={(e) => handleInputChange('supplier_name', e.target.value)}
+                                        placeholder="Supplier name"
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl"
                                     />
                                 </div>
+                            </div>
 
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        ⚠️ Reorder Point
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={formData.reorder_point}
-                                        onChange={(e) => setFormData({ ...formData, reorder_point: parseInt(e.target.value) || 10 })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500"
-                                        min="0"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🎨 Color
-                                    </label>
-                                    <input
-                                        type="color"
-                                        value={formData.button_ui_color}
-                                        onChange={(e) => setFormData({ ...formData, button_ui_color: e.target.value })}
-                                        className="w-full h-12 rounded-xl cursor-pointer border border-gray-200"
-                                    />
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        📋 Batch No
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.batch_no}
-                                        onChange={(e) => setFormData({ ...formData, batch_no: e.target.value })}
-                                        placeholder="Batch number"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500"
-                                    />
-                                </div>
-
-                                <div className="flex items-center gap-4 pt-8">
-                                    <label className="flex items-center gap-2 cursor-pointer">
+                            {/* Pack Configuration */}
+                            <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
+                                <h4 className="font-semibold text-blue-800 mb-4">📦 Pack Configuration</h4>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Base Unit *</label>
+                                        <select
+                                            value={formData.base_unit}
+                                            onChange={(e) => handleInputChange('base_unit', e.target.value)}
+                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl"
+                                        >
+                                            {BASE_UNITS.map(unit => (
+                                                <option key={unit.value} value={unit.value}>{unit.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Pack Size (in {formData.base_unit}) *
+                                        </label>
                                         <input
-                                            type="checkbox"
-                                            checked={formData.active}
-                                            onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                                            className="w-5 h-5 rounded border-gray-300 text-emerald-500 focus:ring-emerald-500"
+                                            type="number"
+                                            value={formData.pack_size}
+                                            onChange={(e) => handleInputChange('pack_size', parseFloat(e.target.value) || 0)}
+                                            min="0.01"
+                                            step="0.01"
+                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl"
+                                            required
                                         />
-                                        <span className="font-medium text-gray-700">Active</span>
-                                    </label>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">Price Per Pack *</label>
+                                        <input
+                                            type="number"
+                                            value={formData.price_per_pack}
+                                            onChange={(e) => handleInputChange('price_per_pack', parseFloat(e.target.value) || 0)}
+                                            min="0"
+                                            step="0.01"
+                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Auto-calculated Cost */}
+                                <div className="mt-4 p-3 bg-green-100 rounded-xl">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-green-700 font-medium">
+                                            Cost per {formData.base_unit} (Auto-calculated):
+                                        </span>
+                                        <span className="text-2xl font-bold text-green-700">
+                                            {costPerBaseUnit.toFixed(4)} KES
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Description */}
-                            <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    📝 Description / Notes
-                                </label>
-                                <textarea
-                                    value={formData.description}
-                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                    placeholder="Additional notes about this ingredient..."
-                                    rows={2}
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-emerald-500 resize-none"
-                                />
+                            {/* Stock Configuration */}
+                            <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
+                                <h4 className="font-semibold text-amber-800 mb-4">📊 Stock Configuration</h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Opening Stock (in {formData.base_unit})
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={formData.opening_stock}
+                                            onChange={(e) => handleInputChange('opening_stock', parseFloat(e.target.value) || 0)}
+                                            min="0"
+                                            step="0.01"
+                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                            Reorder Point (in {formData.base_unit})
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={formData.reorder_point}
+                                            onChange={(e) => handleInputChange('reorder_point', parseFloat(e.target.value) || 0)}
+                                            min="0"
+                                            step="0.01"
+                                            className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Stock Value */}
+                                <div className="mt-4 p-3 bg-orange-100 rounded-xl">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-orange-700 font-medium">
+                                            Opening Stock Value:
+                                        </span>
+                                        <span className="text-2xl font-bold text-orange-700">
+                                            {(formData.opening_stock * costPerBaseUnit).toFixed(2)} KES
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Buttons */}
-                            <div className="flex gap-4 pt-4 border-t border-gray-100">
+                            {/* Submit Buttons */}
+                            <div className="flex gap-3 pt-4">
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="flex-1 px-6 py-3 border-2 border-gray-200 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition-all"
+                                    className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSaving}
-                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-300/40 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                                    className="flex-1 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold hover:shadow-lg disabled:opacity-50"
                                 >
-                                    {isSaving ? (
-                                        <>
-                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            Saving...
-                                        </>
-                                    ) : (
-                                        <>
-                                            <span>{editingIngredient ? '💾' : '➕'}</span>
-                                            {editingIngredient ? 'Update Ingredient' : 'Create Ingredient'}
-                                        </>
-                                    )}
+                                    {isSaving ? 'Saving...' : (editingIngredient ? 'Update Ingredient' : 'Create Ingredient')}
                                 </button>
                             </div>
                         </form>

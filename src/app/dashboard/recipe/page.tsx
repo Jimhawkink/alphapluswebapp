@@ -19,10 +19,13 @@ interface Ingredient {
     pid: number;
     product_code: string;
     product_name: string;
-    sales_cost: number;
-    sales_unit: string;
+    base_unit: string;
     pack_size: number;
-    available_stock: number;
+    price_per_pack: number;
+    cost_per_base_unit: number;
+    current_stock: number;
+    sales_cost?: number; // Legacy field for compatibility
+    sales_unit?: string; // Legacy field for compatibility
 }
 
 interface IngredientEntry {
@@ -81,37 +84,98 @@ export default function RecipePage() {
     const [isSaving, setIsSaving] = useState(false);
 
     // ============================================
-    // HELPER FUNCTIONS
+    // ALL-ROUND UNIT CONVERSION LOGIC
     // ============================================
 
-    // Extract base quantity from product name (e.g., "SUGAR 50KG" -> 50)
-    const extractBaseQuantity = (productName: string): number => {
-        const pattern = /(\d+(?:\.\d+)?)\s*(L|KG|G|ML|PCS|EGGS?)/i;
-        const match = productName.toUpperCase().match(pattern);
-        if (match) {
-            const qty = parseFloat(match[1]);
-            const unit = match[2];
-            if (unit.includes('EGG') && qty === 150) return 1;
-            return qty;
-        }
-        return 1;
+    // Unit conversion table - how to convert TO base unit
+    const UNIT_CONVERSIONS: Record<string, { baseUnit: string; toBase: number }> = {
+        // Mass (Base: KG)
+        'KG': { baseUnit: 'KG', toBase: 1 },
+        'G': { baseUnit: 'KG', toBase: 0.001 },
+        'GM': { baseUnit: 'KG', toBase: 0.001 },
+        'GRAMS': { baseUnit: 'KG', toBase: 0.001 },
+
+        // Volume (Base: L)
+        'L': { baseUnit: 'L', toBase: 1 },
+        'LTR': { baseUnit: 'L', toBase: 1 },
+        'ML': { baseUnit: 'L', toBase: 0.001 },
+        'MLS': { baseUnit: 'L', toBase: 0.001 },
+
+        // Count (Base: PCS)
+        'PCS': { baseUnit: 'PCS', toBase: 1 },
+        'PC': { baseUnit: 'PCS', toBase: 1 },
+        'PIECES': { baseUnit: 'PCS', toBase: 1 },
+        'EACH': { baseUnit: 'PCS', toBase: 1 },
+
+        // Eggs
+        'EGGS': { baseUnit: 'EGGS', toBase: 1 },
+        'EGG': { baseUnit: 'EGGS', toBase: 1 },
+        'TRAY': { baseUnit: 'EGGS', toBase: 30 },
+
+        // Packages
+        'PKT': { baseUnit: 'PKT', toBase: 1 },
+        'BOX': { baseUnit: 'BOX', toBase: 1 },
+        'BTL': { baseUnit: 'BTL', toBase: 1 },
     };
 
-    // Convert quantity to base unit
-    const convertToBase = (qty: number, userUnit: string, baseUnit: string): number => {
-        const user = userUnit.toLowerCase().trim();
-        const base = baseUnit.toLowerCase().trim();
+    /**
+     * Convert quantity from issuedUnit TO baseUnit
+     * Example: 500g issued, base is KG -> returns 0.5
+     * Example: 100ml issued, base is L -> returns 0.1
+     * Example: 2 PCS issued, base is PCS -> returns 2
+     */
+    const convertToBaseUnit = (qty: number, issuedUnit: string, baseUnit: string): number => {
+        const issued = issuedUnit.toUpperCase().trim();
+        const base = baseUnit.toUpperCase().trim();
 
-        if (user === base || !user) return qty;
+        // Same unit - no conversion
+        if (issued === base || !issued) return qty;
 
-        // mls -> liters (divide by 1000)
-        if (base.includes('l') && user.includes('ml')) return qty / 1000;
-        // gms -> kg (divide by 1000)
-        if (base.includes('kg') && user.includes('gm')) return qty / 1000;
-        // eggs conversion
-        if (base.includes('egg') && user.includes('pc')) return qty / 150;
+        const issuedConfig = UNIT_CONVERSIONS[issued];
 
-        return qty;
+        if (!issuedConfig) {
+            console.warn(`Unknown issued unit: ${issued}`);
+            return qty;
+        }
+
+        // Check if compatible (e.g., G and KG are both mass)
+        if (issuedConfig.baseUnit !== base) {
+            console.warn(`Incompatible units: ${issued} -> ${base}`);
+            return qty;
+        }
+
+        // Convert: qty * toBase factor
+        return qty * issuedConfig.toBase;
+    };
+
+    /**
+     * Calculate cost for issued quantity
+     * @param qtyIssued - Quantity issued (e.g., 500)
+     * @param issuedUnit - Unit of issued quantity (e.g., 'G', 'ML', 'PCS')
+     * @param costPerBaseUnit - Cost per base unit (from ingredient)
+     * @param baseUnit - Base unit of ingredient (e.g., 'KG', 'L', 'PCS')
+     */
+    const calculateRate = (
+        qtyIssued: number,
+        issuedUnit: string,
+        costPerBaseUnit: number,
+        baseUnit: string
+    ): number => {
+        const qtyInBase = convertToBaseUnit(qtyIssued, issuedUnit, baseUnit);
+        return qtyInBase * costPerBaseUnit;
+    };
+
+    /**
+     * Calculate remaining stock after issuing
+     */
+    const calculateRemaining = (
+        currentStock: number,
+        qtyIssued: number,
+        issuedUnit: string,
+        baseUnit: string
+    ): number => {
+        const qtyInBase = convertToBaseUnit(qtyIssued, issuedUnit, baseUnit);
+        return Math.max(0, currentStock - qtyInBase);
     };
 
     // Generate batch number
@@ -171,21 +235,27 @@ export default function RecipePage() {
                 .order('product_name');
             setDishes(dishesData || []);
 
-            // Load ingredients
+            // Load ingredients with all fields needed for cost calculation
             const { data: ingredientsData } = await supabase
                 .from('products_ingredients')
-                .select('pid, product_code, product_name, sales_cost, sales_unit, pack_size')
+                .select('pid, product_code, product_name, base_unit, pack_size, price_per_pack, cost_per_base_unit, current_stock, sales_cost, sales_unit')
                 .eq('active', true)
                 .order('product_name');
 
-            // Add stock info
-            const ingredientsWithStock = await Promise.all(
-                (ingredientsData || []).map(async (ing) => {
-                    // TODO: Get actual stock from temp_stock_company_ingredients
-                    return { ...ing, available_stock: 100 }; // Placeholder
-                })
-            );
-            setIngredients(ingredientsWithStock);
+            // Map to Ingredient interface
+            const mappedIngredients: Ingredient[] = (ingredientsData || []).map((ing) => ({
+                pid: ing.pid,
+                product_code: ing.product_code,
+                product_name: ing.product_name,
+                base_unit: ing.base_unit || ing.sales_unit || 'KG',
+                pack_size: ing.pack_size || 1,
+                price_per_pack: ing.price_per_pack || 0,
+                cost_per_base_unit: ing.cost_per_base_unit || ing.sales_cost || 0,
+                current_stock: ing.current_stock || 0,
+                sales_cost: ing.sales_cost,
+                sales_unit: ing.sales_unit,
+            }));
+            setIngredients(mappedIngredients);
 
             // Get next recipe ID
             const { count: recipeCount } = await supabase
@@ -216,17 +286,19 @@ export default function RecipePage() {
         }
 
         const qty = parseFloat(qtyIssued) || 0;
-        const baseQty = extractBaseQuantity(selectedIngredient.product_name);
-        const convertedQty = convertToBase(qty, convertUnit, selectedIngredient.sales_unit);
+        const baseUnit = selectedIngredient.base_unit || selectedIngredient.sales_unit || 'KG';
+        const issuedUnit = convertUnit || baseUnit;
+        const costPerBase = selectedIngredient.cost_per_base_unit || selectedIngredient.sales_cost || 0;
+        const currentStock = selectedIngredient.current_stock || 0;
 
-        // Calculate rate: (cost / baseQty) * convertedQty
-        const rate = baseQty > 0 ? (selectedIngredient.sales_cost / baseQty) * convertedQty : 0;
+        // Calculate rate using new all-round logic
+        const rate = calculateRate(qty, issuedUnit, costPerBase, baseUnit);
         setCalculatedRate(rate);
 
         // Calculate remaining stock
-        const remaining = selectedIngredient.available_stock - convertedQty;
-        setRemainingQty(remaining > 0 ? remaining : 0);
-        setAvailableStock(selectedIngredient.available_stock);
+        const remaining = calculateRemaining(currentStock, qty, issuedUnit, baseUnit);
+        setRemainingQty(remaining);
+        setAvailableStock(currentStock);
 
     }, [selectedIngredient, qtyIssued, convertUnit]);
 
@@ -279,9 +351,9 @@ export default function RecipePage() {
             dish_name: selectedDish.product_name,
             ingredient_name: selectedIngredient.product_name,
             ingredient_id: selectedIngredient.pid,
-            unit_measure: selectedIngredient.sales_unit,
+            unit_measure: selectedIngredient.base_unit || selectedIngredient.sales_unit || 'PCS',
             qty_issued: qty,
-            rate: selectedIngredient.sales_cost,
+            rate: selectedIngredient.cost_per_base_unit || selectedIngredient.sales_cost || 0,
             total_cost: calculatedRate,
             total_expense: calculatedRate,
             qty_produced: qtyProd,
@@ -553,7 +625,7 @@ export default function RecipePage() {
                             <option value="">Select Ingredient...</option>
                             {ingredients.map(i => (
                                 <option key={i.pid} value={i.pid}>
-                                    {i.product_name} (Stock: {i.available_stock})
+                                    {i.product_name} (Stock: {i.current_stock})
                                 </option>
                             ))}
                         </select>
@@ -573,20 +645,20 @@ export default function RecipePage() {
                 {selectedIngredient && (
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 p-4 bg-green-50 rounded-xl border border-green-200">
                         <div>
-                            <p className="text-xs text-green-600">Unit</p>
-                            <p className="font-bold text-green-800">{selectedIngredient.sales_unit}</p>
+                            <p className="text-xs text-green-600">Base Unit</p>
+                            <p className="font-bold text-green-800">{selectedIngredient.base_unit || selectedIngredient.sales_unit}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-green-600">Cost</p>
-                            <p className="font-bold text-green-800">{selectedIngredient.sales_cost?.toFixed(2)}</p>
+                            <p className="text-xs text-green-600">Cost/{selectedIngredient.base_unit || 'Unit'}</p>
+                            <p className="font-bold text-green-800">{(selectedIngredient.cost_per_base_unit || 0).toFixed(2)}</p>
                         </div>
                         <div>
-                            <p className="text-xs text-green-600">Base Qty</p>
-                            <p className="font-bold text-green-800">{extractBaseQuantity(selectedIngredient.product_name).toFixed(2)}</p>
+                            <p className="text-xs text-green-600">Pack Size</p>
+                            <p className="font-bold text-green-800">{selectedIngredient.pack_size} {selectedIngredient.base_unit}</p>
                         </div>
                         <div>
                             <p className="text-xs text-green-600">Available Stock</p>
-                            <p className="font-bold text-green-800">{selectedIngredient.available_stock}</p>
+                            <p className="font-bold text-green-800">{selectedIngredient.current_stock}</p>
                         </div>
                     </div>
                 )}
@@ -645,8 +717,8 @@ export default function RecipePage() {
                             onChange={(e) => setQtyProduced(e.target.value)}
                             disabled={!isLastIngredient}
                             className={`w-full px-4 py-3 border rounded-xl ${isLastIngredient
-                                    ? 'bg-yellow-50 border-yellow-300 focus:border-yellow-500'
-                                    : 'bg-gray-100 border-gray-200 cursor-not-allowed'
+                                ? 'bg-yellow-50 border-yellow-300 focus:border-yellow-500'
+                                : 'bg-gray-100 border-gray-200 cursor-not-allowed'
                                 }`}
                             placeholder={isLastIngredient ? "Enter qty produced..." : "Only on last ingredient"}
                             min="0"
