@@ -1,6 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
 import {
     createReceiptData,
     createKOTData,
@@ -60,31 +62,35 @@ interface ShiftInfo {
     openingCash: number;
 }
 
-// Sample Products Data with colorful buttons - some have production batches
-const sampleProducts: Product[] = [
-    { id: 1, name: 'Chicken Burger', price: 450, purchasePrice: 300, category: 'Burgers', stock: 25, color: 'from-orange-400 to-orange-600', hasBatches: true },
-    { id: 2, name: 'Beef Burger', price: 500, purchasePrice: 350, category: 'Burgers', stock: 18, color: 'from-red-400 to-red-600', hasBatches: true },
-    { id: 3, name: 'Cheese Burger', price: 480, purchasePrice: 320, category: 'Burgers', stock: 22, color: 'from-yellow-500 to-orange-500', hasBatches: true },
-    { id: 4, name: 'Pizza Margherita', price: 850, purchasePrice: 600, category: 'Pizza', stock: 12, color: 'from-red-500 to-pink-600', hasBatches: true },
-    { id: 5, name: 'Pepperoni Pizza', price: 950, purchasePrice: 700, category: 'Pizza', stock: 8, color: 'from-rose-500 to-red-600', hasBatches: true },
-    { id: 6, name: 'Veggie Pizza', price: 800, purchasePrice: 550, category: 'Pizza', stock: 10, color: 'from-green-400 to-emerald-600' },
-    { id: 7, name: 'French Fries', price: 200, purchasePrice: 100, category: 'Sides', stock: 50, color: 'from-yellow-400 to-yellow-600' },
-    { id: 8, name: 'Onion Rings', price: 250, purchasePrice: 120, category: 'Sides', stock: 35, color: 'from-amber-400 to-amber-600' },
-    { id: 9, name: 'Coca Cola', price: 100, purchasePrice: 60, category: 'Drinks', stock: 100, color: 'from-red-500 to-red-700' },
-    { id: 10, name: 'Sprite', price: 100, purchasePrice: 60, category: 'Drinks', stock: 80, color: 'from-green-400 to-green-600' },
-    { id: 11, name: 'Fanta', price: 100, purchasePrice: 60, category: 'Drinks', stock: 75, color: 'from-orange-400 to-orange-600' },
-    { id: 12, name: 'Mineral Water', price: 50, purchasePrice: 30, category: 'Drinks', stock: 120, color: 'from-blue-400 to-blue-600' },
-    { id: 13, name: 'Grilled Chicken', price: 650, purchasePrice: 450, category: 'Main', stock: 15, color: 'from-amber-400 to-amber-600', hasBatches: true },
-    { id: 14, name: 'Fish & Chips', price: 550, purchasePrice: 350, category: 'Main', stock: 20, color: 'from-cyan-400 to-cyan-600' },
-    { id: 15, name: 'Beef Steak', price: 850, purchasePrice: 600, category: 'Main', stock: 12, color: 'from-red-600 to-red-800', hasBatches: true },
-    { id: 16, name: 'Caesar Salad', price: 350, purchasePrice: 180, category: 'Salads', stock: 30, color: 'from-green-500 to-emerald-600' },
-    { id: 17, name: 'Greek Salad', price: 320, purchasePrice: 160, category: 'Salads', stock: 28, color: 'from-teal-400 to-teal-600' },
-    { id: 18, name: 'Chocolate Cake', price: 250, purchasePrice: 120, category: 'Desserts', stock: 10, color: 'from-amber-600 to-amber-800' },
-    { id: 19, name: 'Ice Cream', price: 150, purchasePrice: 70, category: 'Desserts', stock: 40, color: 'from-pink-400 to-pink-600' },
-    { id: 20, name: 'Milkshake', price: 200, purchasePrice: 90, category: 'Drinks', stock: 25, color: 'from-purple-400 to-purple-600' },
-];
+interface Category {
+    category_id: number;
+    category_name: string;
+    icon: string;
+}
 
-// Sample Production Batches (like VB.NET frmBatchSelection)
+interface Waiter {
+    user_id: number;
+    full_name: string;
+    role: string;
+}
+
+interface RestaurantTable {
+    table_id: number;
+    table_code: string;
+    table_name: string;
+    room_id: number;
+    room_name?: string;
+    status: string;
+}
+
+interface FoodOrderNote {
+    note_id: number;
+    note_text: string;
+    icon: string;
+    note_category: string;
+}
+
+// Sample Production Batches (like VB.NET frmBatchSelection) - TODO: Load from database
 const sampleBatches: Record<number, ProductionBatch[]> = {
     1: [ // Chicken Burger batches
         { batchId: 101, batchNumber: 'BATCH-20231225-1-001', qtyProduced: 50, qtyRemaining: 15, costPerUnit: 285, productionDate: '2023-12-25', daysOld: 2 },
@@ -94,26 +100,7 @@ const sampleBatches: Record<number, ProductionBatch[]> = {
         { batchId: 201, batchNumber: 'BATCH-20231224-2-001', qtyProduced: 40, qtyRemaining: 8, costPerUnit: 340, productionDate: '2023-12-24', daysOld: 3 },
         { batchId: 202, batchNumber: 'BATCH-20231226-2-001', qtyProduced: 25, qtyRemaining: 10, costPerUnit: 345, productionDate: '2023-12-26', daysOld: 1 },
     ],
-    3: [ // Cheese Burger batches
-        { batchId: 301, batchNumber: 'BATCH-20231226-3-001', qtyProduced: 35, qtyRemaining: 22, costPerUnit: 315, productionDate: '2023-12-26', daysOld: 1 },
-    ],
-    4: [ // Pizza Margherita batches
-        { batchId: 401, batchNumber: 'BATCH-20231225-4-001', qtyProduced: 20, qtyRemaining: 8, costPerUnit: 580, productionDate: '2023-12-25', daysOld: 2 },
-        { batchId: 402, batchNumber: 'BATCH-20231227-4-001', qtyProduced: 15, qtyRemaining: 4, costPerUnit: 590, productionDate: '2023-12-27', daysOld: 0 },
-    ],
-    5: [ // Pepperoni Pizza batches
-        { batchId: 501, batchNumber: 'BATCH-20231226-5-001', qtyProduced: 18, qtyRemaining: 8, costPerUnit: 685, productionDate: '2023-12-26', daysOld: 1 },
-    ],
-    13: [ // Grilled Chicken batches
-        { batchId: 1301, batchNumber: 'BATCH-20231226-13-001', qtyProduced: 25, qtyRemaining: 15, costPerUnit: 440, productionDate: '2023-12-26', daysOld: 1 },
-    ],
-    15: [ // Beef Steak batches
-        { batchId: 1501, batchNumber: 'BATCH-20231225-15-001', qtyProduced: 20, qtyRemaining: 8, costPerUnit: 580, productionDate: '2023-12-25', daysOld: 2 },
-        { batchId: 1502, batchNumber: 'BATCH-20231227-15-001', qtyProduced: 10, qtyRemaining: 4, costPerUnit: 595, productionDate: '2023-12-27', daysOld: 0 },
-    ],
 };
-
-const categories = ['All', 'Burgers', 'Pizza', 'Main', 'Sides', 'Drinks', 'Salads', 'Desserts'];
 
 // Product Card Component - Light Theme
 const ProductCard = ({ product, onAdd }: { product: Product; onAdd: () => void }) => (
@@ -707,7 +694,9 @@ const HoldOrderModal = ({
 };
 
 export default function POSPage() {
-    const [products] = useState<Product[]>(sampleProducts);
+    const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<string[]>(['All']);
+    const [isLoadingProducts, setIsLoadingProducts] = useState(true);
     const [cart, setCart] = useState<CartItem[]>([]);
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
@@ -741,6 +730,50 @@ export default function POSPage() {
         startTime: '06:00',
         openingCash: 5000
     });
+
+    // Load products from database
+    const loadProducts = useCallback(async () => {
+        setIsLoadingProducts(true);
+        try {
+            const { data, error } = await supabase
+                .from('products')
+                .select('*')
+                .eq('active', true)
+                .eq('show_ps', true) // Only show products marked to show in POS
+                .order('product_name');
+
+            if (error) throw error;
+
+            // Transform database products to POS format
+            const posProducts: Product[] = (data || []).map(p => ({
+                id: p.pid,
+                name: p.product_name,
+                price: p.sales_cost || 0,
+                purchasePrice: p.purchase_cost || 0,
+                category: p.category || 'Uncategorized',
+                stock: 999, // TODO: Implement stock tracking
+                color: p.button_ui_color || 'from-blue-400 to-blue-600',
+                barcode: p.barcode,
+                hasBatches: false, // TODO: Implement batch tracking
+            }));
+
+            setProducts(posProducts);
+
+            // Extract unique categories from products
+            const uniqueCategories = ['All', ...new Set(posProducts.map(p => p.category).filter(Boolean))];
+            setCategories(uniqueCategories);
+
+        } catch (err) {
+            console.error('Error loading products:', err);
+            toast.error('Failed to load products');
+        }
+        setIsLoadingProducts(false);
+    }, []);
+
+    // Load products on mount
+    useEffect(() => {
+        loadProducts();
+    }, [loadProducts]);
 
     // Toggle Fullscreen
     const toggleFullscreen = () => {

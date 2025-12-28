@@ -40,6 +40,7 @@ const menuItems = [
             { name: 'Stock Adjustment', icon: '⚖️', href: '/dashboard/stock-adjustment', badge: null },
             { name: 'Low Stock', icon: '⚠️', href: '/dashboard/low-stock', badge: '5' },
             { name: 'Recipe', icon: '🍳', href: '/dashboard/recipe', badge: 'New' },
+            { name: 'Production Batches', icon: '📦', href: '/dashboard/batches', badge: 'New' },
         ]
     },
     {
@@ -73,6 +74,10 @@ const menuItems = [
             { name: 'Users', icon: '👥', href: '/dashboard/users', badge: null },
             { name: 'User Roles', icon: '🛡️', href: '/dashboard/user-roles', badge: null },
             { name: 'Company', icon: '🏨', href: '/dashboard/company', badge: null },
+            { name: 'Tables & Rooms', icon: '🪑', href: '/dashboard/tables-rooms', badge: 'New' },
+            { name: 'Food Order Notes', icon: '📝', href: '/dashboard/food-notes', badge: 'New' },
+            { name: 'Tax Settings', icon: '📊', href: '/dashboard/tax-settings', badge: null },
+            { name: 'Units', icon: '📏', href: '/dashboard/units', badge: null },
         ]
     },
 ];

@@ -1,209 +1,378 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
 
 interface Category {
-    id: number;
-    name: string;
-    productsCount: number;
+    category_id: number;
+    category_name: string;
+    description: string;
+    icon: string;
     color: string;
+    active: boolean;
 }
 
-const sampleCategories: Category[] = [
-    { id: 1, name: 'Burgers', productsCount: 8, color: '#f97316' },
-    { id: 2, name: 'Pizza', productsCount: 6, color: '#eab308' },
-    { id: 3, name: 'Main Dishes', productsCount: 12, color: '#ef4444' },
-    { id: 4, name: 'Sides', productsCount: 5, color: '#f59e0b' },
-    { id: 5, name: 'Drinks', productsCount: 15, color: '#3b82f6' },
-    { id: 6, name: 'Salads', productsCount: 4, color: '#22c55e' },
-    { id: 7, name: 'Desserts', productsCount: 7, color: '#ec4899' },
-    { id: 8, name: 'Breakfast', productsCount: 9, color: '#8b5cf6' },
+const iconOptions = ['🍕', '🍔', '🍳', '🍽️', '🥗', '🍲', '🔥', '🐟', '🍝', '🍚', '🧃', '☕', '🍺', '🍱', '🥤', '🍰', '🍿', '🥪', '🌮', '🍣', '🥘', '🍗', '🥩', '🧁', '📦'];
+const colorOptions = [
+    { name: 'Red', value: '#EF4444' },
+    { name: 'Orange', value: '#F97316' },
+    { name: 'Amber', value: '#F59E0B' },
+    { name: 'Yellow', value: '#EAB308' },
+    { name: 'Lime', value: '#84CC16' },
+    { name: 'Green', value: '#22C55E' },
+    { name: 'Emerald', value: '#10B981' },
+    { name: 'Teal', value: '#14B8A6' },
+    { name: 'Cyan', value: '#06B6D4' },
+    { name: 'Blue', value: '#3B82F6' },
+    { name: 'Indigo', value: '#6366F1' },
+    { name: 'Violet', value: '#8B5CF6' },
+    { name: 'Purple', value: '#A855F7' },
+    { name: 'Pink', value: '#EC4899' },
+    { name: 'Rose', value: '#F43F5E' },
 ];
 
+const defaultCategory = {
+    category_name: '',
+    description: '',
+    icon: '📦',
+    color: '#3B82F6',
+    active: true,
+};
+
 export default function CategoriesPage() {
-    const [categories, setCategories] = useState<Category[]>(sampleCategories);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-    const [newCategoryName, setNewCategoryName] = useState('');
+    const [formData, setFormData] = useState(defaultCategory);
+    const [isSaving, setIsSaving] = useState(false);
 
-    const handleAddCategory = () => {
-        setEditingCategory(null);
-        setNewCategoryName('');
-        setShowModal(true);
-    };
+    const loadCategories = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('product_categories')
+                .select('*')
+                .order('category_name', { ascending: true });
 
-    const handleEditCategory = (category: Category) => {
-        setEditingCategory(category);
-        setNewCategoryName(category.name);
-        setShowModal(true);
-    };
-
-    const handleSave = () => {
-        if (!newCategoryName.trim()) return;
-
-        if (editingCategory) {
-            setCategories(prev => prev.map(c =>
-                c.id === editingCategory.id ? { ...c, name: newCategoryName } : c
-            ));
-        } else {
-            const colors = ['#f97316', '#eab308', '#ef4444', '#3b82f6', '#22c55e', '#ec4899', '#8b5cf6'];
-            setCategories(prev => [...prev, {
-                id: Date.now(),
-                name: newCategoryName,
-                productsCount: 0,
-                color: colors[Math.floor(Math.random() * colors.length)],
-            }]);
+            if (error) throw error;
+            setCategories(data || []);
+        } catch (err) {
+            console.error('Error loading categories:', err);
+            toast.error('Failed to load categories');
         }
-        setShowModal(false);
-        setNewCategoryName('');
+        setIsLoading(false);
+    }, []);
+
+    useEffect(() => {
+        loadCategories();
+    }, [loadCategories]);
+
+    const openAddModal = () => {
+        setEditingCategory(null);
+        setFormData(defaultCategory);
+        setShowModal(true);
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this category?')) {
-            setCategories(prev => prev.filter(c => c.id !== id));
+    const openEditModal = (category: Category) => {
+        setEditingCategory(category);
+        setFormData({
+            category_name: category.category_name || '',
+            description: category.description || '',
+            icon: category.icon || '📦',
+            color: category.color || '#3B82F6',
+            active: category.active !== false,
+        });
+        setShowModal(true);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.category_name.trim()) {
+            toast.error('Category name required!');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            if (editingCategory) {
+                const { error } = await supabase
+                    .from('product_categories')
+                    .update(formData)
+                    .eq('category_id', editingCategory.category_id);
+
+                if (error) throw error;
+                toast.success('Category updated! ✓');
+            } else {
+                const { error } = await supabase
+                    .from('product_categories')
+                    .insert(formData);
+
+                if (error) throw error;
+                toast.success('Category created! ✓');
+            }
+
+            setShowModal(false);
+            loadCategories();
+        } catch (err) {
+            console.error('Error saving category:', err);
+            toast.error('Failed to save category');
+        }
+        setIsSaving(false);
+    };
+
+    const deleteCategory = async (category: Category) => {
+        if (!confirm(`Delete "${category.category_name}"?`)) return;
+
+        try {
+            const { error } = await supabase
+                .from('product_categories')
+                .delete()
+                .eq('category_id', category.category_id);
+
+            if (error) throw error;
+            toast.success('Category deleted');
+            loadCategories();
+        } catch (err) {
+            console.error('Error deleting category:', err);
+            toast.error('Failed to delete');
         }
     };
 
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <span>🏷️</span> Categories
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-3">
+                        <span className="text-3xl">🏷️</span>
+                        Product Categories
                     </h1>
-                    <p className="text-gray-500">Organize your products into categories</p>
+                    <p className="text-gray-500 text-sm mt-1">
+                        Manage product categories for menu organization
+                    </p>
                 </div>
-                <button
-                    onClick={handleAddCategory}
-                    className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
-                >
-                    <span>➕</span>
-                    <span>Add Category</span>
-                </button>
-            </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-4">
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                            <span className="text-xl">🏷️</span>
-                        </div>
-                        <span className="text-sm font-medium text-blue-600">Total Categories</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800">{categories.length}</p>
-                </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-                            <span className="text-xl">📦</span>
-                        </div>
-                        <span className="text-sm font-medium text-green-600">Total Products</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800">
-                        {categories.reduce((sum, c) => sum + c.productsCount, 0)}
-                    </p>
-                </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                            <span className="text-xl">📊</span>
-                        </div>
-                        <span className="text-sm font-medium text-purple-600">Avg Products/Category</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800">
-                        {Math.round(categories.reduce((sum, c) => sum + c.productsCount, 0) / categories.length)}
-                    </p>
-                </div>
+                <button
+                    onClick={openAddModal}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
+                >
+                    <span className="text-xl">➕</span>
+                    Add Category
+                </button>
             </div>
 
             {/* Categories Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {categories.map(category => (
-                    <div
-                        key={category.id}
-                        className="bg-white rounded-2xl p-5 border border-gray-100 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group"
-                    >
-                        <div className="flex items-start justify-between mb-4">
-                            <div
-                                className="w-12 h-12 rounded-xl flex items-center justify-center text-white text-xl font-bold"
-                                style={{ backgroundColor: category.color }}
-                            >
-                                {category.name.charAt(0)}
-                            </div>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button
-                                    onClick={() => handleEditCategory(category)}
-                                    className="p-2 hover:bg-blue-50 rounded-lg text-blue-500"
-                                >
-                                    ✏️
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(category.id)}
-                                    className="p-2 hover:bg-red-50 rounded-lg text-red-500"
-                                >
-                                    🗑️
-                                </button>
-                            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {isLoading ? (
+                    <div className="col-span-full flex justify-center py-12">
+                        <div className="flex flex-col items-center gap-3">
+                            <div className="w-10 h-10 border-4 border-indigo-400/30 border-t-indigo-500 rounded-full animate-spin"></div>
+                            <span className="text-gray-500">Loading categories...</span>
                         </div>
-                        <h3 className="font-semibold text-gray-800 mb-1">{category.name}</h3>
-                        <p className="text-sm text-gray-500">{category.productsCount} products</p>
                     </div>
-                ))}
-
-                {/* Add New Category Card */}
-                <button
-                    onClick={handleAddCategory}
-                    className="border-2 border-dashed border-gray-200 rounded-2xl p-5 flex flex-col items-center justify-center gap-3 hover:border-blue-400 hover:bg-blue-50/50 transition-all group min-h-[140px]"
-                >
-                    <div className="w-12 h-12 rounded-xl bg-gray-100 group-hover:bg-blue-100 flex items-center justify-center transition-colors">
-                        <span className="text-2xl">➕</span>
+                ) : categories.length === 0 ? (
+                    <div className="col-span-full flex flex-col items-center gap-3 py-12">
+                        <span className="text-5xl">🏷️</span>
+                        <p className="text-gray-500">No categories found</p>
+                        <button
+                            onClick={openAddModal}
+                            className="px-4 py-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-colors"
+                        >
+                            Add First Category
+                        </button>
                     </div>
-                    <span className="text-gray-500 group-hover:text-blue-600 font-medium">Add Category</span>
-                </button>
+                ) : (
+                    categories.map((category) => (
+                        <div
+                            key={category.category_id}
+                            className={`bg-white rounded-2xl border-2 p-5 transition-all hover:shadow-lg hover:scale-105 ${!category.active ? 'opacity-50' : ''}`}
+                            style={{ borderColor: category.color }}
+                        >
+                            <div className="flex items-start justify-between mb-3">
+                                <div
+                                    className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
+                                    style={{ backgroundColor: `${category.color}20` }}
+                                >
+                                    {category.icon}
+                                </div>
+                                <div className="flex gap-1">
+                                    <button
+                                        onClick={() => openEditModal(category)}
+                                        className="p-1.5 bg-gray-100 hover:bg-blue-100 text-gray-600 hover:text-blue-600 rounded-lg transition-all text-sm"
+                                    >
+                                        ✏️
+                                    </button>
+                                    <button
+                                        onClick={() => deleteCategory(category)}
+                                        className="p-1.5 bg-gray-100 hover:bg-red-100 text-gray-600 hover:text-red-600 rounded-lg transition-all text-sm"
+                                    >
+                                        🗑️
+                                    </button>
+                                </div>
+                            </div>
+                            <h3 className="font-bold text-gray-800">{category.category_name}</h3>
+                            {category.description && (
+                                <p className="text-xs text-gray-500 mt-1 line-clamp-2">{category.description}</p>
+                            )}
+                            <div
+                                className="w-full h-1 rounded-full mt-3"
+                                style={{ backgroundColor: category.color }}
+                            />
+                        </div>
+                    ))
+                )}
             </div>
 
-            {/* Modal */}
+            {/* Add/Edit Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                <span>🏷️</span>
-                                {editingCategory ? 'Edit Category' : 'Add New Category'}
-                            </h2>
-                            <button onClick={() => setShowModal(false)} className="text-2xl hover:opacity-70">✕</button>
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+                        {/* Modal Header */}
+                        <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-6 py-5 text-white sticky top-0">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                    {editingCategory ? '✏️ Edit Category' : '➕ Add New Category'}
+                                </h2>
+                                <button
+                                    onClick={() => setShowModal(false)}
+                                    className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                                >
+                                    ✕
+                                </button>
+                            </div>
                         </div>
 
-                        <div className="space-y-4">
+                        {/* Modal Form */}
+                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
                             <div>
-                                <label className="text-sm font-medium text-gray-600 mb-1 block">Category Name</label>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    🏷️ Category Name <span className="text-red-500">*</span>
+                                </label>
                                 <input
                                     type="text"
-                                    value={newCategoryName}
-                                    onChange={(e) => setNewCategoryName(e.target.value)}
-                                    placeholder="Enter category name..."
-                                    className="w-full p-4 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-lg"
-                                    autoFocus
+                                    value={formData.category_name}
+                                    onChange={(e) => setFormData({ ...formData, category_name: e.target.value })}
+                                    placeholder="e.g., Main Course"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-400/20"
+                                    required
                                 />
                             </div>
 
-                            <div className="flex gap-3 pt-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    📝 Description
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    placeholder="Optional description"
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-indigo-500"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    😊 Icon
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {iconOptions.map((icon) => (
+                                        <button
+                                            key={icon}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, icon })}
+                                            className={`w-10 h-10 text-xl rounded-xl border-2 transition-all hover:scale-110 ${formData.icon === icon
+                                                    ? 'border-indigo-500 bg-indigo-50'
+                                                    : 'border-gray-200 bg-gray-50'
+                                                }`}
+                                        >
+                                            {icon}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    🎨 Color
+                                </label>
+                                <div className="flex flex-wrap gap-2">
+                                    {colorOptions.map((color) => (
+                                        <button
+                                            key={color.value}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, color: color.value })}
+                                            className={`w-8 h-8 rounded-lg transition-all hover:scale-110 ${formData.color === color.value
+                                                    ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
+                                                    : ''
+                                                }`}
+                                            style={{ backgroundColor: color.value }}
+                                            title={color.name}
+                                        />
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Preview */}
+                            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200">
+                                <p className="text-sm text-gray-600 mb-2">Preview:</p>
+                                <div className="flex items-center gap-3">
+                                    <div
+                                        className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl"
+                                        style={{ backgroundColor: `${formData.color}20` }}
+                                    >
+                                        {formData.icon}
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-gray-800">{formData.category_name || 'Category Name'}</p>
+                                        <div
+                                            className="w-20 h-1 rounded-full mt-1"
+                                            style={{ backgroundColor: formData.color }}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.active}
+                                    onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                                    className="w-5 h-5 rounded border-gray-300 text-indigo-500 focus:ring-indigo-500"
+                                />
+                                <span className="font-medium text-gray-700">Active</span>
+                            </label>
+
+                            {/* Buttons */}
+                            <div className="flex gap-4 pt-4 border-t border-gray-100">
                                 <button
+                                    type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 transition-all"
+                                    className="flex-1 px-6 py-3 border-2 border-gray-200 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition-all"
                                 >
                                     Cancel
                                 </button>
                                 <button
-                                    onClick={handleSave}
-                                    className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+                                    type="submit"
+                                    disabled={isSaving}
+                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700 text-white font-semibold rounded-xl shadow-lg shadow-indigo-300/40 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
                                 >
-                                    {editingCategory ? 'Update' : 'Save'}
+                                    {isSaving ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>{editingCategory ? '💾' : '➕'}</span>
+                                            {editingCategory ? 'Update' : 'Create'}
+                                        </>
+                                    )}
                                 </button>
                             </div>
-                        </div>
+                        </form>
                     </div>
                 </div>
             )}

@@ -35,6 +35,19 @@ interface Category {
     color: string;
 }
 
+interface Supplier {
+    supplier_id: number;
+    supplier_code: string;
+    supplier_name: string;
+    is_kitchen: boolean;
+}
+
+interface Unit {
+    unit_id: number;
+    unit_name: string;
+    abbreviation: string;
+}
+
 const defaultProduct: Omit<Product, 'pid' | 'product_code'> = {
     product_name: '',
     alias: '',
@@ -57,7 +70,6 @@ const defaultProduct: Omit<Product, 'pid' | 'product_code'> = {
     active: true,
 };
 
-const units = ['Piece', 'Kg', 'Gram', 'Liter', 'ml', 'Box', 'Pack', 'Dozen', 'Bottle', 'Plate', 'Serving', 'Cup'];
 const vatOptions = ['Standard', 'Zero Rated', 'Exempt', 'Inclusive'];
 
 // POS Button Color Presets (matching POS page)
@@ -81,6 +93,9 @@ const colorPresets = [
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+    const [units, setUnits] = useState<Unit[]>([]);
+    const [companyName, setCompanyName] = useState<string>('');
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -121,10 +136,101 @@ export default function ProductsPage() {
         }
     }, []);
 
+    const loadSuppliers = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('suppliers')
+                .select('supplier_id, supplier_code, supplier_name, is_kitchen')
+                .eq('active', true)
+                .order('supplier_name');
+
+            if (error) throw error;
+            setSuppliers(data || []);
+        } catch (err) {
+            console.error('Error loading suppliers:', err);
+        }
+    }, []);
+
+    const loadUnits = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('product_units')
+                .select('unit_id, unit_name, abbreviation')
+                .eq('active', true)
+                .order('unit_name');
+
+            if (error) throw error;
+            setUnits(data || []);
+        } catch (err) {
+            console.error('Error loading units:', err);
+            // Fallback to default units if table doesn't exist
+            setUnits([
+                { unit_id: 1, unit_name: 'Piece', abbreviation: 'Pc' },
+                { unit_id: 2, unit_name: 'Kilogram', abbreviation: 'Kg' },
+                { unit_id: 3, unit_name: 'Gram', abbreviation: 'g' },
+                { unit_id: 4, unit_name: 'Liter', abbreviation: 'L' },
+                { unit_id: 5, unit_name: 'Milliliter', abbreviation: 'ml' },
+                { unit_id: 6, unit_name: 'Box', abbreviation: 'Box' },
+                { unit_id: 7, unit_name: 'Pack', abbreviation: 'Pk' },
+                { unit_id: 8, unit_name: 'Dozen', abbreviation: 'Dz' },
+                { unit_id: 9, unit_name: 'Bottle', abbreviation: 'Btl' },
+                { unit_id: 10, unit_name: 'Plate', abbreviation: 'Plt' },
+                { unit_id: 11, unit_name: 'Serving', abbreviation: 'Srv' },
+                { unit_id: 12, unit_name: 'Cup', abbreviation: 'Cup' },
+            ]);
+        }
+    }, []);
+
+    const loadCompanyName = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('organisation_settings')
+                .select('setting_value')
+                .eq('setting_key', 'company_name')
+                .single();
+
+            if (error) throw error;
+            if (data?.setting_value) {
+                // Remove "Hotel" from name and add "Kitchen"
+                const name = data.setting_value.replace(/\s*Hotel\s*/gi, ' ').trim();
+                setCompanyName(`${name} Kitchen`);
+            }
+        } catch (err) {
+            console.error('Error loading company name:', err);
+            setCompanyName('Kitchen');
+        }
+    }, []);
+
     useEffect(() => {
         loadProducts();
         loadCategories();
-    }, [loadProducts, loadCategories]);
+        loadSuppliers();
+        loadUnits();
+        loadCompanyName();
+    }, [loadProducts, loadCategories, loadSuppliers, loadUnits, loadCompanyName]);
+
+    // Get kitchen supplier name (default)
+    const getKitchenSupplier = () => companyName || 'Kitchen';
+
+    // Generate auto barcode starting from 101
+    const generateBarcode = async (): Promise<string> => {
+        try {
+            const { data } = await supabase
+                .from('products')
+                .select('barcode')
+                .like('barcode', '1%')
+                .order('barcode', { ascending: false })
+                .limit(1);
+
+            if (data && data.length > 0 && data[0].barcode) {
+                const lastBarcode = parseInt(data[0].barcode) || 100;
+                return String(lastBarcode + 1);
+            }
+            return '101';
+        } catch {
+            return '101';
+        }
+    };
 
     const generateProductCode = async (): Promise<string> => {
         try {
@@ -151,9 +257,14 @@ export default function ProductsPage() {
         return Math.round(((salesCost - purchaseCost) / purchaseCost) * 100 * 100) / 100;
     };
 
-    const openAddModal = () => {
+    const openAddModal = async () => {
         setEditingProduct(null);
-        setFormData(defaultProduct);
+        const newBarcode = await generateBarcode();
+        setFormData({
+            ...defaultProduct,
+            barcode: newBarcode,
+            supplier_name: getKitchenSupplier(), // Default to kitchen for food items
+        });
         setShowModal(true);
     };
 
@@ -592,7 +703,7 @@ export default function ProductsPage() {
                                             onChange={(e) => setFormData({ ...formData, purchase_unit: e.target.value })}
                                             className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-green-500"
                                         >
-                                            {units.map(u => <option key={u} value={u}>{u}</option>)}
+                                            {units.map(u => <option key={u.unit_id} value={u.unit_name}>{u.unit_name}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -613,7 +724,7 @@ export default function ProductsPage() {
                                             onChange={(e) => setFormData({ ...formData, sales_unit: e.target.value })}
                                             className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-green-500"
                                         >
-                                            {units.map(u => <option key={u} value={u}>{u}</option>)}
+                                            {units.map(u => <option key={u.unit_id} value={u.unit_name}>{u.unit_name}</option>)}
                                         </select>
                                     </div>
                                     <div>
@@ -699,15 +810,26 @@ export default function ProductsPage() {
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🏭 Supplier
+                                        🏭 Supplier / Source
                                     </label>
-                                    <input
-                                        type="text"
+                                    <select
                                         value={formData.supplier_name}
                                         onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
-                                        placeholder="Supplier name"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500"
-                                    />
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500 cursor-pointer"
+                                    >
+                                        <option value="">Select Supplier</option>
+                                        <option value={getKitchenSupplier()}>🍳 {getKitchenSupplier()} (Default for food)</option>
+                                        <optgroup label="External Suppliers">
+                                            {suppliers.filter(s => !s.is_kitchen).map(s => (
+                                                <option key={s.supplier_id} value={s.supplier_name}>
+                                                    🏢 {s.supplier_name}
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    </select>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        Use Kitchen for food made in-house, or select external supplier for items like sodas
+                                    </p>
                                 </div>
 
                                 <div>
