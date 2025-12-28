@@ -499,9 +499,11 @@ export default function RecipePage() {
             clearForm();
             loadData();
 
-        } catch (err) {
+        } catch (err: unknown) {
+            const error = err as { message?: string; code?: string; details?: string };
             console.error('Error saving recipe:', err);
-            toast.error('Failed to save recipe');
+            console.error('Error details:', { message: error?.message, code: error?.code, details: error?.details });
+            toast.error(`Failed to save recipe: ${error?.message || 'Unknown error'}`);
         }
         setIsSaving(false);
     };
