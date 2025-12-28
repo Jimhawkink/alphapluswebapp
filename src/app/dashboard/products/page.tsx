@@ -1,449 +1,761 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
 
 interface Product {
-    id: number;
-    code: string;
-    name: string;
-    category: string;
-    purchaseCost: number;
-    salesCost: number;
-    stock: number;
-    reorderPoint: number;
+    pid: number;
+    product_code: string;
+    product_name: string;
+    alias: string;
+    vat_commodity: string;
+    description: string;
     barcode: string;
-    unit: string;
+    category: string;
+    purchase_unit: string;
+    sales_unit: string;
+    purchase_cost: number;
+    sales_cost: number;
+    reorder_point: number;
+    margin_per: number;
+    show_ps: boolean;
+    button_ui_color: string;
+    photo: string;
+    hscode: string;
+    batch_no: string;
+    supplier_name: string;
+    active: boolean;
+}
+
+interface Category {
+    category_id: number;
+    category_name: string;
+    icon: string;
     color: string;
 }
 
-const sampleProducts: Product[] = [
-    { id: 1, code: 'PRD001', name: 'Chicken Burger', category: 'Burgers', purchaseCost: 300, salesCost: 450, stock: 25, reorderPoint: 10, barcode: '1234567890123', unit: 'PCS', color: '#f97316' },
-    { id: 2, code: 'PRD002', name: 'Beef Burger', category: 'Burgers', purchaseCost: 350, salesCost: 500, stock: 18, reorderPoint: 10, barcode: '1234567890124', unit: 'PCS', color: '#ef4444' },
-    { id: 3, code: 'PRD003', name: 'Pizza Margherita', category: 'Pizza', purchaseCost: 600, salesCost: 850, stock: 12, reorderPoint: 5, barcode: '1234567890125', unit: 'PCS', color: '#eab308' },
-    { id: 4, code: 'PRD004', name: 'Pepperoni Pizza', category: 'Pizza', purchaseCost: 700, salesCost: 950, stock: 8, reorderPoint: 5, barcode: '1234567890126', unit: 'PCS', color: '#ec4899' },
-    { id: 5, code: 'PRD005', name: 'French Fries', category: 'Sides', purchaseCost: 100, salesCost: 200, stock: 50, reorderPoint: 20, barcode: '1234567890127', unit: 'PCS', color: '#eab308' },
-    { id: 6, code: 'PRD006', name: 'Coca Cola 500ml', category: 'Drinks', purchaseCost: 60, salesCost: 100, stock: 100, reorderPoint: 30, barcode: '1234567890128', unit: 'PCS', color: '#ef4444' },
-    { id: 7, code: 'PRD007', name: 'Sprite 500ml', category: 'Drinks', purchaseCost: 60, salesCost: 100, stock: 80, reorderPoint: 30, barcode: '1234567890129', unit: 'PCS', color: '#22c55e' },
-    { id: 8, code: 'PRD008', name: 'Grilled Chicken', category: 'Main', purchaseCost: 450, salesCost: 650, stock: 15, reorderPoint: 8, barcode: '1234567890130', unit: 'PCS', color: '#f59e0b' },
-];
-
-const categories = ['All', 'Burgers', 'Pizza', 'Main', 'Sides', 'Drinks', 'Salads', 'Desserts'];
-
-// Add/Edit Product Modal
-const ProductModal = ({
-    isOpen,
-    onClose,
-    product,
-    onSave
-}: {
-    isOpen: boolean;
-    onClose: () => void;
-    product: Product | null;
-    onSave: (product: Partial<Product>) => void;
-}) => {
-    const [formData, setFormData] = useState({
-        code: product?.code || '',
-        name: product?.name || '',
-        category: product?.category || 'Burgers',
-        purchaseCost: product?.purchaseCost || 0,
-        salesCost: product?.salesCost || 0,
-        stock: product?.stock || 0,
-        reorderPoint: product?.reorderPoint || 10,
-        barcode: product?.barcode || '',
-        unit: product?.unit || 'PCS',
-    });
-
-    if (!isOpen) return null;
-
-    const handleSubmit = (e: React.FormEvent) => {
-        e.preventDefault();
-        onSave(formData);
-        onClose();
-    };
-
-    return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-3xl p-6 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <span>📦</span>
-                        {product ? 'Edit Product' : 'Add New Product'}
-                    </h2>
-                    <button onClick={onClose} className="text-2xl hover:opacity-70">✕</button>
-                </div>
-
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Product Code */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-600 mb-1 block">Product Code</label>
-                            <input
-                                type="text"
-                                value={formData.code}
-                                onChange={(e) => setFormData({ ...formData, code: e.target.value })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                required
-                            />
-                        </div>
-
-                        {/* Barcode */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-600 mb-1 block">Barcode</label>
-                            <input
-                                type="text"
-                                value={formData.barcode}
-                                onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Product Name */}
-                    <div>
-                        <label className="text-sm font-medium text-gray-600 mb-1 block">Product Name</label>
-                        <input
-                            type="text"
-                            value={formData.name}
-                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                            className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                            required
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Category */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-600 mb-1 block">Category</label>
-                            <select
-                                value={formData.category}
-                                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                            >
-                                {categories.filter(c => c !== 'All').map(cat => (
-                                    <option key={cat} value={cat}>{cat}</option>
-                                ))}
-                            </select>
-                        </div>
-
-                        {/* Unit */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-600 mb-1 block">Unit</label>
-                            <select
-                                value={formData.unit}
-                                onChange={(e) => setFormData({ ...formData, unit: e.target.value })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                            >
-                                <option value="PCS">PCS</option>
-                                <option value="KG">KG</option>
-                                <option value="L">Liters</option>
-                                <option value="BOX">Box</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Purchase Cost */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-600 mb-1 block">Purchase Cost (Ksh)</label>
-                            <input
-                                type="number"
-                                value={formData.purchaseCost}
-                                onChange={(e) => setFormData({ ...formData, purchaseCost: Number(e.target.value) })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                required
-                            />
-                        </div>
-
-                        {/* Sales Cost */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-600 mb-1 block">Sales Cost (Ksh)</label>
-                            <input
-                                type="number"
-                                value={formData.salesCost}
-                                onChange={(e) => setFormData({ ...formData, salesCost: Number(e.target.value) })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                required
-                            />
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Stock */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-600 mb-1 block">Current Stock</label>
-                            <input
-                                type="number"
-                                value={formData.stock}
-                                onChange={(e) => setFormData({ ...formData, stock: Number(e.target.value) })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                            />
-                        </div>
-
-                        {/* Reorder Point */}
-                        <div>
-                            <label className="text-sm font-medium text-gray-600 mb-1 block">Reorder Point</label>
-                            <input
-                                type="number"
-                                value={formData.reorderPoint}
-                                onChange={(e) => setFormData({ ...formData, reorderPoint: Number(e.target.value) })}
-                                className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Margin Display */}
-                    <div className="p-4 bg-green-50 rounded-xl">
-                        <div className="flex items-center justify-between">
-                            <span className="text-green-700 font-medium">Profit Margin</span>
-                            <span className="text-xl font-bold text-green-600">
-                                Ksh {formData.salesCost - formData.purchaseCost} ({formData.purchaseCost > 0 ? Math.round(((formData.salesCost - formData.purchaseCost) / formData.purchaseCost) * 100) : 0}%)
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Buttons */}
-                    <div className="flex gap-3 pt-4">
-                        <button
-                            type="button"
-                            onClick={onClose}
-                            className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 transition-all"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="flex-1 py-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                        >
-                            <span>💾</span>
-                            <span>{product ? 'Update' : 'Save'} Product</span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    );
+const defaultProduct: Omit<Product, 'pid' | 'product_code'> = {
+    product_name: '',
+    alias: '',
+    vat_commodity: 'Standard',
+    description: '',
+    barcode: '',
+    category: '',
+    purchase_unit: 'Piece',
+    sales_unit: 'Piece',
+    purchase_cost: 0,
+    sales_cost: 0,
+    reorder_point: 10,
+    margin_per: 0,
+    show_ps: true,
+    button_ui_color: '#3B82F6',
+    photo: '',
+    hscode: '',
+    batch_no: '',
+    supplier_name: '',
+    active: true,
 };
 
+const units = ['Piece', 'Kg', 'Gram', 'Liter', 'ml', 'Box', 'Pack', 'Dozen', 'Bottle', 'Plate', 'Serving', 'Cup'];
+const vatOptions = ['Standard', 'Zero Rated', 'Exempt', 'Inclusive'];
+
 export default function ProductsPage() {
-    const [products, setProducts] = useState<Product[]>(sampleProducts);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [selectedCategory, setSelectedCategory] = useState('All');
+    const [products, setProducts] = useState<Product[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [formData, setFormData] = useState(defaultProduct);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [filterCategory, setFilterCategory] = useState('All');
+    const [isSaving, setIsSaving] = useState(false);
 
-    // Filter products
+    const loadProducts = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const { data, error } = await supabase
+                .from('products')
+                .select('*')
+                .order('pid', { ascending: false });
+
+            if (error) throw error;
+            setProducts(data || []);
+        } catch (err) {
+            console.error('Error loading products:', err);
+            toast.error('Failed to load products');
+        }
+        setIsLoading(false);
+    }, []);
+
+    const loadCategories = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('product_categories')
+                .select('*')
+                .eq('active', true)
+                .order('category_name');
+
+            if (error) throw error;
+            setCategories(data || []);
+        } catch (err) {
+            console.error('Error loading categories:', err);
+        }
+    }, []);
+
+    useEffect(() => {
+        loadProducts();
+        loadCategories();
+    }, [loadProducts, loadCategories]);
+
+    const generateProductCode = async (): Promise<string> => {
+        try {
+            const { data } = await supabase
+                .from('products')
+                .select('product_code')
+                .like('product_code', 'PRD-%')
+                .order('product_code', { ascending: false })
+                .limit(1);
+
+            if (data && data.length > 0) {
+                const lastCode = data[0].product_code;
+                const lastNum = parseInt(lastCode.replace('PRD-', '')) || 0;
+                return `PRD-${String(lastNum + 1).padStart(2, '0')}`;
+            }
+            return 'PRD-01';
+        } catch {
+            return 'PRD-01';
+        }
+    };
+
+    const calculateMargin = (purchaseCost: number, salesCost: number): number => {
+        if (purchaseCost <= 0) return 0;
+        return Math.round(((salesCost - purchaseCost) / purchaseCost) * 100 * 100) / 100;
+    };
+
+    const openAddModal = () => {
+        setEditingProduct(null);
+        setFormData(defaultProduct);
+        setShowModal(true);
+    };
+
+    const openEditModal = (product: Product) => {
+        setEditingProduct(product);
+        setFormData({
+            product_name: product.product_name,
+            alias: product.alias || '',
+            vat_commodity: product.vat_commodity || 'Standard',
+            description: product.description || '',
+            barcode: product.barcode || '',
+            category: product.category || '',
+            purchase_unit: product.purchase_unit || 'Piece',
+            sales_unit: product.sales_unit || 'Piece',
+            purchase_cost: product.purchase_cost || 0,
+            sales_cost: product.sales_cost || 0,
+            reorder_point: product.reorder_point || 10,
+            margin_per: product.margin_per || 0,
+            show_ps: product.show_ps !== false,
+            button_ui_color: product.button_ui_color || '#3B82F6',
+            photo: product.photo || '',
+            hscode: product.hscode || '',
+            batch_no: product.batch_no || '',
+            supplier_name: product.supplier_name || '',
+            active: product.active !== false,
+        });
+        setShowModal(true);
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.product_name.trim()) {
+            toast.error('Product name required!');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const margin = calculateMargin(formData.purchase_cost, formData.sales_cost);
+
+            if (editingProduct) {
+                // Update existing product
+                const { error } = await supabase
+                    .from('products')
+                    .update({
+                        ...formData,
+                        margin_per: margin,
+                        updated_at: new Date().toISOString(),
+                    })
+                    .eq('pid', editingProduct.pid);
+
+                if (error) throw error;
+                toast.success('Product updated! ✓');
+            } else {
+                // Create new product
+                const newCode = await generateProductCode();
+                const { error } = await supabase
+                    .from('products')
+                    .insert({
+                        ...formData,
+                        product_code: newCode,
+                        margin_per: margin,
+                        added_date: new Date().toISOString(),
+                    });
+
+                if (error) throw error;
+                toast.success(`Product ${newCode} created! ✓`);
+            }
+
+            setShowModal(false);
+            loadProducts();
+        } catch (err) {
+            console.error('Error saving product:', err);
+            toast.error('Failed to save product');
+        }
+        setIsSaving(false);
+    };
+
+    const deleteProduct = async (product: Product) => {
+        if (!confirm(`Delete "${product.product_name}"?`)) return;
+
+        try {
+            const { error } = await supabase
+                .from('products')
+                .delete()
+                .eq('pid', product.pid);
+
+            if (error) throw error;
+            toast.success('Product deleted');
+            loadProducts();
+        } catch (err) {
+            console.error('Error deleting product:', err);
+            toast.error('Failed to delete');
+        }
+    };
+
     const filteredProducts = products.filter(p => {
-        const matchesCategory = selectedCategory === 'All' || p.category === selectedCategory;
-        const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.code.toLowerCase().includes(searchQuery.toLowerCase());
-        return matchesCategory && matchesSearch;
+        const matchesSearch = p.product_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            p.product_code.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (p.barcode && p.barcode.includes(searchQuery));
+        const matchesCategory = filterCategory === 'All' || p.category === filterCategory;
+        return matchesSearch && matchesCategory;
     });
 
-    const handleAddProduct = () => {
-        setEditingProduct(null);
-        setShowModal(true);
-    };
-
-    const handleEditProduct = (product: Product) => {
-        setEditingProduct(product);
-        setShowModal(true);
-    };
-
-    const handleSaveProduct = (data: Partial<Product>) => {
-        if (editingProduct) {
-            setProducts(prev => prev.map(p => p.id === editingProduct.id ? { ...p, ...data } : p));
-        } else {
-            setProducts(prev => [...prev, { id: Date.now(), ...data, color: '#3b82f6' } as Product]);
-        }
-    };
-
-    const handleDeleteProduct = (id: number) => {
-        if (confirm('Are you sure you want to delete this product?')) {
-            setProducts(prev => prev.filter(p => p.id !== id));
-        }
-    };
+    const totalProducts = products.length;
+    const activeProducts = products.filter(p => p.active).length;
 
     return (
         <div className="space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <span>📦</span> Products
+                    <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-3">
+                        <span className="text-3xl">🍕</span>
+                        Products (Dish Items)
                     </h1>
-                    <p className="text-gray-500">Manage your product inventory</p>
+                    <p className="text-gray-500 text-sm mt-1">
+                        Manage your menu items and dishes • Code format: PRD-XX
+                    </p>
                 </div>
+
                 <button
-                    onClick={handleAddProduct}
-                    className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-blue-500 to-blue-700 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+                    onClick={openAddModal}
+                    className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
                 >
-                    <span>➕</span>
-                    <span>Add Product</span>
+                    <span className="text-xl">➕</span>
+                    Add Product
                 </button>
             </div>
 
-            {/* Stats */}
-            <div className="grid grid-cols-4 gap-4">
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                            <span className="text-xl">📦</span>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-2xl p-5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-blue-500 flex items-center justify-center text-white text-2xl">
+                            📦
                         </div>
-                        <span className="text-sm font-medium text-blue-600">Total Products</span>
+                        <div>
+                            <p className="text-sm text-blue-600 font-medium">Total Products</p>
+                            <p className="text-2xl font-bold text-gray-800">{totalProducts}</p>
+                        </div>
                     </div>
-                    <p className="text-2xl font-bold text-gray-800">{products.length}</p>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-                            <span className="text-xl">✅</span>
+                <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-2xl p-5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center text-white text-2xl">
+                            ✅
                         </div>
-                        <span className="text-sm font-medium text-green-600">In Stock</span>
+                        <div>
+                            <p className="text-sm text-green-600 font-medium">Active</p>
+                            <p className="text-2xl font-bold text-gray-800">{activeProducts}</p>
+                        </div>
                     </div>
-                    <p className="text-2xl font-bold text-gray-800">{products.filter(p => p.stock > p.reorderPoint).length}</p>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-yellow-50 flex items-center justify-center">
-                            <span className="text-xl">⚠️</span>
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 border border-purple-200 rounded-2xl p-5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center text-white text-2xl">
+                            🏷️
                         </div>
-                        <span className="text-sm font-medium text-yellow-600">Low Stock</span>
+                        <div>
+                            <p className="text-sm text-purple-600 font-medium">Categories</p>
+                            <p className="text-2xl font-bold text-gray-800">{categories.length}</p>
+                        </div>
                     </div>
-                    <p className="text-2xl font-bold text-gray-800">{products.filter(p => p.stock <= p.reorderPoint && p.stock > 0).length}</p>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center">
-                            <span className="text-xl">❌</span>
+                <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-2xl p-5">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-orange-500 flex items-center justify-center text-white text-2xl">
+                            ⚠️
                         </div>
-                        <span className="text-sm font-medium text-red-600">Out of Stock</span>
+                        <div>
+                            <p className="text-sm text-orange-600 font-medium">Low Stock</p>
+                            <p className="text-2xl font-bold text-gray-800">0</p>
+                        </div>
                     </div>
-                    <p className="text-2xl font-bold text-gray-800">{products.filter(p => p.stock === 0).length}</p>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="bg-white rounded-2xl p-4 border border-gray-100">
-                <div className="flex items-center gap-4">
-                    {/* Search */}
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1 relative">
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
                         <input
                             type="text"
+                            placeholder="🔍 Search by name, code, or barcode..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Search products by name or code..."
-                            className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400"
+                            className="w-full px-5 py-3 pl-12 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 transition-all"
                         />
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🔎</span>
                     </div>
-
-                    {/* Category Filter */}
                     <select
-                        value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400"
+                        value={filterCategory}
+                        onChange={(e) => setFilterCategory(e.target.value)}
+                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 transition-all cursor-pointer"
                     >
+                        <option value="All">🏷️ All Categories</option>
                         {categories.map(cat => (
-                            <option key={cat} value={cat}>{cat}</option>
+                            <option key={cat.category_id} value={cat.category_name}>
+                                {cat.icon} {cat.category_name}
+                            </option>
                         ))}
                     </select>
-
-                    {/* Export Button */}
-                    <button className="flex items-center gap-2 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                        <span>📥</span>
-                        <span className="font-medium text-gray-600">Export</span>
+                    <button
+                        onClick={loadProducts}
+                        className="px-5 py-3 bg-blue-50 text-blue-600 rounded-xl hover:bg-blue-100 font-medium transition-all flex items-center gap-2"
+                    >
+                        🔄 Refresh
                     </button>
                 </div>
             </div>
 
             {/* Products Table */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                <table className="w-full">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="text-left py-4 px-4 text-sm font-semibold text-gray-600">Product</th>
-                            <th className="text-left py-4 px-4 text-sm font-semibold text-gray-600">Category</th>
-                            <th className="text-right py-4 px-4 text-sm font-semibold text-gray-600">Purchase</th>
-                            <th className="text-right py-4 px-4 text-sm font-semibold text-gray-600">Sales</th>
-                            <th className="text-right py-4 px-4 text-sm font-semibold text-gray-600">Margin</th>
-                            <th className="text-center py-4 px-4 text-sm font-semibold text-gray-600">Stock</th>
-                            <th className="text-center py-4 px-4 text-sm font-semibold text-gray-600">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredProducts.map(product => (
-                            <tr key={product.id} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
-                                <td className="py-4 px-4">
-                                    <div className="flex items-center gap-3">
-                                        <div
-                                            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm"
-                                            style={{ backgroundColor: product.color }}
-                                        >
-                                            {product.name.charAt(0)}
-                                        </div>
-                                        <div>
-                                            <p className="font-medium text-gray-800">{product.name}</p>
-                                            <p className="text-xs text-gray-500">{product.code}</p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td className="py-4 px-4">
-                                    <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-sm font-medium">
-                                        {product.category}
-                                    </span>
-                                </td>
-                                <td className="py-4 px-4 text-right font-medium text-gray-600">
-                                    Ksh {product.purchaseCost.toLocaleString()}
-                                </td>
-                                <td className="py-4 px-4 text-right font-medium text-gray-800">
-                                    Ksh {product.salesCost.toLocaleString()}
-                                </td>
-                                <td className="py-4 px-4 text-right">
-                                    <span className="text-green-600 font-semibold">
-                                        {Math.round(((product.salesCost - product.purchaseCost) / product.purchaseCost) * 100)}%
-                                    </span>
-                                </td>
-                                <td className="py-4 px-4 text-center">
-                                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${product.stock === 0
-                                            ? 'bg-red-100 text-red-600'
-                                            : product.stock <= product.reorderPoint
-                                                ? 'bg-yellow-100 text-yellow-600'
-                                                : 'bg-green-100 text-green-600'
-                                        }`}>
-                                        {product.stock} {product.unit}
-                                    </span>
-                                </td>
-                                <td className="py-4 px-4">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <button
-                                            onClick={() => handleEditProduct(product)}
-                                            className="p-2 hover:bg-blue-50 rounded-lg text-blue-500 transition-colors"
-                                            title="Edit"
-                                        >
-                                            ✏️
-                                        </button>
-                                        <button
-                                            onClick={() => handleDeleteProduct(product.id)}
-                                            className="p-2 hover:bg-red-50 rounded-lg text-red-500 transition-colors"
-                                            title="Delete"
-                                        >
-                                            🗑️
-                                        </button>
-                                    </div>
-                                </td>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full">
+                        <thead>
+                            <tr className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+                                <th className="px-4 py-4 text-left text-sm font-semibold">Code</th>
+                                <th className="px-4 py-4 text-left text-sm font-semibold">Product Name</th>
+                                <th className="px-4 py-4 text-left text-sm font-semibold hidden md:table-cell">Category</th>
+                                <th className="px-4 py-4 text-right text-sm font-semibold">Purchase</th>
+                                <th className="px-4 py-4 text-right text-sm font-semibold">Sales</th>
+                                <th className="px-4 py-4 text-center text-sm font-semibold hidden lg:table-cell">Margin %</th>
+                                <th className="px-4 py-4 text-center text-sm font-semibold">Status</th>
+                                <th className="px-4 py-4 text-center text-sm font-semibold">Actions</th>
                             </tr>
-                        ))}
-                    </tbody>
-                </table>
+                        </thead>
+                        <tbody>
+                            {isLoading ? (
+                                <tr>
+                                    <td colSpan={8} className="px-4 py-12 text-center">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <div className="w-10 h-10 border-4 border-blue-400/30 border-t-blue-500 rounded-full animate-spin"></div>
+                                            <span className="text-gray-500">Loading products...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : filteredProducts.length === 0 ? (
+                                <tr>
+                                    <td colSpan={8} className="px-4 py-12 text-center">
+                                        <div className="flex flex-col items-center gap-3">
+                                            <span className="text-5xl">📦</span>
+                                            <p className="text-gray-500">No products found</p>
+                                            <button
+                                                onClick={openAddModal}
+                                                className="px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors"
+                                            >
+                                                Add First Product
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : (
+                                filteredProducts.map((product) => (
+                                    <tr key={product.pid} className="border-t border-gray-50 hover:bg-blue-50/50 transition-colors">
+                                        <td className="px-4 py-4">
+                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-semibold">
+                                                {product.product_code}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <div className="flex items-center gap-3">
+                                                <div
+                                                    className="w-10 h-10 rounded-xl flex items-center justify-center text-white text-lg font-bold"
+                                                    style={{ backgroundColor: product.button_ui_color || '#3B82F6' }}
+                                                >
+                                                    {product.product_name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <p className="font-semibold text-gray-800">{product.product_name}</p>
+                                                    {product.alias && (
+                                                        <p className="text-xs text-gray-500">{product.alias}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-4 hidden md:table-cell">
+                                            <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-medium">
+                                                {product.category || 'Uncategorized'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4 text-right font-medium text-gray-600">
+                                            Ksh {product.purchase_cost?.toLocaleString() || '0'}
+                                        </td>
+                                        <td className="px-4 py-4 text-right font-bold text-gray-800">
+                                            Ksh {product.sales_cost?.toLocaleString() || '0'}
+                                        </td>
+                                        <td className="px-4 py-4 text-center hidden lg:table-cell">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-semibold ${product.margin_per >= 30 ? 'bg-green-100 text-green-700' :
+                                                    product.margin_per >= 15 ? 'bg-yellow-100 text-yellow-700' :
+                                                        'bg-red-100 text-red-700'
+                                                }`}>
+                                                {product.margin_per?.toFixed(1) || '0'}%
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                            <span className={`px-3 py-1 rounded-full text-xs font-semibold ${product.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                                                }`}>
+                                                {product.active ? '✅ Active' : '⏸️ Inactive'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-4">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => openEditModal(product)}
+                                                    className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-all hover:scale-110"
+                                                    title="Edit"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteProduct(product)}
+                                                    className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-all hover:scale-110"
+                                                    title="Delete"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
-            {/* Product Modal */}
-            <ProductModal
-                isOpen={showModal}
-                onClose={() => setShowModal(false)}
-                product={editingProduct}
-                onSave={handleSaveProduct}
-            />
+            {/* Add/Edit Modal */}
+            {showModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+                        {/* Modal Header */}
+                        <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 text-white sticky top-0">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-xl font-bold flex items-center gap-2">
+                                    {editingProduct ? '✏️ Edit Product' : '➕ Add New Product'}
+                                </h2>
+                                <button
+                                    onClick={() => setShowModal(false)}
+                                    className="p-2 hover:bg-white/20 rounded-full transition-colors"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            {editingProduct && (
+                                <p className="text-blue-100 text-sm mt-1">Code: {editingProduct.product_code}</p>
+                            )}
+                        </div>
+
+                        {/* Modal Form */}
+                        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                            {/* Basic Info */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        🍕 Product Name <span className="text-red-500">*</span>
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.product_name}
+                                        onChange={(e) => setFormData({ ...formData, product_name: e.target.value })}
+                                        placeholder="e.g., Chicken Burger"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
+                                        required
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        📝 Alias / Short Name
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.alias}
+                                        onChange={(e) => setFormData({ ...formData, alias: e.target.value })}
+                                        placeholder="e.g., Chk Burger"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        🏷️ Category
+                                    </label>
+                                    <select
+                                        value={formData.category}
+                                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 cursor-pointer"
+                                    >
+                                        <option value="">Select Category</option>
+                                        {categories.map(cat => (
+                                            <option key={cat.category_id} value={cat.category_name}>
+                                                {cat.icon} {cat.category_name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        📊 Barcode
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.barcode}
+                                        onChange={(e) => setFormData({ ...formData, barcode: e.target.value })}
+                                        placeholder="Scan or enter barcode"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        🔢 HS Code
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.hscode}
+                                        onChange={(e) => setFormData({ ...formData, hscode: e.target.value })}
+                                        placeholder="HS Code for tax"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Pricing Section */}
+                            <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl p-5 border border-green-200">
+                                <h3 className="font-bold text-green-800 mb-4 flex items-center gap-2">
+                                    💰 Pricing
+                                </h3>
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Purchase Unit</label>
+                                        <select
+                                            value={formData.purchase_unit}
+                                            onChange={(e) => setFormData({ ...formData, purchase_unit: e.target.value })}
+                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-green-500"
+                                        >
+                                            {units.map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Purchase Cost</label>
+                                        <input
+                                            type="number"
+                                            value={formData.purchase_cost}
+                                            onChange={(e) => setFormData({ ...formData, purchase_cost: parseFloat(e.target.value) || 0 })}
+                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-green-500"
+                                            min="0"
+                                            step="0.01"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Sales Unit</label>
+                                        <select
+                                            value={formData.sales_unit}
+                                            onChange={(e) => setFormData({ ...formData, sales_unit: e.target.value })}
+                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-green-500"
+                                        >
+                                            {units.map(u => <option key={u} value={u}>{u}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">Sales Price</label>
+                                        <input
+                                            type="number"
+                                            value={formData.sales_cost}
+                                            onChange={(e) => setFormData({ ...formData, sales_cost: parseFloat(e.target.value) || 0 })}
+                                            className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-green-500"
+                                            min="0"
+                                            step="0.01"
+                                        />
+                                    </div>
+                                </div>
+                                {formData.purchase_cost > 0 && formData.sales_cost > 0 && (
+                                    <div className="mt-4 p-3 bg-white rounded-xl border border-green-200">
+                                        <p className="text-sm text-gray-600">
+                                            Profit Margin: <span className="font-bold text-green-600">
+                                                {calculateMargin(formData.purchase_cost, formData.sales_cost).toFixed(1)}%
+                                            </span>
+                                            {' '}(Ksh {(formData.sales_cost - formData.purchase_cost).toLocaleString()} profit)
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Additional Info */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        📊 VAT Type
+                                    </label>
+                                    <select
+                                        value={formData.vat_commodity}
+                                        onChange={(e) => setFormData({ ...formData, vat_commodity: e.target.value })}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500"
+                                    >
+                                        {vatOptions.map(v => <option key={v} value={v}>{v}</option>)}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        ⚠️ Reorder Point
+                                    </label>
+                                    <input
+                                        type="number"
+                                        value={formData.reorder_point}
+                                        onChange={(e) => setFormData({ ...formData, reorder_point: parseInt(e.target.value) || 10 })}
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500"
+                                        min="0"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        🎨 Button Color
+                                    </label>
+                                    <input
+                                        type="color"
+                                        value={formData.button_ui_color}
+                                        onChange={(e) => setFormData({ ...formData, button_ui_color: e.target.value })}
+                                        className="w-full h-12 rounded-xl cursor-pointer border border-gray-200"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        🏭 Supplier
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.supplier_name}
+                                        onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
+                                        placeholder="Supplier name"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500"
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                        📋 Batch No
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={formData.batch_no}
+                                        onChange={(e) => setFormData({ ...formData, batch_no: e.target.value })}
+                                        placeholder="Batch number"
+                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500"
+                                    />
+                                </div>
+
+                                <div className="flex items-center gap-4 pt-8">
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.active}
+                                            onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                                            className="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                                        />
+                                        <span className="font-medium text-gray-700">Active</span>
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.show_ps}
+                                            onChange={(e) => setFormData({ ...formData, show_ps: e.target.checked })}
+                                            className="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
+                                        />
+                                        <span className="font-medium text-gray-700">Show in POS</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Description */}
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                                    📝 Description
+                                </label>
+                                <textarea
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                    placeholder="Product description..."
+                                    rows={2}
+                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500 resize-none"
+                                />
+                            </div>
+
+                            {/* Buttons */}
+                            <div className="flex gap-4 pt-4 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowModal(false)}
+                                    className="flex-1 px-6 py-3 border-2 border-gray-200 text-gray-600 font-semibold rounded-xl hover:bg-gray-50 transition-all"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSaving}
+                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-300/40 transition-all flex items-center justify-center gap-2 disabled:opacity-60"
+                                >
+                                    {isSaving ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>{editingProduct ? '💾' : '➕'}</span>
+                                            {editingProduct ? 'Update Product' : 'Create Product'}
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
