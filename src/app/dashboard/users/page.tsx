@@ -111,6 +111,12 @@ export default function UsersPage() {
     };
 
     const openEditModal = (user: User) => {
+        // Block editing super admin
+        if (user.is_super_admin) {
+            toast.error('🔒 Super Admin account cannot be edited!');
+            return;
+        }
+
         setFormData({
             user_code: user.user_code,
             user_name: user.user_name,
@@ -468,8 +474,8 @@ export default function UsersPage() {
                                                 onClick={() => toggleUserStatus(user)}
                                                 disabled={user.is_super_admin}
                                                 className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${user.active
-                                                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                                        : 'bg-red-100 text-red-700 hover:bg-red-200'
+                                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                                    : 'bg-red-100 text-red-700 hover:bg-red-200'
                                                     } ${user.is_super_admin ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
                                             >
                                                 {user.active ? '✅ Active' : '❌ Inactive'}
@@ -477,21 +483,27 @@ export default function UsersPage() {
                                         </td>
                                         <td className="px-4 py-4">
                                             <div className="flex items-center justify-center gap-2">
-                                                <button
-                                                    onClick={() => openEditModal(user)}
-                                                    className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-all hover:scale-110"
-                                                    title="Edit User"
-                                                >
-                                                    ✏️
-                                                </button>
-                                                {!user.is_super_admin && (
-                                                    <button
-                                                        onClick={() => deleteUser(user)}
-                                                        className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-all hover:scale-110"
-                                                        title="Delete User"
-                                                    >
-                                                        🗑️
-                                                    </button>
+                                                {user.is_super_admin ? (
+                                                    <span className="px-3 py-2 bg-purple-100 text-purple-700 rounded-xl text-xs font-semibold">
+                                                        🔒 Protected
+                                                    </span>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            onClick={() => openEditModal(user)}
+                                                            className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-all hover:scale-110"
+                                                            title="Edit User"
+                                                        >
+                                                            ✏️
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteUser(user)}
+                                                            className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-all hover:scale-110"
+                                                            title="Delete User"
+                                                        >
+                                                            🗑️
+                                                        </button>
+                                                    </>
                                                 )}
                                             </div>
                                         </td>
