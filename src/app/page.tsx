@@ -228,7 +228,7 @@ export default function LoginPage() {
                     </div>
 
                     <p className="text-gray-400 text-xs">
-                        © {new Date().getFullYear()} Alpha Plus Hotel System • v3.0
+                        © 2026 Alpha Plus Hotel System • v3.0
                     </p>
                 </div>
             </div>
