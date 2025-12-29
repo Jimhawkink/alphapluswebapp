@@ -7,9 +7,8 @@ import toast from 'react-hot-toast';
 interface DishMovement {
     movement_date: string;
     product_id: number;
+    product_code: string;
     product_name: string;
-    shift_id?: number;
-    shift_name?: string;
     opening_qty: number;
     produced_qty: number;
     sold_qty: number;
@@ -24,8 +23,10 @@ interface DishMovement {
 
 interface Product {
     pid: number;
+    product_code: string;
     product_name: string;
     category: string;
+    sales_cost: number;
 }
 
 interface Shift {
@@ -45,13 +46,13 @@ export default function DishMovementPage() {
     const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
     const [selectedProduct, setSelectedProduct] = useState<number | null>(null);
     const [selectedShift, setSelectedShift] = useState<number | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
 
     // Spoilage Modal
     const [showSpoilageModal, setShowSpoilageModal] = useState(false);
     const [spoilageProduct, setSpoilageProduct] = useState<number | null>(null);
     const [spoilageQty, setSpoilageQty] = useState('');
-    const [spoilageReason, setSpoilageReason] = useState('Damaged');
-    const [spoilageNotes, setSpoilageNotes] = useState('');
+    const [spoilageReason, setSpoilageReason] = useState('');
     const [isSaving, setIsSaving] = useState(false);
 
     // Stats
@@ -67,10 +68,10 @@ export default function DishMovementPage() {
     useEffect(() => {
         const loadInitialData = async () => {
             try {
-                // Load products (dishes - those with batches/production)
+                // Load products (dishes) from products table
                 const { data: productsData } = await supabase
                     .from('products')
-                    .select('pid, product_name, category')
+                    .select('pid, product_code, product_name, category, sales_cost')
                     .eq('active', true)
                     .order('product_name');
                 setProducts(productsData || []);
@@ -92,51 +93,15 @@ export default function DishMovementPage() {
     const loadMovements = useCallback(async () => {
         setIsLoading(true);
         try {
-            // Try to load from view, fallback to calculated data
-            let query = supabase
-                .from('dish_daily_summary')
-                .select('*')
-                .gte('movement_date', dateFrom)
-                .lte('movement_date', dateTo)
-                .order('movement_date', { ascending: false });
-
-            if (selectedProduct) {
-                query = query.eq('product_id', selectedProduct);
-            }
-            if (selectedShift) {
-                query = query.eq('shift_id', selectedShift);
-            }
-
-            const { data, error } = await query;
-
-            if (error) {
-                console.log('View not available, using fallback:', error.message);
-                // Fallback: load from production_batches and sales
-                await loadFallbackData();
-                return;
-            }
-
-            setMovements(data || []);
-            calculateStats(data || []);
-        } catch (err) {
-            console.error('Error loading movements:', err);
-            toast.error('Failed to load dish movements');
-        }
-        setIsLoading(false);
-    }, [dateFrom, dateTo, selectedProduct, selectedShift]);
-
-    // Fallback data loading from production_batches and sales
-    const loadFallbackData = async () => {
-        try {
-            // Get production data (produced)
+            // Get production batches in date range
             const { data: batchData } = await supabase
                 .from('production_batches')
-                .select('product_id, product_name, qty_produced, qty_remaining, production_date, cost_per_unit, sales_rate')
+                .select('batch_id, product_id, product_name, qty_produced, qty_remaining, production_date, cost_per_unit, sales_rate')
                 .gte('production_date', dateFrom)
                 .lte('production_date', dateTo)
                 .order('production_date', { ascending: false });
 
-            // Get sales items with sale info separately
+            // Get sales in date range
             const { data: salesData } = await supabase
                 .from('sales')
                 .select('sale_id, sale_date, status')
@@ -169,12 +134,16 @@ export default function DishMovementPage() {
 
             // Process production batches
             (batchData || []).forEach(batch => {
+                // Find product to get product_code
+                const product = products.find(p => p.pid === batch.product_id);
+
                 const key = `${batch.production_date}-${batch.product_id}`;
                 if (!movementMap.has(key)) {
                     movementMap.set(key, {
                         movement_date: batch.production_date,
                         product_id: batch.product_id,
-                        product_name: batch.product_name,
+                        product_code: product?.product_code || '',
+                        product_name: batch.product_name || product?.product_name || '',
                         opening_qty: 0,
                         produced_qty: 0,
                         sold_qty: 0,
@@ -189,18 +158,24 @@ export default function DishMovementPage() {
                 }
                 const entry = movementMap.get(key)!;
                 entry.produced_qty += batch.qty_produced || 0;
+                entry.opening_qty = batch.qty_remaining || 0; // Use qty_remaining as opening for next day
             });
 
             // Process sales
             salesItems.forEach(item => {
                 const saleDate = saleIdToDate.get(item.sale_id);
                 if (!saleDate) return;
+
+                // Find product to get product_code
+                const product = products.find(p => p.pid === item.product_id);
+
                 const key = `${saleDate}-${item.product_id}`;
                 if (!movementMap.has(key)) {
                     movementMap.set(key, {
                         movement_date: saleDate,
                         product_id: item.product_id,
-                        product_name: item.product_name,
+                        product_code: product?.product_code || '',
+                        product_name: item.product_name || product?.product_name || '',
                         opening_qty: 0,
                         produced_qty: 0,
                         sold_qty: 0,
@@ -223,10 +198,12 @@ export default function DishMovementPage() {
             (spoilageData || []).forEach(sp => {
                 const key = `${sp.spoilage_date}-${sp.product_id}`;
                 if (!movementMap.has(key)) {
+                    const product = products.find(p => p.pid === sp.product_id);
                     movementMap.set(key, {
                         movement_date: sp.spoilage_date,
                         product_id: sp.product_id,
-                        product_name: sp.product_name,
+                        product_code: product?.product_code || '',
+                        product_name: sp.product_name || product?.product_name || '',
                         opening_qty: 0,
                         produced_qty: 0,
                         sold_qty: 0,
@@ -245,22 +222,28 @@ export default function DishMovementPage() {
             });
 
             // Calculate closing and profit
-            const movements = Array.from(movementMap.values()).map(m => ({
+            let movementsArray = Array.from(movementMap.values()).map(m => ({
                 ...m,
                 closing_qty: m.opening_qty + m.produced_qty - m.sold_qty - m.spoiled_qty + m.adjusted_qty,
                 total_profit: m.total_sales - m.total_cost
             }));
 
-            // Sort by date desc
-            movements.sort((a, b) => b.movement_date.localeCompare(a.movement_date));
+            // Filter by selected product if any
+            if (selectedProduct) {
+                movementsArray = movementsArray.filter(m => m.product_id === selectedProduct);
+            }
 
-            setMovements(movements);
-            calculateStats(movements);
+            // Sort by date desc
+            movementsArray.sort((a, b) => b.movement_date.localeCompare(a.movement_date));
+
+            setMovements(movementsArray);
+            calculateStats(movementsArray);
         } catch (err) {
-            console.error('Error in fallback data loading:', err);
+            console.error('Error loading movements:', err);
+            toast.error('Failed to load dish movements');
         }
         setIsLoading(false);
-    };
+    }, [dateFrom, dateTo, selectedProduct, selectedShift, products]);
 
     // Calculate stats
     const calculateStats = (data: DishMovement[]) => {
@@ -275,13 +258,21 @@ export default function DishMovementPage() {
     };
 
     useEffect(() => {
-        loadMovements();
-    }, [loadMovements]);
+        if (products.length > 0) {
+            loadMovements();
+        }
+    }, [loadMovements, products]);
 
-    // Add spoilage
-    const handleAddSpoilage = async () => {
+    // Filter movements by search
+    const filteredMovements = movements.filter(m =>
+        m.product_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        m.product_code?.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+
+    // Handle spoilage
+    const handleSpoilage = async () => {
         if (!spoilageProduct || !spoilageQty) {
-            toast.error('Please select product and quantity');
+            toast.error('Please select dish and quantity');
             return;
         }
 
@@ -290,6 +281,8 @@ export default function DishMovementPage() {
             const product = products.find(p => p.pid === spoilageProduct);
             const userData = localStorage.getItem('user');
             const currentUser = userData ? JSON.parse(userData) : null;
+            const qty = parseFloat(spoilageQty);
+            const totalLoss = qty * (product?.sales_cost || 0);
 
             const { error } = await supabase
                 .from('dish_spoilage')
@@ -297,24 +290,24 @@ export default function DishMovementPage() {
                     spoilage_date: new Date().toISOString().split('T')[0],
                     product_id: spoilageProduct,
                     product_name: product?.product_name || '',
-                    quantity: parseFloat(spoilageQty),
-                    spoilage_type: spoilageReason,
-                    reason: spoilageNotes,
-                    recorded_by: currentUser?.name || 'Unknown',
-                    status: 'Approved'
+                    quantity: qty,
+                    unit_cost: product?.sales_cost || 0,
+                    total_loss: totalLoss,
+                    reason: spoilageReason,
+                    reported_by: currentUser?.name || 'Unknown'
                 });
 
             if (error) throw error;
 
-            toast.success('Spoilage recorded successfully! 📋');
+            toast.success('Spoilage recorded! 📋');
             setShowSpoilageModal(false);
             setSpoilageProduct(null);
             setSpoilageQty('');
-            setSpoilageNotes('');
+            setSpoilageReason('');
             loadMovements();
         } catch (err) {
-            console.error('Error saving spoilage:', err);
-            toast.error('Failed to save spoilage');
+            console.error('Error recording spoilage:', err);
+            toast.error('Failed to record spoilage');
         }
         setIsSaving(false);
     };
@@ -325,23 +318,23 @@ export default function DishMovementPage() {
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-                        <span className="w-12 h-12 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">🍽️</span>
-                        <span className="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-                            Dish Movement History
+                        <span className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">🍽️</span>
+                        <span className="bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+                            Dish Movement
                         </span>
                     </h1>
-                    <p className="text-gray-500 mt-1">Track production, sales, and spoilage for finished dishes</p>
+                    <p className="text-gray-500 mt-1">Track production, sales, and spoilage for dishes</p>
                 </div>
                 <div className="flex gap-3">
                     <button
                         onClick={() => setShowSpoilageModal(true)}
                         className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-red-500/30 transition-all"
                     >
-                        <span>🗑️</span> Add Spoilage
+                        <span>🗑️</span> Record Spoilage
                     </button>
                     <button
                         onClick={loadMovements}
-                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-blue-500/30 transition-all"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-xl font-semibold hover:shadow-lg hover:shadow-orange-500/30 transition-all"
                     >
                         <span>🔄</span> Refresh
                     </button>
@@ -350,37 +343,37 @@ export default function DishMovementPage() {
 
             {/* Stats Cards */}
             <div className="grid grid-cols-5 gap-4">
-                <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 rounded-2xl p-5 text-white shadow-lg">
+                <div className="bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 rounded-2xl p-5 text-white shadow-lg">
                     <div className="flex items-center gap-3 mb-2">
                         <span className="text-3xl">🍳</span>
-                        <span className="font-medium opacity-90">Total Produced</span>
+                        <span className="font-medium opacity-90">Produced</span>
                     </div>
                     <p className="text-3xl font-bold">{stats.totalProduced.toLocaleString()}</p>
                 </div>
                 <div className="bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-2xl p-5 text-white shadow-lg">
                     <div className="flex items-center gap-3 mb-2">
                         <span className="text-3xl">💰</span>
-                        <span className="font-medium opacity-90">Total Sold</span>
+                        <span className="font-medium opacity-90">Sold</span>
                     </div>
                     <p className="text-3xl font-bold">{stats.totalSold.toLocaleString()}</p>
                 </div>
-                <div className="bg-gradient-to-br from-emerald-500 via-green-500 to-lime-600 rounded-2xl p-5 text-white shadow-lg">
+                <div className="bg-gradient-to-br from-cyan-500 via-blue-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg">
                     <div className="flex items-center gap-3 mb-2">
                         <span className="text-3xl">📈</span>
-                        <span className="font-medium opacity-90">Total Profit</span>
+                        <span className="font-medium opacity-90">Profit</span>
                     </div>
                     <p className="text-3xl font-bold">Ksh {stats.totalProfit.toLocaleString()}</p>
                 </div>
                 <div className="bg-gradient-to-br from-red-500 via-rose-500 to-pink-600 rounded-2xl p-5 text-white shadow-lg">
                     <div className="flex items-center gap-3 mb-2">
                         <span className="text-3xl">🗑️</span>
-                        <span className="font-medium opacity-90">Total Spoiled</span>
+                        <span className="font-medium opacity-90">Spoiled</span>
                     </div>
                     <p className="text-3xl font-bold">{stats.totalSpoiled.toLocaleString()}</p>
                 </div>
-                <div className="bg-gradient-to-br from-orange-500 via-amber-500 to-yellow-500 rounded-2xl p-5 text-white shadow-lg">
+                <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 rounded-2xl p-5 text-white shadow-lg">
                     <div className="flex items-center gap-3 mb-2">
-                        <span className="text-3xl">⚠️</span>
+                        <span className="text-3xl">📉</span>
                         <span className="font-medium opacity-90">Loss Value</span>
                     </div>
                     <p className="text-3xl font-bold">Ksh {stats.totalLoss.toLocaleString()}</p>
@@ -400,7 +393,7 @@ export default function DishMovementPage() {
                             type="date"
                             value={dateFrom}
                             onChange={(e) => setDateFrom(e.target.value)}
-                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-400"
+                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400"
                         />
                     </div>
                     <div>
@@ -409,15 +402,15 @@ export default function DishMovementPage() {
                             type="date"
                             value={dateTo}
                             onChange={(e) => setDateTo(e.target.value)}
-                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-400"
+                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400"
                         />
                     </div>
                     <div>
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">🍽️ Dish Name</label>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">🍽️ Dish</label>
                         <select
                             value={selectedProduct || ''}
                             onChange={(e) => setSelectedProduct(e.target.value ? parseInt(e.target.value) : null)}
-                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-400"
+                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400"
                         >
                             <option value="">All Dishes</option>
                             {products.map(p => (
@@ -426,24 +419,21 @@ export default function DishMovementPage() {
                         </select>
                     </div>
                     <div>
-                        <label className="text-xs font-medium text-gray-500 mb-1 block">🕐 Shift</label>
-                        <select
-                            value={selectedShift || ''}
-                            onChange={(e) => setSelectedShift(e.target.value ? parseInt(e.target.value) : null)}
-                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-400"
-                        >
-                            <option value="">All Shifts</option>
-                            {shifts.map(s => (
-                                <option key={s.shift_def_id} value={s.shift_def_id}>{s.shift_name}</option>
-                            ))}
-                        </select>
+                        <label className="text-xs font-medium text-gray-500 mb-1 block">🔎 Search</label>
+                        <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search dish..."
+                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-orange-400"
+                        />
                     </div>
                     <div className="flex items-end">
                         <button
                             onClick={loadMovements}
-                            className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+                            className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
                         >
-                            🔍 Apply Filters
+                            🔍 Apply
                         </button>
                     </div>
                 </div>
@@ -457,29 +447,29 @@ export default function DishMovementPage() {
                             <div className="inline-block animate-spin text-5xl mb-4">🔄</div>
                             <p className="text-gray-500">Loading dish movements...</p>
                         </div>
-                    ) : movements.length === 0 ? (
+                    ) : filteredMovements.length === 0 ? (
                         <div className="p-16 text-center">
                             <span className="text-6xl block mb-4">📭</span>
                             <p className="text-gray-500 text-lg">No dish movements found</p>
-                            <p className="text-gray-400 text-sm mt-2">Try adjusting your date range or filters</p>
+                            <p className="text-gray-400 text-sm mt-2">Try adjusting your date range or add production batches/sales</p>
                         </div>
                     ) : (
                         <table className="w-full">
-                            <thead className="bg-gradient-to-r from-amber-50 to-orange-50">
+                            <thead className="bg-gradient-to-r from-orange-50 to-red-50">
                                 <tr>
                                     <th className="text-left py-4 px-4 text-xs font-bold text-gray-600 uppercase">Date</th>
                                     <th className="text-left py-4 px-4 text-xs font-bold text-gray-600 uppercase">Dish Name</th>
                                     <th className="text-center py-4 px-4 text-xs font-bold text-blue-600 uppercase bg-blue-50">Opening</th>
-                                    <th className="text-center py-4 px-4 text-xs font-bold text-green-600 uppercase bg-green-50">Produced</th>
-                                    <th className="text-center py-4 px-4 text-xs font-bold text-purple-600 uppercase bg-purple-50">Sold</th>
+                                    <th className="text-center py-4 px-4 text-xs font-bold text-indigo-600 uppercase bg-indigo-50">Produced</th>
+                                    <th className="text-center py-4 px-4 text-xs font-bold text-green-600 uppercase bg-green-50">Sold</th>
                                     <th className="text-center py-4 px-4 text-xs font-bold text-red-600 uppercase bg-red-50">Spoiled</th>
-                                    <th className="text-center py-4 px-4 text-xs font-bold text-amber-600 uppercase bg-amber-50">Closing</th>
-                                    <th className="text-right py-4 px-4 text-xs font-bold text-emerald-600 uppercase">Profit</th>
+                                    <th className="text-center py-4 px-4 text-xs font-bold text-cyan-600 uppercase bg-cyan-50">Closing</th>
+                                    <th className="text-right py-4 px-4 text-xs font-bold text-emerald-600 uppercase bg-emerald-50">Profit</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {movements.map((m, idx) => (
-                                    <tr key={idx} className="border-t border-gray-50 hover:bg-amber-50/30 transition-colors">
+                                {filteredMovements.map((m, idx) => (
+                                    <tr key={idx} className="border-t border-gray-50 hover:bg-orange-50/30 transition-colors">
                                         <td className="py-3 px-4">
                                             <span className="font-medium text-gray-700">
                                                 {new Date(m.movement_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
@@ -489,24 +479,24 @@ export default function DishMovementPage() {
                                             <span className="font-semibold text-gray-800">{m.product_name}</span>
                                         </td>
                                         <td className="py-3 px-4 text-center bg-blue-50/30">
-                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg font-bold">{m.opening_qty}</span>
+                                            <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-lg font-bold">{m.opening_qty.toLocaleString()}</span>
+                                        </td>
+                                        <td className="py-3 px-4 text-center bg-indigo-50/30">
+                                            <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-lg font-bold">+{m.produced_qty.toLocaleString()}</span>
                                         </td>
                                         <td className="py-3 px-4 text-center bg-green-50/30">
-                                            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg font-bold">+{m.produced_qty}</span>
-                                        </td>
-                                        <td className="py-3 px-4 text-center bg-purple-50/30">
-                                            <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-lg font-bold">-{m.sold_qty}</span>
+                                            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-lg font-bold">-{m.sold_qty.toLocaleString()}</span>
                                         </td>
                                         <td className="py-3 px-4 text-center bg-red-50/30">
                                             <span className={`px-3 py-1 rounded-lg font-bold ${m.spoiled_qty > 0 ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-400'}`}>
-                                                -{m.spoiled_qty}
+                                                -{m.spoiled_qty.toLocaleString()}
                                             </span>
                                         </td>
-                                        <td className="py-3 px-4 text-center bg-amber-50/30">
-                                            <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg font-bold text-lg">{m.closing_qty}</span>
+                                        <td className="py-3 px-4 text-center bg-cyan-50/30">
+                                            <span className="px-3 py-1 bg-cyan-100 text-cyan-700 rounded-lg font-bold text-lg">{m.closing_qty.toLocaleString()}</span>
                                         </td>
-                                        <td className="py-3 px-4 text-right">
-                                            <span className={`font-bold ${m.total_profit >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                        <td className="py-3 px-4 text-right bg-emerald-50/30">
+                                            <span className={`px-3 py-1 rounded-lg font-bold ${m.total_profit >= 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
                                                 Ksh {m.total_profit.toLocaleString()}
                                             </span>
                                         </td>
@@ -518,7 +508,7 @@ export default function DishMovementPage() {
                 </div>
             </div>
 
-            {/* Add Spoilage Modal */}
+            {/* Spoilage Modal */}
             {showSpoilageModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
                     <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl">
@@ -561,21 +551,14 @@ export default function DishMovementPage() {
                                     onChange={(e) => setSpoilageReason(e.target.value)}
                                     className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-red-400"
                                 >
-                                    <option value="Damaged">🔨 Damaged</option>
-                                    <option value="Expired">⏰ Expired</option>
-                                    <option value="Burnt">🔥 Burnt</option>
-                                    <option value="Returned">↩️ Customer Return</option>
-                                    <option value="Other">📋 Other</option>
+                                    <option value="">Select reason...</option>
+                                    <option value="Expired">Expired</option>
+                                    <option value="Damaged">Damaged</option>
+                                    <option value="Burnt">Burnt</option>
+                                    <option value="Customer Return">Customer Return</option>
+                                    <option value="Quality Issue">Quality Issue</option>
+                                    <option value="Other">Other</option>
                                 </select>
-                            </div>
-                            <div>
-                                <label className="text-sm font-medium text-gray-600 block mb-2">Notes (Optional)</label>
-                                <textarea
-                                    value={spoilageNotes}
-                                    onChange={(e) => setSpoilageNotes(e.target.value)}
-                                    placeholder="Additional notes..."
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-red-400 h-20 resize-none"
-                                />
                             </div>
                         </div>
 
@@ -587,11 +570,11 @@ export default function DishMovementPage() {
                                 Cancel
                             </button>
                             <button
-                                onClick={handleAddSpoilage}
+                                onClick={handleSpoilage}
                                 disabled={isSaving}
                                 className="flex-1 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-semibold hover:shadow-lg disabled:opacity-50"
                             >
-                                {isSaving ? '⏳ Saving...' : '✅ Save Spoilage'}
+                                {isSaving ? '⏳ Saving...' : '✅ Record Spoilage'}
                             </button>
                         </div>
                     </div>

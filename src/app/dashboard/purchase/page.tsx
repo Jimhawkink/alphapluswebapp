@@ -5,23 +5,27 @@ import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
 interface Supplier {
-    id: number;
-    company_name: string;
-    contact_person: string;
+    supplier_id: number;
+    supplier_code: string;
+    supplier_name: string;
     phone: string;
+    contact_person: string;
 }
 
 interface Ingredient {
     pid: number;
+    product_code: string;
     product_name: string;
-    purchase_cost: number;
-    purchase_unit: string;
+    base_unit: string;
+    cost_per_base_unit: number;
+    current_stock: number;
     category: string;
 }
 
 interface PurchaseItem {
     id: number;
     productId: number;
+    productCode: string;
     productName: string;
     unit: string;
     qty: number;
@@ -36,7 +40,7 @@ export default function PurchaseEntryPage() {
     const [isSaving, setIsSaving] = useState(false);
 
     // Form state
-    const [purchaseNo, setPurchaseNo] = useState('');
+    const [invoiceNo, setInvoiceNo] = useState('');
     const [selectedSupplier, setSelectedSupplier] = useState<number>(0);
     const [supplierInvoiceNo, setSupplierInvoiceNo] = useState('');
     const [purchaseDate, setPurchaseDate] = useState(new Date().toISOString().split('T')[0]);
@@ -53,12 +57,12 @@ export default function PurchaseEntryPage() {
         const loadData = async () => {
             setIsLoading(true);
             try {
-                // Load suppliers from companies table
+                // Load suppliers from suppliers table
                 const { data: suppliersData, error: suppliersError } = await supabase
-                    .from('companies')
-                    .select('id, company_name, contact_person, phone')
+                    .from('suppliers')
+                    .select('supplier_id, supplier_code, supplier_name, phone, contact_person')
                     .eq('active', true)
-                    .order('company_name');
+                    .order('supplier_name');
 
                 if (suppliersError) {
                     console.error('Error loading suppliers:', suppliersError);
@@ -66,10 +70,10 @@ export default function PurchaseEntryPage() {
                     setSuppliers(suppliersData || []);
                 }
 
-                // Load ingredients (products that are ingredients/raw materials)
+                // Load ingredients from products_ingredients table
                 const { data: ingredientsData, error: ingredientsError } = await supabase
-                    .from('products')
-                    .select('pid, product_name, purchase_cost, purchase_unit, category')
+                    .from('products_ingredients')
+                    .select('pid, product_code, product_name, base_unit, cost_per_base_unit, current_stock, category')
                     .eq('active', true)
                     .order('product_name');
 
@@ -79,8 +83,8 @@ export default function PurchaseEntryPage() {
                     setIngredients(ingredientsData || []);
                 }
 
-                // Generate next purchase number
-                await generatePurchaseNo();
+                // Generate next invoice number
+                await generateInvoiceNo();
             } catch (err) {
                 console.error('Error loading data:', err);
                 toast.error('Failed to load data');
@@ -90,8 +94,8 @@ export default function PurchaseEntryPage() {
         loadData();
     }, []);
 
-    // Generate next purchase number in format PCH-01, PCH-02, etc.
-    const generatePurchaseNo = async () => {
+    // Generate next invoice number in format INV-01, INV-02, etc.
+    const generateInvoiceNo = async () => {
         try {
             const { data, error } = await supabase
                 .from('purchases')
@@ -104,17 +108,17 @@ export default function PurchaseEntryPage() {
             let nextNum = 1;
             if (data && data.length > 0) {
                 const lastNo = data[0].purchase_no;
-                // Extract number from PCH-XX format
-                const match = lastNo.match(/PCH-(\d+)/);
+                // Extract number from INV-XX format
+                const match = lastNo.match(/INV-(\d+)/);
                 if (match) {
                     nextNum = parseInt(match[1]) + 1;
                 }
             }
 
-            setPurchaseNo(`PCH-${String(nextNum).padStart(2, '0')}`);
+            setInvoiceNo(`INV-${String(nextNum).padStart(2, '0')}`);
         } catch (err) {
-            console.error('Error generating purchase no:', err);
-            setPurchaseNo(`PCH-${Date.now().toString().slice(-4)}`);
+            console.error('Error generating invoice no:', err);
+            setInvoiceNo(`INV-${Date.now().toString().slice(-4)}`);
         }
     };
 
@@ -142,8 +146,9 @@ export default function PurchaseEntryPage() {
             const newItem: PurchaseItem = {
                 id: Date.now(),
                 productId: ingredient.pid,
+                productCode: ingredient.product_code || '',
                 productName: ingredient.product_name,
-                unit: selectedUnit || ingredient.purchase_unit || 'PCS',
+                unit: selectedUnit || ingredient.base_unit || 'PCS',
                 qty,
                 price,
                 total: qty * price,
@@ -184,16 +189,17 @@ export default function PurchaseEntryPage() {
         try {
             const userData = localStorage.getItem('user');
             const currentUser = userData ? JSON.parse(userData) : null;
-            const supplier = suppliers.find(s => s.id === selectedSupplier);
+            const supplier = suppliers.find(s => s.supplier_id === selectedSupplier);
 
             // 1. Create purchase record
             const { data: purchaseData, error: purchaseError } = await supabase
                 .from('purchases')
                 .insert({
-                    purchase_no: purchaseNo,
+                    purchase_no: invoiceNo,
                     purchase_date: purchaseDate,
                     supplier_id: selectedSupplier,
-                    supplier_name: supplier?.company_name || '',
+                    supplier_name: supplier?.supplier_name || '',
+                    supplier_invoice: supplierInvoiceNo,
                     sub_total: subtotal,
                     discount: discount,
                     vat: 0,
@@ -213,8 +219,10 @@ export default function PurchaseEntryPage() {
             const purchaseItems = items.map(item => ({
                 purchase_id: purchaseId,
                 product_id: item.productId,
+                product_code: item.productCode,
                 product_name: item.productName,
                 quantity: item.qty,
+                unit: item.unit,
                 rate: item.price,
                 total_amount: item.total
             }));
@@ -225,44 +233,34 @@ export default function PurchaseEntryPage() {
 
             if (itemsError) throw itemsError;
 
-            // 3. Update stock for each ingredient
+            // 3. Update stock for each ingredient in products_ingredients table
             for (const item of items) {
                 // Get current stock
-                const { data: stockData } = await supabase
-                    .from('stock')
-                    .select('st_id, qty')
+                const { data: ingredientData } = await supabase
+                    .from('products_ingredients')
+                    .select('pid, current_stock')
                     .eq('pid', item.productId)
                     .single();
 
-                if (stockData) {
-                    // Update existing stock
+                if (ingredientData) {
+                    // Update stock
                     await supabase
-                        .from('stock')
+                        .from('products_ingredients')
                         .update({
-                            qty: (stockData.qty || 0) + item.qty,
+                            current_stock: (ingredientData.current_stock || 0) + item.qty,
                             updated_at: new Date().toISOString()
                         })
-                        .eq('st_id', stockData.st_id);
-                } else {
-                    // Create new stock entry
-                    await supabase
-                        .from('stock')
-                        .insert({
-                            pid: item.productId,
-                            qty: item.qty,
-                            invoice_no: purchaseNo,
-                            batch_no: purchaseNo
-                        });
+                        .eq('pid', ingredientData.pid);
                 }
             }
 
-            toast.success(`✅ Purchase ${purchaseNo} saved successfully!`);
+            toast.success(`✅ Purchase ${invoiceNo} saved successfully!`);
 
             // Reset form
             setItems([]);
             setSelectedSupplier(0);
             setSupplierInvoiceNo('');
-            await generatePurchaseNo();
+            await generateInvoiceNo();
         } catch (err) {
             console.error('Error saving purchase:', err);
             toast.error('Failed to save purchase');
@@ -296,8 +294,8 @@ export default function PurchaseEntryPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="px-4 py-2 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
-                        <span className="text-sm text-green-600 font-medium">Purchase #</span>
-                        <span className="ml-2 font-bold text-green-700">{purchaseNo}</span>
+                        <span className="text-sm text-green-600 font-medium">Invoice #</span>
+                        <span className="ml-2 font-bold text-green-700">{invoiceNo}</span>
                     </div>
                     <a
                         href="/dashboard/purchases"
@@ -328,11 +326,14 @@ export default function PurchaseEntryPage() {
                                 >
                                     <option value={0}>Select Supplier</option>
                                     {suppliers.map(supplier => (
-                                        <option key={supplier.id} value={supplier.id}>
-                                            {supplier.company_name}
+                                        <option key={supplier.supplier_id} value={supplier.supplier_id}>
+                                            {supplier.supplier_code} - {supplier.supplier_name}
                                         </option>
                                     ))}
                                 </select>
+                                {suppliers.length === 0 && (
+                                    <p className="text-xs text-amber-600 mt-1">⚠️ No suppliers found. Add suppliers first.</p>
+                                )}
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-gray-600 mb-1 block">Supplier Invoice No</label>
@@ -340,7 +341,7 @@ export default function PurchaseEntryPage() {
                                     type="text"
                                     value={supplierInvoiceNo}
                                     onChange={(e) => setSupplierInvoiceNo(e.target.value)}
-                                    placeholder="Supplier Invoice No"
+                                    placeholder="Supplier's Invoice No"
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-green-400"
                                 />
                             </div>
@@ -372,8 +373,8 @@ export default function PurchaseEntryPage() {
                                         setSelectedProduct(prodId);
                                         const ingredient = ingredients.find(i => i.pid === prodId);
                                         if (ingredient) {
-                                            setPrice(ingredient.purchase_cost || 0);
-                                            setSelectedUnit(ingredient.purchase_unit || 'PCS');
+                                            setPrice(ingredient.cost_per_base_unit || 0);
+                                            setSelectedUnit(ingredient.base_unit || 'PCS');
                                         }
                                     }}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-green-400"
@@ -381,10 +382,13 @@ export default function PurchaseEntryPage() {
                                     <option value={0}>Select Ingredient</option>
                                     {ingredients.map(ingredient => (
                                         <option key={ingredient.pid} value={ingredient.pid}>
-                                            {ingredient.product_name} ({ingredient.purchase_unit || 'PCS'})
+                                            {ingredient.product_code} - {ingredient.product_name} ({ingredient.base_unit || 'PCS'})
                                         </option>
                                     ))}
                                 </select>
+                                {ingredients.length === 0 && (
+                                    <p className="text-xs text-amber-600 mt-1">⚠️ No ingredients found. Add ingredients first.</p>
+                                )}
                             </div>
                             <div>
                                 <label className="text-sm font-medium text-gray-600 mb-1 block">Quantity *</label>
@@ -441,6 +445,7 @@ export default function PurchaseEntryPage() {
                                 <thead className="bg-gray-50">
                                     <tr>
                                         <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">#</th>
+                                        <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Code</th>
                                         <th className="text-left py-3 px-4 text-sm font-semibold text-gray-600">Ingredient</th>
                                         <th className="text-center py-3 px-4 text-sm font-semibold text-gray-600">Unit</th>
                                         <th className="text-right py-3 px-4 text-sm font-semibold text-gray-600">Qty</th>
@@ -453,6 +458,7 @@ export default function PurchaseEntryPage() {
                                     {items.map((item, idx) => (
                                         <tr key={item.id} className="border-t border-gray-50 hover:bg-green-50/30">
                                             <td className="py-3 px-4 text-gray-500">{idx + 1}</td>
+                                            <td className="py-3 px-4 font-mono text-sm text-gray-600">{item.productCode}</td>
                                             <td className="py-3 px-4 font-medium text-gray-800">{item.productName}</td>
                                             <td className="py-3 px-4 text-center">
                                                 <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-lg text-xs">{item.unit}</span>
@@ -505,8 +511,8 @@ export default function PurchaseEntryPage() {
                         {selectedSupplier > 0 && (
                             <div className="p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl mb-6 border border-green-100">
                                 <p className="text-sm font-medium text-green-700 mb-1">Selected Supplier</p>
-                                <p className="font-semibold text-gray-800">{suppliers.find(s => s.id === selectedSupplier)?.company_name}</p>
-                                <p className="text-sm text-gray-600">{suppliers.find(s => s.id === selectedSupplier)?.phone}</p>
+                                <p className="font-semibold text-gray-800">{suppliers.find(s => s.supplier_id === selectedSupplier)?.supplier_name}</p>
+                                <p className="text-sm text-gray-600">{suppliers.find(s => s.supplier_id === selectedSupplier)?.phone}</p>
                             </div>
                         )}
 
