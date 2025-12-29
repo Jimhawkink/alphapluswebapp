@@ -133,8 +133,8 @@ export default function ShiftsPage() {
         if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 250); }
     };
 
-    const printShiftReport = async (shift: Shift, stats: { sales: number; expenses: number; vouchers: number }, closing: number, net: number) => {
-        // Fetch company info
+    const printShiftReport = async (shift: Shift, stats: { sales: number; expenses: number; vouchers: number; advances: number }, closing: number, net: number) => {
+        // ========== FETCH COMPANY INFO ==========
         let companyName = 'Your Business Name';
         let companyPhone = '';
         let companyAddress = '';
@@ -142,56 +142,201 @@ export default function ShiftsPage() {
         try {
             const { data: company } = await supabase.from('companies').select('*').limit(1).single();
             if (company) {
-                companyName = company.company_name || company.name || 'Your Business Name';
-                companyPhone = company.phone || company.contact_phone || '';
-                companyAddress = company.address || company.location || '';
+                companyName = company.company_name || 'Your Business Name';
+                companyPhone = company.phone || '';
+                companyAddress = company.address || '';
             }
         } catch (err) {
             console.log('Could not fetch company info');
         }
 
-        // Fetch sales breakdown by payment method
+        // ========== FETCH ALL SALES DATA ==========
+        interface SaleRecord {
+            sale_id: number;
+            total_amount: number;
+            payment_method: string;
+            status: string;
+            waiter_name: string | null;
+            created_by: string | null;
+        }
+
+        let salesData: SaleRecord[] = [];
         let cashSales = 0, mpesaSales = 0, cardSales = 0, creditSales = 0;
         let totalTransactions = 0;
+        const userSalesMap: { [key: string]: number } = {};
 
         try {
-            const { data: salesData } = await supabase
+            const { data } = await supabase
                 .from('sales')
-                .select('total_amount, payment_method, status')
+                .select('sale_id, total_amount, payment_method, status, waiter_name, created_by')
                 .eq('sale_date', shift.shift_date);
 
-            if (salesData) {
-                totalTransactions = salesData.length;
-                salesData.forEach(sale => {
+            if (data) {
+                salesData = data;
+                totalTransactions = data.length;
+
+                data.forEach(sale => {
                     const method = (sale.payment_method || '').toUpperCase();
                     const amount = sale.total_amount || 0;
+
+                    // Payment breakdown
                     if (method.includes('CASH')) cashSales += amount;
                     else if (method.includes('MPESA') || method.includes('M-PESA')) mpesaSales += amount;
                     else if (method.includes('CARD')) cardSales += amount;
                     else if (method.includes('CREDIT') || sale.status === 'Pending') creditSales += amount;
                     else cashSales += amount;
+
+                    // User sales breakdown
+                    const userName = sale.waiter_name || sale.created_by || 'Walk-in';
+                    userSalesMap[userName] = (userSalesMap[userName] || 0) + amount;
                 });
             }
         } catch (err) {
-            console.log('Could not fetch sales breakdown');
+            console.log('Could not fetch sales data');
         }
 
-        // Fetch expense details
-        let expensesList: { description: string; amount: number }[] = [];
+        // ========== FETCH SALES ITEMS FOR CATEGORY & QUANTITY BREAKDOWN ==========
+        interface CategorySales { category: string; amount: number; qty: number }
+        interface ItemSales { name: string; qty: number; amount: number }
+
+        const categorySalesMap: { [key: string]: CategorySales } = {};
+        const itemSalesMap: { [key: string]: ItemSales } = {};
+
+        try {
+            // Get sale IDs for today
+            const saleIds = salesData.map(s => s.sale_id);
+
+            if (saleIds.length > 0) {
+                const { data: itemsData } = await supabase
+                    .from('sales_items')
+                    .select('product_name, quantity, subtotal, product_id')
+                    .in('sale_id', saleIds);
+
+                if (itemsData) {
+                    // Get product categories
+                    const productIds = Array.from(new Set(itemsData.map(i => i.product_id).filter(Boolean)));
+
+                    let productCategories: { [key: number]: string } = {};
+                    if (productIds.length > 0) {
+                        const { data: products } = await supabase
+                            .from('products')
+                            .select('pid, category')
+                            .in('pid', productIds);
+
+                        if (products) {
+                            products.forEach(p => {
+                                productCategories[p.pid] = p.category || 'Other';
+                            });
+                        }
+                    }
+
+                    itemsData.forEach(item => {
+                        const category = productCategories[item.product_id] || 'Other';
+                        const name = item.product_name || 'Unknown';
+                        const qty = item.quantity || 0;
+                        const amount = item.subtotal || 0;
+
+                        // Category breakdown
+                        if (!categorySalesMap[category]) {
+                            categorySalesMap[category] = { category, amount: 0, qty: 0 };
+                        }
+                        categorySalesMap[category].amount += amount;
+                        categorySalesMap[category].qty += qty;
+
+                        // Item breakdown
+                        if (!itemSalesMap[name]) {
+                            itemSalesMap[name] = { name, qty: 0, amount: 0 };
+                        }
+                        itemSalesMap[name].qty += qty;
+                        itemSalesMap[name].amount += amount;
+                    });
+                }
+            }
+        } catch (err) {
+            console.log('Could not fetch sales items');
+        }
+
+        // ========== FETCH EXPENSE DETAILS ==========
+        interface ExpenseItem { name: string; amount: number; category: string }
+        let expensesList: ExpenseItem[] = [];
+
         try {
             const { data: expData } = await supabase
                 .from('expenses')
-                .select('description, amount')
+                .select('expense_name, amount, category')
                 .eq('expense_date', shift.shift_date);
-            if (expData) expensesList = expData;
+
+            if (expData) {
+                expensesList = expData.map(e => ({
+                    name: e.expense_name || 'Expense',
+                    amount: e.amount || 0,
+                    category: e.category || 'General'
+                }));
+            }
         } catch (err) {
             console.log('Could not fetch expenses');
         }
 
+        // ========== FETCH SALARY ADVANCES ==========
+        interface AdvanceItem { employee: string; amount: number }
+        let advancesList: AdvanceItem[] = [];
+        let totalAdvances = 0;
+
+        try {
+            const { data: advData } = await supabase
+                .from('salary_advances')
+                .select('employee_name, amount')
+                .eq('advance_date', shift.shift_date)
+                .eq('status', 'Approved');
+
+            if (advData) {
+                advancesList = advData.map(a => ({
+                    employee: a.employee_name || 'Employee',
+                    amount: a.amount || 0
+                }));
+                totalAdvances = advData.reduce((sum, a) => sum + (a.amount || 0), 0);
+            }
+        } catch (err) {
+            console.log('Could not fetch advances');
+        }
+
+        // ========== FETCH VOUCHERS ==========
+        interface VoucherItem { payee: string; amount: number; description: string }
+        let vouchersList: VoucherItem[] = [];
+
+        try {
+            const { data: vchData } = await supabase
+                .from('vouchers')
+                .select('payee_name, amount, description')
+                .eq('voucher_date', shift.shift_date);
+
+            if (vchData) {
+                vouchersList = vchData.map(v => ({
+                    payee: v.payee_name || 'Payee',
+                    amount: v.amount || 0,
+                    description: v.description || ''
+                }));
+            }
+        } catch (err) {
+            console.log('Could not fetch vouchers');
+        }
+
+        // ========== CALCULATE TOTALS ==========
+        const totalSales = stats.sales;
+        const totalExpenses = stats.expenses;
+        const totalVouchers = stats.vouchers;
         const shiftType = shift.shift_type === 'Morning' ? 'DAY SHIFT' : 'NIGHT SHIFT';
-        const expectedCash = (shift.opening_cash || 0) + cashSales - stats.expenses;
+
+        // Expected cash = Opening + Cash Sales - Expenses - Vouchers - Advances
+        const expectedCash = (shift.opening_cash || 0) + cashSales - totalExpenses - totalVouchers - totalAdvances;
         const variance = closing - expectedCash;
 
+        // Category percentages
+        const categoryList = Object.values(categorySalesMap).sort((a, b) => b.amount - a.amount);
+        const itemList = Object.values(itemSalesMap).sort((a, b) => b.qty - a.qty);
+        const userSalesList = Object.entries(userSalesMap).sort((a, b) => b[1] - a[1]);
+
+        // ========== GENERATE HTML REPORT ==========
         const html = `
 <!DOCTYPE html>
 <html>
@@ -203,132 +348,183 @@ export default function ShiftsPage() {
             font-family: 'Courier New', monospace; 
             width: 80mm; 
             padding: 3mm; 
-            font-size: 11px;
-            line-height: 1.4;
+            font-size: 10px;
+            line-height: 1.3;
         }
         .center { text-align: center; }
+        .right { text-align: right; }
         .bold { font-weight: bold; }
-        .header { 
-            border-bottom: 2px dashed #000; 
-            padding-bottom: 8px; 
-            margin-bottom: 8px; 
-        }
         .company-name { 
-            font-size: 16px; 
+            font-size: 14px; 
             font-weight: bold; 
             letter-spacing: 1px;
+            margin-bottom: 2px;
         }
-        .shift-type { 
-            font-size: 14px; 
+        .shift-badge { 
+            font-size: 12px; 
             font-weight: bold;
             background: #000;
             color: #fff;
-            padding: 4px 8px;
-            margin: 8px 0;
+            padding: 3px 10px;
+            margin: 6px 0;
             display: inline-block;
         }
-        .row { 
-            display: flex; 
-            justify-content: space-between; 
-            padding: 2px 0; 
-        }
-        .section { 
-            border-top: 1px dashed #000; 
-            padding-top: 6px; 
-            margin-top: 6px; 
+        .divider { border-top: 1px dashed #000; margin: 6px 0; }
+        .double-line { border-top: 2px dashed #000; margin: 8px 0; }
+        .row { display: flex; justify-content: space-between; padding: 1px 0; }
+        .section-title { 
+            background: #333; 
+            color: #fff; 
+            padding: 3px 6px; 
+            font-weight: bold;
+            font-size: 10px;
+            margin: 8px 0 4px 0;
         }
         .total-row { 
-            font-size: 14px; 
             font-weight: bold; 
             background: #f0f0f0; 
-            padding: 6px 4px; 
+            padding: 4px;
             margin: 4px 0;
         }
-        .positive { color: green; }
-        .negative { color: red; }
-        .footer { 
-            border-top: 2px dashed #000; 
-            padding-top: 8px; 
-            margin-top: 10px; 
-            font-size: 10px;
-        }
-        .signature-line {
-            border-bottom: 1px solid #000;
-            margin-top: 20px;
-            padding-bottom: 2px;
+        .green { color: #008000; }
+        .red { color: #cc0000; }
+        .orange { color: #cc6600; }
+        .small { font-size: 9px; }
+        .item-row { font-size: 9px; padding: 1px 0; }
+        .signature-box { 
+            border-top: 1px solid #000; 
+            margin-top: 15px; 
+            padding-top: 3px;
+            font-size: 9px;
         }
     </style>
 </head>
 <body>
-    <div class="header center">
+    <!-- HEADER -->
+    <div class="center">
         <div class="company-name">${companyName.toUpperCase()}</div>
-        ${companyAddress ? `<div>${companyAddress}</div>` : ''}
-        ${companyPhone ? `<div>Tel: ${companyPhone}</div>` : ''}
-        <div style="margin-top: 8px;">═══════════════════════</div>
-        <div class="shift-type">${shiftType} REPORT</div>
+        ${companyAddress ? `<div class="small">${companyAddress}</div>` : ''}
+        ${companyPhone ? `<div class="small">Tel: ${companyPhone}</div>` : ''}
+        <div class="double-line"></div>
+        <div class="shift-badge">${shiftType} REPORT</div>
     </div>
 
-    <div class="section">
-        <div class="row"><span>Date:</span><span>${new Date(shift.shift_date).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
-        <div class="row"><span>Shift Started:</span><span>${shift.start_time}</span></div>
-        <div class="row"><span>Shift Ended:</span><span>${new Date().toLocaleTimeString()}</span></div>
-        <div class="row"><span>Opened By:</span><span>${shift.opened_by}</span></div>
-        <div class="row"><span>Closed By:</span><span>${shift.closed_by || 'Admin'}</span></div>
-    </div>
+    <!-- SHIFT INFO -->
+    <div class="divider"></div>
+    <div class="row"><span>Date:</span><span>${new Date(shift.shift_date).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
+    <div class="row"><span>Shift Started:</span><span>${shift.start_time}</span></div>
+    <div class="row"><span>Shift Ended:</span><span>${new Date().toLocaleTimeString()}</span></div>
+    <div class="row"><span>Opened By:</span><span>${shift.opened_by}</span></div>
+    <div class="row"><span>Closed By:</span><span>${shift.closed_by || 'Admin'}</span></div>
 
-    <div class="section">
-        <div class="center bold" style="margin-bottom: 6px;">💰 CASH SUMMARY</div>
-        <div class="row"><span>Opening Cash:</span><span>Ksh ${(shift.opening_cash || 0).toLocaleString()}</span></div>
-        <div class="row bold"><span>Total Sales:</span><span>Ksh ${stats.sales.toLocaleString()}</span></div>
-        <div class="row negative"><span>Less Expenses:</span><span>- Ksh ${stats.expenses.toLocaleString()}</span></div>
-        <div class="row negative"><span>Less Vouchers:</span><span>- Ksh ${stats.vouchers.toLocaleString()}</span></div>
-        <div class="total-row row"><span>NET SALES:</span><span class="positive">Ksh ${net.toLocaleString()}</span></div>
-    </div>
+    <!-- CASH SUMMARY -->
+    <div class="section-title center">💰 CASH SUMMARY</div>
+    <div class="row"><span>Opening Cash:</span><span>Ksh ${(shift.opening_cash || 0).toLocaleString()}</span></div>
+    <div class="row bold"><span>Total Sales:</span><span class="green">Ksh ${totalSales.toLocaleString()}</span></div>
+    <div class="row red"><span>Less Expenses:</span><span>- Ksh ${totalExpenses.toLocaleString()}</span></div>
+    <div class="row red"><span>Less Vouchers:</span><span>- Ksh ${totalVouchers.toLocaleString()}</span></div>
+    <div class="row orange"><span>Less Advances:</span><span>- Ksh ${totalAdvances.toLocaleString()}</span></div>
+    <div class="total-row row"><span>NET SALES:</span><span class="green">Ksh ${net.toLocaleString()}</span></div>
 
-    <div class="section">
-        <div class="center bold" style="margin-bottom: 6px;">📊 SALES BY PAYMENT</div>
-        <div class="row"><span>💵 Cash Sales:</span><span>Ksh ${cashSales.toLocaleString()}</span></div>
-        <div class="row"><span>📱 M-Pesa Sales:</span><span>Ksh ${mpesaSales.toLocaleString()}</span></div>
-        <div class="row"><span>💳 Card Sales:</span><span>Ksh ${cardSales.toLocaleString()}</span></div>
-        <div class="row"><span>📝 Credit Sales:</span><span>Ksh ${creditSales.toLocaleString()}</span></div>
-        <div class="row bold" style="margin-top: 4px;"><span>Total Transactions:</span><span>${totalTransactions}</span></div>
-    </div>
+    <!-- SALES BY PAYMENT MODE -->
+    <div class="section-title center">💳 SALES BY PAYMENT MODE</div>
+    <div class="row"><span>Cash:</span><span class="green">Ksh ${cashSales.toLocaleString()}</span></div>
+    <div class="row"><span>M-Pesa:</span><span class="green">Ksh ${mpesaSales.toLocaleString()}</span></div>
+    <div class="row"><span>Card:</span><span>Ksh ${cardSales.toLocaleString()}</span></div>
+    <div class="row"><span>Credit (Not Paid):</span><span class="orange">Ksh ${creditSales.toLocaleString()}</span></div>
+    <div class="divider"></div>
+    <div class="row bold"><span>Total Transactions:</span><span>${totalTransactions}</span></div>
 
-    ${expensesList.length > 0 ? `
-    <div class="section">
-        <div class="center bold" style="margin-bottom: 6px;">📤 EXPENSES</div>
-        ${expensesList.map(e => `<div class="row"><span>${e.description || 'Expense'}:</span><span>- Ksh ${(e.amount || 0).toLocaleString()}</span></div>`).join('')}
-    </div>
+    ${userSalesList.length > 0 ? `
+    <!-- USER SALES -->
+    <div class="section-title center">👤 USER SALES</div>
+    ${userSalesList.map(([name, amount]) => `<div class="row"><span>${name}:</span><span>Ksh ${amount.toLocaleString()}</span></div>`).join('')}
+    <div class="divider"></div>
+    <div class="row bold"><span>Total:</span><span>Ksh ${totalSales.toLocaleString()}</span></div>
     ` : ''}
 
-    <div class="section">
-        <div class="center bold" style="margin-bottom: 6px;">💵 CASH RECONCILIATION</div>
-        <div class="row"><span>Expected Cash:</span><span>Ksh ${expectedCash.toLocaleString()}</span></div>
-        <div class="row"><span>Actual Cash Count:</span><span>Ksh ${closing.toLocaleString()}</span></div>
-        <div class="total-row row">
-            <span>VARIANCE:</span>
-            <span class="${variance >= 0 ? 'positive' : 'negative'}">
-                ${variance >= 0 ? '+' : ''}Ksh ${variance.toLocaleString()}
-            </span>
-        </div>
-        ${variance !== 0 ? `<div class="center" style="font-size: 10px; color: ${variance > 0 ? 'green' : 'red'};">${variance > 0 ? '✅ OVERAGE' : '⚠️ SHORTAGE'}</div>` : '<div class="center" style="color: green;">✅ BALANCED</div>'}
+    ${categoryList.length > 0 ? `
+    <!-- SALES BY CATEGORY -->
+    <div class="section-title center">📊 SALES BY ITEM CATEGORY</div>
+    ${categoryList.map(cat => {
+            const pct = totalSales > 0 ? ((cat.amount / totalSales) * 100).toFixed(1) : '0.0';
+            return `<div class="item-row row"><span>${cat.category}</span><span>${pct}%</span><span>Ksh ${cat.amount.toLocaleString()}</span></div>`;
+        }).join('')}
+    <div class="divider"></div>
+    <div class="row bold"><span>Total:</span><span></span><span>Ksh ${totalSales.toLocaleString()}</span></div>
+    ` : ''}
+
+    ${categoryList.length > 0 ? `
+    <!-- QUANTITIES BY CATEGORY -->
+    <div class="section-title center">📦 QUANTITIES BY CATEGORY</div>
+    ${categoryList.map(cat => {
+            const totalQty = categoryList.reduce((s, c) => s + c.qty, 0);
+            const pct = totalQty > 0 ? ((cat.qty / totalQty) * 100).toFixed(1) : '0.0';
+            return `<div class="item-row row"><span>${cat.category}</span><span>${pct}%</span><span>${cat.qty}</span></div>`;
+        }).join('')}
+    <div class="divider"></div>
+    <div class="row bold"><span>Total Items:</span><span></span><span>${categoryList.reduce((s, c) => s + c.qty, 0)}</span></div>
+    ` : ''}
+
+    ${itemList.length > 0 ? `
+    <!-- QUANTITIES BY ITEM -->
+    <div class="section-title center">🍽️ QUANTITIES BY ITEM</div>
+    ${itemList.slice(0, 20).map(item => `<div class="item-row row"><span>${item.name.substring(0, 20)}</span><span>${item.qty}</span><span>Ksh ${item.amount.toLocaleString()}</span></div>`).join('')}
+    ${itemList.length > 20 ? `<div class="small center">... and ${itemList.length - 20} more items</div>` : ''}
+    <div class="divider"></div>
+    <div class="row bold"><span>Total:</span><span>${itemList.reduce((s, i) => s + i.qty, 0)}</span><span>Ksh ${itemList.reduce((s, i) => s + i.amount, 0).toLocaleString()}</span></div>
+    ` : ''}
+
+    ${expensesList.length > 0 ? `
+    <!-- EXPENSES -->
+    <div class="section-title center">📤 EXPENSES DETAIL</div>
+    ${expensesList.map(e => `<div class="item-row row"><span>${e.name.substring(0, 25)}:</span><span class="red">- Ksh ${e.amount.toLocaleString()}</span></div>`).join('')}
+    <div class="divider"></div>
+    <div class="row bold red"><span>Total Expenses:</span><span>- Ksh ${totalExpenses.toLocaleString()}</span></div>
+    ` : ''}
+
+    ${advancesList.length > 0 ? `
+    <!-- SALARY ADVANCES -->
+    <div class="section-title center">💵 SALARY ADVANCES</div>
+    ${advancesList.map(a => `<div class="item-row row"><span>${a.employee}:</span><span class="orange">- Ksh ${a.amount.toLocaleString()}</span></div>`).join('')}
+    <div class="divider"></div>
+    <div class="row bold orange"><span>Total Advances:</span><span>- Ksh ${totalAdvances.toLocaleString()}</span></div>
+    ` : ''}
+
+    ${vouchersList.length > 0 ? `
+    <!-- VOUCHERS -->
+    <div class="section-title center">🎫 VOUCHERS</div>
+    ${vouchersList.map(v => `<div class="item-row row"><span>${v.payee}:</span><span class="red">- Ksh ${v.amount.toLocaleString()}</span></div>`).join('')}
+    <div class="divider"></div>
+    <div class="row bold red"><span>Total Vouchers:</span><span>- Ksh ${totalVouchers.toLocaleString()}</span></div>
+    ` : ''}
+
+    <!-- CASH RECONCILIATION -->
+    <div class="section-title center">💵 CASH RECONCILIATION</div>
+    <div class="row"><span>Expected Cash:</span><span>Ksh ${expectedCash.toLocaleString()}</span></div>
+    <div class="row"><span>Actual Cash Count:</span><span>Ksh ${closing.toLocaleString()}</span></div>
+    <div class="total-row row">
+        <span>VARIANCE:</span>
+        <span class="${variance >= 0 ? 'green' : 'red'}">${variance >= 0 ? '+' : ''}Ksh ${variance.toLocaleString()}</span>
+    </div>
+    <div class="center bold ${variance > 0 ? 'green' : variance < 0 ? 'red' : 'green'}">
+        ${variance > 0 ? '✅ OVERAGE' : variance < 0 ? '⚠️ SHORTAGE' : '✅ BALANCED'}
     </div>
 
-    <div class="footer center">
-        <div class="signature-line"></div>
-        <div style="margin-top: 4px;">Cashier Signature</div>
-        <div style="margin-top: 15px;" class="signature-line"></div>
-        <div style="margin-top: 4px;">Manager Signature</div>
-        <div style="margin-top: 15px;">
-            ═══════════════════════<br/>
-            Printed: ${new Date().toLocaleString()}<br/>
-            Thank you for your service!
-        </div>
+    <!-- SIGNATURES -->
+    <div class="double-line"></div>
+    <div class="signature-box center">Cashier Signature</div>
+    <div style="margin-top: 15px;" class="signature-box center">Manager Signature</div>
+    
+    <div class="double-line"></div>
+    <div class="center small">
+        Printed: ${new Date().toLocaleString()}<br/>
+        Thank you for your service!
     </div>
 </body>
 </html>`;
 
-        const win = window.open('', '_blank', 'width=350,height=700');
+        const win = window.open('', '_blank', 'width=350,height=800');
         if (win) {
             win.document.write(html);
             win.document.close();
