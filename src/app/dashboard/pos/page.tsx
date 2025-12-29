@@ -1355,48 +1355,130 @@ export default function POSPage() {
     // Save completed sale to database
     const saveSaleToDatabase = async (paymentMethod: string, amountPaid: number, mpesaReceipt?: string, customerName?: string) => {
         try {
-            // In production, call: completeSaleTransaction from supabase
-            console.log('Saving sale to database...', {
-                invoiceNo,
-                items: cart.map(item => ({
-                    productId: item.id,
-                    productName: item.name,
-                    qty: item.qty,
-                    price: item.price,
-                    purchasePrice: item.purchasePrice,
-                    discount: item.discount,
-                    notes: item.notes
-                })),
-                subtotal,
-                discount: totalDiscount,
-                tax: 0,
-                total,
-                paymentMethod,
-                amountPaid,
-                change: paymentMethod === 'cash' ? Math.max(0, amountPaid - total) : 0,
-                cashierName: 'Cashier',
-                shiftInstanceId: shift.id,
-                customerName,
-                mpesaReceipt,
-                tableNo,
-                orderNotes
-            });
+            // Get current user
+            const userData = localStorage.getItem('user');
+            const currentUser = userData ? JSON.parse(userData) : null;
 
-            // Update local invoice number
-            const num = parseInt(invoiceNo.split('-')[1]) + 1;
-            setInvoiceNo(`INV-${num.toString().padStart(4, '0')}`);
+            // Calculate values
+            const changeAmount = paymentMethod === 'cash' ? Math.max(0, amountPaid - total) : 0;
+            const status = paymentMethod === 'credit' ? 'Credit' : 'Paid';
+
+            // 1. Create sale record
+            const { data: saleData, error: saleError } = await supabase
+                .from('sales')
+                .insert({
+                    sale_id_no: invoiceNo,
+                    sale_date: new Date().toISOString().split('T')[0],
+                    sale_time: new Date().toTimeString().split(' ')[0],
+                    sub_total: subtotal,
+                    total_discount: totalDiscount,
+                    vat: 0,
+                    grand_total: total,
+                    payment_mode: paymentMethod.toUpperCase(),
+                    amount_paid: amountPaid,
+                    change_returned: changeAmount,
+                    status: status,
+                    pump_shift_id: shift.id || 1,
+                    cashier_id: currentUser?.user_id || 1,
+                    cashier_name: currentUser?.name || 'Cashier',
+                    customer_name: customerName || null,
+                    mpesa_receipt: mpesaReceipt || null,
+                    table_no: tableNo || null,
+                    order_notes: orderNotes || null,
+                    waiter_id: selectedWaiterId || null
+                })
+                .select()
+                .single();
+
+            if (saleError) {
+                console.error('Error creating sale:', saleError);
+                throw saleError;
+            }
+
+            const saleId = saleData.sale_id;
+
+            // 2. Create sale items
+            const saleItems = cart.map(item => ({
+                sale_id: saleId,
+                product_id: item.id,
+                product_name: item.name,
+                quantity: item.qty,
+                unit_price: item.price,
+                cost_price: item.purchasePrice || 0,
+                discount: item.discount || 0,
+                total_price: (item.price * item.qty) - (item.discount || 0),
+                notes: item.notes || null,
+                batch_id: item.batchId || null
+            }));
+
+            const { error: itemsError } = await supabase
+                .from('sales_items')
+                .insert(saleItems);
+
+            if (itemsError) {
+                console.error('Error creating sale items:', itemsError);
+            }
+
+            // 3. Deduct stock for each sold item from products table
+            for (const item of cart) {
+                // Get current stock
+                const { data: productData } = await supabase
+                    .from('products')
+                    .select('pid, stock')
+                    .eq('pid', item.id)
+                    .single();
+
+                if (productData) {
+                    const newStock = Math.max(0, (productData.stock || 0) - item.qty);
+                    await supabase
+                        .from('products')
+                        .update({ stock: newStock, updated_at: new Date().toISOString() })
+                        .eq('pid', productData.pid);
+                }
+
+                // If item has batch, update production_batches qty_remaining
+                if (item.batchId) {
+                    const { data: batchData } = await supabase
+                        .from('production_batches')
+                        .select('batch_id, qty_remaining')
+                        .eq('batch_id', item.batchId)
+                        .single();
+
+                    if (batchData) {
+                        const newRemaining = Math.max(0, (batchData.qty_remaining || 0) - item.qty);
+                        await supabase
+                            .from('production_batches')
+                            .update({ qty_remaining: newRemaining })
+                            .eq('batch_id', batchData.batch_id);
+                    }
+                }
+            }
+
+            console.log('✅ Sale saved successfully:', saleId);
+            toast.success(`Sale ${invoiceNo} saved successfully!`);
+
+            // Generate next invoice number
+            const nextNo = await getNextReceiptNumber();
+            setInvoiceNo(nextNo);
 
             return true;
         } catch (error) {
             console.error('Error saving sale:', error);
-            alert('Error saving sale to database');
+            toast.error('Failed to save sale to database');
             return false;
         }
     };
 
 
     // Complete sale
-    const completeSale = (paymentMethod: string, amountPaid: number, mpesaReceipt?: string, customerName?: string) => {
+    const completeSale = async (paymentMethod: string, amountPaid: number, mpesaReceipt?: string, customerName?: string) => {
+        // Save to database first
+        const saved = await saveSaleToDatabase(paymentMethod, amountPaid, mpesaReceipt, customerName);
+        if (!saved) {
+            toast.error('Failed to save sale');
+            return;
+        }
+
         // Create receipt data
         const receiptData = createReceiptData(
             invoiceNo,
@@ -1424,10 +1506,6 @@ export default function POSPage() {
         setReceiptHTML(html);
         setShowPayment(false);
         setShowReceiptPreview(true);
-
-        // Generate next invoice number
-        const num = parseInt(invoiceNo.split('-')[1]) + 1;
-        setInvoiceNo(`INV-${num.toString().padStart(4, '0')}`);
     };
 
     // Print receipt

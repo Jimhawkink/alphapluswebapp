@@ -1,0 +1,14 @@
+﻿ M src/app/dashboard/expenses/page.tsx
+ M src/app/dashboard/page.tsx
+ M src/app/dashboard/pos/page.tsx
+ M src/app/dashboard/shifts/page.tsx
+ M src/lib/receiptPrinter.ts
+?? additional_tables.sql
+?? git-status.txt
+?? src/app/dashboard/advances/
+?? src/app/dashboard/batches/
+?? src/app/dashboard/low-stock/
+?? src/app/dashboard/payroll/
+?? src/app/dashboard/purchase-return/
+?? src/app/dashboard/sales-return/
+?? src/app/dashboard/vouchers/

@@ -1,273 +1,137 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
 
 interface Expense {
-    id: number;
-    voucherNo: string;
-    date: string;
-    name: string;
-    details: string;
-    paymentMode: string;
+    expense_id: number;
+    expense_date: string;
+    category: string;
+    description: string;
     amount: number;
+    payment_mode: string;
+    reference_no: string;
+    created_by: string;
 }
 
-const sampleExpenses: Expense[] = [
-    { id: 1, voucherNo: 'EXP001', date: '2024-12-27', name: 'Electricity Bill', details: 'Monthly electricity payment', paymentMode: 'M-Pesa', amount: 5500 },
-    { id: 2, voucherNo: 'EXP002', date: '2024-12-27', name: 'Water Bill', details: 'Monthly water payment', paymentMode: 'Cash', amount: 2500 },
-    { id: 3, voucherNo: 'EXP003', date: '2024-12-26', name: 'Staff Transport', details: 'Transport allowance', paymentMode: 'Cash', amount: 3000 },
-    { id: 4, voucherNo: 'EXP004', date: '2024-12-26', name: 'Cleaning Supplies', details: 'Cleaning materials', paymentMode: 'M-Pesa', amount: 1500 },
-    { id: 5, voucherNo: 'EXP005', date: '2024-12-25', name: 'Internet Bill', details: 'Monthly internet', paymentMode: 'Bank', amount: 4000 },
-];
-
-const expenseTypes = ['Electricity', 'Water', 'Internet', 'Transport', 'Supplies', 'Maintenance', 'Rent', 'Other'];
-const paymentModes = ['Cash', 'M-Pesa', 'Bank', 'Card'];
-
 export default function ExpensesPage() {
-    const [expenses, setExpenses] = useState<Expense[]>(sampleExpenses);
+    const [expenses, setExpenses] = useState<Expense[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
-    const [filterDate, setFilterDate] = useState(new Date().toISOString().split('T')[0]);
-    const [formData, setFormData] = useState({
-        name: '',
-        details: '',
-        paymentMode: 'Cash',
-        amount: 0,
-    });
+    const [dateFrom, setDateFrom] = useState(new Date().toISOString().split('T')[0]);
+    const [dateTo, setDateTo] = useState(new Date().toISOString().split('T')[0]);
+    const [isSaving, setIsSaving] = useState(false);
+    const [formData, setFormData] = useState({ category: '', description: '', amount: 0, payment_mode: 'Cash', reference_no: '' });
 
-    const todayExpenses = expenses.filter(e => e.date === filterDate);
-    const totalAmount = todayExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const categories = ['Rent', 'Utilities', 'Salaries', 'Supplies', 'Maintenance', 'Transport', 'Marketing', 'Other'];
 
-    const handleAdd = () => {
-        setFormData({ name: '', details: '', paymentMode: 'Cash', amount: 0 });
-        setShowModal(true);
+    const loadExpenses = async () => {
+        setIsLoading(true);
+        const { data, error } = await supabase.from('expenses').select('*').gte('expense_date', dateFrom).lte('expense_date', dateTo).order('expense_date', { ascending: false });
+        if (!error) setExpenses(data || []);
+        setIsLoading(false);
     };
 
-    const handleSave = () => {
-        if (!formData.name.trim() || formData.amount <= 0) return;
+    useEffect(() => { loadExpenses(); }, [dateFrom, dateTo]);
 
-        const newExpense: Expense = {
-            id: Date.now(),
-            voucherNo: `EXP${String(expenses.length + 1).padStart(3, '0')}`,
-            date: new Date().toISOString().split('T')[0],
-            ...formData,
-        };
-
-        setExpenses(prev => [newExpense, ...prev]);
-        setShowModal(false);
+    const handleSave = async () => {
+        if (!formData.category || !formData.description || formData.amount <= 0) { toast.error('Fill all fields'); return; }
+        setIsSaving(true);
+        const userData = localStorage.getItem('user');
+        const user = userData ? JSON.parse(userData) : null;
+        const { error } = await supabase.from('expenses').insert({
+            expense_date: new Date().toISOString().split('T')[0],
+            category: formData.category,
+            description: formData.description,
+            amount: formData.amount,
+            payment_mode: formData.payment_mode,
+            reference_no: formData.reference_no,
+            created_by: user?.name || 'Admin'
+        });
+        if (error) { toast.error('Failed to save'); } else { toast.success('Expense saved!'); setShowModal(false); loadExpenses(); setFormData({ category: '', description: '', amount: 0, payment_mode: 'Cash', reference_no: '' }); }
+        setIsSaving(false);
     };
 
-    const handleDelete = (id: number) => {
-        if (confirm('Are you sure you want to delete this expense?')) {
-            setExpenses(prev => prev.filter(e => e.id !== id));
-        }
+    const deleteExpense = async (id: number) => {
+        if (!confirm('Delete this expense?')) return;
+        await supabase.from('expenses').delete().eq('expense_id', id);
+        toast.success('Deleted'); loadExpenses();
     };
+
+    const totalExpenses = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
     return (
         <div className="space-y-6">
-            {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-                        <span>💸</span> Expenses
-                    </h1>
-                    <p className="text-gray-500">Track and manage business expenses</p>
-                </div>
-                <button
-                    onClick={handleAdd}
-                    className="flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-red-500 to-red-700 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
-                >
-                    <span>➕</span>
-                    <span>Record Expense</span>
-                </button>
+                <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                    <span className="w-12 h-12 bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl flex items-center justify-center text-white text-2xl">💸</span>
+                    Expenses Management
+                </h1>
+                <button onClick={() => setShowModal(true)} className="px-5 py-2.5 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl font-semibold">➕ New Expense</button>
             </div>
 
-            {/* Stats */}
             <div className="grid grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-red-500 to-red-700 rounded-2xl p-5 text-white col-span-2">
-                    <div className="flex items-center gap-3 mb-2">
-                        <span className="text-2xl">💰</span>
-                        <span className="font-medium opacity-90">Today's Expenses</span>
-                    </div>
-                    <p className="text-3xl font-bold">Ksh {totalAmount.toLocaleString()}</p>
-                    <p className="text-sm opacity-80 mt-1">{todayExpenses.length} transactions</p>
+                <div className="bg-gradient-to-br from-rose-500 to-pink-600 rounded-2xl p-5 text-white shadow-lg">
+                    <span className="text-3xl">💸</span>
+                    <p className="text-sm opacity-80 mt-2">Total Expenses</p>
+                    <p className="text-3xl font-bold">Ksh {totalExpenses.toLocaleString()}</p>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
-                            <span className="text-xl">💵</span>
-                        </div>
-                        <span className="text-sm font-medium text-orange-600">Cash</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800">
-                        Ksh {todayExpenses.filter(e => e.paymentMode === 'Cash').reduce((sum, e) => sum + e.amount, 0).toLocaleString()}
-                    </p>
+                <div className="bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl p-5 text-white shadow-lg">
+                    <span className="text-3xl">📋</span>
+                    <p className="text-sm opacity-80 mt-2">Total Records</p>
+                    <p className="text-3xl font-bold">{expenses.length}</p>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100">
-                    <div className="flex items-center gap-3 mb-2">
-                        <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center">
-                            <span className="text-xl">📱</span>
-                        </div>
-                        <span className="text-sm font-medium text-green-600">M-Pesa</span>
-                    </div>
-                    <p className="text-2xl font-bold text-gray-800">
-                        Ksh {todayExpenses.filter(e => e.paymentMode === 'M-Pesa').reduce((sum, e) => sum + e.amount, 0).toLocaleString()}
-                    </p>
+                <div className="col-span-2 bg-white rounded-2xl p-5 border flex items-center gap-4">
+                    <div className="flex-1"><label className="text-xs text-gray-500">From</label><input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-full p-2 border rounded-lg" /></div>
+                    <div className="flex-1"><label className="text-xs text-gray-500">To</label><input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-full p-2 border rounded-lg" /></div>
+                    <button onClick={loadExpenses} className="px-4 py-2 bg-blue-500 text-white rounded-lg">🔍</button>
                 </div>
             </div>
 
-            {/* Filters */}
-            <div className="bg-white rounded-2xl p-4 border border-gray-100">
-                <div className="flex items-center gap-4">
-                    <div>
-                        <label className="text-sm font-medium text-gray-600 mb-1 block">Filter by Date</label>
-                        <input
-                            type="date"
-                            value={filterDate}
-                            onChange={(e) => setFilterDate(e.target.value)}
-                            className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400"
-                        />
-                    </div>
-                    <div className="flex-1"></div>
-                    <button className="flex items-center gap-2 px-4 py-2 border border-gray-200 rounded-xl hover:bg-gray-50">
-                        <span>📥</span>
-                        <span className="font-medium text-gray-600">Export</span>
-                    </button>
-                </div>
-            </div>
-
-            {/* Expenses List */}
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-2xl border overflow-hidden">
                 <table className="w-full">
-                    <thead className="bg-gray-50">
+                    <thead className="bg-gradient-to-r from-rose-50 to-pink-50">
                         <tr>
-                            <th className="text-left py-4 px-4 text-sm font-semibold text-gray-600">Voucher No</th>
-                            <th className="text-left py-4 px-4 text-sm font-semibold text-gray-600">Date</th>
-                            <th className="text-left py-4 px-4 text-sm font-semibold text-gray-600">Expense</th>
-                            <th className="text-left py-4 px-4 text-sm font-semibold text-gray-600">Payment Mode</th>
-                            <th className="text-right py-4 px-4 text-sm font-semibold text-gray-600">Amount</th>
-                            <th className="text-center py-4 px-4 text-sm font-semibold text-gray-600">Actions</th>
+                            <th className="text-left py-4 px-4 text-xs font-bold text-gray-600">Date</th>
+                            <th className="text-left py-4 px-4 text-xs font-bold text-gray-600">Category</th>
+                            <th className="text-left py-4 px-4 text-xs font-bold text-gray-600">Description</th>
+                            <th className="text-right py-4 px-4 text-xs font-bold text-gray-600">Amount</th>
+                            <th className="text-center py-4 px-4 text-xs font-bold text-gray-600">Payment</th>
+                            <th className="text-center py-4 px-4 text-xs font-bold text-gray-600">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {expenses.map(expense => (
-                            <tr key={expense.id} className="border-t border-gray-50 hover:bg-gray-50 transition-colors">
-                                <td className="py-4 px-4">
-                                    <span className="px-3 py-1 bg-red-50 text-red-600 rounded-full text-sm font-medium">
-                                        {expense.voucherNo}
-                                    </span>
-                                </td>
-                                <td className="py-4 px-4 text-gray-600">{expense.date}</td>
-                                <td className="py-4 px-4">
-                                    <div>
-                                        <p className="font-medium text-gray-800">{expense.name}</p>
-                                        <p className="text-xs text-gray-500">{expense.details}</p>
-                                    </div>
-                                </td>
-                                <td className="py-4 px-4">
-                                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${expense.paymentMode === 'Cash' ? 'bg-yellow-100 text-yellow-700' :
-                                            expense.paymentMode === 'M-Pesa' ? 'bg-green-100 text-green-700' :
-                                                'bg-blue-100 text-blue-700'
-                                        }`}>
-                                        {expense.paymentMode}
-                                    </span>
-                                </td>
-                                <td className="py-4 px-4 text-right font-bold text-red-600">
-                                    Ksh {expense.amount.toLocaleString()}
-                                </td>
-                                <td className="py-4 px-4">
-                                    <div className="flex items-center justify-center gap-2">
-                                        <button className="p-2 hover:bg-blue-50 rounded-lg text-blue-500">
-                                            👁️
-                                        </button>
-                                        <button
-                                            onClick={() => handleDelete(expense.id)}
-                                            className="p-2 hover:bg-red-50 rounded-lg text-red-500"
-                                        >
-                                            🗑️
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        ))}
+                        {isLoading ? <tr><td colSpan={6} className="py-16 text-center">Loading...</td></tr> :
+                            expenses.length === 0 ? <tr><td colSpan={6} className="py-16 text-center text-gray-500">No expenses found</td></tr> :
+                                expenses.map(exp => (
+                                    <tr key={exp.expense_id} className="border-t hover:bg-pink-50/30">
+                                        <td className="py-3 px-4">{new Date(exp.expense_date).toLocaleDateString()}</td>
+                                        <td className="py-3 px-4"><span className="px-3 py-1 bg-rose-100 text-rose-700 rounded-full text-xs font-semibold">{exp.category}</span></td>
+                                        <td className="py-3 px-4">{exp.description}</td>
+                                        <td className="py-3 px-4 text-right font-bold text-rose-600">Ksh {exp.amount?.toLocaleString()}</td>
+                                        <td className="py-3 px-4 text-center"><span className="px-2 py-1 bg-gray-100 rounded text-xs">{exp.payment_mode}</span></td>
+                                        <td className="py-3 px-4 text-center"><button onClick={() => deleteExpense(exp.expense_id)} className="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200">🗑️</button></td>
+                                    </tr>
+                                ))}
                     </tbody>
                 </table>
             </div>
 
-            {/* Modal */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl">
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                <span>💸</span> Record Expense
-                            </h2>
-                            <button onClick={() => setShowModal(false)} className="text-2xl hover:opacity-70">✕</button>
-                        </div>
-
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-md">
+                        <h2 className="text-xl font-bold mb-4 flex items-center gap-2"><span>💸</span> New Expense</h2>
                         <div className="space-y-4">
-                            <div>
-                                <label className="text-sm font-medium text-gray-600 mb-1 block">Expense Type</label>
-                                <select
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                >
-                                    <option value="">Select type...</option>
-                                    {expenseTypes.map(type => (
-                                        <option key={type} value={type}>{type}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="text-sm font-medium text-gray-600 mb-1 block">Details</label>
-                                <textarea
-                                    value={formData.details}
-                                    onChange={(e) => setFormData({ ...formData, details: e.target.value })}
-                                    placeholder="Enter expense details..."
-                                    className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                    rows={2}
-                                />
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="text-sm font-medium text-gray-600 mb-1 block">Amount (Ksh)</label>
-                                    <input
-                                        type="number"
-                                        value={formData.amount || ''}
-                                        onChange={(e) => setFormData({ ...formData, amount: Number(e.target.value) })}
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-gray-600 mb-1 block">Payment Mode</label>
-                                    <select
-                                        value={formData.paymentMode}
-                                        onChange={(e) => setFormData({ ...formData, paymentMode: e.target.value })}
-                                        className="w-full p-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                                    >
-                                        {paymentModes.map(mode => (
-                                            <option key={mode} value={mode}>{mode}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div className="flex gap-3 pt-4">
-                                <button
-                                    onClick={() => setShowModal(false)}
-                                    className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleSave}
-                                    className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-700 text-white rounded-xl font-semibold hover:shadow-lg"
-                                >
-                                    Save Expense
-                                </button>
-                            </div>
+                            <div><label className="text-sm text-gray-600">Category</label><select value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full p-3 border rounded-xl">{categories.map(c => <option key={c}>{c}</option>)}</select></div>
+                            <div><label className="text-sm text-gray-600">Description</label><input value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} className="w-full p-3 border rounded-xl" placeholder="Enter description" /></div>
+                            <div><label className="text-sm text-gray-600">Amount (Ksh)</label><input type="number" value={formData.amount} onChange={e => setFormData({ ...formData, amount: parseFloat(e.target.value) || 0 })} className="w-full p-3 border rounded-xl" /></div>
+                            <div><label className="text-sm text-gray-600">Payment Mode</label><select value={formData.payment_mode} onChange={e => setFormData({ ...formData, payment_mode: e.target.value })} className="w-full p-3 border rounded-xl"><option>Cash</option><option>M-Pesa</option><option>Bank</option></select></div>
+                            <div><label className="text-sm text-gray-600">Reference No (Optional)</label><input value={formData.reference_no} onChange={e => setFormData({ ...formData, reference_no: e.target.value })} className="w-full p-3 border rounded-xl" /></div>
+                        </div>
+                        <div className="flex gap-3 mt-6">
+                            <button onClick={() => setShowModal(false)} className="flex-1 py-3 border rounded-xl">Cancel</button>
+                            <button onClick={handleSave} disabled={isSaving} className="flex-1 py-3 bg-gradient-to-r from-rose-500 to-pink-600 text-white rounded-xl font-semibold">{isSaving ? 'Saving...' : '✅ Save'}</button>
                         </div>
                     </div>
                 </div>

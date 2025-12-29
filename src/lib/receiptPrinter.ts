@@ -57,7 +57,9 @@ export interface CompanyInfo {
   slogan?: string;
 }
 
-// Default company info - should come from settings/database
+// Default company info - will be loaded from database
+let cachedCompanyInfo: CompanyInfo | null = null;
+
 const defaultCompanyInfo: CompanyInfo = {
   name: 'ALPHA PLUS RESTAURANT',
   address: 'Main Street, Nairobi',
@@ -66,6 +68,39 @@ const defaultCompanyInfo: CompanyInfo = {
   pin: 'P051234567X',
   slogan: 'Quality Food, Great Service!'
 };
+
+// Load company info from database
+export async function loadCompanyInfo(): Promise<CompanyInfo> {
+  if (cachedCompanyInfo) return cachedCompanyInfo;
+
+  try {
+    // Try to load from localStorage first (cached by SettingsContext)
+    const storedSettings = localStorage.getItem('company_settings');
+    if (storedSettings) {
+      const settings = JSON.parse(storedSettings);
+      cachedCompanyInfo = {
+        name: settings.company_name || settings.name || defaultCompanyInfo.name,
+        address: settings.address || defaultCompanyInfo.address,
+        phone: settings.phone || defaultCompanyInfo.phone,
+        email: settings.email || defaultCompanyInfo.email,
+        pin: settings.kra_pin || settings.pin || defaultCompanyInfo.pin,
+        slogan: settings.slogan || settings.tagline || defaultCompanyInfo.slogan,
+        logo: settings.logo
+      };
+      return cachedCompanyInfo;
+    }
+
+    return defaultCompanyInfo;
+  } catch (error) {
+    console.error('Error loading company info:', error);
+    return defaultCompanyInfo;
+  }
+}
+
+// Get cached or default company info (synchronous)
+export function getCompanyInfo(): CompanyInfo {
+  return cachedCompanyInfo || defaultCompanyInfo;
+}
 
 // Generate SUPER POWERFUL Customer Bill HTML with NOT PAID watermark
 export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo = defaultCompanyInfo, isPaid: boolean = false): string {
