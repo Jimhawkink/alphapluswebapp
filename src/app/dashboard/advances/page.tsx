@@ -36,9 +36,35 @@ export default function AdvancesPage() {
         employee_id: 0,
         amount: 0,
         repayment_month: new Date().toISOString().slice(0, 7),
+        repayment_week: 1,
         reason: '',
         notes: ''
     });
+
+    // Get weeks in selected month
+    const getWeeksInMonth = (month: string) => {
+        const [year, monthNum] = month.split('-').map(Number);
+        const firstDay = new Date(year, monthNum - 1, 1);
+        const lastDay = new Date(year, monthNum, 0);
+        const totalDays = lastDay.getDate();
+        const firstDayOfWeek = firstDay.getDay();
+        return Math.ceil((totalDays + firstDayOfWeek) / 7);
+    };
+
+    // Format repayment period for display
+    const formatRepaymentPeriod = (dateStr: string) => {
+        if (!dateStr) return 'N/A';
+        // Check if it has week info (e.g., "2025-12-W1")
+        if (dateStr.includes('-W')) {
+            const parts = dateStr.split('-W');
+            const [year, month] = parts[0].split('-');
+            const week = parts[1];
+            const date = new Date(parseInt(year), parseInt(month) - 1);
+            return `${date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} Week ${week}`;
+        }
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short' });
+    };
 
     const filters = ['All', 'Pending', 'Approved', 'Rejected', 'Repaid'];
 
@@ -99,7 +125,7 @@ export default function AdvancesPage() {
             reason: formData.reason,
             status: 'Approved',
             approved_by: user?.name || 'Admin',
-            repayment_date: `${formData.repayment_month}-01`
+            repayment_date: `${formData.repayment_month}-W${formData.repayment_week}`
         });
 
         if (error) {
@@ -108,7 +134,7 @@ export default function AdvancesPage() {
         } else {
             toast.success('✅ Advance request submitted!');
             setShowModal(false);
-            setFormData({ employee_id: 0, amount: 0, repayment_month: new Date().toISOString().slice(0, 7), reason: '', notes: '' });
+            setFormData({ employee_id: 0, amount: 0, repayment_month: new Date().toISOString().slice(0, 7), repayment_week: 1, reason: '', notes: '' });
             loadData();
         }
         setIsSaving(false);
@@ -241,12 +267,12 @@ export default function AdvancesPage() {
                             key={filter}
                             onClick={() => setActiveFilter(filter)}
                             className={`px-4 py-2 rounded-xl font-medium text-sm flex items-center gap-2 transition-all ${isActive
-                                    ? filter === 'All' ? 'bg-red-500 text-white'
-                                        : filter === 'Pending' ? 'bg-orange-500 text-white'
-                                            : filter === 'Approved' ? 'bg-green-500 text-white'
-                                                : filter === 'Rejected' ? 'bg-red-500 text-white'
-                                                    : 'bg-blue-500 text-white'
-                                    : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
+                                ? filter === 'All' ? 'bg-red-500 text-white'
+                                    : filter === 'Pending' ? 'bg-orange-500 text-white'
+                                        : filter === 'Approved' ? 'bg-green-500 text-white'
+                                            : filter === 'Rejected' ? 'bg-red-500 text-white'
+                                                : 'bg-blue-500 text-white'
+                                : 'bg-white border border-gray-200 text-gray-600 hover:bg-gray-50'
                                 }`}
                         >
                             {Icon} {filter}
@@ -301,15 +327,15 @@ export default function AdvancesPage() {
                                             </td>
                                             <td className="py-3 px-4 text-center">
                                                 <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded-lg text-xs font-medium">
-                                                    {formatMonth(a.repayment_date)}
+                                                    {formatRepaymentPeriod(a.repayment_date)}
                                                 </span>
                                             </td>
                                             <td className="py-3 px-4 text-sm text-gray-600 max-w-xs truncate">{a.reason}</td>
                                             <td className="py-3 px-4 text-center">
                                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 justify-center ${a.status === 'Approved' ? 'bg-green-100 text-green-700'
-                                                        : a.status === 'Pending' ? 'bg-orange-100 text-orange-700'
-                                                            : a.status === 'Rejected' ? 'bg-red-100 text-red-700'
-                                                                : 'bg-blue-100 text-blue-700'
+                                                    : a.status === 'Pending' ? 'bg-orange-100 text-orange-700'
+                                                        : a.status === 'Rejected' ? 'bg-red-100 text-red-700'
+                                                            : 'bg-blue-100 text-blue-700'
                                                     }`}>
                                                     {a.status === 'Approved' ? '✅' : a.status === 'Pending' ? '⏳' : a.status === 'Rejected' ? '❌' : '💰'} {a.status}
                                                 </span>
@@ -402,16 +428,27 @@ export default function AdvancesPage() {
                                 />
                             </div>
 
-                            {/* Repayment Month */}
+                            {/* Repayment Period - Month + Week */}
                             <div>
-                                <label className="text-sm text-gray-600 flex items-center gap-1 mb-1">📅 Repayment Month</label>
-                                <input
-                                    type="month"
-                                    value={formData.repayment_month}
-                                    onChange={e => setFormData({ ...formData, repayment_month: e.target.value })}
-                                    className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500"
-                                />
-                                <p className="text-xs text-gray-500 mt-1">Month when this advance will be deducted from salary</p>
+                                <label className="text-sm text-gray-600 flex items-center gap-1 mb-1">📅 Repayment Period (Week)</label>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <input
+                                        type="month"
+                                        value={formData.repayment_month}
+                                        onChange={e => setFormData({ ...formData, repayment_month: e.target.value, repayment_week: 1 })}
+                                        className="p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500"
+                                    />
+                                    <select
+                                        value={formData.repayment_week}
+                                        onChange={e => setFormData({ ...formData, repayment_week: parseInt(e.target.value) })}
+                                        className="p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500"
+                                    >
+                                        {Array.from({ length: getWeeksInMonth(formData.repayment_month) }, (_, i) => i + 1).map(week => (
+                                            <option key={week} value={week}>Week {week}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-1">Select the specific week when this advance will be deducted from salary</p>
                             </div>
 
                             {/* Reason */}

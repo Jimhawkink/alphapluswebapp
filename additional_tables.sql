@@ -174,20 +174,21 @@ ALTER TABLE shifts ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE 
 ALTER TABLE shifts DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 6. PAYROLL TABLE (matches schema exactly)
+-- 6. PAYROLL TABLE (WEEKLY PAYROLL SYSTEM)
+-- pay_period format: "YYYY-MM-WN" (e.g., "2025-12-W1" for Dec Week 1)
 -- ============================================
 CREATE TABLE IF NOT EXISTS payroll (
     payroll_id SERIAL PRIMARY KEY,
     employee_id INTEGER,
     employee_name VARCHAR(200),
-    pay_period VARCHAR(20),
-    basic_salary NUMERIC DEFAULT 0,
+    pay_period VARCHAR(20),  -- Stores YYYY-MM-WN format for weekly payroll
+    basic_salary NUMERIC DEFAULT 0,  -- Weekly salary (monthly / 4)
     allowances NUMERIC DEFAULT 0,
     deductions NUMERIC DEFAULT 0,
-    advances NUMERIC DEFAULT 0,
-    paye NUMERIC DEFAULT 0,
-    nhif NUMERIC DEFAULT 0,
-    nssf NUMERIC DEFAULT 0,
+    advances NUMERIC DEFAULT 0,  -- Salary advances for this week
+    paye NUMERIC DEFAULT 0,  -- Pro-rated weekly PAYE (monthly / 4.33)
+    nhif NUMERIC DEFAULT 0,  -- Pro-rated weekly NHIF
+    nssf NUMERIC DEFAULT 0,  -- Pro-rated weekly NSSF
     net_pay NUMERIC DEFAULT 0,
     status VARCHAR(50) DEFAULT 'Pending',
     paid_date DATE,
@@ -213,7 +214,8 @@ ALTER TABLE payroll ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE
 ALTER TABLE payroll DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 7. SALARY ADVANCES TABLE (matches schema exactly)
+-- 7. SALARY ADVANCES TABLE (updated for WEEKLY payroll)
+-- repayment_date stores week period like "2025-12-W1"
 -- ============================================
 CREATE TABLE IF NOT EXISTS salary_advances (
     advance_id SERIAL PRIMARY KEY,
@@ -224,7 +226,7 @@ CREATE TABLE IF NOT EXISTS salary_advances (
     reason TEXT,
     status VARCHAR(50) DEFAULT 'Approved',
     approved_by VARCHAR(100),
-    repayment_date DATE,
+    repayment_date VARCHAR(20),  -- Stores YYYY-MM-WN format for weekly payroll
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -236,7 +238,8 @@ ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS amount NUMERIC DEFAULT 0;
 ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS reason TEXT;
 ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Approved';
 ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS approved_by VARCHAR(100);
-ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS repayment_date DATE;
+-- Change repayment_date to VARCHAR to support week format
+ALTER TABLE salary_advances ALTER COLUMN repayment_date TYPE VARCHAR(20) USING repayment_date::VARCHAR;
 ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
 ALTER TABLE salary_advances DISABLE ROW LEVEL SECURITY;
