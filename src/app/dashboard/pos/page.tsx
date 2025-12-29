@@ -963,14 +963,21 @@ export default function POSPage() {
                 setCurrentKOTNumber(nextKOT);
 
                 // Load waiters/staff from users table
-                const { data: usersData } = await supabase
+                const { data: usersData, error: usersError } = await supabase
                     .from('users')
-                    .select('user_id, full_name, role')
-                    .eq('status', 'Active')
-                    .order('full_name');
+                    .select('user_id, name, user_type')
+                    .eq('active', true)
+                    .order('name');
 
-                if (usersData && usersData.length > 0) {
-                    setWaiters(usersData);
+                if (usersError) {
+                    console.error('Error loading waiters:', usersError);
+                } else if (usersData && usersData.length > 0) {
+                    // Transform to match expected interface
+                    setWaiters(usersData.map(u => ({
+                        user_id: u.user_id,
+                        full_name: u.name,
+                        role: u.user_type
+                    })));
                 }
             } catch (err) {
                 console.error('Error loading initial data:', err);

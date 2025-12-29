@@ -39,6 +39,8 @@ const menuItems = [
         category: 'Inventory',
         items: [
             { name: 'Stock Transfer', icon: '🔄', href: '/dashboard/stock-transfer', badge: null },
+            { name: 'Stock Movement', icon: '📦', href: '/dashboard/stock-movement', badge: 'New' },
+            { name: 'Dish Movement', icon: '🍽️', href: '/dashboard/dish-movement', badge: 'New' },
             { name: 'Stock Adjustment', icon: '⚖️', href: '/dashboard/stock-adjustment', badge: null },
             { name: 'Low Stock', icon: '⚠️', href: '/dashboard/low-stock', badge: '5' },
             { name: 'Recipe', icon: '🍳', href: '/dashboard/recipe', badge: 'New' },
