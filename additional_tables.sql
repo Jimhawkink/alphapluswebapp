@@ -1,28 +1,33 @@
 -- ============================================================
 -- ADDITIONAL TABLES FOR ALPHAPLUS - EXPENSES, VOUCHERS, RETURNS, SHIFTS, PAYROLL
 -- Run this in Supabase SQL Editor
+-- Updated to match the exact schema from the application
 -- ============================================================
 
 -- ============================================
--- 1. EXPENSES TABLE
+-- 1. EXPENSES TABLE (matches schema)
 -- ============================================
 CREATE TABLE IF NOT EXISTS expenses (
     expense_id SERIAL PRIMARY KEY,
+    expense_name VARCHAR(255) NOT NULL,
+    expense_type VARCHAR(100),
+    amount NUMERIC,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     expense_date DATE DEFAULT CURRENT_DATE,
     category VARCHAR(100),
-    description TEXT,
-    amount DECIMAL(15,2) DEFAULT 0,
     payment_mode VARCHAR(50) DEFAULT 'Cash',
     reference_no VARCHAR(100),
-    created_by VARCHAR(100),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_by VARCHAR(100)
 );
 
 -- Add missing columns to expenses if table already exists
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_name VARCHAR(255);
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_type VARCHAR(100);
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS expense_date DATE DEFAULT CURRENT_DATE;
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS category VARCHAR(100);
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS description TEXT;
-ALTER TABLE expenses ADD COLUMN IF NOT EXISTS amount DECIMAL(15,2) DEFAULT 0;
+ALTER TABLE expenses ADD COLUMN IF NOT EXISTS amount NUMERIC;
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'Cash';
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS reference_no VARCHAR(100);
 ALTER TABLE expenses ADD COLUMN IF NOT EXISTS created_by VARCHAR(100);
@@ -31,7 +36,7 @@ ALTER TABLE expenses ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZON
 ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 2. VOUCHERS TABLE
+-- 2. VOUCHERS TABLE (matches schema)
 -- ============================================
 CREATE TABLE IF NOT EXISTS vouchers (
     voucher_id SERIAL PRIMARY KEY,
@@ -40,7 +45,7 @@ CREATE TABLE IF NOT EXISTS vouchers (
     voucher_type VARCHAR(50) DEFAULT 'Payment',
     payee_name VARCHAR(200),
     description TEXT,
-    amount DECIMAL(15,2) DEFAULT 0,
+    amount NUMERIC DEFAULT 0,
     payment_mode VARCHAR(50) DEFAULT 'Cash',
     reference_no VARCHAR(100),
     approved_by VARCHAR(100),
@@ -54,7 +59,7 @@ ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS voucher_date DATE DEFAULT CURRENT_
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS voucher_type VARCHAR(50) DEFAULT 'Payment';
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS payee_name VARCHAR(200);
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS description TEXT;
-ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS amount DECIMAL(15,2) DEFAULT 0;
+ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS amount NUMERIC DEFAULT 0;
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS payment_mode VARCHAR(50) DEFAULT 'Cash';
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS reference_no VARCHAR(100);
 ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS approved_by VARCHAR(100);
@@ -64,7 +69,7 @@ ALTER TABLE vouchers ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZON
 ALTER TABLE vouchers DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 3. SALES RETURNS TABLE
+-- 3. SALES RETURNS TABLE (matches schema)
 -- ============================================
 CREATE TABLE IF NOT EXISTS sales_returns (
     return_id SERIAL PRIMARY KEY,
@@ -72,9 +77,9 @@ CREATE TABLE IF NOT EXISTS sales_returns (
     return_date DATE DEFAULT CURRENT_DATE,
     original_sale_id VARCHAR(50),
     product_name VARCHAR(255),
-    quantity DECIMAL(15,3) DEFAULT 0,
-    unit_price DECIMAL(15,2) DEFAULT 0,
-    total_amount DECIMAL(15,2) DEFAULT 0,
+    quantity NUMERIC DEFAULT 0,
+    unit_price NUMERIC DEFAULT 0,
+    total_amount NUMERIC DEFAULT 0,
     reason TEXT,
     status VARCHAR(50) DEFAULT 'Completed',
     processed_by VARCHAR(100),
@@ -86,9 +91,9 @@ ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS return_no VARCHAR(50);
 ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS return_date DATE DEFAULT CURRENT_DATE;
 ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS original_sale_id VARCHAR(50);
 ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS product_name VARCHAR(255);
-ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS quantity DECIMAL(15,3) DEFAULT 0;
-ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS unit_price DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS total_amount DECIMAL(15,2) DEFAULT 0;
+ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS quantity NUMERIC DEFAULT 0;
+ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS unit_price NUMERIC DEFAULT 0;
+ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS total_amount NUMERIC DEFAULT 0;
 ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS reason TEXT;
 ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Completed';
 ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS processed_by VARCHAR(100);
@@ -97,7 +102,7 @@ ALTER TABLE sales_returns ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIM
 ALTER TABLE sales_returns DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 4. PURCHASE RETURNS TABLE
+-- 4. PURCHASE RETURNS TABLE (matches schema)
 -- ============================================
 CREATE TABLE IF NOT EXISTS purchase_returns (
     return_id SERIAL PRIMARY KEY,
@@ -106,9 +111,9 @@ CREATE TABLE IF NOT EXISTS purchase_returns (
     supplier_name VARCHAR(200),
     original_purchase_id VARCHAR(50),
     product_name VARCHAR(255),
-    quantity DECIMAL(15,3) DEFAULT 0,
-    unit_price DECIMAL(15,2) DEFAULT 0,
-    total_amount DECIMAL(15,2) DEFAULT 0,
+    quantity NUMERIC DEFAULT 0,
+    unit_price NUMERIC DEFAULT 0,
+    total_amount NUMERIC DEFAULT 0,
     reason TEXT,
     status VARCHAR(50) DEFAULT 'Completed',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -120,9 +125,9 @@ ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS return_date DATE DEFAULT C
 ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS supplier_name VARCHAR(200);
 ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS original_purchase_id VARCHAR(50);
 ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS product_name VARCHAR(255);
-ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS quantity DECIMAL(15,3) DEFAULT 0;
-ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS unit_price DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS total_amount DECIMAL(15,2) DEFAULT 0;
+ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS quantity NUMERIC DEFAULT 0;
+ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS unit_price NUMERIC DEFAULT 0;
+ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS total_amount NUMERIC DEFAULT 0;
 ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS reason TEXT;
 ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Completed';
 ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
@@ -130,20 +135,20 @@ ALTER TABLE purchase_returns ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH 
 ALTER TABLE purchase_returns DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 5. SHIFTS TABLE
+-- 5. SHIFTS TABLE (matches schema)
 -- ============================================
 CREATE TABLE IF NOT EXISTS shifts (
     shift_id SERIAL PRIMARY KEY,
     shift_date DATE DEFAULT CURRENT_DATE,
     shift_type VARCHAR(50) DEFAULT 'Morning',
-    start_time TIME,
-    end_time TIME,
-    opening_cash DECIMAL(15,2) DEFAULT 0,
-    closing_cash DECIMAL(15,2) DEFAULT 0,
-    total_sales DECIMAL(15,2) DEFAULT 0,
-    total_expenses DECIMAL(15,2) DEFAULT 0,
-    total_vouchers DECIMAL(15,2) DEFAULT 0,
-    net_sales DECIMAL(15,2) DEFAULT 0,
+    start_time TIME WITHOUT TIME ZONE,
+    end_time TIME WITHOUT TIME ZONE,
+    opening_cash NUMERIC DEFAULT 0,
+    closing_cash NUMERIC DEFAULT 0,
+    total_sales NUMERIC DEFAULT 0,
+    total_expenses NUMERIC DEFAULT 0,
+    total_vouchers NUMERIC DEFAULT 0,
+    net_sales NUMERIC DEFAULT 0,
     status VARCHAR(50) DEFAULT 'Open',
     opened_by VARCHAR(100),
     closed_by VARCHAR(100),
@@ -153,14 +158,14 @@ CREATE TABLE IF NOT EXISTS shifts (
 -- Add missing columns
 ALTER TABLE shifts ADD COLUMN IF NOT EXISTS shift_date DATE DEFAULT CURRENT_DATE;
 ALTER TABLE shifts ADD COLUMN IF NOT EXISTS shift_type VARCHAR(50) DEFAULT 'Morning';
-ALTER TABLE shifts ADD COLUMN IF NOT EXISTS start_time TIME;
-ALTER TABLE shifts ADD COLUMN IF NOT EXISTS end_time TIME;
-ALTER TABLE shifts ADD COLUMN IF NOT EXISTS opening_cash DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE shifts ADD COLUMN IF NOT EXISTS closing_cash DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE shifts ADD COLUMN IF NOT EXISTS total_sales DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE shifts ADD COLUMN IF NOT EXISTS total_expenses DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE shifts ADD COLUMN IF NOT EXISTS total_vouchers DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE shifts ADD COLUMN IF NOT EXISTS net_sales DECIMAL(15,2) DEFAULT 0;
+ALTER TABLE shifts ADD COLUMN IF NOT EXISTS start_time TIME WITHOUT TIME ZONE;
+ALTER TABLE shifts ADD COLUMN IF NOT EXISTS end_time TIME WITHOUT TIME ZONE;
+ALTER TABLE shifts ADD COLUMN IF NOT EXISTS opening_cash NUMERIC DEFAULT 0;
+ALTER TABLE shifts ADD COLUMN IF NOT EXISTS closing_cash NUMERIC DEFAULT 0;
+ALTER TABLE shifts ADD COLUMN IF NOT EXISTS total_sales NUMERIC DEFAULT 0;
+ALTER TABLE shifts ADD COLUMN IF NOT EXISTS total_expenses NUMERIC DEFAULT 0;
+ALTER TABLE shifts ADD COLUMN IF NOT EXISTS total_vouchers NUMERIC DEFAULT 0;
+ALTER TABLE shifts ADD COLUMN IF NOT EXISTS net_sales NUMERIC DEFAULT 0;
 ALTER TABLE shifts ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Open';
 ALTER TABLE shifts ADD COLUMN IF NOT EXISTS opened_by VARCHAR(100);
 ALTER TABLE shifts ADD COLUMN IF NOT EXISTS closed_by VARCHAR(100);
@@ -169,38 +174,38 @@ ALTER TABLE shifts ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE 
 ALTER TABLE shifts DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 6. PAYROLL TABLE
+-- 6. PAYROLL TABLE (matches schema exactly)
 -- ============================================
 CREATE TABLE IF NOT EXISTS payroll (
     payroll_id SERIAL PRIMARY KEY,
-    employee_id INT,
+    employee_id INTEGER,
     employee_name VARCHAR(200),
     pay_period VARCHAR(20),
-    basic_salary DECIMAL(15,2) DEFAULT 0,
-    allowances DECIMAL(15,2) DEFAULT 0,
-    deductions DECIMAL(15,2) DEFAULT 0,
-    advances DECIMAL(15,2) DEFAULT 0,
-    paye DECIMAL(15,2) DEFAULT 0,
-    nhif DECIMAL(15,2) DEFAULT 0,
-    nssf DECIMAL(15,2) DEFAULT 0,
-    net_pay DECIMAL(15,2) DEFAULT 0,
+    basic_salary NUMERIC DEFAULT 0,
+    allowances NUMERIC DEFAULT 0,
+    deductions NUMERIC DEFAULT 0,
+    advances NUMERIC DEFAULT 0,
+    paye NUMERIC DEFAULT 0,
+    nhif NUMERIC DEFAULT 0,
+    nssf NUMERIC DEFAULT 0,
+    net_pay NUMERIC DEFAULT 0,
     status VARCHAR(50) DEFAULT 'Pending',
     paid_date DATE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Add missing columns
-ALTER TABLE payroll ADD COLUMN IF NOT EXISTS employee_id INT;
+-- Add missing columns for Payroll page compatibility
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS employee_id INTEGER;
 ALTER TABLE payroll ADD COLUMN IF NOT EXISTS employee_name VARCHAR(200);
 ALTER TABLE payroll ADD COLUMN IF NOT EXISTS pay_period VARCHAR(20);
-ALTER TABLE payroll ADD COLUMN IF NOT EXISTS basic_salary DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE payroll ADD COLUMN IF NOT EXISTS allowances DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE payroll ADD COLUMN IF NOT EXISTS deductions DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE payroll ADD COLUMN IF NOT EXISTS advances DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE payroll ADD COLUMN IF NOT EXISTS paye DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE payroll ADD COLUMN IF NOT EXISTS nhif DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE payroll ADD COLUMN IF NOT EXISTS nssf DECIMAL(15,2) DEFAULT 0;
-ALTER TABLE payroll ADD COLUMN IF NOT EXISTS net_pay DECIMAL(15,2) DEFAULT 0;
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS basic_salary NUMERIC DEFAULT 0;
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS allowances NUMERIC DEFAULT 0;
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS deductions NUMERIC DEFAULT 0;
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS advances NUMERIC DEFAULT 0;
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS paye NUMERIC DEFAULT 0;
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS nhif NUMERIC DEFAULT 0;
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS nssf NUMERIC DEFAULT 0;
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS net_pay NUMERIC DEFAULT 0;
 ALTER TABLE payroll ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Pending';
 ALTER TABLE payroll ADD COLUMN IF NOT EXISTS paid_date DATE;
 ALTER TABLE payroll ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
@@ -208,14 +213,14 @@ ALTER TABLE payroll ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE
 ALTER TABLE payroll DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 7. SALARY ADVANCES TABLE
+-- 7. SALARY ADVANCES TABLE (matches schema exactly)
 -- ============================================
 CREATE TABLE IF NOT EXISTS salary_advances (
     advance_id SERIAL PRIMARY KEY,
-    employee_id INT,
+    employee_id INTEGER,
     employee_name VARCHAR(200),
     advance_date DATE DEFAULT CURRENT_DATE,
-    amount DECIMAL(15,2) DEFAULT 0,
+    amount NUMERIC DEFAULT 0,
     reason TEXT,
     status VARCHAR(50) DEFAULT 'Approved',
     approved_by VARCHAR(100),
@@ -223,11 +228,11 @@ CREATE TABLE IF NOT EXISTS salary_advances (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Add missing columns
-ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS employee_id INT;
+-- Add missing columns for Advances page compatibility
+ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS employee_id INTEGER;
 ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS employee_name VARCHAR(200);
 ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS advance_date DATE DEFAULT CURRENT_DATE;
-ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS amount DECIMAL(15,2) DEFAULT 0;
+ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS amount NUMERIC DEFAULT 0;
 ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS reason TEXT;
 ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Approved';
 ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS approved_by VARCHAR(100);
@@ -237,54 +242,80 @@ ALTER TABLE salary_advances ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH T
 ALTER TABLE salary_advances DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 8. ADD COLUMNS TO USERS FOR PAYROLL
+-- 8. ADD COLUMNS TO USERS FOR PAYROLL (matches schema)
+-- user_id, user_code, user_name, password_hash, name, user_type, 
+-- email, phone, national_id, salary_type, salary_amount, pin, 
+-- active, is_super_admin, created_at, updated_at, basic_salary, pay_type
 -- ============================================
-ALTER TABLE users ADD COLUMN IF NOT EXISTS basic_salary DECIMAL(15,2) DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS user_code VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS name VARCHAR(200);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS user_type VARCHAR(50) DEFAULT 'Cashier';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS national_id VARCHAR(50);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS salary_type VARCHAR(50) DEFAULT 'Monthly';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS salary_amount NUMERIC DEFAULT 0;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS basic_salary NUMERIC DEFAULT 0;
 ALTER TABLE users ADD COLUMN IF NOT EXISTS pay_type VARCHAR(50) DEFAULT 'Monthly';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS pin VARCHAR(20);
+ALTER TABLE users ADD COLUMN IF NOT EXISTS active BOOLEAN DEFAULT true;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_super_admin BOOLEAN DEFAULT false;
 
 -- ============================================
--- 9. PRODUCTION BATCHES TABLE (if not exists)
+-- 9. PRODUCTION BATCHES TABLE (matches schema)
 -- ============================================
 CREATE TABLE IF NOT EXISTS production_batches (
     batch_id SERIAL PRIMARY KEY,
     batch_number VARCHAR(50) UNIQUE,
-    product_id INT,
+    product_id INTEGER,
     product_name VARCHAR(255),
+    barcode VARCHAR(100),
+    qty_produced NUMERIC NOT NULL,
+    qty_remaining NUMERIC NOT NULL,
+    total_production_cost NUMERIC DEFAULT 0,
+    cost_per_unit NUMERIC NOT NULL,
+    purchase_rate NUMERIC,
+    sales_rate NUMERIC,
     production_date DATE DEFAULT CURRENT_DATE,
-    qty_produced DECIMAL(15,3) DEFAULT 0,
-    qty_remaining DECIMAL(15,3) DEFAULT 0,
-    cost_per_unit DECIMAL(15,4) DEFAULT 0,
-    sales_rate DECIMAL(15,4) DEFAULT 0,
     expiry_date DATE,
     status VARCHAR(50) DEFAULT 'Active',
     created_by VARCHAR(100),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    selling_price NUMERIC DEFAULT 0,
+    recipe_id INTEGER,
+    qty_sold NUMERIC DEFAULT 0
 );
 
 -- Add missing columns
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS batch_number VARCHAR(50);
-ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS product_id INT;
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS product_id INTEGER;
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS product_name VARCHAR(255);
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS barcode VARCHAR(100);
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS qty_produced NUMERIC DEFAULT 0;
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS qty_remaining NUMERIC DEFAULT 0;
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS total_production_cost NUMERIC DEFAULT 0;
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS cost_per_unit NUMERIC DEFAULT 0;
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS purchase_rate NUMERIC;
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS sales_rate NUMERIC;
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS production_date DATE DEFAULT CURRENT_DATE;
-ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS qty_produced DECIMAL(15,3) DEFAULT 0;
-ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS qty_remaining DECIMAL(15,3) DEFAULT 0;
-ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS cost_per_unit DECIMAL(15,4) DEFAULT 0;
-ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS sales_rate DECIMAL(15,4) DEFAULT 0;
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS expiry_date DATE;
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'Active';
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS created_by VARCHAR(100);
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS selling_price NUMERIC DEFAULT 0;
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS recipe_id INTEGER;
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS qty_sold NUMERIC DEFAULT 0;
 
 ALTER TABLE production_batches DISABLE ROW LEVEL SECURITY;
 
 -- ============================================
--- 10. ADD COLUMNS TO SALES FOR TRACKING
+-- 10. ADD COLUMNS TO SALES FOR TRACKING (matches schema)
 -- ============================================
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_name VARCHAR(200);
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_phone VARCHAR(50);
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS mpesa_receipt VARCHAR(100);
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS table_no VARCHAR(20);
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS order_notes TEXT;
-ALTER TABLE sales ADD COLUMN IF NOT EXISTS waiter_id INT;
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS waiter_id INTEGER;
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS waiter_name VARCHAR(200);
 
 -- ============================================
 -- CREATE OPEN POLICIES (using DROP IF EXISTS + CREATE)
@@ -314,15 +345,19 @@ DROP POLICY IF EXISTS "Allow all production_batches" ON production_batches;
 CREATE POLICY "Allow all production_batches" ON production_batches FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
--- CREATE INDEXES (only if table and column exist)
+-- CREATE INDEXES FOR PERFORMANCE
 -- ============================================
 CREATE INDEX IF NOT EXISTS idx_expenses_date ON expenses(expense_date);
 CREATE INDEX IF NOT EXISTS idx_vouchers_date ON vouchers(voucher_date);
 CREATE INDEX IF NOT EXISTS idx_shifts_date ON shifts(shift_date);
 CREATE INDEX IF NOT EXISTS idx_payroll_period ON payroll(pay_period);
+CREATE INDEX IF NOT EXISTS idx_payroll_employee ON payroll(employee_id);
 CREATE INDEX IF NOT EXISTS idx_advances_employee ON salary_advances(employee_id);
+CREATE INDEX IF NOT EXISTS idx_advances_date ON salary_advances(advance_date);
+CREATE INDEX IF NOT EXISTS idx_advances_repayment ON salary_advances(repayment_date);
 CREATE INDEX IF NOT EXISTS idx_batches_product ON production_batches(product_id);
 
 -- ============================================================
 -- DONE! ✅
+-- Tables are now compatible with Payroll and Advances pages
 -- ============================================================
