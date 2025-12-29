@@ -867,3 +867,244 @@ export async function getCompanyInfo() {
     if (error && error.code !== 'PGRST116') throw error;
     return data;
 }
+
+// ==================== SALES (Restaurant POS) ====================
+
+// Get next receipt number for sales
+export async function getNextReceiptNumber(): Promise<string> {
+    const { data, error } = await supabase
+        .from('sales')
+        .select('receipt_no')
+        .order('sale_id', { ascending: false })
+        .limit(1)
+        .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    if (data?.receipt_no) {
+        // Parse existing receipt number (e.g., "RCP-00001")
+        const match = data.receipt_no.match(/RCP-(\d+)/);
+        if (match) {
+            const nextNum = parseInt(match[1]) + 1;
+            return `RCP-${String(nextNum).padStart(5, '0')}`;
+        }
+    }
+    return 'RCP-00001';
+}
+
+// Get next KOT number
+export async function getNextKOTNumber(): Promise<string> {
+    const { data, error } = await supabase
+        .from('kitchen_orders')
+        .select('kot_number')
+        .order('kot_id', { ascending: false })
+        .limit(1)
+        .single();
+
+    if (error && error.code !== 'PGRST116') throw error;
+
+    if (data?.kot_number) {
+        const match = data.kot_number.match(/K(\d+)/);
+        if (match) {
+            const nextNum = parseInt(match[1]) + 1;
+            return `K${String(nextNum).padStart(4, '0')}`;
+        }
+    }
+    return 'K0001';
+}
+
+// Get active food order notes
+export async function getFoodOrderNotes() {
+    const { data, error } = await supabase
+        .from('food_order_notes')
+        .select('*')
+        .eq('active', true)
+        .order('display_order', { ascending: true });
+
+    if (error) throw error;
+    return data || [];
+}
+
+// Save pending sale (when KOT is clicked - order sent to kitchen but not paid)
+export async function savePendingSale(sale: {
+    receiptNo: string;
+    kotNumber: string;
+    items: Array<{
+        productId: number;
+        productName: string;
+        qty: number;
+        price: number;
+        costPrice: number;
+        discount: number;
+        notes?: string;
+        batchId?: number;
+        batchNumber?: string;
+    }>;
+    subtotal: number;
+    discount: number;
+    taxAmount: number;
+    total: number;
+    cashierName: string;
+    shiftId?: number;
+    shiftName?: string;
+    shiftCode?: string;
+    tableId?: number;
+    tableName?: string;
+    roomName?: string;
+    waiterId?: number;
+    waiterName?: string;
+    orderType?: string;
+    customerName?: string;
+    customerPhone?: string;
+    orderNotes?: string;
+}) {
+    // 1. Create sale record with Pending status
+    const { data: saleData, error: saleError } = await supabase
+        .from('sales')
+        .insert([{
+            receipt_no: sale.receiptNo,
+            sale_date: new Date().toISOString().split('T')[0],
+            sale_time: new Date().toTimeString().split(' ')[0],
+            sale_datetime: new Date().toISOString(),
+            shift_id: sale.shiftId,
+            shift_name: sale.shiftName,
+            shift_code: sale.shiftCode,
+            waiter_id: sale.waiterId,
+            waiter_name: sale.waiterName || sale.cashierName,
+            table_id: sale.tableId,
+            table_name: sale.tableName,
+            room_name: sale.roomName,
+            order_type: sale.orderType || 'Quick Sale',
+            kot_number: sale.kotNumber,
+            customer_name: sale.customerName,
+            customer_phone: sale.customerPhone,
+            subtotal: sale.subtotal,
+            discount: sale.discount,
+            discount_percent: sale.subtotal > 0 ? (sale.discount / sale.subtotal) * 100 : 0,
+            tax_amount: sale.taxAmount,
+            total_amount: sale.total,
+            total_cost: sale.items.reduce((sum, item) => sum + (item.costPrice * item.qty), 0),
+            profit: sale.total - sale.items.reduce((sum, item) => sum + (item.costPrice * item.qty), 0),
+            payment_method: 'Pending',
+            amount_paid: 0,
+            change_amount: 0,
+            status: 'Pending',
+            notes: sale.orderNotes,
+            created_by: sale.cashierName,
+        }])
+        .select()
+        .single();
+
+    if (saleError) throw saleError;
+
+    const saleId = saleData.sale_id;
+
+    // 2. Add sale items
+    const saleItems = sale.items.map(item => ({
+        sale_id: saleId,
+        product_id: item.productId,
+        product_name: item.productName,
+        batch_id: item.batchId,
+        batch_number: item.batchNumber,
+        quantity: item.qty,
+        unit_price: item.price,
+        cost_price: item.costPrice,
+        discount: item.discount,
+        subtotal: (item.price * item.qty) - item.discount,
+        profit: ((item.price * item.qty) - item.discount) - (item.costPrice * item.qty),
+        notes: item.notes,
+    }));
+
+    const { error: itemsError } = await supabase
+        .from('sales_items')
+        .insert(saleItems);
+
+    if (itemsError) throw itemsError;
+
+    // 3. Create KOT record
+    const { data: kotData, error: kotError } = await supabase
+        .from('kitchen_orders')
+        .insert([{
+            kot_number: sale.kotNumber,
+            sale_id: saleId,
+            table_id: sale.tableId,
+            table_name: sale.tableName,
+            waiter_id: sale.waiterId,
+            waiter_name: sale.waiterName || sale.cashierName,
+            status: 'Pending',
+            notes: sale.orderNotes,
+            printed_at: new Date().toISOString(),
+        }])
+        .select()
+        .single();
+
+    if (kotError) throw kotError;
+
+    const kotId = kotData.kot_id;
+
+    // 4. Add KOT items
+    const kotItems = sale.items.map(item => ({
+        kot_id: kotId,
+        product_id: item.productId,
+        product_name: item.productName,
+        quantity: item.qty,
+        notes: item.notes,
+        status: 'Pending',
+    }));
+
+    const { error: kotItemsError } = await supabase
+        .from('kot_items')
+        .insert(kotItems);
+
+    if (kotItemsError) throw kotItemsError;
+
+    // 5. Deduct stock from batch for each item (food is being prepared)
+    for (const item of sale.items) {
+        if (item.batchId) {
+            await deductFromBatch(item.batchId, item.qty);
+        }
+    }
+
+    return { saleId, receiptNo: sale.receiptNo, kotId, kotNumber: sale.kotNumber };
+}
+
+// Complete a pending sale (when payment is received)
+export async function completePendingSale(
+    saleId: number,
+    paymentMethod: string,
+    amountPaid: number,
+    change: number,
+    mpesaCode?: string
+) {
+    const { data, error } = await supabase
+        .from('sales')
+        .update({
+            payment_method: paymentMethod,
+            amount_paid: amountPaid,
+            change_amount: change,
+            mpesa_code: mpesaCode,
+            status: 'Completed',
+            updated_at: new Date().toISOString(),
+        })
+        .eq('sale_id', saleId)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+// Get pending sales (unpaid orders)
+export async function getPendingSales() {
+    const { data, error } = await supabase
+        .from('sales')
+        .select(`
+            *,
+            sales_items (*)
+        `)
+        .eq('status', 'Pending')
+        .order('sale_datetime', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+}

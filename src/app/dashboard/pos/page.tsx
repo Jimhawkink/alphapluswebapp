@@ -2,6 +2,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import {
+    savePendingSale,
+    getNextReceiptNumber,
+    getNextKOTNumber,
+    getFoodOrderNotes
+} from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import {
     createReceiptData,
@@ -595,35 +601,159 @@ const PaymentModal = ({
     );
 };
 
-// Notes Modal - Light Theme
-const NotesModal = ({
+// Food Order Notes Modal - Shows predefined notes from database
+const FoodOrderNotesModal = ({
     isOpen,
     onClose,
     currentNotes,
-    onSave
+    onSave,
+    foodNotes
 }: {
     isOpen: boolean;
     onClose: () => void;
     currentNotes: string;
     onSave: (notes: string) => void;
+    foodNotes: Array<{ note_id: number; note_text: string; icon: string; note_category: string }>;
 }) => {
     const [notes, setNotes] = useState(currentNotes);
+    const [selectedCategory, setSelectedCategory] = useState('All');
+
+    // Get unique categories
+    const categories = ['All', ...Array.from(new Set(foodNotes.map(n => n.note_category)))];
+
+    // Filter notes by category
+    const filteredNotes = selectedCategory === 'All'
+        ? foodNotes
+        : foodNotes.filter(n => n.note_category === selectedCategory);
+
+    // Add a note to the current notes
+    const addNote = (noteText: string) => {
+        if (notes) {
+            // Check if note already exists
+            if (notes.includes(noteText)) return;
+            setNotes(prev => prev + ', ' + noteText);
+        } else {
+            setNotes(noteText);
+        }
+    };
+
+    // Remove a note from the current notes
+    const removeNote = (noteText: string) => {
+        const notesList = notes.split(',').map(n => n.trim()).filter(n => n !== noteText);
+        setNotes(notesList.join(', '));
+    };
+
+    // Check if a note is selected
+    const isNoteSelected = (noteText: string) => {
+        return notes.split(',').map(n => n.trim()).includes(noteText);
+    };
+
+    const getCategoryColor = (category: string) => {
+        switch (category) {
+            case 'Seasoning': return 'bg-amber-100 text-amber-700 border-amber-300';
+            case 'Spice Level': return 'bg-red-100 text-red-700 border-red-300';
+            case 'Cooking': return 'bg-orange-100 text-orange-700 border-orange-300';
+            case 'Allergy': return 'bg-purple-100 text-purple-700 border-purple-300';
+            case 'Diet': return 'bg-green-100 text-green-700 border-green-300';
+            case 'Extras': return 'bg-blue-100 text-blue-700 border-blue-300';
+            case 'Service': return 'bg-cyan-100 text-cyan-700 border-cyan-300';
+            default: return 'bg-gray-100 text-gray-700 border-gray-300';
+        }
+    };
 
     if (!isOpen) return null;
 
     return (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl">
-                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <span>📝</span> Item Notes
-                </h2>
-                <textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add special instructions... (e.g., No onions, extra sauce)"
-                    className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none h-32 resize-none"
-                />
-                <div className="flex gap-3 mt-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-2xl shadow-2xl max-h-[85vh] flex flex-col">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                        <span>📝</span> Food Order Notes
+                    </h2>
+                    <button onClick={onClose} className="text-2xl text-gray-400 hover:text-gray-600">✕</button>
+                </div>
+
+                {/* Info Banner */}
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 flex items-center gap-3">
+                    <span className="text-2xl">🍳</span>
+                    <p className="text-sm text-amber-700">
+                        These notes will be printed on the <strong>KOT (Kitchen Order Ticket)</strong> to inform the kitchen about special instructions.
+                    </p>
+                </div>
+
+                {/* Category Filter */}
+                <div className="flex flex-wrap gap-2 mb-4">
+                    {categories.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-all ${selectedCategory === cat
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Predefined Notes Grid */}
+                <div className="flex-1 overflow-y-auto mb-4">
+                    {filteredNotes.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2">
+                            {filteredNotes.map((note) => (
+                                <button
+                                    key={note.note_id}
+                                    onClick={() => isNoteSelected(note.note_text)
+                                        ? removeNote(note.note_text)
+                                        : addNote(note.note_text)
+                                    }
+                                    className={`p-3 rounded-xl border-2 transition-all hover:scale-105 text-left ${isNoteSelected(note.note_text)
+                                        ? 'border-amber-500 bg-amber-50 ring-2 ring-amber-400'
+                                        : `${getCategoryColor(note.note_category)} hover:border-amber-400`
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-lg">{note.icon}</span>
+                                        <span className="font-semibold text-sm">{note.note_text}</span>
+                                    </div>
+                                    {isNoteSelected(note.note_text) && (
+                                        <span className="text-xs text-amber-600 mt-1 block">✓ Selected</span>
+                                    )}
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-gray-400">
+                            <span className="text-4xl mb-2 block">📝</span>
+                            <p>No predefined notes found.</p>
+                            <p className="text-sm">You can type custom notes below.</p>
+                        </div>
+                    )}
+                </div>
+
+                {/* Custom Notes Input */}
+                <div className="mb-4">
+                    <label className="text-sm font-medium text-gray-600 mb-2 block">
+                        Selected Notes / Custom Instructions:
+                    </label>
+                    <textarea
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Type custom notes or click on the preset notes above..."
+                        className="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-amber-500 focus:outline-none h-20 resize-none text-sm"
+                    />
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setNotes('')}
+                        className="px-4 py-3 border-2 border-red-200 text-red-500 rounded-xl font-semibold hover:bg-red-50 transition-colors"
+                    >
+                        Clear
+                    </button>
                     <button
                         onClick={onClose}
                         className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
@@ -632,9 +762,10 @@ const NotesModal = ({
                     </button>
                     <button
                         onClick={() => { onSave(notes); onClose(); }}
-                        className="flex-1 py-3 bg-blue-500 text-white rounded-xl font-semibold hover:bg-blue-600"
+                        className="flex-1 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:shadow-lg flex items-center justify-center gap-2"
                     >
-                        Save Notes
+                        <span>💾</span>
+                        <span>Save Notes</span>
                     </button>
                 </div>
             </div>
@@ -722,8 +853,7 @@ export default function POSPage() {
     const [kotHTML, setKOTHTML] = useState('');
     const [billHTML, setBillHTML] = useState('');
     const [editingItemId, setEditingItemId] = useState<number | null>(null);
-    const [invoiceNo, setInvoiceNo] = useState('INV-0001');
-    const [kotNo, setKotNo] = useState(1);
+    const [invoiceNo, setInvoiceNo] = useState('RCP-00001');
     const [runningOrders, setRunningOrders] = useState<RunningOrder[]>([]);
     const [orderNotes, setOrderNotes] = useState('');
     const [tableNo, setTableNo] = useState('');
@@ -741,6 +871,15 @@ export default function POSPage() {
         startTime: '06:00',
         openingCash: 5000
     });
+
+    // Food Order Notes state
+    const [foodOrderNotes, setFoodOrderNotes] = useState<Array<{ note_id: number; note_text: string; icon: string; note_category: string }>>([]);
+
+    // KOT Number state (from database)
+    const [currentKOTNumber, setCurrentKOTNumber] = useState('K0001');
+
+    // Saving state
+    const [isSavingPending, setIsSavingPending] = useState(false);
 
     // Load products from database
     const loadProducts = useCallback(async () => {
@@ -801,6 +940,29 @@ export default function POSPage() {
     useEffect(() => {
         loadProducts();
     }, [loadProducts]);
+
+    // Load food order notes and receipt/KOT numbers on mount
+    useEffect(() => {
+        const loadInitialData = async () => {
+            try {
+                // Load food order notes
+                const notes = await getFoodOrderNotes();
+                setFoodOrderNotes(notes || []);
+
+                // Load next receipt number
+                const nextReceipt = await getNextReceiptNumber();
+                setInvoiceNo(nextReceipt);
+
+                // Load next KOT number
+                const nextKOT = await getNextKOTNumber();
+                setCurrentKOTNumber(nextKOT);
+            } catch (err) {
+                console.error('Error loading initial data:', err);
+            }
+        };
+
+        loadInitialData();
+    }, []);
 
     // Toggle Fullscreen
     const toggleFullscreen = () => {
@@ -1008,33 +1170,73 @@ export default function POSPage() {
         );
     };
 
-    // Send to Kitchen (Print KOT then Customer Bill)
-    const sendToKitchen = () => {
+    // Send to Kitchen (Print KOT then Customer Bill) - Now saves to database as Pending
+    const sendToKitchen = async () => {
         if (cart.length === 0) return;
+        if (isSavingPending) return; // Prevent double submission
 
-        // Create KOT data
-        const kotData = createKOTData(
-            `K${String(kotNo).padStart(4, '0')}`,
-            cart.map(item => ({ name: item.name, qty: item.qty, notes: item.notes })),
-            tableNo ? 'Dine-In' : 'Take-Away',
-            {
-                tableNo: tableNo || undefined,
-                waiter: 'Cashier',
+        setIsSavingPending(true);
+
+        try {
+            // Create KOT data for printing
+            const kotData = createKOTData(
+                currentKOTNumber,
+                cart.map(item => ({ name: item.name, qty: item.qty, notes: item.notes })),
+                tableNo ? 'Dine-In' : 'Take-Away',
+                {
+                    tableNo: tableNo || undefined,
+                    waiter: 'Cashier',
+                    orderNotes: orderNotes || undefined,
+                    priority: 'normal'
+                }
+            );
+
+            const kotHtmlContent = generateKOTHTML(kotData);
+            setKOTHTML(kotHtmlContent);
+
+            // Create Customer Bill (Unpaid) data for printing
+            const billData = createUnpaidBillData();
+            const billHtmlContent = generateCustomerBillHTML(billData, undefined, false);
+            setBillHTML(billHtmlContent);
+
+            // Save pending sale to database
+            await savePendingSale({
+                receiptNo: invoiceNo,
+                kotNumber: currentKOTNumber,
+                items: cart.map(item => ({
+                    productId: item.id,
+                    productName: item.name,
+                    qty: item.qty,
+                    price: item.price,
+                    costPrice: item.costPerUnit || item.purchasePrice,
+                    discount: item.discount,
+                    notes: item.notes,
+                    batchId: item.batchId,
+                    batchNumber: item.batchNumber,
+                })),
+                subtotal: subtotal,
+                discount: totalDiscount,
+                taxAmount: 0,
+                total: total,
+                cashierName: 'Cashier',
+                shiftId: shift.id,
+                shiftName: shift.name,
+                shiftCode: shift.code,
+                tableName: tableNo || undefined,
+                orderType: tableNo ? 'Dine-In' : 'Take-Away',
                 orderNotes: orderNotes || undefined,
-                priority: 'normal'
-            }
-        );
+            });
 
-        const kotHtmlContent = generateKOTHTML(kotData);
-        setKOTHTML(kotHtmlContent);
+            toast.success('Order sent to kitchen & saved as pending! 🍳');
 
-        // Create Customer Bill (Unpaid) data
-        const billData = createUnpaidBillData();
-        const billHtmlContent = generateCustomerBillHTML(billData, undefined, false);
-        setBillHTML(billHtmlContent);
-
-        setShowKOTPreview(true);
-        setKotNo(prev => prev + 1);
+            // Show KOT preview
+            setShowKOTPreview(true);
+        } catch (error) {
+            console.error('Error saving pending sale:', error);
+            toast.error('Failed to save order. Please try again.');
+        } finally {
+            setIsSavingPending(false);
+        }
     };
 
     // Print KOT and then show Customer Bill preview
@@ -1065,8 +1267,31 @@ export default function POSPage() {
         }, 300);
     };
 
-    // Print Customer Bill (unpaid)
-    const printBillNow = () => {
+    // Prepare POS for next sale (clear cart, regenerate numbers)
+    const prepareForNextSale = async () => {
+        // Clear the cart
+        clearCart();
+
+        // Reload products to get updated stock
+        loadProducts();
+
+        // Generate next receipt number from database
+        try {
+            const nextReceipt = await getNextReceiptNumber();
+            setInvoiceNo(nextReceipt);
+
+            const nextKOT = await getNextKOTNumber();
+            setCurrentKOTNumber(nextKOT);
+        } catch (err) {
+            console.error('Error generating next numbers:', err);
+            // Fallback: increment locally
+            const num = parseInt(invoiceNo.replace('RCP-', '').replace('INV-', '')) + 1;
+            setInvoiceNo(`RCP-${String(num).padStart(5, '0')}`);
+        }
+    };
+
+    // Print Customer Bill (unpaid) - After printing, prepare for next sale
+    const printBillNow = async () => {
         const billWindow = window.open('', '_blank', 'width=350,height=600');
         if (billWindow) {
             billWindow.document.write(billHTML);
@@ -1079,8 +1304,17 @@ export default function POSPage() {
         }
         setShowBillPreview(false);
 
-        // TODO: After KOT + Bill print, order stays in cart for payment
-        // Transaction is NOT saved here - only saved when payment is complete
+        // After KOT + Bill, clear cart and prepare for next sale
+        // Transaction is already saved as Pending in sendToKitchen
+        await prepareForNextSale();
+        toast.success('Ready for next order! 🛒');
+    };
+
+    // Close Bill without printing - Still prepare for next sale
+    const closeBillAndPrepareNext = async () => {
+        setShowBillPreview(false);
+        await prepareForNextSale();
+        toast.success('Ready for next order! 🛒');
     };
 
     // Save completed sale to database
@@ -1454,11 +1688,12 @@ export default function POSPage() {
                 invoiceNo={invoiceNo}
             />
 
-            <NotesModal
+            <FoodOrderNotesModal
                 isOpen={showNotesModal}
                 onClose={() => setShowNotesModal(false)}
                 currentNotes={cart.find(i => i.id === editingItemId)?.notes || ''}
-                onSave={(notes) => editingItemId && updateItemNotes(editingItemId, notes)}
+                onSave={(notes: string) => editingItemId && updateItemNotes(editingItemId, notes)}
+                foodNotes={foodOrderNotes}
             />
 
             <HoldOrderModal
@@ -1547,10 +1782,10 @@ export default function POSPage() {
 
                         <div className="flex gap-3">
                             <button
-                                onClick={() => setShowBillPreview(false)}
+                                onClick={closeBillAndPrepareNext}
                                 className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
                             >
-                                Close
+                                Skip Print & Next
                             </button>
                             <button
                                 onClick={printBillNow}
