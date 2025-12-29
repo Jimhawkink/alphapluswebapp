@@ -1,15 +1,15 @@
 -- ============================================================
--- ALPHA PLUS - COMPLETE DATABASE SETUP
+-- ALPHA PLUS - COMPLETE DATABASE FIX
 -- Run this ENTIRE script in Supabase SQL Editor
--- This adds ALL missing columns to existing tables
+-- This fixes ALL missing columns and constraints
 -- ============================================================
 
 -- ============================================
--- 1. RECIPES TABLE - Add all columns
+-- 1. RECIPES TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS recipes (
     recipe_id SERIAL PRIMARY KEY,
-    product_id INT NOT NULL,
+    product_id INT,
     dish_name VARCHAR(200),
     barcode VARCHAR(50),
     qty_produced DECIMAL(15,4) DEFAULT 0,
@@ -23,7 +23,6 @@ CREATE TABLE IF NOT EXISTS recipes (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Add missing columns
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS product_id INT;
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS dish_name VARCHAR(200);
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS barcode VARCHAR(50);
@@ -37,11 +36,13 @@ ALTER TABLE recipes ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Active'
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS notes TEXT;
 ALTER TABLE recipes ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
--- Drop unique constraint on batch_number
+-- Remove constraints that cause errors
 ALTER TABLE recipes DROP CONSTRAINT IF EXISTS recipes_batch_number_key;
+ALTER TABLE recipes ALTER COLUMN product_id DROP NOT NULL;
+ALTER TABLE recipes ALTER COLUMN dish_name DROP NOT NULL;
 
 -- ============================================
--- 2. RECIPE_INGREDIENTS TABLE - Add all columns
+-- 2. RECIPE_INGREDIENTS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS recipe_ingredients (
     ingredient_id SERIAL PRIMARY KEY,
@@ -57,7 +58,6 @@ CREATE TABLE IF NOT EXISTS recipe_ingredients (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Add missing columns
 ALTER TABLE recipe_ingredients ADD COLUMN IF NOT EXISTS recipe_id INT;
 ALTER TABLE recipe_ingredients ADD COLUMN IF NOT EXISTS ingredient_product_id INT;
 ALTER TABLE recipe_ingredients ADD COLUMN IF NOT EXISTS ingredient_name VARCHAR(200);
@@ -70,7 +70,7 @@ ALTER TABLE recipe_ingredients ADD COLUMN IF NOT EXISTS remaining_qty DECIMAL(15
 ALTER TABLE recipe_ingredients ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
 -- ============================================
--- 3. PRODUCTION_BATCHES TABLE - Add all columns
+-- 3. PRODUCTION_BATCHES TABLE - ALL COLUMNS
 -- ============================================
 CREATE TABLE IF NOT EXISTS production_batches (
     batch_id SERIAL PRIMARY KEY,
@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS production_batches (
     qty_remaining DECIMAL(15,4) DEFAULT 0,
     qty_sold DECIMAL(15,4) DEFAULT 0,
     cost_per_unit DECIMAL(15,4) DEFAULT 0,
+    total_production_cost DECIMAL(15,4) DEFAULT 0,
     selling_price DECIMAL(15,4) DEFAULT 0,
     production_date DATE DEFAULT CURRENT_DATE,
     expiry_date DATE,
@@ -90,7 +91,7 @@ CREATE TABLE IF NOT EXISTS production_batches (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Add ALL missing columns to production_batches
+-- Add ALL columns that might be missing
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS batch_number VARCHAR(100);
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS product_id INT;
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS product_name VARCHAR(200);
@@ -99,6 +100,7 @@ ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS qty_produced DECIMAL(15,
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS qty_remaining DECIMAL(15,4) DEFAULT 0;
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS qty_sold DECIMAL(15,4) DEFAULT 0;
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS cost_per_unit DECIMAL(15,4) DEFAULT 0;
+ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS total_production_cost DECIMAL(15,4) DEFAULT 0;
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS selling_price DECIMAL(15,4) DEFAULT 0;
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS production_date DATE DEFAULT CURRENT_DATE;
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS expiry_date DATE;
@@ -106,8 +108,14 @@ ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS status VARCHAR(30) DEFAU
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS created_by VARCHAR(100);
 ALTER TABLE production_batches ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
+-- Remove NOT NULL constraints that cause errors
+ALTER TABLE production_batches ALTER COLUMN batch_number DROP NOT NULL;
+ALTER TABLE production_batches ALTER COLUMN product_id DROP NOT NULL;
+ALTER TABLE production_batches ALTER COLUMN total_production_cost DROP NOT NULL;
+ALTER TABLE production_batches ALTER COLUMN total_production_cost SET DEFAULT 0;
+
 -- ============================================
--- 4. PRODUCTS_INGREDIENTS TABLE - Add all columns
+-- 4. PRODUCTS_INGREDIENTS TABLE
 -- ============================================
 ALTER TABLE products_ingredients ADD COLUMN IF NOT EXISTS base_unit VARCHAR(20) DEFAULT 'KG';
 ALTER TABLE products_ingredients ADD COLUMN IF NOT EXISTS price_per_pack DECIMAL(15,2) DEFAULT 0;
@@ -119,53 +127,40 @@ ALTER TABLE products_ingredients ADD COLUMN IF NOT EXISTS supplier_name VARCHAR(
 ALTER TABLE products_ingredients ADD COLUMN IF NOT EXISTS category VARCHAR(100) DEFAULT 'Raw Materials';
 ALTER TABLE products_ingredients ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW();
 
--- Update existing ingredients with calculated costs
+-- Update existing data
 UPDATE products_ingredients 
 SET 
     base_unit = COALESCE(base_unit, sales_unit, 'KG'),
-    price_per_pack = COALESCE(price_per_pack, sales_cost, 0),
-    cost_per_base_unit = CASE 
-        WHEN COALESCE(pack_size, 1) > 0 THEN COALESCE(sales_cost, 0) / GREATEST(COALESCE(pack_size, 1), 1)
-        ELSE COALESCE(sales_cost, 0) 
-    END,
     active = COALESCE(active, true)
-WHERE cost_per_base_unit IS NULL OR cost_per_base_unit = 0;
+WHERE base_unit IS NULL;
 
 -- ============================================
--- 5. DISABLE ROW LEVEL SECURITY ON ALL TABLES
+-- 5. DISABLE ROW LEVEL SECURITY
 -- ============================================
 ALTER TABLE recipes DISABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_ingredients DISABLE ROW LEVEL SECURITY;
 ALTER TABLE production_batches DISABLE ROW LEVEL SECURITY;
 ALTER TABLE products_ingredients DISABLE ROW LEVEL SECURITY;
 
--- Drop all policies
-DROP POLICY IF EXISTS "Enable all for recipes" ON recipes;
-DROP POLICY IF EXISTS "Enable all for recipe_ingredients" ON recipe_ingredients;
-DROP POLICY IF EXISTS "Enable all for production_batches" ON production_batches;
-DROP POLICY IF EXISTS "Enable all for products_ingredients" ON products_ingredients;
-
 -- ============================================
--- 6. GRANT PERMISSIONS TO ALL ROLES
+-- 6. GRANT ALL PERMISSIONS
 -- ============================================
 GRANT ALL ON recipes TO anon, authenticated, service_role;
 GRANT ALL ON recipe_ingredients TO anon, authenticated, service_role;
 GRANT ALL ON production_batches TO anon, authenticated, service_role;
 GRANT ALL ON products_ingredients TO anon, authenticated, service_role;
-
--- Grant sequence permissions
 GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;
 
 -- ============================================
--- VERIFICATION - Show table structure
+-- VERIFY: Show production_batches columns
 -- ============================================
-SELECT 
-    'production_batches columns:' as info,
-    string_agg(column_name, ', ' ORDER BY ordinal_position) as columns
+SELECT 'production_batches has these columns:' as info;
+SELECT column_name, data_type, is_nullable, column_default 
 FROM information_schema.columns 
-WHERE table_name = 'production_batches' AND table_schema = 'public';
+WHERE table_name = 'production_batches' 
+ORDER BY ordinal_position;
 
 -- ============================================
--- DONE! ✅
+-- ✅ DONE!
 -- ============================================
-SELECT '✅ SUCCESS! All tables updated with all required columns. RLS disabled.' as result;
+SELECT '✅ SUCCESS! All tables fixed. RLS disabled. All constraints relaxed.' as result;

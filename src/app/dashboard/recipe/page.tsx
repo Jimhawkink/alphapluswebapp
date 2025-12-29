@@ -464,7 +464,7 @@ export default function RecipePage() {
 
             if (ingredientError) throw ingredientError;
 
-            // 3. Create production batch
+            // 3. Create production batch with ALL required fields
             const { error: batchError } = await supabase
                 .from('production_batches')
                 .insert({
@@ -476,8 +476,10 @@ export default function RecipePage() {
                     qty_remaining: qtyProducedFinal,
                     qty_sold: 0,
                     cost_per_unit: costPerUnit,
-                    selling_price: selectedDish.sales_cost,
+                    total_production_cost: totalProductionCost,
+                    selling_price: selectedDish.sales_cost || 0,
                     production_date: recipeDate,
+                    expiry_date: null,
                     status: 'In Stock',
                     created_by: 'Web User',
                 });
