@@ -122,10 +122,10 @@ function BillPaymentContent() {
             setBills(transformedBills);
 
             // Extract unique users
-            const uniqueUsers = [...new Set([
+            const uniqueUsers: string[] = Array.from(new Set([
                 ...transformedBills.map(b => b.waiter_name),
                 ...transformedBills.map(b => b.created_by)
-            ].filter(Boolean))] as string[];
+            ].filter((u): u is string => Boolean(u))));
             setUsers(uniqueUsers);
 
             // Calculate stats

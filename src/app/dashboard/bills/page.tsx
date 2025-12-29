@@ -100,8 +100,8 @@ const BillRow = ({
                     <button
                         onClick={onToggle}
                         className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${isExpanded
-                                ? 'bg-blue-500 text-white rotate-90'
-                                : 'bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600'
+                            ? 'bg-blue-500 text-white rotate-90'
+                            : 'bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600'
                             }`}
                     >
                         ▶
@@ -311,11 +311,13 @@ export default function BillsPage() {
             setBills(transformedBills);
 
             // Extract unique shifts and users for filters
-            const uniqueShifts = [...new Set(transformedBills.map(b => b.shift_name).filter(Boolean))] as string[];
-            const uniqueUsers = [...new Set([
+            const uniqueShifts: string[] = Array.from(new Set(
+                transformedBills.map(b => b.shift_name).filter((s): s is string => Boolean(s))
+            ));
+            const uniqueUsers: string[] = Array.from(new Set([
                 ...transformedBills.map(b => b.waiter_name),
                 ...transformedBills.map(b => b.created_by)
-            ].filter(Boolean))] as string[];
+            ].filter((u): u is string => Boolean(u))));
 
             setShifts(uniqueShifts);
             setUsers(uniqueUsers);
@@ -744,8 +746,8 @@ export default function BillsPage() {
                         {/* Status */}
                         <div className="text-center mb-4">
                             <span className={`px-4 py-2 rounded-full text-sm font-bold ${selectedBill.status === 'Completed' || selectedBill.status === 'Paid'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-amber-100 text-amber-700'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-amber-100 text-amber-700'
                                 }`}>
                                 {selectedBill.status === 'Completed' || selectedBill.status === 'Paid' ? '✅ PAID' : '⏳ PENDING'}
                             </span>
