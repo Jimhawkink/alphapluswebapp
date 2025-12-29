@@ -29,11 +29,10 @@ export default function ShiftsPage() {
     const [showEndModal, setShowEndModal] = useState(false);
     const [openingCash, setOpeningCash] = useState(0);
     const [closingCash, setClosingCash] = useState(0);
-    const [shiftStats, setShiftStats] = useState({ sales: 0, expenses: 0, vouchers: 0 });
+    const [shiftStats, setShiftStats] = useState({ sales: 0, expenses: 0, vouchers: 0, advances: 0 });
 
     const loadShifts = useCallback(async () => {
         setIsLoading(true);
-        const today = new Date().toISOString().split('T')[0];
 
         // Check for current open shift
         const { data: openShift } = await supabase.from('shifts').select('*').eq('status', 'Open').single();
@@ -45,13 +44,43 @@ export default function ShiftsPage() {
 
         // Load stats for current shift
         if (openShift) {
-            const { data: salesData } = await supabase.from('sales').select('grand_total').eq('sale_date', openShift.shift_date);
-            const { data: expData } = await supabase.from('expenses').select('amount').eq('expense_date', openShift.shift_date);
-            const { data: vchData } = await supabase.from('vouchers').select('amount').eq('voucher_date', openShift.shift_date);
+            // Get sales for this shift - use shift_id and total_amount (correct column name)
+            const { data: salesData } = await supabase
+                .from('sales')
+                .select('total_amount, payment_method')
+                .eq('sale_date', openShift.shift_date);
+
+            // Get expenses for today
+            const { data: expData } = await supabase
+                .from('expenses')
+                .select('amount')
+                .eq('expense_date', openShift.shift_date);
+
+            // Get vouchers for today
+            const { data: vchData } = await supabase
+                .from('vouchers')
+                .select('amount')
+                .eq('voucher_date', openShift.shift_date);
+
+            // Get salary advances for today
+            const { data: advData } = await supabase
+                .from('salary_advances')
+                .select('amount')
+                .eq('advance_date', openShift.shift_date)
+                .eq('status', 'Approved');
+
+            const totalSales = (salesData || []).reduce((sum, s) => sum + (s.total_amount || 0), 0);
+            const totalExpenses = (expData || []).reduce((sum, e) => sum + (e.amount || 0), 0);
+            const totalVouchers = (vchData || []).reduce((sum, v) => sum + (v.amount || 0), 0);
+            const totalAdvances = (advData || []).reduce((sum, a) => sum + (a.amount || 0), 0);
+
+            console.log('Shift Stats:', { totalSales, totalExpenses, totalVouchers, totalAdvances, salesCount: salesData?.length });
+
             setShiftStats({
-                sales: (salesData || []).reduce((sum, s) => sum + (s.grand_total || 0), 0),
-                expenses: (expData || []).reduce((sum, e) => sum + (e.amount || 0), 0),
-                vouchers: (vchData || []).reduce((sum, v) => sum + (v.amount || 0), 0)
+                sales: totalSales,
+                expenses: totalExpenses,
+                vouchers: totalVouchers,
+                advances: totalAdvances
             });
         }
         setIsLoading(false);
@@ -81,7 +110,7 @@ export default function ShiftsPage() {
         if (!currentShift) return;
         const userData = localStorage.getItem('user');
         const user = userData ? JSON.parse(userData) : null;
-        const netSales = shiftStats.sales - shiftStats.expenses - shiftStats.vouchers;
+        const netSales = shiftStats.sales - shiftStats.expenses - shiftStats.vouchers - shiftStats.advances;
 
         const { error } = await supabase.from('shifts').update({
             end_time: new Date().toTimeString().split(' ')[0],
@@ -332,10 +361,11 @@ export default function ShiftsPage() {
                                 <p className="text-sm">Started: {currentShift.start_time} | Opening: Ksh {currentShift.opening_cash?.toLocaleString()}</p>
                             </div>
                         </div>
-                        <div className="grid grid-cols-3 gap-6 text-center">
-                            <div><p className="text-sm opacity-80">Sales</p><p className="text-2xl font-bold">Ksh {shiftStats.sales.toLocaleString()}</p></div>
-                            <div><p className="text-sm opacity-80">Expenses</p><p className="text-2xl font-bold">Ksh {shiftStats.expenses.toLocaleString()}</p></div>
-                            <div><p className="text-sm opacity-80">Net</p><p className="text-2xl font-bold">Ksh {(shiftStats.sales - shiftStats.expenses - shiftStats.vouchers).toLocaleString()}</p></div>
+                        <div className="grid grid-cols-4 gap-4 text-center">
+                            <div><p className="text-sm opacity-80">Sales</p><p className="text-xl font-bold">Ksh {shiftStats.sales.toLocaleString()}</p></div>
+                            <div><p className="text-sm opacity-80">Expenses</p><p className="text-xl font-bold">Ksh {shiftStats.expenses.toLocaleString()}</p></div>
+                            <div><p className="text-sm opacity-80">Advances</p><p className="text-xl font-bold">Ksh {shiftStats.advances.toLocaleString()}</p></div>
+                            <div><p className="text-sm opacity-80">Net</p><p className="text-xl font-bold">Ksh {(shiftStats.sales - shiftStats.expenses - shiftStats.vouchers - shiftStats.advances).toLocaleString()}</p></div>
                         </div>
                     </div>
                 </div>
@@ -403,18 +433,62 @@ export default function ShiftsPage() {
                     <div className="bg-white rounded-3xl p-6 w-full max-w-lg">
                         <h2 className="text-xl font-bold mb-4">⏹️ End Shift</h2>
                         <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4 p-4 bg-gray-50 rounded-xl">
-                                <div><p className="text-sm text-gray-500">Opening Cash</p><p className="font-bold">Ksh {currentShift?.opening_cash?.toLocaleString()}</p></div>
-                                <div><p className="text-sm text-gray-500">Total Sales</p><p className="font-bold text-green-600">Ksh {shiftStats.sales.toLocaleString()}</p></div>
-                                <div><p className="text-sm text-gray-500">Expenses</p><p className="font-bold text-red-600">- Ksh {shiftStats.expenses.toLocaleString()}</p></div>
-                                <div><p className="text-sm text-gray-500">Vouchers</p><p className="font-bold text-red-600">- Ksh {shiftStats.vouchers.toLocaleString()}</p></div>
+                            {/* Summary Grid */}
+                            <div className="grid grid-cols-2 gap-3 p-4 bg-gray-50 rounded-xl">
+                                <div className="p-3 bg-white rounded-lg">
+                                    <p className="text-xs text-gray-500">Opening Cash</p>
+                                    <p className="font-bold text-lg">Ksh {(currentShift?.opening_cash || 0).toLocaleString()}</p>
+                                </div>
+                                <div className="p-3 bg-green-50 rounded-lg">
+                                    <p className="text-xs text-gray-500">Total Sales</p>
+                                    <p className="font-bold text-lg text-green-600">Ksh {shiftStats.sales.toLocaleString()}</p>
+                                </div>
+                                <div className="p-3 bg-red-50 rounded-lg">
+                                    <p className="text-xs text-gray-500">Expenses</p>
+                                    <p className="font-bold text-red-600">- Ksh {shiftStats.expenses.toLocaleString()}</p>
+                                </div>
+                                <div className="p-3 bg-red-50 rounded-lg">
+                                    <p className="text-xs text-gray-500">Vouchers</p>
+                                    <p className="font-bold text-red-600">- Ksh {shiftStats.vouchers.toLocaleString()}</p>
+                                </div>
+                                <div className="p-3 bg-orange-50 rounded-lg col-span-2">
+                                    <p className="text-xs text-gray-500">Salary Advances</p>
+                                    <p className="font-bold text-orange-600">- Ksh {shiftStats.advances.toLocaleString()}</p>
+                                </div>
                             </div>
-                            <div className="p-4 bg-blue-50 rounded-xl"><p className="text-sm text-blue-700">Net Sales</p><p className="text-2xl font-bold text-blue-700">Ksh {(shiftStats.sales - shiftStats.expenses - shiftStats.vouchers).toLocaleString()}</p></div>
-                            <div><label className="text-sm text-gray-600">Closing Cash Count</label><input type="number" value={closingCash} onChange={e => setClosingCash(parseFloat(e.target.value) || 0)} className="w-full p-3 border rounded-xl text-lg font-bold" /></div>
+
+                            {/* Net Sales */}
+                            <div className="p-4 bg-blue-50 rounded-xl">
+                                <p className="text-sm text-blue-700">Net Sales (Sales - Expenses - Vouchers - Advances)</p>
+                                <p className="text-2xl font-bold text-blue-700">
+                                    Ksh {(shiftStats.sales - shiftStats.expenses - shiftStats.vouchers - shiftStats.advances).toLocaleString()}
+                                </p>
+                            </div>
+
+                            {/* Expected Cash Calculation */}
+                            <div className="p-4 bg-amber-50 rounded-xl">
+                                <p className="text-sm text-amber-700">Expected Cash in Till</p>
+                                <p className="text-xl font-bold text-amber-700">
+                                    Ksh {((currentShift?.opening_cash || 0) + shiftStats.sales - shiftStats.expenses - shiftStats.vouchers - shiftStats.advances).toLocaleString()}
+                                </p>
+                                <p className="text-xs text-amber-600 mt-1">Opening + Sales - Expenses - Vouchers - Advances</p>
+                            </div>
+
+                            {/* Closing Cash Input */}
+                            <div>
+                                <label className="text-sm text-gray-600 font-medium">Closing Cash Count</label>
+                                <input
+                                    type="number"
+                                    value={closingCash}
+                                    onChange={e => setClosingCash(parseFloat(e.target.value) || 0)}
+                                    className="w-full p-3 border rounded-xl text-lg font-bold focus:border-blue-500 focus:outline-none"
+                                    placeholder="Count and enter closing cash..."
+                                />
+                            </div>
                         </div>
                         <div className="flex gap-3 mt-6">
-                            <button onClick={() => setShowEndModal(false)} className="flex-1 py-3 border rounded-xl">Cancel</button>
-                            <button onClick={endShift} className="flex-1 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-semibold">⏹️ Close & Print Report</button>
+                            <button onClick={() => setShowEndModal(false)} className="flex-1 py-3 border-2 border-gray-200 rounded-xl font-semibold hover:bg-gray-50">Cancel</button>
+                            <button onClick={endShift} className="flex-1 py-3 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-semibold hover:shadow-lg">⏹️ Close & Print Report</button>
                         </div>
                     </div>
                 </div>
