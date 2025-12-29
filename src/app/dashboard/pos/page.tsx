@@ -1508,6 +1508,118 @@ export default function POSPage() {
                         ))}
                     </div>
                 </div>
+
+                {/* Quick Action Buttons - Like VB.NET */}
+                <div className="p-3 bg-gradient-to-r from-gray-100 via-white to-gray-100 border-t border-gray-200">
+                    <div className="grid grid-cols-8 gap-2">
+                        {/* Row 1 */}
+                        <a
+                            href="/dashboard/bill-payment"
+                            className="group p-3 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-orange-500/40 transition-all hover:scale-105 cursor-pointer"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">💰</span>
+                            <span className="text-[10px] font-bold">Receive Payment</span>
+                        </a>
+                        <a
+                            href="/dashboard/bills"
+                            className="group p-3 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105 cursor-pointer"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">📋</span>
+                            <span className="text-[10px] font-bold">My Bills</span>
+                        </a>
+                        <a
+                            href="/dashboard/sales"
+                            className="group p-3 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-green-500/40 transition-all hover:scale-105 cursor-pointer"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">📊</span>
+                            <span className="text-[10px] font-bold">Day Sales</span>
+                        </a>
+                        <button
+                            className="group p-3 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-purple-500/40 transition-all hover:scale-105"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">🔄</span>
+                            <span className="text-[10px] font-bold">Merge Bill</span>
+                        </button>
+                        <button
+                            className="group p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-teal-500/40 transition-all hover:scale-105"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">📈</span>
+                            <span className="text-[10px] font-bold">Sales Summary</span>
+                        </button>
+                        <a
+                            href="/dashboard/bills?status=Pending"
+                            className="group p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-amber-500/40 transition-all hover:scale-105 cursor-pointer"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">⏳</span>
+                            <span className="text-[10px] font-bold">Pending Bills</span>
+                        </a>
+                        <button
+                            onClick={clearCart}
+                            className="group p-3 bg-gradient-to-br from-gray-500 via-gray-600 to-slate-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-gray-500/40 transition-all hover:scale-105"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">🗑️</span>
+                            <span className="text-[10px] font-bold">Clear</span>
+                        </button>
+                        <button
+                            className="group p-3 bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-rose-500/40 transition-all hover:scale-105"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">🏁</span>
+                            <span className="text-[10px] font-bold">Closing Stock</span>
+                        </button>
+
+                        {/* Row 2 */}
+                        <button
+                            className="group p-3 bg-gradient-to-br from-lime-500 via-green-500 to-emerald-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-lime-500/40 transition-all hover:scale-105"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">📱</span>
+                            <span className="text-[10px] font-bold">M-Pesa Trans</span>
+                        </button>
+                        <a
+                            href="/dashboard/purchase"
+                            className="group p-3 bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-violet-500/40 transition-all hover:scale-105 cursor-pointer"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">🛒</span>
+                            <span className="text-[10px] font-bold">Purchases</span>
+                        </a>
+                        <button
+                            className="group p-3 bg-gradient-to-br from-red-500 via-rose-500 to-pink-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-red-500/40 transition-all hover:scale-105"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">↩️</span>
+                            <span className="text-[10px] font-bold">Sales Return</span>
+                        </button>
+                        <a
+                            href="/dashboard/products"
+                            className="group p-3 bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-sky-500/40 transition-all hover:scale-105 cursor-pointer"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">📦</span>
+                            <span className="text-[10px] font-bold">Product Items</span>
+                        </a>
+                        <button
+                            className="group p-3 bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-emerald-500/40 transition-all hover:scale-105"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">📲</span>
+                            <span className="text-[10px] font-bold">Mpesa Dashboard</span>
+                        </button>
+                        <button
+                            className="group p-3 bg-gradient-to-br from-pink-500 via-rose-500 to-red-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-pink-500/40 transition-all hover:scale-105"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">❌</span>
+                            <span className="text-[10px] font-bold">Remove</span>
+                        </button>
+                        <button
+                            className="group p-3 bg-gradient-to-br from-yellow-500 via-amber-500 to-orange-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-yellow-500/40 transition-all hover:scale-105"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">💵</span>
+                            <span className="text-[10px] font-bold">Cash</span>
+                        </button>
+                        <button
+                            className="group p-3 bg-gradient-to-br from-fuchsia-500 via-purple-600 to-violet-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-fuchsia-500/40 transition-all hover:scale-105"
+                        >
+                            <span className="text-lg block group-hover:animate-bounce">🔚</span>
+                            <span className="text-[10px] font-bold">End Register</span>
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* Right Side - Cart */}

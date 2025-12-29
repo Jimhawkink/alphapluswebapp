@@ -21,6 +21,8 @@ const menuItems = [
             { name: 'Ingredients', icon: '🥬', href: '/dashboard/ingredients', badge: 'New' },
             { name: 'Categories', icon: '🏷️', href: '/dashboard/categories', badge: null },
             { name: 'Sales Records', icon: '📋', href: '/dashboard/sales', badge: null },
+            { name: 'Bills Records', icon: '🧾', href: '/dashboard/bills', badge: 'New' },
+            { name: 'Bill Payment', icon: '💰', href: '/dashboard/bill-payment', badge: 'New' },
             { name: 'Sales Return', icon: '↩️', href: '/dashboard/sales-return', badge: null },
         ]
     },
