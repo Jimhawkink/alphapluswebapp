@@ -864,13 +864,10 @@ export default function POSPage() {
     const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
     const [productBatches, setProductBatches] = useState<ProductionBatch[]>([]);
 
-    const [shift] = useState<ShiftInfo>({
-        id: 1,
-        name: 'Day Shift',
-        code: 'DS-001',
-        startTime: '06:00',
-        openingCash: 5000
-    });
+    // Shift state - LOAD FROM DATABASE instead of mock data
+    const [shift, setShift] = useState<ShiftInfo | null>(null);
+    const [hasActiveShift, setHasActiveShift] = useState(false);
+    const [isLoadingShift, setIsLoadingShift] = useState(true);
 
     // Food Order Notes state
     const [foodOrderNotes, setFoodOrderNotes] = useState<Array<{ note_id: number; note_text: string; icon: string; note_category: string }>>([]);
@@ -885,6 +882,40 @@ export default function POSPage() {
     const [waiters, setWaiters] = useState<Array<{ user_id: number; full_name: string; role: string }>>([]);
     const [selectedWaiterId, setSelectedWaiterId] = useState<number | null>(null);
     const [selectedWaiterName, setSelectedWaiterName] = useState<string>('');
+
+    // Load active shift from database
+    const loadActiveShift = useCallback(async () => {
+        setIsLoadingShift(true);
+        try {
+            const { data: openShift, error } = await supabase
+                .from('shifts')
+                .select('*')
+                .eq('status', 'Open')
+                .single();
+
+            if (error && error.code !== 'PGRST116') {
+                console.error('Error loading shift:', error);
+            }
+
+            if (openShift) {
+                setShift({
+                    id: openShift.shift_id,
+                    name: openShift.shift_type || 'Day Shift',
+                    code: `SH-${openShift.shift_id}`,
+                    startTime: openShift.start_time || '06:00',
+                    openingCash: openShift.opening_cash || 0
+                });
+                setHasActiveShift(true);
+            } else {
+                setShift(null);
+                setHasActiveShift(false);
+            }
+        } catch (err) {
+            console.error('Error checking shift:', err);
+            setHasActiveShift(false);
+        }
+        setIsLoadingShift(false);
+    }, []);
 
     // Load products from database
     const loadProducts = useCallback(async () => {
@@ -950,6 +981,9 @@ export default function POSPage() {
     useEffect(() => {
         const loadInitialData = async () => {
             try {
+                // Load active shift FIRST
+                await loadActiveShift();
+
                 // Load food order notes
                 const notes = await getFoodOrderNotes();
                 setFoodOrderNotes(notes || []);
@@ -985,7 +1019,7 @@ export default function POSPage() {
         };
 
         loadInitialData();
-    }, []);
+    }, [loadActiveShift]);
 
     // Toggle Fullscreen
     const toggleFullscreen = () => {
@@ -1187,7 +1221,7 @@ export default function POSPage() {
             {
                 tableNo: tableNo || undefined,
                 orderNotes: orderNotes || undefined,
-                shiftCode: shift.code,
+                shiftCode: shift?.code || 'NO-SHIFT',
                 isPaid: false
             }
         );
@@ -1248,9 +1282,9 @@ export default function POSPage() {
                 cashierName: currentUser?.name || 'Cashier',
                 waiterId: selectedWaiterId || undefined,
                 waiterName: selectedWaiterName || undefined,
-                shiftId: shift.id,
-                shiftName: shift.name,
-                shiftCode: shift.code,
+                shiftId: shift?.id,
+                shiftName: shift?.name,
+                shiftCode: shift?.code,
                 tableName: tableNo || undefined,
                 orderType: tableNo ? 'Dine-In' : 'Take-Away',
                 orderNotes: orderNotes || undefined,
@@ -1375,9 +1409,9 @@ export default function POSPage() {
                     sale_date: new Date().toISOString().split('T')[0],
                     sale_time: new Date().toTimeString().split(' ')[0],
                     sale_datetime: new Date().toISOString(),
-                    shift_id: shift.id || null,
-                    shift_name: shift.name || null,
-                    shift_code: shift.code || null,
+                    shift_id: shift?.id || null,
+                    shift_name: shift?.name || null,
+                    shift_code: shift?.code || null,
                     waiter_id: selectedWaiterId || null,
                     waiter_name: selectedWaiterName || null,
                     table_id: null,
@@ -1514,7 +1548,7 @@ export default function POSPage() {
                 mpesaReceipt,
                 tableNo: tableNo || undefined,
                 orderNotes: orderNotes || undefined,
-                shiftCode: shift.code,
+                shiftCode: shift?.code || 'NO-SHIFT',
                 isPaid: true
             }
         );
@@ -1542,535 +1576,574 @@ export default function POSPage() {
     };
 
     return (
-        <div className={`flex h-[calc(100vh-64px)] -m-6 bg-gray-50 ${isFullscreen ? 'fixed inset-0 z-50 h-screen m-0' : ''}`}>
-            {/* Left Side - Products */}
-            <div className="flex-1 flex flex-col bg-white">
-                {/* Header */}
-                <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-2xl shadow-lg">
-                                🛒
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-bold text-gray-800">Point of Sale</h1>
-                                <p className="text-sm text-gray-500">Select products to add to cart</p>
-                            </div>
+        <>
+            {/* No Active Shift Warning */}
+            {!isLoadingShift && !hasActiveShift && (
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
+                    <div className="bg-white rounded-3xl p-8 w-full max-w-md text-center shadow-2xl">
+                        <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                            <span className="text-4xl">⚠️</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                            {/* Fullscreen Button */}
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">No Active Shift</h2>
+                        <p className="text-gray-600 mb-6">
+                            You cannot make sales without an active shift. Please start a shift first to begin making transactions.
+                        </p>
+                        <div className="space-y-3">
+                            <a
+                                href="/dashboard/shifts"
+                                className="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg hover:shadow-lg transition-all"
+                            >
+                                ▶️ Start a New Shift
+                            </a>
                             <button
-                                onClick={toggleFullscreen}
-                                className="p-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition-colors border border-gray-200"
-                                title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                                onClick={loadActiveShift}
+                                className="w-full py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
                             >
-                                {isFullscreen ? '⛶' : '⛶'}
+                                🔄 Check Again
                             </button>
-                            {/* Invoice */}
-                            <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl border border-blue-200">
-                                <span className="text-2xl">🧾</span>
-                                <div>
-                                    <p className="text-xs text-blue-600">Invoice</p>
-                                    <p className="font-bold text-blue-700">{invoiceNo}</p>
-                                </div>
-                            </div>
-                            {/* Shift Info */}
-                            <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-xl border border-green-200">
-                                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                                <div>
-                                    <p className="text-xs text-green-600">Active Shift</p>
-                                    <p className="font-semibold text-green-700">{shift.name}</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Search, Table & Waiter */}
-                    <div className="flex gap-3">
-                        <div className="flex-1 relative">
-                            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
-                            <input
-                                type="text"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Search products or scan barcode..."
-                                className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 text-gray-800 placeholder-gray-400"
-                            />
-                        </div>
-                        {/* Waiter Dropdown */}
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
-                            <select
-                                value={selectedWaiterId || ''}
-                                onChange={(e) => {
-                                    const id = e.target.value ? parseInt(e.target.value) : null;
-                                    setSelectedWaiterId(id);
-                                    const waiter = waiters.find(w => w.user_id === id);
-                                    setSelectedWaiterName(waiter?.full_name || '');
-                                }}
-                                className="w-44 pl-10 pr-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl focus:outline-none focus:border-purple-400 text-gray-800 appearance-none cursor-pointer font-medium"
+                            <a
+                                href="/dashboard"
+                                className="block w-full py-3 text-gray-500 hover:text-gray-700 font-medium"
                             >
-                                <option value="">Select Waiter</option>
-                                {waiters.map(waiter => (
-                                    <option key={waiter.user_id} value={waiter.user_id}>
-                                        {waiter.full_name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        {/* Table Number */}
-                        <div className="relative">
-                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🪑</span>
-                            <input
-                                type="text"
-                                value={tableNo}
-                                onChange={(e) => setTableNo(e.target.value)}
-                                placeholder="Table No"
-                                className="w-28 pl-10 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 text-gray-800 placeholder-gray-400"
-                            />
+                                ← Back to Dashboard
+                            </a>
                         </div>
                     </div>
                 </div>
+            )}
 
-                {/* Categories */}
-                <div className="flex gap-2 p-4 overflow-x-auto border-b border-gray-100 bg-gray-50">
-                    {categories.map(cat => (
-                        <button
-                            key={cat}
-                            onClick={() => setSelectedCategory(cat)}
-                            className={`px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-all ${selectedCategory === cat
-                                ? 'bg-blue-500 text-white shadow-md shadow-blue-500/30'
-                                : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
-                                }`}
-                        >
-                            {cat}
-                        </button>
-                    ))}
-                </div>
+            <div className={`flex h-[calc(100vh-64px)] -m-6 bg-gray-50 ${isFullscreen ? 'fixed inset-0 z-50 h-screen m-0' : ''}`}>
+                {/* Left Side - Products */}
+                <div className="flex-1 flex flex-col bg-white">
+                    {/* Header */}
+                    <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-3">
+                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-2xl shadow-lg">
+                                    🛒
+                                </div>
+                                <div>
+                                    <h1 className="text-xl font-bold text-gray-800">Point of Sale</h1>
+                                    <p className="text-sm text-gray-500">Select products to add to cart</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                {/* Fullscreen Button */}
+                                <button
+                                    onClick={toggleFullscreen}
+                                    className="p-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition-colors border border-gray-200"
+                                    title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
+                                >
+                                    {isFullscreen ? '⛶' : '⛶'}
+                                </button>
+                                {/* Invoice */}
+                                <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl border border-blue-200">
+                                    <span className="text-2xl">🧾</span>
+                                    <div>
+                                        <p className="text-xs text-blue-600">Invoice</p>
+                                        <p className="font-bold text-blue-700">{invoiceNo}</p>
+                                    </div>
+                                </div>
+                                {/* Shift Info */}
+                                {hasActiveShift && shift && (
+                                    <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-xl border border-green-200">
+                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                        <div>
+                                            <p className="text-xs text-green-600">Active Shift</p>
+                                            <p className="font-semibold text-green-700">{shift.name}</p>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
 
-                {/* Products Grid */}
-                <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
-                    <div className="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
-                        {filteredProducts.map(product => (
-                            <ProductCard
-                                key={product.id}
-                                product={product}
-                                onAdd={() => addToCart(product)}
-                            />
+                        {/* Search, Table & Waiter */}
+                        <div className="flex gap-3">
+                            <div className="flex-1 relative">
+                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                                <input
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    placeholder="Search products or scan barcode..."
+                                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 text-gray-800 placeholder-gray-400"
+                                />
+                            </div>
+                            {/* Waiter Dropdown */}
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
+                                <select
+                                    value={selectedWaiterId || ''}
+                                    onChange={(e) => {
+                                        const id = e.target.value ? parseInt(e.target.value) : null;
+                                        setSelectedWaiterId(id);
+                                        const waiter = waiters.find(w => w.user_id === id);
+                                        setSelectedWaiterName(waiter?.full_name || '');
+                                    }}
+                                    className="w-44 pl-10 pr-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl focus:outline-none focus:border-purple-400 text-gray-800 appearance-none cursor-pointer font-medium"
+                                >
+                                    <option value="">Select Waiter</option>
+                                    {waiters.map(waiter => (
+                                        <option key={waiter.user_id} value={waiter.user_id}>
+                                            {waiter.full_name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            {/* Table Number */}
+                            <div className="relative">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🪑</span>
+                                <input
+                                    type="text"
+                                    value={tableNo}
+                                    onChange={(e) => setTableNo(e.target.value)}
+                                    placeholder="Table No"
+                                    className="w-28 pl-10 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 text-gray-800 placeholder-gray-400"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Categories */}
+                    <div className="flex gap-2 p-4 overflow-x-auto border-b border-gray-100 bg-gray-50">
+                        {categories.map(cat => (
+                            <button
+                                key={cat}
+                                onClick={() => setSelectedCategory(cat)}
+                                className={`px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-all ${selectedCategory === cat
+                                    ? 'bg-blue-500 text-white shadow-md shadow-blue-500/30'
+                                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                                    }`}
+                            >
+                                {cat}
+                            </button>
                         ))}
                     </div>
-                </div>
 
-                {/* Quick Action Buttons - Like VB.NET */}
-                <div className="p-3 bg-gradient-to-r from-gray-100 via-white to-gray-100 border-t border-gray-200">
-                    <div className="grid grid-cols-8 gap-2">
-                        {/* Row 1 */}
-                        <a
-                            href="/dashboard/bill-payment"
-                            className="group p-3 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-orange-500/40 transition-all hover:scale-105 cursor-pointer"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">💰</span>
-                            <span className="text-[10px] font-bold">Receive Payment</span>
-                        </a>
-                        <a
-                            href="/dashboard/bills"
-                            className="group p-3 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105 cursor-pointer"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">📋</span>
-                            <span className="text-[10px] font-bold">My Bills</span>
-                        </a>
-                        <a
-                            href="/dashboard/sales"
-                            className="group p-3 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-green-500/40 transition-all hover:scale-105 cursor-pointer"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">📊</span>
-                            <span className="text-[10px] font-bold">Day Sales</span>
-                        </a>
-                        <button
-                            className="group p-3 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-purple-500/40 transition-all hover:scale-105"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">🔄</span>
-                            <span className="text-[10px] font-bold">Merge Bill</span>
-                        </button>
-                        <button
-                            className="group p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-teal-500/40 transition-all hover:scale-105"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">📈</span>
-                            <span className="text-[10px] font-bold">Sales Summary</span>
-                        </button>
-                        <a
-                            href="/dashboard/bills?status=Pending"
-                            className="group p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-amber-500/40 transition-all hover:scale-105 cursor-pointer"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">⏳</span>
-                            <span className="text-[10px] font-bold">Pending Bills</span>
-                        </a>
-                        <button
-                            onClick={clearCart}
-                            className="group p-3 bg-gradient-to-br from-gray-500 via-gray-600 to-slate-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-gray-500/40 transition-all hover:scale-105"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">🗑️</span>
-                            <span className="text-[10px] font-bold">Clear</span>
-                        </button>
-                        <button
-                            className="group p-3 bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-rose-500/40 transition-all hover:scale-105"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">🏁</span>
-                            <span className="text-[10px] font-bold">Closing Stock</span>
-                        </button>
-
-                        {/* Row 2 */}
-                        <button
-                            className="group p-3 bg-gradient-to-br from-lime-500 via-green-500 to-emerald-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-lime-500/40 transition-all hover:scale-105"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">📱</span>
-                            <span className="text-[10px] font-bold">M-Pesa Trans</span>
-                        </button>
-                        <a
-                            href="/dashboard/purchase"
-                            className="group p-3 bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-violet-500/40 transition-all hover:scale-105 cursor-pointer"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">🛒</span>
-                            <span className="text-[10px] font-bold">Purchases</span>
-                        </a>
-                        <button
-                            className="group p-3 bg-gradient-to-br from-red-500 via-rose-500 to-pink-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-red-500/40 transition-all hover:scale-105"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">↩️</span>
-                            <span className="text-[10px] font-bold">Sales Return</span>
-                        </button>
-                        <a
-                            href="/dashboard/products"
-                            className="group p-3 bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-sky-500/40 transition-all hover:scale-105 cursor-pointer"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">📦</span>
-                            <span className="text-[10px] font-bold">Product Items</span>
-                        </a>
-                        <button
-                            className="group p-3 bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-emerald-500/40 transition-all hover:scale-105"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">📲</span>
-                            <span className="text-[10px] font-bold">Mpesa Dashboard</span>
-                        </button>
-                        <button
-                            className="group p-3 bg-gradient-to-br from-pink-500 via-rose-500 to-red-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-pink-500/40 transition-all hover:scale-105"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">❌</span>
-                            <span className="text-[10px] font-bold">Remove</span>
-                        </button>
-                        <button
-                            className="group p-3 bg-gradient-to-br from-yellow-500 via-amber-500 to-orange-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-yellow-500/40 transition-all hover:scale-105"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">💵</span>
-                            <span className="text-[10px] font-bold">Cash</span>
-                        </button>
-                        <button
-                            className="group p-3 bg-gradient-to-br from-fuchsia-500 via-purple-600 to-violet-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-fuchsia-500/40 transition-all hover:scale-105"
-                        >
-                            <span className="text-lg block group-hover:animate-bounce">🔚</span>
-                            <span className="text-[10px] font-bold">End Register</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Right Side - Cart */}
-            <div className="w-[420px] bg-white border-l border-gray-200 flex flex-col shadow-xl">
-                {/* Cart Header */}
-                <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <span className="text-2xl">🛍️</span>
-                            <h2 className="font-bold text-gray-800">Current Order</h2>
-                            <span className="px-2 py-1 bg-blue-100 text-blue-600 text-xs font-bold rounded-full">
-                                {cart.reduce((sum, item) => sum + item.qty, 0)} items
-                            </span>
+                    {/* Products Grid */}
+                    <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+                        <div className="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+                            {filteredProducts.map(product => (
+                                <ProductCard
+                                    key={product.id}
+                                    product={product}
+                                    onAdd={() => addToCart(product)}
+                                />
+                            ))}
                         </div>
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => setShowRunningOrders(true)}
-                                className="relative p-2 hover:bg-orange-50 rounded-xl text-orange-500 transition-colors border border-orange-200"
-                                title="Running Orders"
+                    </div>
+
+                    {/* Quick Action Buttons - Like VB.NET */}
+                    <div className="p-3 bg-gradient-to-r from-gray-100 via-white to-gray-100 border-t border-gray-200">
+                        <div className="grid grid-cols-8 gap-2">
+                            {/* Row 1 */}
+                            <a
+                                href="/dashboard/bill-payment"
+                                className="group p-3 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-orange-500/40 transition-all hover:scale-105 cursor-pointer"
                             >
-                                📋
-                                {runningOrders.length > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
-                                        {runningOrders.length}
-                                    </span>
-                                )}
+                                <span className="text-lg block group-hover:animate-bounce">💰</span>
+                                <span className="text-[10px] font-bold">Receive Payment</span>
+                            </a>
+                            <a
+                                href="/dashboard/bills"
+                                className="group p-3 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105 cursor-pointer"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">📋</span>
+                                <span className="text-[10px] font-bold">My Bills</span>
+                            </a>
+                            <a
+                                href="/dashboard/sales"
+                                className="group p-3 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-green-500/40 transition-all hover:scale-105 cursor-pointer"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">📊</span>
+                                <span className="text-[10px] font-bold">Day Sales</span>
+                            </a>
+                            <button
+                                className="group p-3 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-purple-500/40 transition-all hover:scale-105"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">🔄</span>
+                                <span className="text-[10px] font-bold">Merge Bill</span>
                             </button>
+                            <button
+                                className="group p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-teal-500/40 transition-all hover:scale-105"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">📈</span>
+                                <span className="text-[10px] font-bold">Sales Summary</span>
+                            </button>
+                            <a
+                                href="/dashboard/bills?status=Pending"
+                                className="group p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-amber-500/40 transition-all hover:scale-105 cursor-pointer"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">⏳</span>
+                                <span className="text-[10px] font-bold">Pending Bills</span>
+                            </a>
                             <button
                                 onClick={clearCart}
-                                className="p-2 hover:bg-red-50 rounded-xl text-red-500 transition-colors border border-red-200"
-                                title="Clear All"
+                                className="group p-3 bg-gradient-to-br from-gray-500 via-gray-600 to-slate-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-gray-500/40 transition-all hover:scale-105"
                             >
-                                🗑️
+                                <span className="text-lg block group-hover:animate-bounce">🗑️</span>
+                                <span className="text-[10px] font-bold">Clear</span>
                             </button>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Order Notes */}
-                <div className="px-4 py-3 border-b border-gray-100 bg-yellow-50">
-                    <textarea
-                        value={orderNotes}
-                        onChange={(e) => setOrderNotes(e.target.value)}
-                        placeholder="📝 Add order notes... (e.g., Take-away, Less spicy)"
-                        className="w-full p-3 bg-white border border-yellow-200 rounded-xl focus:outline-none focus:border-yellow-400 text-gray-700 placeholder-gray-400 text-sm h-16 resize-none"
-                    />
-                </div>
-
-                {/* Cart Items */}
-                <div className="flex-1 p-4 overflow-y-auto space-y-2 bg-gray-50">
-                    {cart.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-gray-400">
-                            <span className="text-7xl mb-4 opacity-50">🛒</span>
-                            <p className="font-semibold text-gray-500">Cart is empty</p>
-                            <p className="text-sm">Add products to get started</p>
-                        </div>
-                    ) : (
-                        cart.map(item => (
-                            <CartItemRow
-                                key={item.id}
-                                item={item}
-                                onIncrease={() => updateQty(item.id, 1)}
-                                onDecrease={() => updateQty(item.id, -1)}
-                                onRemove={() => removeFromCart(item.id)}
-                                onEditNotes={() => { setEditingItemId(item.id); setShowNotesModal(true); }}
-                                onEditDiscount={() => {
-                                    const discount = prompt('Enter discount amount:', item.discount.toString());
-                                    if (discount !== null) {
-                                        setCart(prev => prev.map(i =>
-                                            i.id === item.id ? { ...i, discount: Number(discount) || 0 } : i
-                                        ));
-                                    }
-                                }}
-                            />
-                        ))
-                    )}
-                </div>
-
-                {/* Cart Footer */}
-                <div className="p-4 bg-white border-t border-gray-200 space-y-4">
-                    {/* Totals */}
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-gray-500">
-                            <span>Subtotal</span>
-                            <span className="font-medium text-gray-700">Ksh {subtotal.toLocaleString()}</span>
-                        </div>
-                        {totalDiscount > 0 && (
-                            <div className="flex justify-between text-green-600">
-                                <span>Discount</span>
-                                <span className="font-medium">- Ksh {totalDiscount.toLocaleString()}</span>
-                            </div>
-                        )}
-                        <div className="flex justify-between text-xl font-bold text-gray-800 pt-2 border-t border-gray-200">
-                            <span>Total</span>
-                            <span className="text-blue-600">Ksh {total.toLocaleString()}</span>
-                        </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="grid grid-cols-3 gap-2">
-                        <button
-                            onClick={() => cart.length > 0 && setShowHoldModal(true)}
-                            disabled={cart.length === 0}
-                            className="py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/30"
-                        >
-                            <span>📋</span>
-                            <span>Hold</span>
-                        </button>
-                        <button
-                            onClick={sendToKitchen}
-                            disabled={cart.length === 0}
-                            className="py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/30"
-                        >
-                            <span>🍳</span>
-                            <span>KOT</span>
-                        </button>
-                        <button
-                            onClick={() => cart.length > 0 && setShowPayment(true)}
-                            disabled={cart.length === 0}
-                            className="py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/30"
-                        >
-                            <span>💰</span>
-                            <span>Pay</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Running Orders Sidebar */}
-            {showRunningOrders && (
-                <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setShowRunningOrders(false)}>
-                    <div
-                        className="absolute right-0 top-0 h-full w-96 bg-white border-l border-gray-200 p-4 overflow-y-auto shadow-2xl"
-                        onClick={e => e.stopPropagation()}
-                    >
-                        <div className="flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                                <span>📋</span> Running Orders
-                                <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs font-bold rounded-full">
-                                    {runningOrders.length}
-                                </span>
-                            </h2>
                             <button
-                                onClick={() => setShowRunningOrders(false)}
-                                className="text-2xl text-gray-400 hover:text-gray-600"
+                                className="group p-3 bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-rose-500/40 transition-all hover:scale-105"
                             >
-                                ✕
+                                <span className="text-lg block group-hover:animate-bounce">🏁</span>
+                                <span className="text-[10px] font-bold">Closing Stock</span>
+                            </button>
+
+                            {/* Row 2 */}
+                            <button
+                                className="group p-3 bg-gradient-to-br from-lime-500 via-green-500 to-emerald-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-lime-500/40 transition-all hover:scale-105"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">📱</span>
+                                <span className="text-[10px] font-bold">M-Pesa Trans</span>
+                            </button>
+                            <a
+                                href="/dashboard/purchase"
+                                className="group p-3 bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-violet-500/40 transition-all hover:scale-105 cursor-pointer"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">🛒</span>
+                                <span className="text-[10px] font-bold">Purchases</span>
+                            </a>
+                            <button
+                                className="group p-3 bg-gradient-to-br from-red-500 via-rose-500 to-pink-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-red-500/40 transition-all hover:scale-105"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">↩️</span>
+                                <span className="text-[10px] font-bold">Sales Return</span>
+                            </button>
+                            <a
+                                href="/dashboard/products"
+                                className="group p-3 bg-gradient-to-br from-sky-500 via-blue-500 to-indigo-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-sky-500/40 transition-all hover:scale-105 cursor-pointer"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">📦</span>
+                                <span className="text-[10px] font-bold">Product Items</span>
+                            </a>
+                            <button
+                                className="group p-3 bg-gradient-to-br from-emerald-500 via-green-600 to-teal-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-emerald-500/40 transition-all hover:scale-105"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">📲</span>
+                                <span className="text-[10px] font-bold">Mpesa Dashboard</span>
+                            </button>
+                            <button
+                                className="group p-3 bg-gradient-to-br from-pink-500 via-rose-500 to-red-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-pink-500/40 transition-all hover:scale-105"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">❌</span>
+                                <span className="text-[10px] font-bold">Remove</span>
+                            </button>
+                            <button
+                                className="group p-3 bg-gradient-to-br from-yellow-500 via-amber-500 to-orange-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-yellow-500/40 transition-all hover:scale-105"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">💵</span>
+                                <span className="text-[10px] font-bold">Cash</span>
+                            </button>
+                            <button
+                                className="group p-3 bg-gradient-to-br from-fuchsia-500 via-purple-600 to-violet-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-fuchsia-500/40 transition-all hover:scale-105"
+                            >
+                                <span className="text-lg block group-hover:animate-bounce">🔚</span>
+                                <span className="text-[10px] font-bold">End Register</span>
                             </button>
                         </div>
+                    </div>
+                </div>
 
-                        {runningOrders.length === 0 ? (
-                            <div className="text-center text-gray-400 py-12">
-                                <span className="text-5xl block mb-3 opacity-50">📭</span>
-                                <p className="font-medium">No running orders</p>
+                {/* Right Side - Cart */}
+                <div className="w-[420px] bg-white border-l border-gray-200 flex flex-col shadow-xl">
+                    {/* Cart Header */}
+                    <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl">🛍️</span>
+                                <h2 className="font-bold text-gray-800">Current Order</h2>
+                                <span className="px-2 py-1 bg-blue-100 text-blue-600 text-xs font-bold rounded-full">
+                                    {cart.reduce((sum, item) => sum + item.qty, 0)} items
+                                </span>
+                            </div>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setShowRunningOrders(true)}
+                                    className="relative p-2 hover:bg-orange-50 rounded-xl text-orange-500 transition-colors border border-orange-200"
+                                    title="Running Orders"
+                                >
+                                    📋
+                                    {runningOrders.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-orange-500 text-white text-xs rounded-full flex items-center justify-center font-bold">
+                                            {runningOrders.length}
+                                        </span>
+                                    )}
+                                </button>
+                                <button
+                                    onClick={clearCart}
+                                    className="p-2 hover:bg-red-50 rounded-xl text-red-500 transition-colors border border-red-200"
+                                    title="Clear All"
+                                >
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Order Notes */}
+                    <div className="px-4 py-3 border-b border-gray-100 bg-yellow-50">
+                        <textarea
+                            value={orderNotes}
+                            onChange={(e) => setOrderNotes(e.target.value)}
+                            placeholder="📝 Add order notes... (e.g., Take-away, Less spicy)"
+                            className="w-full p-3 bg-white border border-yellow-200 rounded-xl focus:outline-none focus:border-yellow-400 text-gray-700 placeholder-gray-400 text-sm h-16 resize-none"
+                        />
+                    </div>
+
+                    {/* Cart Items */}
+                    <div className="flex-1 p-4 overflow-y-auto space-y-2 bg-gray-50">
+                        {cart.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                <span className="text-7xl mb-4 opacity-50">🛒</span>
+                                <p className="font-semibold text-gray-500">Cart is empty</p>
+                                <p className="text-sm">Add products to get started</p>
                             </div>
                         ) : (
-                            <div className="space-y-3">
-                                {runningOrders.map(order => (
-                                    <RunningOrderCard
-                                        key={order.id}
-                                        order={order}
-                                        onResume={() => resumeOrder(order.id)}
-                                        onDelete={() => deleteRunningOrder(order.id)}
-                                    />
-                                ))}
-                            </div>
+                            cart.map(item => (
+                                <CartItemRow
+                                    key={item.id}
+                                    item={item}
+                                    onIncrease={() => updateQty(item.id, 1)}
+                                    onDecrease={() => updateQty(item.id, -1)}
+                                    onRemove={() => removeFromCart(item.id)}
+                                    onEditNotes={() => { setEditingItemId(item.id); setShowNotesModal(true); }}
+                                    onEditDiscount={() => {
+                                        const discount = prompt('Enter discount amount:', item.discount.toString());
+                                        if (discount !== null) {
+                                            setCart(prev => prev.map(i =>
+                                                i.id === item.id ? { ...i, discount: Number(discount) || 0 } : i
+                                            ));
+                                        }
+                                    }}
+                                />
+                            ))
                         )}
                     </div>
-                </div>
-            )}
 
-            {/* Modals */}
-            <PaymentModal
-                isOpen={showPayment}
-                onClose={() => setShowPayment(false)}
-                total={total}
-                onComplete={completeSale}
-                invoiceNo={invoiceNo}
-            />
-
-            <FoodOrderNotesModal
-                isOpen={showNotesModal}
-                onClose={() => setShowNotesModal(false)}
-                currentNotes={cart.find(i => i.id === editingItemId)?.notes || ''}
-                onSave={(notes: string) => editingItemId && updateItemNotes(editingItemId, notes)}
-                foodNotes={foodOrderNotes}
-            />
-
-            <HoldOrderModal
-                isOpen={showHoldModal}
-                onClose={() => setShowHoldModal(false)}
-                onSave={holdOrder}
-            />
-
-            {/* Batch Selection Modal */}
-            <BatchSelectionModal
-                isOpen={showBatchModal}
-                onClose={() => {
-                    setShowBatchModal(false);
-                    setPendingProduct(null);
-                    setProductBatches([]);
-                }}
-                product={pendingProduct}
-                batches={productBatches}
-                onSelect={handleBatchSelect}
-            />
-
-            {/* KOT Preview - After print or close, shows Customer Bill */}
-            {showKOTPreview && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                <span>🍳</span> Kitchen Order Ticket
-                            </h2>
-                            <span className="px-3 py-1 bg-purple-100 text-purple-600 text-xs font-bold rounded-full">Step 1 of 2</span>
-                        </div>
-
-                        <div className="flex-1 overflow-auto bg-gray-100 rounded-2xl p-4 mb-4">
-                            <div
-                                className="bg-white shadow-lg mx-auto"
-                                style={{ width: '80mm', minHeight: '200px' }}
-                                dangerouslySetInnerHTML={{ __html: kotHTML }}
-                            />
-                        </div>
-
-                        <div className="flex gap-3">
-                            <button
-                                onClick={closeKOTAndShowBill}
-                                className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
-                            >
-                                Skip →
-                            </button>
-                            <button
-                                onClick={printKOTNow}
-                                className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-xl font-semibold hover:shadow-lg flex items-center justify-center gap-2"
-                            >
-                                <span>🖨️</span>
-                                <span>Print KOT →</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Customer Bill Preview (Unpaid) - After KOT */}
-            {showBillPreview && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col">
-                        <div className="flex items-center justify-between mb-4">
-                            <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                                <span>🧾</span> Customer Bill
-                            </h2>
-                            <span className="px-3 py-1 bg-orange-100 text-orange-600 text-xs font-bold rounded-full">Step 2 of 2</span>
-                        </div>
-
-                        <div className="p-3 bg-red-50 border border-red-200 rounded-xl mb-4 flex items-center gap-2">
-                            <span className="text-2xl">⚠️</span>
-                            <div>
-                                <p className="font-semibold text-red-700">NOT PAID</p>
-                                <p className="text-xs text-red-600">Customer bill with watermark</p>
+                    {/* Cart Footer */}
+                    <div className="p-4 bg-white border-t border-gray-200 space-y-4">
+                        {/* Totals */}
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-gray-500">
+                                <span>Subtotal</span>
+                                <span className="font-medium text-gray-700">Ksh {subtotal.toLocaleString()}</span>
+                            </div>
+                            {totalDiscount > 0 && (
+                                <div className="flex justify-between text-green-600">
+                                    <span>Discount</span>
+                                    <span className="font-medium">- Ksh {totalDiscount.toLocaleString()}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between text-xl font-bold text-gray-800 pt-2 border-t border-gray-200">
+                                <span>Total</span>
+                                <span className="text-blue-600">Ksh {total.toLocaleString()}</span>
                             </div>
                         </div>
 
-                        <div className="flex-1 overflow-auto bg-gray-100 rounded-2xl p-4 mb-4">
-                            <div
-                                className="bg-white shadow-lg mx-auto"
-                                style={{ width: '80mm', minHeight: '200px' }}
-                                dangerouslySetInnerHTML={{ __html: billHTML }}
-                            />
-                        </div>
-
-                        <div className="flex gap-3">
+                        {/* Action Buttons */}
+                        <div className="grid grid-cols-3 gap-2">
                             <button
-                                onClick={closeBillAndPrepareNext}
-                                className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
+                                onClick={() => cart.length > 0 && setShowHoldModal(true)}
+                                disabled={cart.length === 0}
+                                className="py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/30"
                             >
-                                Skip Print & Next
+                                <span>📋</span>
+                                <span>Hold</span>
                             </button>
                             <button
-                                onClick={printBillNow}
-                                className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-700 text-white rounded-xl font-semibold hover:shadow-lg flex items-center justify-center gap-2"
+                                onClick={sendToKitchen}
+                                disabled={cart.length === 0}
+                                className="py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/30"
                             >
-                                <span>🖨️</span>
-                                <span>Print Bill</span>
+                                <span>🍳</span>
+                                <span>KOT</span>
+                            </button>
+                            <button
+                                onClick={() => cart.length > 0 && setShowPayment(true)}
+                                disabled={cart.length === 0}
+                                className="py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/30"
+                            >
+                                <span>💰</span>
+                                <span>Pay</span>
                             </button>
                         </div>
                     </div>
                 </div>
-            )}
 
-            {/* Paid Receipt Preview */}
-            <ReceiptPreviewModal
-                isOpen={showReceiptPreview}
-                onClose={() => { setShowReceiptPreview(false); clearCart(); }}
-                receiptHTML={receiptHTML}
-                title="✓ Tax Invoice (Paid)"
-                onPrint={printReceiptNow}
-            />
-        </div>
+                {/* Running Orders Sidebar */}
+                {showRunningOrders && (
+                    <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setShowRunningOrders(false)}>
+                        <div
+                            className="absolute right-0 top-0 h-full w-96 bg-white border-l border-gray-200 p-4 overflow-y-auto shadow-2xl"
+                            onClick={e => e.stopPropagation()}
+                        >
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+                                    <span>📋</span> Running Orders
+                                    <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs font-bold rounded-full">
+                                        {runningOrders.length}
+                                    </span>
+                                </h2>
+                                <button
+                                    onClick={() => setShowRunningOrders(false)}
+                                    className="text-2xl text-gray-400 hover:text-gray-600"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+
+                            {runningOrders.length === 0 ? (
+                                <div className="text-center text-gray-400 py-12">
+                                    <span className="text-5xl block mb-3 opacity-50">📭</span>
+                                    <p className="font-medium">No running orders</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {runningOrders.map(order => (
+                                        <RunningOrderCard
+                                            key={order.id}
+                                            order={order}
+                                            onResume={() => resumeOrder(order.id)}
+                                            onDelete={() => deleteRunningOrder(order.id)}
+                                        />
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Modals */}
+                <PaymentModal
+                    isOpen={showPayment}
+                    onClose={() => setShowPayment(false)}
+                    total={total}
+                    onComplete={completeSale}
+                    invoiceNo={invoiceNo}
+                />
+
+                <FoodOrderNotesModal
+                    isOpen={showNotesModal}
+                    onClose={() => setShowNotesModal(false)}
+                    currentNotes={cart.find(i => i.id === editingItemId)?.notes || ''}
+                    onSave={(notes: string) => editingItemId && updateItemNotes(editingItemId, notes)}
+                    foodNotes={foodOrderNotes}
+                />
+
+                <HoldOrderModal
+                    isOpen={showHoldModal}
+                    onClose={() => setShowHoldModal(false)}
+                    onSave={holdOrder}
+                />
+
+                {/* Batch Selection Modal */}
+                <BatchSelectionModal
+                    isOpen={showBatchModal}
+                    onClose={() => {
+                        setShowBatchModal(false);
+                        setPendingProduct(null);
+                        setProductBatches([]);
+                    }}
+                    product={pendingProduct}
+                    batches={productBatches}
+                    onSelect={handleBatchSelect}
+                />
+
+                {/* KOT Preview - After print or close, shows Customer Bill */}
+                {showKOTPreview && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                        <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                    <span>🍳</span> Kitchen Order Ticket
+                                </h2>
+                                <span className="px-3 py-1 bg-purple-100 text-purple-600 text-xs font-bold rounded-full">Step 1 of 2</span>
+                            </div>
+
+                            <div className="flex-1 overflow-auto bg-gray-100 rounded-2xl p-4 mb-4">
+                                <div
+                                    className="bg-white shadow-lg mx-auto"
+                                    style={{ width: '80mm', minHeight: '200px' }}
+                                    dangerouslySetInnerHTML={{ __html: kotHTML }}
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={closeKOTAndShowBill}
+                                    className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
+                                >
+                                    Skip →
+                                </button>
+                                <button
+                                    onClick={printKOTNow}
+                                    className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-purple-700 text-white rounded-xl font-semibold hover:shadow-lg flex items-center justify-center gap-2"
+                                >
+                                    <span>🖨️</span>
+                                    <span>Print KOT →</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Customer Bill Preview (Unpaid) - After KOT */}
+                {showBillPreview && (
+                    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
+                        <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] flex flex-col">
+                            <div className="flex items-center justify-between mb-4">
+                                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                    <span>🧾</span> Customer Bill
+                                </h2>
+                                <span className="px-3 py-1 bg-orange-100 text-orange-600 text-xs font-bold rounded-full">Step 2 of 2</span>
+                            </div>
+
+                            <div className="p-3 bg-red-50 border border-red-200 rounded-xl mb-4 flex items-center gap-2">
+                                <span className="text-2xl">⚠️</span>
+                                <div>
+                                    <p className="font-semibold text-red-700">NOT PAID</p>
+                                    <p className="text-xs text-red-600">Customer bill with watermark</p>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 overflow-auto bg-gray-100 rounded-2xl p-4 mb-4">
+                                <div
+                                    className="bg-white shadow-lg mx-auto"
+                                    style={{ width: '80mm', minHeight: '200px' }}
+                                    dangerouslySetInnerHTML={{ __html: billHTML }}
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <button
+                                    onClick={closeBillAndPrepareNext}
+                                    className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
+                                >
+                                    Skip Print & Next
+                                </button>
+                                <button
+                                    onClick={printBillNow}
+                                    className="flex-1 py-3 bg-gradient-to-r from-orange-500 to-orange-700 text-white rounded-xl font-semibold hover:shadow-lg flex items-center justify-center gap-2"
+                                >
+                                    <span>🖨️</span>
+                                    <span>Print Bill</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* Paid Receipt Preview */}
+                <ReceiptPreviewModal
+                    isOpen={showReceiptPreview}
+                    onClose={() => { setShowReceiptPreview(false); clearCart(); }}
+                    receiptHTML={receiptHTML}
+                    title="✓ Tax Invoice (Paid)"
+                    onPrint={printReceiptNow}
+                />
+            </div>
+        </>
     );
 }

@@ -52,6 +52,13 @@ export default function DashboardPage() {
     const [totalCustomers, setTotalCustomers] = useState(0);
     const [pendingBills, setPendingBills] = useState(0);
 
+    // NEW: Financial stats
+    const [totalExpenses, setTotalExpenses] = useState(0);
+    const [totalAdvances, setTotalAdvances] = useState(0);
+    const [totalVouchers, setTotalVouchers] = useState(0);
+    const [activeShifts, setActiveShifts] = useState(0);
+    const [closedShifts, setClosedShifts] = useState(0);
+
     // Chart data
     const [salesData, setSalesData] = useState<SalesData[]>([]);
     const [categorySales, setCategorySales] = useState<CategorySales[]>([]);
@@ -72,34 +79,35 @@ export default function DashboardPage() {
         setIsLoading(true);
         const today = new Date().toISOString().split('T')[0];
         const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        const currentMonth = new Date().toISOString().slice(0, 7);
 
         try {
-            // Today's sales
+            // Today's sales - FIXED: use total_amount instead of grand_total
             const { data: todayData } = await supabase
                 .from('sales')
-                .select('grand_total, payment_mode')
+                .select('total_amount, payment_method')
                 .eq('sale_date', today);
 
-            const todayTotal = (todayData || []).reduce((sum, s) => sum + (s.grand_total || 0), 0);
+            const todayTotal = (todayData || []).reduce((sum, s) => sum + (s.total_amount || 0), 0);
             setTodaySales(todayTotal);
             setTodayOrders(todayData?.length || 0);
-            setMpesaToday((todayData || []).filter(s => s.payment_mode?.toLowerCase() === 'mpesa').reduce((sum, s) => sum + (s.grand_total || 0), 0));
+            setMpesaToday((todayData || []).filter(s => (s.payment_method || '').toLowerCase().includes('mpesa')).reduce((sum, s) => sum + (s.total_amount || 0), 0));
 
             // Yesterday's sales
             const { data: yesterdayData } = await supabase
                 .from('sales')
-                .select('grand_total, payment_mode')
+                .select('total_amount, payment_method')
                 .eq('sale_date', yesterday);
 
-            const yestTotal = (yesterdayData || []).reduce((sum, s) => sum + (s.grand_total || 0), 0);
+            const yestTotal = (yesterdayData || []).reduce((sum, s) => sum + (s.total_amount || 0), 0);
             setYesterdaySales(yestTotal);
             setYesterdayOrders(yesterdayData?.length || 0);
-            setMpesaYesterday((yesterdayData || []).filter(s => s.payment_mode?.toLowerCase() === 'mpesa').reduce((sum, s) => sum + (s.grand_total || 0), 0));
+            setMpesaYesterday((yesterdayData || []).filter(s => (s.payment_method || '').toLowerCase().includes('mpesa')).reduce((sum, s) => sum + (s.total_amount || 0), 0));
 
-            // Pending bills
+            // Pending bills - from sales table with status Pending
             const { data: pendingData } = await supabase
-                .from('bills')
-                .select('bill_id')
+                .from('sales')
+                .select('sale_id')
                 .eq('status', 'Pending');
             setPendingBills(pendingData?.length || 0);
 
@@ -107,7 +115,7 @@ export default function DashboardPage() {
             const sevenDaysAgo = new Date(Date.now() - 7 * 86400000).toISOString().split('T')[0];
             const { data: weekSales } = await supabase
                 .from('sales')
-                .select('sale_date, grand_total')
+                .select('sale_date, total_amount')
                 .gte('sale_date', sevenDaysAgo)
                 .order('sale_date');
 
@@ -119,7 +127,7 @@ export default function DashboardPage() {
                     salesByDate.set(date, { total: 0, count: 0 });
                 }
                 const entry = salesByDate.get(date)!;
-                entry.total += s.grand_total || 0;
+                entry.total += s.total_amount || 0;
                 entry.count += 1;
             });
             setSalesData(Array.from(salesByDate.entries()).map(([date, data]) => ({ date, ...data })));
@@ -127,7 +135,7 @@ export default function DashboardPage() {
             // Top selling products
             const { data: salesItems } = await supabase
                 .from('sales_items')
-                .select('product_name, quantity, total_price, sale_id')
+                .select('product_name, quantity, subtotal')
                 .order('created_at', { ascending: false })
                 .limit(500);
 
@@ -139,7 +147,7 @@ export default function DashboardPage() {
                 }
                 const entry = productMap.get(name)!;
                 entry.qty += item.quantity || 0;
-                entry.revenue += item.total_price || 0;
+                entry.revenue += item.subtotal || 0;
             });
             const topProds = Array.from(productMap.entries())
                 .map(([name, data]) => ({ name, ...data }))
@@ -150,18 +158,18 @@ export default function DashboardPage() {
             // Payment modes
             const { data: allSales } = await supabase
                 .from('sales')
-                .select('payment_mode, grand_total')
+                .select('payment_method, total_amount')
                 .gte('sale_date', dateFrom)
                 .lte('sale_date', dateTo);
 
             const modeMap = new Map<string, { total: number; count: number }>();
             (allSales || []).forEach(s => {
-                const mode = s.payment_mode || 'CASH';
+                const mode = s.payment_method || 'CASH';
                 if (!modeMap.has(mode)) {
                     modeMap.set(mode, { total: 0, count: 0 });
                 }
                 const entry = modeMap.get(mode)!;
-                entry.total += s.grand_total || 0;
+                entry.total += s.total_amount || 0;
                 entry.count += 1;
             });
             setPaymentModes(Array.from(modeMap.entries()).map(([mode, data]) => ({ mode, ...data })));
@@ -190,21 +198,51 @@ export default function DashboardPage() {
             // Waiter sales
             const { data: waiterData } = await supabase
                 .from('sales')
-                .select('waiter_id, grand_total, cashier_name')
+                .select('waiter_name, total_amount, created_by')
                 .gte('sale_date', dateFrom)
                 .lte('sale_date', dateTo);
 
             const waiterMap = new Map<string, { sales: number; orders: number }>();
             (waiterData || []).forEach(s => {
-                const name = s.cashier_name || 'Unknown';
+                const name = s.waiter_name || s.created_by || 'Unknown';
                 if (!waiterMap.has(name)) {
                     waiterMap.set(name, { sales: 0, orders: 0 });
                 }
                 const entry = waiterMap.get(name)!;
-                entry.sales += s.grand_total || 0;
+                entry.sales += s.total_amount || 0;
                 entry.orders += 1;
             });
             setWaiterSales(Array.from(waiterMap.entries()).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.sales - a.sales));
+
+            // NEW: Load Expenses for current month
+            const { data: expensesData } = await supabase
+                .from('expenses')
+                .select('amount')
+                .gte('expense_date', `${currentMonth}-01`)
+                .lte('expense_date', dateTo);
+            setTotalExpenses((expensesData || []).reduce((sum, e) => sum + (e.amount || 0), 0));
+
+            // NEW: Load Salary Advances
+            const { data: advancesData } = await supabase
+                .from('salary_advances')
+                .select('amount')
+                .eq('status', 'Approved');
+            setTotalAdvances((advancesData || []).reduce((sum, a) => sum + (a.amount || 0), 0));
+
+            // NEW: Load Vouchers
+            const { data: vouchersData } = await supabase
+                .from('vouchers')
+                .select('amount')
+                .gte('voucher_date', `${currentMonth}-01`)
+                .lte('voucher_date', dateTo);
+            setTotalVouchers((vouchersData || []).reduce((sum, v) => sum + (v.amount || 0), 0));
+
+            // NEW: Load Shifts
+            const { data: shiftsData } = await supabase
+                .from('shifts')
+                .select('shift_id, status');
+            setActiveShifts((shiftsData || []).filter(s => s.status === 'Open').length);
+            setClosedShifts((shiftsData || []).filter(s => s.status === 'Closed').length);
 
         } catch (err) {
             console.error('Error loading dashboard:', err);
@@ -339,6 +377,60 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* Financial Stats Row */}
+            <div className="grid grid-cols-6 gap-4">
+                {/* Expenses */}
+                <div className="bg-gradient-to-br from-rose-500 via-pink-500 to-fuchsia-600 rounded-3xl p-5 text-white shadow-xl">
+                    <span className="text-3xl">💸</span>
+                    <p className="text-xs opacity-80 mt-2">Total Expenses</p>
+                    <p className="text-2xl font-bold mt-1">Ksh {totalExpenses.toLocaleString()}</p>
+                    <a href="/dashboard/expenses" className="text-xs underline opacity-80 hover:opacity-100">View →</a>
+                </div>
+
+                {/* Salary Advances */}
+                <div className="bg-gradient-to-br from-violet-500 via-purple-500 to-indigo-600 rounded-3xl p-5 text-white shadow-xl">
+                    <span className="text-3xl">💵</span>
+                    <p className="text-xs opacity-80 mt-2">Salary Advances</p>
+                    <p className="text-2xl font-bold mt-1">Ksh {totalAdvances.toLocaleString()}</p>
+                    <a href="/dashboard/advances" className="text-xs underline opacity-80 hover:opacity-100">View →</a>
+                </div>
+
+                {/* Vouchers */}
+                <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 rounded-3xl p-5 text-white shadow-xl">
+                    <span className="text-3xl">🎟️</span>
+                    <p className="text-xs opacity-80 mt-2">Total Vouchers</p>
+                    <p className="text-2xl font-bold mt-1">Ksh {totalVouchers.toLocaleString()}</p>
+                    <a href="/dashboard/vouchers" className="text-xs underline opacity-80 hover:opacity-100">View →</a>
+                </div>
+
+                {/* Net Sales */}
+                <div className="col-span-2 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-600 rounded-3xl p-5 text-white shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <span className="text-3xl">📊</span>
+                    <p className="text-xs opacity-80 mt-2">Net Sales (After Deductions)</p>
+                    <p className="text-3xl font-bold mt-1">Ksh {(todaySales - totalExpenses - totalVouchers).toLocaleString()}</p>
+                    <p className="text-xs opacity-70 mt-1">Sales - Expenses - Vouchers</p>
+                </div>
+
+                {/* Shifts */}
+                <div className="bg-gradient-to-br from-cyan-500 via-sky-500 to-blue-600 rounded-3xl p-5 text-white shadow-xl">
+                    <span className="text-3xl">⏰</span>
+                    <p className="text-xs opacity-80 mt-2">Shifts</p>
+                    <div className="flex items-center gap-3 mt-2">
+                        <div>
+                            <p className="text-lg font-bold">{activeShifts}</p>
+                            <p className="text-xs opacity-70">Active</p>
+                        </div>
+                        <div className="h-8 w-px bg-white/30"></div>
+                        <div>
+                            <p className="text-lg font-bold">{closedShifts}</p>
+                            <p className="text-xs opacity-70">Closed</p>
+                        </div>
+                    </div>
+                    <a href="/dashboard/shifts" className="text-xs underline opacity-80 hover:opacity-100">Manage →</a>
+                </div>
+            </div>
+
             {/* Charts Row */}
             <div className="grid grid-cols-3 gap-6">
                 {/* Sales Trend Chart */}
@@ -448,9 +540,9 @@ export default function DashboardPage() {
                         {waiterSales.map((waiter, i) => (
                             <div key={i} className="flex items-center gap-3 p-3 bg-gradient-to-r from-gray-50 to-indigo-50 rounded-xl">
                                 <span className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold ${i === 0 ? 'bg-gradient-to-br from-yellow-400 to-orange-500' :
-                                        i === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400' :
-                                            i === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-700' :
-                                                'bg-gradient-to-br from-indigo-400 to-purple-500'
+                                    i === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-400' :
+                                        i === 2 ? 'bg-gradient-to-br from-amber-600 to-amber-700' :
+                                            'bg-gradient-to-br from-indigo-400 to-purple-500'
                                     }`}>
                                     {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : i + 1}
                                 </span>

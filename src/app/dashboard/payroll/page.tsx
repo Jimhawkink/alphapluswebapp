@@ -199,8 +199,8 @@ export default function PayrollPage() {
             .like('repayment_date', `${selectedMonth}%`)
             .eq('status', 'Approved');
         const totalAdvances = (data || []).reduce((sum, a) => sum + (a.amount || 0), 0);
-        // Divide by weeks to spread across the month
-        return Math.round(totalAdvances / getWeeksInMonth());
+        // Return full advance amount - NO DIVISION (user enters exact weekly advance amount)
+        return totalAdvances;
     };
 
     const openPayModal = async () => {
@@ -498,16 +498,16 @@ export default function PayrollPage() {
                             key={report.week}
                             onClick={() => setSelectedWeek(report.week)}
                             className={`p-4 rounded-xl border-2 transition-all text-left ${selectedWeek === report.week
-                                    ? 'border-blue-500 bg-blue-50'
-                                    : 'border-gray-100 hover:border-gray-300'
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-100 hover:border-gray-300'
                                 }`}
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <span className="font-bold text-gray-800">{report.weekLabel}</span>
                                 <span className={`w-3 h-3 rounded-full ${report.status === 'Paid' ? 'bg-green-500'
-                                        : report.status === 'Partial' ? 'bg-orange-500'
-                                            : report.status === 'Pending' ? 'bg-yellow-500'
-                                                : 'bg-gray-300'
+                                    : report.status === 'Partial' ? 'bg-orange-500'
+                                        : report.status === 'Pending' ? 'bg-yellow-500'
+                                            : 'bg-gray-300'
                                     }`} />
                             </div>
                             <p className="text-xs text-gray-500">{report.startDate} - {report.endDate}</p>
@@ -568,8 +568,8 @@ export default function PayrollPage() {
                                             <td className="py-3 px-4 text-right font-bold text-green-600">Ksh {p.net_pay?.toLocaleString()}</td>
                                             <td className="py-3 px-4 text-center">
                                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1 justify-center ${p.status === 'Paid'
-                                                        ? 'bg-green-100 text-green-700'
-                                                        : 'bg-orange-100 text-orange-700'
+                                                    ? 'bg-green-100 text-green-700'
+                                                    : 'bg-orange-100 text-orange-700'
                                                     }`}>
                                                     {p.status === 'Paid' ? '✅' : '⏳'} {p.status}
                                                 </span>
@@ -803,9 +803,9 @@ export default function PayrollPage() {
                                             <td className="py-3 px-4 text-center text-orange-600 font-semibold">{report.pendingCount}</td>
                                             <td className="py-3 px-4 text-center">
                                                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${report.status === 'Paid' ? 'bg-green-100 text-green-700'
-                                                        : report.status === 'Partial' ? 'bg-orange-100 text-orange-700'
-                                                            : report.status === 'Pending' ? 'bg-yellow-100 text-yellow-700'
-                                                                : 'bg-gray-100 text-gray-600'
+                                                    : report.status === 'Partial' ? 'bg-orange-100 text-orange-700'
+                                                        : report.status === 'Pending' ? 'bg-yellow-100 text-yellow-700'
+                                                            : 'bg-gray-100 text-gray-600'
                                                     }`}>
                                                     {report.status === 'Paid' ? '✅' : report.status === 'Partial' ? '🔶' : report.status === 'Pending' ? '⏳' : '—'} {report.status}
                                                 </span>
