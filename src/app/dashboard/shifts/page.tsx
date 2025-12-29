@@ -42,39 +42,51 @@ export default function ShiftsPage() {
         const { data } = await supabase.from('shifts').select('*').order('shift_id', { ascending: false }).limit(30);
         setShifts(data || []);
 
-        // Load stats for current shift
+        // Load stats for current shift ONLY
         if (openShift) {
-            // Get sales for this shift - use shift_id and total_amount (correct column name)
+            // Create shift start datetime for filtering
+            const shiftStartDateTime = new Date(`${openShift.shift_date}T${openShift.start_time || '00:00:00'}`).toISOString();
+
+            console.log('Loading shift stats for shift_id:', openShift.shift_id, 'started at:', shiftStartDateTime);
+
+            // Get sales for THIS SHIFT ONLY - filter by shift_id
             const { data: salesData } = await supabase
                 .from('sales')
                 .select('total_amount, payment_method')
-                .eq('sale_date', openShift.shift_date);
+                .eq('shift_id', openShift.shift_id);
 
-            // Get expenses for today
+            // Get expenses created DURING this shift (after shift started)
             const { data: expData } = await supabase
                 .from('expenses')
                 .select('amount')
-                .eq('expense_date', openShift.shift_date);
+                .gte('created_at', shiftStartDateTime);
 
-            // Get vouchers for today
+            // Get vouchers created DURING this shift (after shift started)
             const { data: vchData } = await supabase
                 .from('vouchers')
                 .select('amount')
-                .eq('voucher_date', openShift.shift_date);
+                .gte('created_at', shiftStartDateTime);
 
-            // Get salary advances for today
+            // Get salary advances created DURING this shift (after shift started)
             const { data: advData } = await supabase
                 .from('salary_advances')
                 .select('amount')
-                .eq('advance_date', openShift.shift_date)
-                .eq('status', 'Approved');
+                .eq('status', 'Approved')
+                .gte('created_at', shiftStartDateTime);
 
             const totalSales = (salesData || []).reduce((sum, s) => sum + (s.total_amount || 0), 0);
             const totalExpenses = (expData || []).reduce((sum, e) => sum + (e.amount || 0), 0);
             const totalVouchers = (vchData || []).reduce((sum, v) => sum + (v.amount || 0), 0);
             const totalAdvances = (advData || []).reduce((sum, a) => sum + (a.amount || 0), 0);
 
-            console.log('Shift Stats:', { totalSales, totalExpenses, totalVouchers, totalAdvances, salesCount: salesData?.length });
+            console.log('Current Shift Stats:', {
+                shift_id: openShift.shift_id,
+                totalSales,
+                totalExpenses,
+                totalVouchers,
+                totalAdvances,
+                salesCount: salesData?.length
+            });
 
             setShiftStats({
                 sales: totalSales,
@@ -169,7 +181,7 @@ export default function ShiftsPage() {
             const { data } = await supabase
                 .from('sales')
                 .select('sale_id, total_amount, payment_method, status, waiter_name, created_by')
-                .eq('sale_date', shift.shift_date);
+                .eq('shift_id', shift.shift_id);
 
             if (data) {
                 salesData = data;
@@ -257,6 +269,9 @@ export default function ShiftsPage() {
         }
 
         // ========== FETCH EXPENSE DETAILS ==========
+        // Create shift start datetime for filtering
+        const shiftStartDateTime = new Date(`${shift.shift_date}T${shift.start_time || '00:00:00'}`).toISOString();
+
         interface ExpenseItem { name: string; amount: number; category: string }
         let expensesList: ExpenseItem[] = [];
 
@@ -264,7 +279,7 @@ export default function ShiftsPage() {
             const { data: expData } = await supabase
                 .from('expenses')
                 .select('expense_name, amount, category')
-                .eq('expense_date', shift.shift_date);
+                .gte('created_at', shiftStartDateTime);
 
             if (expData) {
                 expensesList = expData.map(e => ({
@@ -286,8 +301,8 @@ export default function ShiftsPage() {
             const { data: advData } = await supabase
                 .from('salary_advances')
                 .select('employee_name, amount')
-                .eq('advance_date', shift.shift_date)
-                .eq('status', 'Approved');
+                .eq('status', 'Approved')
+                .gte('created_at', shiftStartDateTime);
 
             if (advData) {
                 advancesList = advData.map(a => ({
@@ -308,7 +323,7 @@ export default function ShiftsPage() {
             const { data: vchData } = await supabase
                 .from('vouchers')
                 .select('payee_name, amount, description')
-                .eq('voucher_date', shift.shift_date);
+                .gte('created_at', shiftStartDateTime);
 
             if (vchData) {
                 vouchersList = vchData.map(v => ({
