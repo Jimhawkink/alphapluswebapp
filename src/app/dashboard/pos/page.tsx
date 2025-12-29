@@ -881,6 +881,11 @@ export default function POSPage() {
     // Saving state
     const [isSavingPending, setIsSavingPending] = useState(false);
 
+    // Waiter/Staff selection state
+    const [waiters, setWaiters] = useState<Array<{ user_id: number; full_name: string; role: string }>>([]);
+    const [selectedWaiterId, setSelectedWaiterId] = useState<number | null>(null);
+    const [selectedWaiterName, setSelectedWaiterName] = useState<string>('');
+
     // Load products from database
     const loadProducts = useCallback(async () => {
         setIsLoadingProducts(true);
@@ -956,6 +961,17 @@ export default function POSPage() {
                 // Load next KOT number
                 const nextKOT = await getNextKOTNumber();
                 setCurrentKOTNumber(nextKOT);
+
+                // Load waiters/staff from users table
+                const { data: usersData } = await supabase
+                    .from('users')
+                    .select('user_id, full_name, role')
+                    .eq('status', 'Active')
+                    .order('full_name');
+
+                if (usersData && usersData.length > 0) {
+                    setWaiters(usersData);
+                }
             } catch (err) {
                 console.error('Error loading initial data:', err);
             }
@@ -1185,7 +1201,7 @@ export default function POSPage() {
                 tableNo ? 'Dine-In' : 'Take-Away',
                 {
                     tableNo: tableNo || undefined,
-                    waiter: 'Cashier',
+                    waiter: selectedWaiterName || 'Cashier',
                     orderNotes: orderNotes || undefined,
                     priority: 'normal'
                 }
@@ -1199,7 +1215,11 @@ export default function POSPage() {
             const billHtmlContent = generateCustomerBillHTML(billData, undefined, false);
             setBillHTML(billHtmlContent);
 
-            // Save pending sale to database
+            // Get current logged in user
+            const userData = localStorage.getItem('user');
+            const currentUser = userData ? JSON.parse(userData) : null;
+
+            // Save pending sale to database with waiter info
             await savePendingSale({
                 receiptNo: invoiceNo,
                 kotNumber: currentKOTNumber,
@@ -1218,7 +1238,9 @@ export default function POSPage() {
                 discount: totalDiscount,
                 taxAmount: 0,
                 total: total,
-                cashierName: 'Cashier',
+                cashierName: currentUser?.name || 'Cashier',
+                waiterId: selectedWaiterId || undefined,
+                waiterName: selectedWaiterName || undefined,
                 shiftId: shift.id,
                 shiftName: shift.name,
                 shiftCode: shift.code,
@@ -1228,6 +1250,12 @@ export default function POSPage() {
             });
 
             toast.success('Order sent to kitchen & saved as pending! 🍳');
+
+            // Get next invoice and KOT numbers for the next order
+            const nextReceipt = await getNextReceiptNumber();
+            setInvoiceNo(nextReceipt);
+            const nextKOT = await getNextKOTNumber();
+            setCurrentKOTNumber(nextKOT);
 
             // Show KOT preview
             setShowKOTPreview(true);
@@ -1455,7 +1483,7 @@ export default function POSPage() {
                         </div>
                     </div>
 
-                    {/* Search & Table */}
+                    {/* Search, Table & Waiter */}
                     <div className="flex gap-3">
                         <div className="flex-1 relative">
                             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
@@ -1467,6 +1495,28 @@ export default function POSPage() {
                                 className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 text-gray-800 placeholder-gray-400"
                             />
                         </div>
+                        {/* Waiter Dropdown */}
+                        <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
+                            <select
+                                value={selectedWaiterId || ''}
+                                onChange={(e) => {
+                                    const id = e.target.value ? parseInt(e.target.value) : null;
+                                    setSelectedWaiterId(id);
+                                    const waiter = waiters.find(w => w.user_id === id);
+                                    setSelectedWaiterName(waiter?.full_name || '');
+                                }}
+                                className="w-44 pl-10 pr-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl focus:outline-none focus:border-purple-400 text-gray-800 appearance-none cursor-pointer font-medium"
+                            >
+                                <option value="">Select Waiter</option>
+                                {waiters.map(waiter => (
+                                    <option key={waiter.user_id} value={waiter.user_id}>
+                                        {waiter.full_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        {/* Table Number */}
                         <div className="relative">
                             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🪑</span>
                             <input
@@ -1474,7 +1524,7 @@ export default function POSPage() {
                                 value={tableNo}
                                 onChange={(e) => setTableNo(e.target.value)}
                                 placeholder="Table No"
-                                className="w-32 pl-10 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 text-gray-800 placeholder-gray-400"
+                                className="w-28 pl-10 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 text-gray-800 placeholder-gray-400"
                             />
                         </div>
                     </div>
