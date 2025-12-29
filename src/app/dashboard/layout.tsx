@@ -63,6 +63,7 @@ const menuItems = [
             { name: 'Payroll', icon: '💰', href: '/dashboard/payroll', badge: null },
             { name: 'Advances', icon: '💵', href: '/dashboard/advances', badge: null },
             { name: 'Shifts', icon: '⏰', href: '/dashboard/shifts', badge: null },
+            { name: 'Shift Reports', icon: '📋', href: '/dashboard/shift-reports', badge: 'New' },
         ]
     },
     {
