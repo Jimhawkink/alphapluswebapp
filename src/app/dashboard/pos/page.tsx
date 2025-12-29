@@ -1361,31 +1361,48 @@ export default function POSPage() {
 
             // Calculate values
             const changeAmount = paymentMethod === 'cash' ? Math.max(0, amountPaid - total) : 0;
-            const status = paymentMethod === 'credit' ? 'Credit' : 'Paid';
+            const status = paymentMethod === 'credit' ? 'Pending' : 'Completed';
 
-            // 1. Create sale record
+            // Calculate total cost for profit
+            const totalCost = cart.reduce((sum, item) => sum + ((item.purchasePrice || 0) * item.qty), 0);
+            const profit = total - totalCost;
+
+            // 1. Create sale record with correct column names matching schema
             const { data: saleData, error: saleError } = await supabase
                 .from('sales')
                 .insert({
-                    sale_id_no: invoiceNo,
+                    receipt_no: invoiceNo,
                     sale_date: new Date().toISOString().split('T')[0],
                     sale_time: new Date().toTimeString().split(' ')[0],
-                    sub_total: subtotal,
-                    total_discount: totalDiscount,
-                    vat: 0,
-                    grand_total: total,
-                    payment_mode: paymentMethod.toUpperCase(),
-                    amount_paid: amountPaid,
-                    change_returned: changeAmount,
-                    status: status,
-                    pump_shift_id: shift.id || 1,
-                    cashier_id: currentUser?.user_id || 1,
-                    cashier_name: currentUser?.name || 'Cashier',
-                    customer_name: customerName || null,
-                    mpesa_receipt: mpesaReceipt || null,
+                    sale_datetime: new Date().toISOString(),
+                    shift_id: shift.id || null,
+                    shift_name: shift.name || null,
+                    shift_code: shift.code || null,
+                    waiter_id: selectedWaiterId || null,
+                    waiter_name: selectedWaiterName || null,
+                    table_id: null,
+                    table_name: tableNo || null,
                     table_no: tableNo || null,
+                    order_type: tableNo ? 'Dine-in' : 'Quick Sale',
+                    customer_name: customerName || null,
+                    subtotal: subtotal,
+                    subtotal_before_tax: subtotal,
+                    discount: totalDiscount,
+                    discount_percent: 0,
+                    tax_rate: 0,
+                    tax_amount: 0,
+                    total_amount: total,
+                    total_cost: totalCost,
+                    profit: profit,
+                    payment_method: paymentMethod.toUpperCase(),
+                    amount_paid: amountPaid,
+                    change_amount: changeAmount,
+                    mpesa_code: mpesaReceipt || null,
+                    mpesa_receipt: mpesaReceipt || null,
+                    status: status,
+                    notes: orderNotes || null,
                     order_notes: orderNotes || null,
-                    waiter_id: selectedWaiterId || null
+                    created_by: currentUser?.name || 'Cashier'
                 })
                 .select()
                 .single();

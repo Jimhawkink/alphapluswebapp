@@ -29,6 +29,12 @@ interface Category {
     category_name: string;
 }
 
+interface Supplier {
+    supplier_id: number;
+    supplier_name: string;
+    active: boolean;
+}
+
 // ============================================
 // UNIT DEFINITIONS - All-Round Logic
 // ============================================
@@ -176,6 +182,7 @@ export default function IngredientsPage() {
     // State
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
+    const [suppliers, setSuppliers] = useState<Supplier[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [showModal, setShowModal] = useState(false);
@@ -217,10 +224,26 @@ export default function IngredientsPage() {
         }
     }, []);
 
+    const loadSuppliers = useCallback(async () => {
+        try {
+            const { data, error } = await supabase
+                .from('suppliers')
+                .select('supplier_id, supplier_name, active')
+                .eq('active', true)
+                .order('supplier_name');
+
+            if (error) throw error;
+            setSuppliers(data || []);
+        } catch (err) {
+            console.error('Error loading suppliers:', err);
+        }
+    }, []);
+
     useEffect(() => {
         loadIngredients();
         loadCategories();
-    }, [loadIngredients, loadCategories]);
+        loadSuppliers();
+    }, [loadIngredients, loadCategories, loadSuppliers]);
 
     // ============================================
     // FORM HANDLERS
@@ -598,13 +621,18 @@ export default function IngredientsPage() {
                                 </div>
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">Supplier</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         value={formData.supplier_name}
                                         onChange={(e) => handleInputChange('supplier_name', e.target.value)}
-                                        placeholder="Supplier name"
-                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl"
-                                    />
+                                        className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500"
+                                    >
+                                        <option value="">-- Select Supplier --</option>
+                                        {suppliers.map(sup => (
+                                            <option key={sup.supplier_id} value={sup.supplier_name}>
+                                                {sup.supplier_name}
+                                            </option>
+                                        ))}
+                                    </select>
                                 </div>
                             </div>
 

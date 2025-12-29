@@ -104,10 +104,207 @@ export default function ShiftsPage() {
         if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 250); }
     };
 
-    const printShiftReport = (shift: Shift, stats: { sales: number; expenses: number; vouchers: number }, closing: number, net: number) => {
-        const html = `<html><head><style>body{font-family:monospace;width:80mm;padding:4mm;font-size:12px;}h2{text-align:center;margin:0;}hr{border:1px dashed #000;}.row{display:flex;justify-content:space-between;padding:4px 0;}.bold{font-weight:bold;}</style></head><body><h2>END OF SHIFT REPORT</h2><p style="text-align:center;">${new Date().toLocaleDateString()} | ${shift.shift_type}</p><hr/><div class="row"><span>Opening Cash:</span><span>Ksh ${shift.opening_cash?.toLocaleString()}</span></div><div class="row"><span>Total Sales:</span><span class="bold">Ksh ${stats.sales.toLocaleString()}</span></div><div class="row"><span>Less Expenses:</span><span style="color:red;">- Ksh ${stats.expenses.toLocaleString()}</span></div><div class="row"><span>Less Vouchers:</span><span style="color:red;">- Ksh ${stats.vouchers.toLocaleString()}</span></div><hr/><div class="row bold"><span>Net Sales:</span><span style="color:green;">Ksh ${net.toLocaleString()}</span></div><div class="row"><span>Closing Cash:</span><span>Ksh ${closing.toLocaleString()}</span></div><hr/><p style="text-align:center;font-size:10px;">Opened: ${shift.opened_by} | Closed: ${shift.closed_by || 'Admin'}</p></body></html>`;
-        const win = window.open('', '_blank', 'width=350,height=500');
-        if (win) { win.document.write(html); win.document.close(); setTimeout(() => win.print(), 250); }
+    const printShiftReport = async (shift: Shift, stats: { sales: number; expenses: number; vouchers: number }, closing: number, net: number) => {
+        // Fetch company info
+        let companyName = 'Your Business Name';
+        let companyPhone = '';
+        let companyAddress = '';
+
+        try {
+            const { data: company } = await supabase.from('companies').select('*').limit(1).single();
+            if (company) {
+                companyName = company.company_name || company.name || 'Your Business Name';
+                companyPhone = company.phone || company.contact_phone || '';
+                companyAddress = company.address || company.location || '';
+            }
+        } catch (err) {
+            console.log('Could not fetch company info');
+        }
+
+        // Fetch sales breakdown by payment method
+        let cashSales = 0, mpesaSales = 0, cardSales = 0, creditSales = 0;
+        let totalTransactions = 0;
+
+        try {
+            const { data: salesData } = await supabase
+                .from('sales')
+                .select('total_amount, payment_method, status')
+                .eq('sale_date', shift.shift_date);
+
+            if (salesData) {
+                totalTransactions = salesData.length;
+                salesData.forEach(sale => {
+                    const method = (sale.payment_method || '').toUpperCase();
+                    const amount = sale.total_amount || 0;
+                    if (method.includes('CASH')) cashSales += amount;
+                    else if (method.includes('MPESA') || method.includes('M-PESA')) mpesaSales += amount;
+                    else if (method.includes('CARD')) cardSales += amount;
+                    else if (method.includes('CREDIT') || sale.status === 'Pending') creditSales += amount;
+                    else cashSales += amount;
+                });
+            }
+        } catch (err) {
+            console.log('Could not fetch sales breakdown');
+        }
+
+        // Fetch expense details
+        let expensesList: { description: string; amount: number }[] = [];
+        try {
+            const { data: expData } = await supabase
+                .from('expenses')
+                .select('description, amount')
+                .eq('expense_date', shift.shift_date);
+            if (expData) expensesList = expData;
+        } catch (err) {
+            console.log('Could not fetch expenses');
+        }
+
+        const shiftType = shift.shift_type === 'Morning' ? 'DAY SHIFT' : 'NIGHT SHIFT';
+        const expectedCash = (shift.opening_cash || 0) + cashSales - stats.expenses;
+        const variance = closing - expectedCash;
+
+        const html = `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Courier New', monospace; 
+            width: 80mm; 
+            padding: 3mm; 
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        .center { text-align: center; }
+        .bold { font-weight: bold; }
+        .header { 
+            border-bottom: 2px dashed #000; 
+            padding-bottom: 8px; 
+            margin-bottom: 8px; 
+        }
+        .company-name { 
+            font-size: 16px; 
+            font-weight: bold; 
+            letter-spacing: 1px;
+        }
+        .shift-type { 
+            font-size: 14px; 
+            font-weight: bold;
+            background: #000;
+            color: #fff;
+            padding: 4px 8px;
+            margin: 8px 0;
+            display: inline-block;
+        }
+        .row { 
+            display: flex; 
+            justify-content: space-between; 
+            padding: 2px 0; 
+        }
+        .section { 
+            border-top: 1px dashed #000; 
+            padding-top: 6px; 
+            margin-top: 6px; 
+        }
+        .total-row { 
+            font-size: 14px; 
+            font-weight: bold; 
+            background: #f0f0f0; 
+            padding: 6px 4px; 
+            margin: 4px 0;
+        }
+        .positive { color: green; }
+        .negative { color: red; }
+        .footer { 
+            border-top: 2px dashed #000; 
+            padding-top: 8px; 
+            margin-top: 10px; 
+            font-size: 10px;
+        }
+        .signature-line {
+            border-bottom: 1px solid #000;
+            margin-top: 20px;
+            padding-bottom: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header center">
+        <div class="company-name">${companyName.toUpperCase()}</div>
+        ${companyAddress ? `<div>${companyAddress}</div>` : ''}
+        ${companyPhone ? `<div>Tel: ${companyPhone}</div>` : ''}
+        <div style="margin-top: 8px;">═══════════════════════</div>
+        <div class="shift-type">${shiftType} REPORT</div>
+    </div>
+
+    <div class="section">
+        <div class="row"><span>Date:</span><span>${new Date(shift.shift_date).toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}</span></div>
+        <div class="row"><span>Shift Started:</span><span>${shift.start_time}</span></div>
+        <div class="row"><span>Shift Ended:</span><span>${new Date().toLocaleTimeString()}</span></div>
+        <div class="row"><span>Opened By:</span><span>${shift.opened_by}</span></div>
+        <div class="row"><span>Closed By:</span><span>${shift.closed_by || 'Admin'}</span></div>
+    </div>
+
+    <div class="section">
+        <div class="center bold" style="margin-bottom: 6px;">💰 CASH SUMMARY</div>
+        <div class="row"><span>Opening Cash:</span><span>Ksh ${(shift.opening_cash || 0).toLocaleString()}</span></div>
+        <div class="row bold"><span>Total Sales:</span><span>Ksh ${stats.sales.toLocaleString()}</span></div>
+        <div class="row negative"><span>Less Expenses:</span><span>- Ksh ${stats.expenses.toLocaleString()}</span></div>
+        <div class="row negative"><span>Less Vouchers:</span><span>- Ksh ${stats.vouchers.toLocaleString()}</span></div>
+        <div class="total-row row"><span>NET SALES:</span><span class="positive">Ksh ${net.toLocaleString()}</span></div>
+    </div>
+
+    <div class="section">
+        <div class="center bold" style="margin-bottom: 6px;">📊 SALES BY PAYMENT</div>
+        <div class="row"><span>💵 Cash Sales:</span><span>Ksh ${cashSales.toLocaleString()}</span></div>
+        <div class="row"><span>📱 M-Pesa Sales:</span><span>Ksh ${mpesaSales.toLocaleString()}</span></div>
+        <div class="row"><span>💳 Card Sales:</span><span>Ksh ${cardSales.toLocaleString()}</span></div>
+        <div class="row"><span>📝 Credit Sales:</span><span>Ksh ${creditSales.toLocaleString()}</span></div>
+        <div class="row bold" style="margin-top: 4px;"><span>Total Transactions:</span><span>${totalTransactions}</span></div>
+    </div>
+
+    ${expensesList.length > 0 ? `
+    <div class="section">
+        <div class="center bold" style="margin-bottom: 6px;">📤 EXPENSES</div>
+        ${expensesList.map(e => `<div class="row"><span>${e.description || 'Expense'}:</span><span>- Ksh ${(e.amount || 0).toLocaleString()}</span></div>`).join('')}
+    </div>
+    ` : ''}
+
+    <div class="section">
+        <div class="center bold" style="margin-bottom: 6px;">💵 CASH RECONCILIATION</div>
+        <div class="row"><span>Expected Cash:</span><span>Ksh ${expectedCash.toLocaleString()}</span></div>
+        <div class="row"><span>Actual Cash Count:</span><span>Ksh ${closing.toLocaleString()}</span></div>
+        <div class="total-row row">
+            <span>VARIANCE:</span>
+            <span class="${variance >= 0 ? 'positive' : 'negative'}">
+                ${variance >= 0 ? '+' : ''}Ksh ${variance.toLocaleString()}
+            </span>
+        </div>
+        ${variance !== 0 ? `<div class="center" style="font-size: 10px; color: ${variance > 0 ? 'green' : 'red'};">${variance > 0 ? '✅ OVERAGE' : '⚠️ SHORTAGE'}</div>` : '<div class="center" style="color: green;">✅ BALANCED</div>'}
+    </div>
+
+    <div class="footer center">
+        <div class="signature-line"></div>
+        <div style="margin-top: 4px;">Cashier Signature</div>
+        <div style="margin-top: 15px;" class="signature-line"></div>
+        <div style="margin-top: 4px;">Manager Signature</div>
+        <div style="margin-top: 15px;">
+            ═══════════════════════<br/>
+            Printed: ${new Date().toLocaleString()}<br/>
+            Thank you for your service!
+        </div>
+    </div>
+</body>
+</html>`;
+
+        const win = window.open('', '_blank', 'width=350,height=700');
+        if (win) {
+            win.document.write(html);
+            win.document.close();
+            setTimeout(() => win.print(), 300);
+        }
     };
 
     return (

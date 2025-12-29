@@ -38,6 +38,8 @@ interface Bill {
     discount: number;
     tax_amount: number;
     total_amount: number;
+    total_cost: number;
+    profit: number;
     payment_method: string;
     amount_paid: number;
     change_amount: number;
@@ -145,6 +147,15 @@ const BillRow = ({
                     <span className={`font-bold ${(bill.total_amount - bill.amount_paid) > 0 ? 'text-red-600' : 'text-gray-400'}`}>
                         {Math.max(0, (bill.total_amount || 0) - (bill.amount_paid || 0)).toLocaleString()}
                     </span>
+                </td>
+                <td className="py-3 px-4 text-right">
+                    {isPaid ? (
+                        <span className={`font-bold ${(bill.profit || 0) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {(bill.profit || 0).toLocaleString()}
+                        </span>
+                    ) : (
+                        <span className="text-gray-300">-</span>
+                    )}
                 </td>
                 <td className="py-3 px-4">
                     {getPaymentMethodBadge()}
@@ -261,7 +272,8 @@ export default function BillsPage() {
         paidAmount: 0,
         pendingAmount: 0,
         paidCount: 0,
-        pendingCount: 0
+        pendingCount: 0,
+        totalProfit: 0
     });
 
     // Receipt Modal
@@ -326,6 +338,8 @@ export default function BillsPage() {
             const totalAmount = transformedBills.reduce((sum, b) => sum + (b.total_amount || 0), 0);
             const paidBills = transformedBills.filter(b => b.status === 'Completed' || b.status === 'Paid');
             const pendingBills = transformedBills.filter(b => b.status === 'Pending');
+            // Calculate profit ONLY for paid/completed bills
+            const totalProfit = paidBills.reduce((sum, b) => sum + (b.profit || 0), 0);
 
             setStats({
                 totalBills: transformedBills.length,
@@ -333,7 +347,8 @@ export default function BillsPage() {
                 paidAmount: paidBills.reduce((sum, b) => sum + (b.total_amount || 0), 0),
                 pendingAmount: pendingBills.reduce((sum, b) => sum + (b.total_amount || 0), 0),
                 paidCount: paidBills.length,
-                pendingCount: pendingBills.length
+                pendingCount: pendingBills.length,
+                totalProfit
             });
 
         } catch (err) {
@@ -423,7 +438,7 @@ export default function BillsPage() {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-5 gap-4">
+            <div className="grid grid-cols-6 gap-4">
                 <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-700 rounded-2xl p-5 text-white shadow-lg shadow-blue-500/30">
                     <div className="flex items-center gap-3 mb-3">
                         <span className="text-3xl">📊</span>
@@ -432,7 +447,17 @@ export default function BillsPage() {
                     <p className="text-3xl font-bold">{stats.totalBills}</p>
                     <p className="text-sm opacity-80 mt-1">Ksh {stats.totalAmount.toLocaleString()}</p>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-5 border border-green-200 shadow-sm hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-3 mb-3">
+                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center shadow-lg shadow-green-300/50">
+                            <span className="text-2xl">💰</span>
+                        </div>
+                        <span className="text-sm font-bold text-green-700">Total Profit</span>
+                    </div>
+                    <p className="text-2xl font-bold text-green-700">Ksh {stats.totalProfit.toLocaleString()}</p>
+                    <p className="text-xs text-green-600 mt-1">From {stats.paidCount} paid bills</p>
+                </div>
+                <div className="bg-gradient-to-br from-emerald-50 to-green-100 rounded-2xl p-5 border border-emerald-100 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-100 to-emerald-100 flex items-center justify-center">
                             <span className="text-2xl">✅</span>
@@ -442,7 +467,7 @@ export default function BillsPage() {
                     <p className="text-2xl font-bold text-gray-800">{stats.paidCount}</p>
                     <p className="text-sm text-green-600 font-medium">Ksh {stats.paidAmount.toLocaleString()}</p>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl p-5 border border-amber-100 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
                             <span className="text-2xl">⏳</span>
@@ -452,7 +477,7 @@ export default function BillsPage() {
                     <p className="text-2xl font-bold text-gray-800">{stats.pendingCount}</p>
                     <p className="text-sm text-amber-600 font-medium">Ksh {stats.pendingAmount.toLocaleString()}</p>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-gradient-to-br from-yellow-50 to-amber-100 rounded-2xl p-5 border border-yellow-100 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-100 to-amber-100 flex items-center justify-center">
                             <span className="text-2xl">💵</span>
@@ -463,7 +488,7 @@ export default function BillsPage() {
                         {bills.filter(b => b.payment_method?.toLowerCase()?.includes('cash')).length}
                     </p>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-gradient-to-br from-teal-50 to-green-100 rounded-2xl p-5 border border-teal-100 shadow-sm hover:shadow-md transition-shadow">
                     <div className="flex items-center gap-3 mb-3">
                         <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-100 to-teal-100 flex items-center justify-center">
                             <span className="text-2xl">📱</span>
@@ -594,6 +619,7 @@ export default function BillsPage() {
                                 <th className="text-right py-4 px-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Total</th>
                                 <th className="text-right py-4 px-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Paid</th>
                                 <th className="text-right py-4 px-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Balance</th>
+                                <th className="text-right py-4 px-4 text-xs font-bold text-green-600 uppercase tracking-wider">💰 Profit</th>
                                 <th className="text-left py-4 px-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Payment</th>
                                 <th className="text-left py-4 px-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Status</th>
                                 <th className="text-center py-4 px-4 text-xs font-bold text-gray-600 uppercase tracking-wider">Actions</th>

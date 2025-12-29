@@ -72,6 +72,14 @@ function BillPaymentContent() {
     const [mpesaStatus, setMpesaStatus] = useState('Ready');
     const [mpesaStatusColor, setMpesaStatusColor] = useState('bg-green-500');
 
+    // Split payment states
+    interface SplitPayment {
+        method: string;
+        amount: number;
+        mpesaCode?: string;
+    }
+    const [splitPayments, setSplitPayments] = useState<SplitPayment[]>([]);
+
     // Dropdown data
     const [users, setUsers] = useState<string[]>([]);
 
@@ -177,6 +185,43 @@ function BillPaymentContent() {
         setMpesaPhone('254');
         setMpesaStatus('Ready');
         setMpesaStatusColor('bg-green-500');
+        setSplitPayments([]);
+    };
+
+    // Calculate split payment totals
+    const splitPaymentTotal = splitPayments.reduce((sum, p) => sum + p.amount, 0);
+    const remainingAfterSplit = outstandingAmount - splitPaymentTotal;
+
+    // Add split payment
+    const addSplitPayment = () => {
+        const amount = parseFloat(paymentAmount) || 0;
+        if (amount <= 0) {
+            toast.error('Please enter a valid amount');
+            return;
+        }
+        if (amount > remainingAfterSplit) {
+            toast.error(`Amount exceeds remaining balance of Ksh ${remainingAfterSplit.toLocaleString()}`);
+            return;
+        }
+
+        setSplitPayments([...splitPayments, {
+            method: paymentMethod,
+            amount: amount,
+            mpesaCode: paymentMethod === 'M-Pesa' ? mpesaPhone : undefined
+        }]);
+        setPaymentAmount('0');
+        toast.success(`Added ${paymentMethod} payment of Ksh ${amount.toLocaleString()}`);
+    };
+
+    // Remove split payment
+    const removeSplitPayment = (index: number) => {
+        setSplitPayments(splitPayments.filter((_, i) => i !== index));
+    };
+
+    // Clear all split payments
+    const clearSplitPayments = () => {
+        setSplitPayments([]);
+        setPaymentAmount(outstandingAmount.toString());
     };
 
     // Process payment using database function or direct update
@@ -186,15 +231,19 @@ function BillPaymentContent() {
             return;
         }
 
-        const amount = isFullPayment ? outstandingAmount : parseFloat(paymentAmount) || 0;
+        // If we have split payments, process those instead
+        const paymentsToProcess = splitPayments.length > 0 ? splitPayments :
+            [{ method: paymentMethod, amount: isFullPayment ? outstandingAmount : (parseFloat(paymentAmount) || 0) }];
 
-        if (amount <= 0) {
-            toast.error('Please enter a valid payment amount');
+        const totalPaymentAmount = paymentsToProcess.reduce((sum, p) => sum + p.amount, 0);
+
+        if (totalPaymentAmount <= 0) {
+            toast.error('Please enter a valid payment amount or add split payments');
             return;
         }
 
-        if (amount > outstandingAmount) {
-            toast.error('Payment amount cannot exceed outstanding balance');
+        if (totalPaymentAmount > outstandingAmount) {
+            toast.error('Total payment amount cannot exceed outstanding balance');
             return;
         }
 
@@ -205,88 +254,84 @@ function BillPaymentContent() {
             const userData = localStorage.getItem('user');
             const currentUser = userData ? JSON.parse(userData) : null;
 
-            const newPaidAmount = (selectedBill.amount_paid || 0) + amount;
-            const newChange = Math.max(0, newPaidAmount - selectedBill.total_amount);
-            const isFullyPaid = newPaidAmount >= selectedBill.total_amount;
-            const balanceBefore = outstandingAmount;
-            const balanceAfter = balanceBefore - amount;
+            let newPaidAmount = selectedBill.amount_paid || 0;
+            const paymentMethodNames: string[] = [];
 
-            // Try using the database function first
-            const { data: rpcData, error: rpcError } = await supabase.rpc('process_bill_payment', {
-                p_sale_id: selectedBill.sale_id,
-                p_amount: amount,
-                p_payment_method: paymentMethod,
-                p_mpesa_code: paymentMethod === 'M-Pesa' ? mpesaPhone : null,
-                p_mpesa_phone: paymentMethod === 'M-Pesa' ? mpesaPhone : null,
-                p_received_by_name: currentUser?.name || 'Unknown',
-                p_received_by_id: currentUser?.userId || null,
-                p_shift_id: selectedBill.shift_id || null,
-                p_shift_name: selectedBill.shift_name || null,
-                p_note: `Payment via ${paymentMethod}`
-            });
+            // Process each payment
+            for (const payment of paymentsToProcess) {
+                newPaidAmount += payment.amount;
+                paymentMethodNames.push(payment.method);
 
-            if (rpcError) {
-                console.log('RPC function not available, using direct update:', rpcError.message);
+                const isLastPayment = payment === paymentsToProcess[paymentsToProcess.length - 1];
+                const isFullyPaid = newPaidAmount >= selectedBill.total_amount;
+                const balanceBefore = selectedBill.total_amount - (newPaidAmount - payment.amount);
+                const balanceAfter = selectedBill.total_amount - newPaidAmount;
 
-                // Fallback: Insert into bill_payments table directly
+                // Insert into bill_payments table
                 const { error: paymentError } = await supabase
                     .from('bill_payments')
                     .insert({
                         sale_id: selectedBill.sale_id,
                         receipt_no: selectedBill.receipt_no,
                         amount_due: selectedBill.total_amount,
-                        amount_paid: amount,
+                        amount_paid: payment.amount,
                         balance_before: balanceBefore,
                         balance_after: balanceAfter,
-                        payment_method: paymentMethod,
-                        mpesa_code: paymentMethod === 'M-Pesa' ? mpesaPhone : null,
-                        mpesa_phone: paymentMethod === 'M-Pesa' ? mpesaPhone : null,
+                        payment_method: payment.method,
+                        mpesa_code: payment.method === 'M-Pesa' ? (payment as { mpesaCode?: string }).mpesaCode : null,
+                        mpesa_phone: payment.method === 'M-Pesa' ? (payment as { mpesaCode?: string }).mpesaCode : null,
                         is_partial: !isFullyPaid,
                         received_by_id: currentUser?.userId || null,
                         received_by_name: currentUser?.name || 'Unknown',
                         shift_id: selectedBill.shift_id,
                         shift_name: selectedBill.shift_name,
-                        payment_note: `Payment via ${paymentMethod}`
+                        payment_note: `Split Payment via ${payment.method}`
                     });
 
                 if (paymentError) {
-                    console.log('bill_payments table might not exist:', paymentError.message);
+                    console.log('bill_payments insert:', paymentError.message);
                 }
 
-                // Update the sale record
-                const { error: updateError } = await supabase
-                    .from('sales')
-                    .update({
-                        amount_paid: newPaidAmount,
-                        change_amount: newChange,
-                        payment_method: paymentMethod,
-                        mpesa_code: paymentMethod === 'M-Pesa' ? mpesaPhone : selectedBill.mpesa_code,
-                        status: isFullyPaid ? 'Completed' : 'Pending',
-                        paid_at: isFullyPaid ? new Date().toISOString() : null,
-                        paid_by: isFullyPaid ? (currentUser?.name || 'Unknown') : null,
-                        last_payment_at: new Date().toISOString(),
-                        last_payment_method: paymentMethod,
-                        partial_payment_count: (selectedBill as unknown as { partial_payment_count?: number }).partial_payment_count ?
-                            ((selectedBill as unknown as { partial_payment_count: number }).partial_payment_count + 1) : 1,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('sale_id', selectedBill.sale_id);
+                // Update sale record only for the last payment
+                if (isLastPayment) {
+                    const newChange = Math.max(0, newPaidAmount - selectedBill.total_amount);
+                    const combinedMethod = paymentMethodNames.length > 1
+                        ? `Split (${paymentMethodNames.join(' + ')})`
+                        : paymentMethodNames[0];
 
-                if (updateError) throw updateError;
-            } else {
-                console.log('Payment processed via database function:', rpcData);
+                    const { error: updateError } = await supabase
+                        .from('sales')
+                        .update({
+                            amount_paid: newPaidAmount,
+                            change_amount: newChange,
+                            payment_method: combinedMethod,
+                            status: isFullyPaid ? 'Completed' : 'Pending',
+                            paid_at: isFullyPaid ? new Date().toISOString() : null,
+                            paid_by: isFullyPaid ? (currentUser?.name || 'Unknown') : null,
+                            last_payment_at: new Date().toISOString(),
+                            last_payment_method: payment.method,
+                            partial_payment_count: (selectedBill as unknown as { partial_payment_count?: number }).partial_payment_count ?
+                                ((selectedBill as unknown as { partial_payment_count: number }).partial_payment_count + paymentsToProcess.length) : paymentsToProcess.length,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('sale_id', selectedBill.sale_id);
+
+                    if (updateError) throw updateError;
+                }
             }
 
+            const isFullyPaid = newPaidAmount >= selectedBill.total_amount;
             toast.success(
                 isFullyPaid
                     ? `✅ Payment complete! Bill ${selectedBill.receipt_no} is now PAID`
-                    : `💰 Partial payment of Ksh ${amount.toLocaleString()} received`
+                    : `💰 Payment of Ksh ${totalPaymentAmount.toLocaleString()} received (${paymentsToProcess.length} payment${paymentsToProcess.length > 1 ? 's' : ''})`
             );
 
             // Reload bills and reset
             await loadBills();
             setSelectedBill(null);
             setPaymentAmount('0');
+            setSplitPayments([]);
 
         } catch (err) {
             console.error('Error processing payment:', err);
@@ -667,11 +712,83 @@ function BillPaymentContent() {
                                 </div>
                             )}
 
+                            {/* Split Payment UI */}
+                            {selectedBill && outstandingAmount > 0 && (
+                                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <h4 className="font-bold text-purple-700 flex items-center gap-2">
+                                            <span>💸</span> Split Payment
+                                        </h4>
+                                        <button
+                                            onClick={addSplitPayment}
+                                            disabled={parseFloat(paymentAmount) <= 0}
+                                            className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-bold hover:bg-purple-600 disabled:opacity-50"
+                                        >
+                                            + Add Payment
+                                        </button>
+                                    </div>
+
+                                    {/* Split Payments List */}
+                                    {splitPayments.length > 0 && (
+                                        <div className="space-y-2">
+                                            {splitPayments.map((payment, idx) => (
+                                                <div key={idx} className="flex items-center justify-between bg-white p-2 rounded-lg border border-purple-100">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-lg">
+                                                            {payment.method === 'Cash' ? '💵' : payment.method === 'M-Pesa' ? '📱' : '💳'}
+                                                        </span>
+                                                        <span className="font-medium text-gray-700">{payment.method}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="font-bold text-purple-700">
+                                                            Ksh {payment.amount.toLocaleString()}
+                                                        </span>
+                                                        <button
+                                                            onClick={() => removeSplitPayment(idx)}
+                                                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                                        >
+                                                            ✕
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+
+                                            {/* Summary */}
+                                            <div className="bg-purple-100 p-3 rounded-lg space-y-1">
+                                                <div className="flex justify-between text-sm text-purple-700">
+                                                    <span>Total Split Payments:</span>
+                                                    <span className="font-bold">Ksh {splitPaymentTotal.toLocaleString()}</span>
+                                                </div>
+                                                <div className="flex justify-between text-sm text-purple-700">
+                                                    <span>Remaining:</span>
+                                                    <span className={`font-bold ${remainingAfterSplit > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                                        Ksh {remainingAfterSplit.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <button
+                                                onClick={clearSplitPayments}
+                                                className="w-full py-2 text-red-600 bg-red-50 rounded-lg text-sm font-medium hover:bg-red-100"
+                                            >
+                                                🗑️ Clear All Payments
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    {splitPayments.length === 0 && (
+                                        <p className="text-xs text-purple-600 text-center">
+                                            Add multiple payment methods (e.g., Cash + M-Pesa) for this bill
+                                        </p>
+                                    )}
+                                </div>
+                            )}
+
                             {/* Action Buttons */}
                             <div className="grid grid-cols-2 gap-3 pt-2">
                                 <button
                                     onClick={payFullBalance}
-                                    disabled={!selectedBill || outstandingAmount <= 0 || isProcessing}
+                                    disabled={!selectedBill || outstandingAmount <= 0 || isProcessing || splitPayments.length > 0}
                                     className="py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-bold hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
                                 >
                                     <span>💯</span>
@@ -683,7 +800,7 @@ function BillPaymentContent() {
                                     className="py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
                                 >
                                     <span>✅</span>
-                                    <span>Process</span>
+                                    <span>{splitPayments.length > 0 ? `Process ${splitPayments.length} Payments` : 'Process'}</span>
                                 </button>
                             </div>
                         </div>
