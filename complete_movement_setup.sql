@@ -1,9 +1,11 @@
 -- ============================================================
--- ALPHA PLUS - COMPLETE SETUP FOR MOVEMENT TRACKING
+-- ALPHA PLUS - COMPLETE SETUP FOR PURCHASES & MOVEMENT TRACKING
 -- Run this in Supabase SQL Editor
 -- ============================================================
 
--- 1. Create Suppliers Table (if not exists)
+-- ============================================
+-- 1. SUPPLIERS TABLE
+-- ============================================
 CREATE TABLE IF NOT EXISTS suppliers (
     supplier_id SERIAL PRIMARY KEY,
     supplier_code VARCHAR(20) UNIQUE,
@@ -26,7 +28,9 @@ CREATE TABLE IF NOT EXISTS suppliers (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. Create Products Ingredients Table (if not exists)
+-- ============================================
+-- 2. PRODUCTS INGREDIENTS TABLE
+-- ============================================
 CREATE TABLE IF NOT EXISTS products_ingredients (
     pid SERIAL PRIMARY KEY,
     product_code VARCHAR(50) UNIQUE,
@@ -46,7 +50,9 @@ CREATE TABLE IF NOT EXISTS products_ingredients (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Create Product Categories Table (if not exists)
+-- ============================================
+-- 3. PRODUCT CATEGORIES TABLE
+-- ============================================
 CREATE TABLE IF NOT EXISTS product_categories (
     category_id SERIAL PRIMARY KEY,
     category_name VARCHAR(100) NOT NULL UNIQUE,
@@ -57,12 +63,17 @@ CREATE TABLE IF NOT EXISTS product_categories (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 4. Create Purchases Table (if not exists)
-CREATE TABLE IF NOT EXISTS purchases (
+-- ============================================
+-- 4. PURCHASES TABLE (Main)
+-- ============================================
+DROP TABLE IF EXISTS purchase_products CASCADE;
+DROP TABLE IF EXISTS purchases CASCADE;
+
+CREATE TABLE purchases (
     purchase_id SERIAL PRIMARY KEY,
     purchase_no VARCHAR(50) UNIQUE,
     purchase_date DATE DEFAULT CURRENT_DATE,
-    supplier_id INT REFERENCES suppliers(supplier_id),
+    supplier_id INT,
     supplier_name VARCHAR(200),
     supplier_invoice VARCHAR(100),
     sub_total DECIMAL(15,2) DEFAULT 0,
@@ -77,8 +88,10 @@ CREATE TABLE IF NOT EXISTS purchases (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 5. Create Purchase Products Table (if not exists)
-CREATE TABLE IF NOT EXISTS purchase_products (
+-- ============================================
+-- 5. PURCHASE PRODUCTS TABLE (Items)
+-- ============================================
+CREATE TABLE purchase_products (
     pp_id SERIAL PRIMARY KEY,
     purchase_id INT REFERENCES purchases(purchase_id) ON DELETE CASCADE,
     product_id INT,
@@ -91,7 +104,9 @@ CREATE TABLE IF NOT EXISTS purchase_products (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 6. Create Dish Spoilage Table (if not exists)
+-- ============================================
+-- 6. DISH SPOILAGE TABLE
+-- ============================================
 CREATE TABLE IF NOT EXISTS dish_spoilage (
     spoilage_id SERIAL PRIMARY KEY,
     spoilage_date DATE DEFAULT CURRENT_DATE,
@@ -105,7 +120,9 @@ CREATE TABLE IF NOT EXISTS dish_spoilage (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 7. Create Recipe Ingredients Table (if not exists) - for tracking issued ingredients
+-- ============================================
+-- 7. RECIPE INGREDIENTS TABLE
+-- ============================================
 CREATE TABLE IF NOT EXISTS recipe_ingredients (
     ri_id SERIAL PRIMARY KEY,
     recipe_id INT,
@@ -119,7 +136,9 @@ CREATE TABLE IF NOT EXISTS recipe_ingredients (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 8. Disable RLS on all tables
+-- ============================================
+-- DISABLE RLS ON ALL TABLES
+-- ============================================
 ALTER TABLE suppliers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE products_ingredients DISABLE ROW LEVEL SECURITY;
 ALTER TABLE product_categories DISABLE ROW LEVEL SECURITY;
@@ -128,7 +147,23 @@ ALTER TABLE purchase_products DISABLE ROW LEVEL SECURITY;
 ALTER TABLE dish_spoilage DISABLE ROW LEVEL SECURITY;
 ALTER TABLE recipe_ingredients DISABLE ROW LEVEL SECURITY;
 
--- 9. Insert default categories
+-- ============================================
+-- DROP RLS POLICIES IF EXIST
+-- ============================================
+DROP POLICY IF EXISTS "Enable all for authenticated" ON purchases;
+DROP POLICY IF EXISTS "Enable all for authenticated" ON purchase_products;
+DROP POLICY IF EXISTS "Enable all for anon" ON purchases;
+DROP POLICY IF EXISTS "Enable all for anon" ON purchase_products;
+
+-- CREATE OPEN POLICIES
+CREATE POLICY "Allow all purchases" ON purchases FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow all purchase_products" ON purchase_products FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================
+-- INSERT DEFAULT DATA
+-- ============================================
+
+-- Insert default categories
 INSERT INTO product_categories (category_name, description, icon, color) VALUES
 ('Raw Materials', 'Basic cooking ingredients', '🥬', '#10B981'),
 ('Spices', 'Spices and seasonings', '🌶️', '#EF4444'),
@@ -141,7 +176,7 @@ INSERT INTO product_categories (category_name, description, icon, color) VALUES
 ('Beverages', 'Drinks and juices', '🧃', '#06B6D4')
 ON CONFLICT (category_name) DO NOTHING;
 
--- 10. Insert sample suppliers
+-- Insert sample suppliers
 INSERT INTO suppliers (supplier_code, supplier_name, phone, contact_person, active) VALUES
 ('SUP-01', 'ABC Distributors', '0712345678', 'John Doe', true),
 ('SUP-02', 'Fresh Foods Ltd', '0723456789', 'Jane Smith', true),
@@ -149,7 +184,7 @@ INSERT INTO suppliers (supplier_code, supplier_name, phone, contact_person, acti
 ('SUP-04', 'Farm Direct', '0745678901', 'Sarah Williams', true)
 ON CONFLICT (supplier_code) DO NOTHING;
 
--- 11. Insert sample ingredients
+-- Insert sample ingredients
 INSERT INTO products_ingredients (product_code, product_name, category, base_unit, pack_size, price_per_pack, cost_per_base_unit, current_stock, reorder_point, active) VALUES
 ('PIG-001', 'Sugar 50KG', 'Raw Materials', 'KG', 50, 3500, 70, 100, 20, true),
 ('PIG-002', 'Cooking Oil 20L', 'Oils & Fats', 'L', 20, 3000, 150, 40, 10, true),
@@ -163,7 +198,15 @@ INSERT INTO products_ingredients (product_code, product_name, category, base_uni
 ('PIG-010', 'Fresh Milk 1L', 'Dairy', 'L', 1, 65, 65, 20, 10, true)
 ON CONFLICT (product_code) DO NOTHING;
 
+-- ============================================
+-- Create indexes for better performance
+-- ============================================
+CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(purchase_date);
+CREATE INDEX IF NOT EXISTS idx_purchases_supplier ON purchases(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_products_purchase ON purchase_products(purchase_id);
+CREATE INDEX IF NOT EXISTS idx_purchase_products_product ON purchase_products(product_id);
+
 -- ============================================================
 -- DONE! ✅
--- All tables created and sample data inserted
+-- All tables created with RLS disabled and sample data inserted
 -- ============================================================

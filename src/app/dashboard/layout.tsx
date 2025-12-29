@@ -31,6 +31,7 @@ const menuItems = [
         items: [
             { name: 'Suppliers', icon: '🏢', href: '/dashboard/suppliers', badge: null },
             { name: 'Purchase Entry', icon: '📥', href: '/dashboard/purchase', badge: null },
+            { name: 'Purchase Records', icon: '📋', href: '/dashboard/purchases', badge: 'New' },
             { name: 'Purchase Order', icon: '📝', href: '/dashboard/purchase-order', badge: null },
             { name: 'Purchase Return', icon: '↩️', href: '/dashboard/purchase-return', badge: null },
         ]
