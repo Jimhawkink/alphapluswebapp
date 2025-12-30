@@ -88,10 +88,14 @@ const menuItems = [
     },
 ];
 
-// Component to display company name dynamically
+// Component to display company name dynamically - with word wrap
 function CompanyNameDisplay() {
     const companyName = useCompanyName();
-    return <h1 className="font-bold text-gray-800 text-lg truncate max-w-[150px]">{companyName}</h1>;
+    return (
+        <h1 className="font-bold text-gray-800 text-sm leading-tight max-w-[140px] break-words">
+            {companyName}
+        </h1>
+    );
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

@@ -884,6 +884,26 @@ export default function POSPage() {
     const [selectedWaiterId, setSelectedWaiterId] = useState<number | null>(null);
     const [selectedWaiterName, setSelectedWaiterName] = useState<string>('');
 
+    // Hotel/Company Name from database
+    const [hotelName, setHotelName] = useState<string>('Your Hotel');
+
+    // Load hotel name from database
+    const loadHotelName = useCallback(async () => {
+        try {
+            const { data: settingsData } = await supabase
+                .from('organisation_settings')
+                .select('setting_key, setting_value')
+                .eq('setting_key', 'company_name')
+                .single();
+
+            if (settingsData?.setting_value) {
+                setHotelName(settingsData.setting_value);
+            }
+        } catch (err) {
+            console.log('Could not load hotel name:', err);
+        }
+    }, []);
+
     // Load active shift from database
     const loadActiveShift = useCallback(async () => {
         setIsLoadingShift(true);
@@ -985,6 +1005,9 @@ export default function POSPage() {
                 // Load active shift FIRST
                 await loadActiveShift();
 
+                // Load hotel name from database
+                await loadHotelName();
+
                 // Load food order notes
                 const notes = await getFoodOrderNotes();
                 setFoodOrderNotes(notes || []);
@@ -1020,7 +1043,7 @@ export default function POSPage() {
         };
 
         loadInitialData();
-    }, [loadActiveShift]);
+    }, [loadActiveShift, loadHotelName]);
 
     // Toggle Fullscreen
     const toggleFullscreen = () => {
@@ -1625,13 +1648,26 @@ export default function POSPage() {
                     {/* Header */}
                     <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50">
                         <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-2xl shadow-lg">
-                                    🛒
+                            <div className="flex items-center gap-4">
+                                {/* System & Hotel Branding */}
+                                <div className="flex items-center gap-3 pr-4 border-r border-gray-200">
+                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg">
+                                        🏨
+                                    </div>
+                                    <div className="max-w-[150px]">
+                                        <p className="text-xs font-medium text-indigo-500">Alpha Plus Hotel System</p>
+                                        <h1 className="text-sm font-bold text-gray-800 leading-tight break-words">{hotelName}</h1>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h1 className="text-xl font-bold text-gray-800">Point of Sale</h1>
-                                    <p className="text-sm text-gray-500">Select products to add to cart</p>
+                                {/* POS Title */}
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-xl shadow-md">
+                                        🛒
+                                    </div>
+                                    <div>
+                                        <h2 className="text-lg font-bold text-gray-800">Point of Sale</h2>
+                                        <p className="text-xs text-gray-500">Select products to add to cart</p>
+                                    </div>
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
