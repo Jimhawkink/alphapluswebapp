@@ -5,14 +5,14 @@ import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
-interface MeatStock {
-    stock_id: number;
-    stock_code: string;
-    meat_type_id: number;
+interface MeatBatch {
+    batch_id: number;
+    batch_code: string;
     meat_type_name: string;
     available_kg: number;
     cost_per_kg: number;
     selling_price: number;
+    days_old: number;
 }
 
 interface ButcheryDashboard {
@@ -20,15 +20,6 @@ interface ButcheryDashboard {
     todayWeightSold: number;
     todayTransactions: number;
     availableStock: number;
-}
-
-interface SaleItem {
-    stock_id: number;
-    stock_code: string;
-    meat_type_name: string;
-    weight_kg: number;
-    price_per_kg: number;
-    total_amount: number;
 }
 
 interface TodaySale {
@@ -42,7 +33,7 @@ interface TodaySale {
 
 export default function ButcheryPOSPage() {
     // State
-    const [stockItems, setStockItems] = useState<MeatStock[]>([]);
+    const [batches, setBatches] = useState<MeatBatch[]>([]);
     const [dashboard, setDashboard] = useState<ButcheryDashboard>({ todaySales: 0, todayWeightSold: 0, todayTransactions: 0, availableStock: 0 });
     const [todaySales, setTodaySales] = useState<TodaySale[]>([]);
     const [saleCode, setSaleCode] = useState('SAL000001');
@@ -51,7 +42,7 @@ export default function ButcheryPOSPage() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
 
     // Form state
-    const [selectedStock, setSelectedStock] = useState<MeatStock | null>(null);
+    const [selectedBatch, setSelectedBatch] = useState<MeatBatch | null>(null);
     const [amount, setAmount] = useState('');
     const [discount, setDiscount] = useState('0');
     const [customerName, setCustomerName] = useState('');
@@ -63,7 +54,7 @@ export default function ButcheryPOSPage() {
     // Calculated values
     const amountValue = parseFloat(amount) || 0;
     const discountValue = parseFloat(discount) || 0;
-    const pricePerKg = selectedStock?.selling_price || 0;
+    const pricePerKg = selectedBatch?.selling_price || 0;
     const weightKg = pricePerKg > 0 ? amountValue / pricePerKg : 0;
     const netAmount = amountValue - discountValue;
 
@@ -71,30 +62,37 @@ export default function ButcheryPOSPage() {
     const loadData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const today = new Date().toISOString().split('T')[0];
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
 
-            // Load stock with available quantity
-            const { data: stock } = await supabase
-                .from('meat_stock')
+            // Load batches with available quantity
+            const { data: batchData, error: batchError } = await supabase
+                .from('meat_batches')
                 .select('*, meat_types(meat_type_name)')
                 .gt('available_kg', 0)
-                .order('meat_type_id');
+                .order('purchase_date', { ascending: true });
 
-            setStockItems((stock || []).map(s => ({
-                stock_id: s.stock_id,
-                stock_code: s.stock_code || `STK-${s.stock_id}`,
-                meat_type_id: s.meat_type_id,
-                meat_type_name: s.meat_types?.meat_type_name || 'Unknown',
-                available_kg: s.available_kg || 0,
-                cost_per_kg: s.cost_per_kg || 0,
-                selling_price: s.selling_price || 0
-            })));
+            if (batchError) throw batchError;
+
+            setBatches((batchData || []).map(b => {
+                const purchaseDate = new Date(b.purchase_date);
+                const daysOld = Math.floor((today.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24));
+                return {
+                    batch_id: b.batch_id,
+                    batch_code: b.batch_code,
+                    meat_type_name: (b as any).meat_types?.meat_type_name || 'Unknown',
+                    available_kg: b.available_kg || 0,
+                    cost_per_kg: b.cost_per_kg || 0,
+                    selling_price: b.selling_price || 0,
+                    days_old: daysOld
+                };
+            }));
 
             // Load today's sales
             const { data: salesData } = await supabase
                 .from('butchery_sales')
                 .select('*')
-                .gte('sale_date', today)
+                .gte('sale_date', todayStr)
                 .order('sale_date', { ascending: false });
 
             const sales = salesData || [];
@@ -110,7 +108,7 @@ export default function ButcheryPOSPage() {
             // Calculate dashboard
             const totalSales = sales.reduce((sum, s) => sum + (s.net_amount || 0), 0);
             const totalWeight = sales.reduce((sum, s) => sum + (s.weight_kg || 0), 0);
-            const totalStock = (stock || []).reduce((sum, s) => sum + (s.available_kg || 0), 0);
+            const totalStock = (batchData || []).reduce((sum, s) => sum + (s.available_kg || 0), 0);
 
             setDashboard({
                 todaySales: totalSales,
@@ -123,9 +121,9 @@ export default function ButcheryPOSPage() {
             const nextNum = sales.length + 1;
             setSaleCode(`SAL${String(nextNum).padStart(6, '0')}`);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error loading data:', err);
-            toast.error('Failed to load data');
+            toast.error(err.message || 'Failed to load data');
         } finally {
             setIsLoading(false);
         }
@@ -137,59 +135,60 @@ export default function ButcheryPOSPage() {
 
     // Process sale
     const processSale = async () => {
-        if (!selectedStock) {
-            toast.error('🥩 Please select a stock item!');
+        if (!selectedBatch) {
+            toast.error('🥩 Please select a batch!');
             return;
         }
         if (amountValue <= 0) {
             toast.error('💰 Please enter a valid amount!');
             return;
         }
-        if (weightKg > selectedStock.available_kg) {
-            toast.error(`⚠️ Insufficient stock! Available: ${selectedStock.available_kg.toFixed(2)} Kg`);
+        if (weightKg > selectedBatch.available_kg) {
+            toast.error(`⚠️ Insufficient stock! Available: ${selectedBatch.available_kg.toFixed(2)} Kg`);
             return;
         }
 
         setIsProcessing(true);
         try {
             // Insert sale
-            const { data: sale, error: saleError } = await supabase
+            const { error: saleError } = await supabase
                 .from('butchery_sales')
                 .insert({
                     sale_code: saleCode,
-                    stock_id: selectedStock.stock_id,
-                    meat_type_name: selectedStock.meat_type_name,
+                    batch_id: selectedBatch.batch_id,
+                    meat_type_name: selectedBatch.meat_type_name,
                     weight_kg: weightKg,
                     price_per_kg: pricePerKg,
                     total_amount: amountValue,
                     discount: discountValue,
                     net_amount: netAmount,
-                    cost_per_kg: selectedStock.cost_per_kg,
+                    cost_per_kg: selectedBatch.cost_per_kg,
                     payment_mode: paymentMode,
                     payment_reference: paymentReference || null,
                     customer_name: customerName || null,
                     customer_contact: customerContact || null,
                     notes: notes || null,
                     sale_date: new Date().toISOString()
-                })
-                .select()
-                .single();
+                });
 
             if (saleError) throw saleError;
 
-            // Update stock
-            const newAvailable = selectedStock.available_kg - weightKg;
-            const { error: stockError } = await supabase
-                .from('meat_stock')
-                .update({ available_kg: newAvailable })
-                .eq('stock_id', selectedStock.stock_id);
+            // Update batch
+            const newAvailable = selectedBatch.available_kg - weightKg;
+            const { error: batchError } = await supabase
+                .from('meat_batches')
+                .update({
+                    available_kg: newAvailable,
+                    status: newAvailable <= 0 ? 'Sold Out' : 'Active'
+                })
+                .eq('batch_id', selectedBatch.batch_id);
 
-            if (stockError) throw stockError;
+            if (batchError) throw batchError;
 
             toast.success(`✅ Sale processed! ${saleCode}`);
 
             // Reset form
-            setSelectedStock(null);
+            setSelectedBatch(null);
             setAmount('');
             setDiscount('0');
             setCustomerName('');
@@ -217,6 +216,13 @@ export default function ButcheryPOSPage() {
         { id: 'Credit', icon: '📋', label: 'Credit' },
     ];
 
+    const getDaysColor = (days: number) => {
+        if (days === 0) return 'text-green-600 bg-green-100';
+        if (days === 1) return 'text-yellow-600 bg-yellow-100';
+        if (days === 2) return 'text-orange-600 bg-orange-100';
+        return 'text-red-600 bg-red-100';
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -230,7 +236,7 @@ export default function ButcheryPOSPage() {
                             <h1 className="text-2xl font-extrabold flex items-center gap-2">
                                 🥩 Butchery POS
                             </h1>
-                            <p className="text-white/80 text-sm">Meat Sales System</p>
+                            <p className="text-white/80 text-sm">Meat Sales System (By Batch)</p>
                         </div>
                     </div>
                     <div className="px-4 py-2 bg-white/20 rounded-xl">
@@ -280,31 +286,34 @@ export default function ButcheryPOSPage() {
                     </h2>
 
                     <div className="space-y-5">
-                        {/* Stock Selection */}
+                        {/* Batch Selection */}
                         <div>
-                            <label className="text-gray-400 text-sm mb-2 block">Select Stock Item</label>
+                            <label className="text-gray-400 text-sm mb-2 block">Select Batch (FIFO - Oldest First)</label>
                             <select
-                                value={selectedStock?.stock_id || ''}
+                                value={selectedBatch?.batch_id || ''}
                                 onChange={(e) => {
-                                    const stock = stockItems.find(s => s.stock_id === parseInt(e.target.value));
-                                    setSelectedStock(stock || null);
+                                    const batch = batches.find(b => b.batch_id === parseInt(e.target.value));
+                                    setSelectedBatch(batch || null);
                                 }}
                                 className="w-full p-4 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-red-500 focus:outline-none"
                             >
-                                <option value="">🥩 Tap to select meat</option>
-                                {stockItems.map(stock => (
-                                    <option key={stock.stock_id} value={stock.stock_id}>
-                                        {stock.meat_type_name} ({stock.available_kg.toFixed(1)} Kg available) - KES {stock.selling_price}/Kg
+                                <option value="">🥩 Tap to select batch</option>
+                                {batches.map(batch => (
+                                    <option key={batch.batch_id} value={batch.batch_id}>
+                                        [{batch.days_old}d] {batch.meat_type_name} - {batch.batch_code} ({batch.available_kg.toFixed(1)} Kg) @ KES {batch.selling_price}/Kg
                                     </option>
                                 ))}
                             </select>
                         </div>
 
-                        {/* Stock Info */}
-                        {selectedStock && (
+                        {/* Batch Info */}
+                        {selectedBatch && (
                             <div className="flex justify-between text-sm">
-                                <span className="text-green-400">📦 Available: {selectedStock.available_kg.toFixed(2)} Kg</span>
-                                <span className="text-cyan-400">💵 Price: KES {selectedStock.selling_price}/Kg</span>
+                                <span className="text-green-400">📦 Available: {selectedBatch.available_kg.toFixed(2)} Kg</span>
+                                <span className={`px-2 py-1 rounded-full text-xs font-bold ${getDaysColor(selectedBatch.days_old)}`}>
+                                    {selectedBatch.days_old}d old
+                                </span>
+                                <span className="text-cyan-400">💵 Price: KES {selectedBatch.selling_price}/Kg</span>
                             </div>
                         )}
 
@@ -372,7 +381,7 @@ export default function ButcheryPOSPage() {
                         {/* Process Button */}
                         <button
                             onClick={() => setShowPaymentModal(true)}
-                            disabled={!selectedStock || amountValue <= 0 || isProcessing}
+                            disabled={!selectedBatch || amountValue <= 0 || isProcessing}
                             className="w-full py-4 bg-gradient-to-r from-red-500 to-rose-600 text-white rounded-xl font-bold text-lg hover:shadow-2xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-3"
                         >
                             <span className="text-2xl">💳</span>
@@ -452,8 +461,8 @@ export default function ButcheryPOSPage() {
                                     key={method.id}
                                     onClick={() => setPaymentMode(method.id)}
                                     className={`p-3 rounded-xl border-2 transition-all ${paymentMode === method.id
-                                            ? 'bg-red-500 border-red-500 text-white'
-                                            : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-gray-500'
+                                        ? 'bg-red-500 border-red-500 text-white'
+                                        : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-gray-500'
                                         }`}
                                 >
                                     <span className="text-2xl block mb-1">{method.icon}</span>

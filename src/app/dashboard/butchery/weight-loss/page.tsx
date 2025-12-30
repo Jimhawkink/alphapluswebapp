@@ -5,17 +5,18 @@ import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
-interface MeatStock {
-    stock_id: number;
-    stock_code: string;
+interface MeatBatch {
+    batch_id: number;
+    batch_code: string;
     meat_type_name: string;
     available_kg: number;
+    days_old: number;
 }
 
 interface WeightLoss {
     loss_id: number;
-    stock_id: number;
-    stock_code: string;
+    batch_id: number;
+    batch_code: string;
     meat_type_name: string;
     loss_weight_kg: number;
     loss_type: string;
@@ -26,12 +27,12 @@ interface WeightLoss {
 
 export default function WeightLossPage() {
     const [lossRecords, setLossRecords] = useState<WeightLoss[]>([]);
-    const [stockItems, setStockItems] = useState<MeatStock[]>([]);
+    const [batches, setBatches] = useState<MeatBatch[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [formData, setFormData] = useState({
-        stock_id: 0,
+        batch_id: 0,
         loss_weight_kg: 0,
         loss_type: 'Drying',
         reason: ''
@@ -48,18 +49,20 @@ export default function WeightLossPage() {
     const loadData = async () => {
         setIsLoading(true);
         try {
+            const today = new Date();
+
             // Load weight loss records
             const { data: losses, error } = await supabase
                 .from('meat_weight_loss')
-                .select('*, meat_stock(stock_code, meat_types(meat_type_name))')
+                .select('*, meat_batches(batch_code, meat_types(meat_type_name))')
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
             setLossRecords((losses || []).map(l => ({
                 loss_id: l.loss_id,
-                stock_id: l.stock_id,
-                stock_code: l.meat_stock?.stock_code || '',
-                meat_type_name: l.meat_stock?.meat_types?.meat_type_name || 'Unknown',
+                batch_id: l.batch_id,
+                batch_code: (l as any).meat_batches?.batch_code || '',
+                meat_type_name: (l as any).meat_batches?.meat_types?.meat_type_name || 'Unknown',
                 loss_weight_kg: l.loss_weight_kg,
                 loss_type: l.loss_type,
                 reason: l.reason || '',
@@ -67,23 +70,28 @@ export default function WeightLossPage() {
                 created_at: l.created_at
             })));
 
-            // Load stock items with available quantity
-            const { data: stock } = await supabase
-                .from('meat_stock')
+            // Load batches with available quantity
+            const { data: batchData } = await supabase
+                .from('meat_batches')
                 .select('*, meat_types(meat_type_name)')
                 .gt('available_kg', 0)
-                .order('stock_id');
+                .order('purchase_date');
 
-            setStockItems((stock || []).map(s => ({
-                stock_id: s.stock_id,
-                stock_code: s.stock_code || `STK-${s.stock_id}`,
-                meat_type_name: s.meat_types?.meat_type_name || 'Unknown',
-                available_kg: s.available_kg || 0
-            })));
+            setBatches((batchData || []).map(b => {
+                const purchaseDate = new Date(b.purchase_date);
+                const daysOld = Math.floor((today.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24));
+                return {
+                    batch_id: b.batch_id,
+                    batch_code: b.batch_code,
+                    meat_type_name: (b as any).meat_types?.meat_type_name || 'Unknown',
+                    available_kg: b.available_kg || 0,
+                    days_old: daysOld
+                };
+            }));
 
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error loading data:', err);
-            toast.error('Failed to load data');
+            toast.error(err.message || 'Failed to load data');
         } finally {
             setIsLoading(false);
         }
@@ -94,8 +102,8 @@ export default function WeightLossPage() {
     }, []);
 
     const handleSave = async () => {
-        if (!formData.stock_id) {
-            toast.error('Please select a stock item');
+        if (!formData.batch_id) {
+            toast.error('Please select a batch');
             return;
         }
         if (formData.loss_weight_kg <= 0) {
@@ -103,9 +111,9 @@ export default function WeightLossPage() {
             return;
         }
 
-        const selectedStock = stockItems.find(s => s.stock_id === formData.stock_id);
-        if (selectedStock && formData.loss_weight_kg > selectedStock.available_kg) {
-            toast.error(`Loss weight cannot exceed available stock (${selectedStock.available_kg.toFixed(2)} Kg)`);
+        const selectedBatch = batches.find(b => b.batch_id === formData.batch_id);
+        if (selectedBatch && formData.loss_weight_kg > selectedBatch.available_kg) {
+            toast.error(`Loss weight cannot exceed available stock (${selectedBatch.available_kg.toFixed(2)} Kg)`);
             return;
         }
 
@@ -115,7 +123,7 @@ export default function WeightLossPage() {
             const { error: lossError } = await supabase
                 .from('meat_weight_loss')
                 .insert({
-                    stock_id: formData.stock_id,
+                    batch_id: formData.batch_id,
                     loss_weight_kg: formData.loss_weight_kg,
                     loss_type: formData.loss_type,
                     reason: formData.reason || null,
@@ -124,18 +132,21 @@ export default function WeightLossPage() {
 
             if (lossError) throw lossError;
 
-            // Update stock available quantity
-            const newAvailable = (selectedStock?.available_kg || 0) - formData.loss_weight_kg;
-            const { error: stockError } = await supabase
-                .from('meat_stock')
-                .update({ available_kg: newAvailable })
-                .eq('stock_id', formData.stock_id);
+            // Update batch available quantity
+            const newAvailable = (selectedBatch?.available_kg || 0) - formData.loss_weight_kg;
+            const { error: batchError } = await supabase
+                .from('meat_batches')
+                .update({
+                    available_kg: newAvailable,
+                    status: newAvailable <= 0 ? 'Sold Out' : 'Active'
+                })
+                .eq('batch_id', formData.batch_id);
 
-            if (stockError) throw stockError;
+            if (batchError) throw batchError;
 
             toast.success('Weight loss recorded!');
             setShowModal(false);
-            setFormData({ stock_id: 0, loss_weight_kg: 0, loss_type: 'Drying', reason: '' });
+            setFormData({ batch_id: 0, loss_weight_kg: 0, loss_type: 'Drying', reason: '' });
             loadData();
 
         } catch (err: any) {
@@ -164,6 +175,13 @@ export default function WeightLossPage() {
         }
     };
 
+    const getDaysColor = (days: number) => {
+        if (days === 0) return 'text-green-600';
+        if (days === 1) return 'text-yellow-600';
+        if (days === 2) return 'text-orange-600';
+        return 'text-red-600';
+    };
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -177,7 +195,7 @@ export default function WeightLossPage() {
                             <h1 className="text-2xl font-extrabold flex items-center gap-2">
                                 ⚖️ Weight Loss
                             </h1>
-                            <p className="text-white/80 text-sm">Track bone, drying & other losses</p>
+                            <p className="text-white/80 text-sm">Track bone, drying & other losses by batch</p>
                         </div>
                     </div>
                     <button
@@ -237,7 +255,7 @@ export default function WeightLossPage() {
                 <table className="w-full">
                     <thead className="bg-gray-50">
                         <tr>
-                            <th className="text-left py-3 px-4 font-semibold text-gray-600 text-sm">📦 STOCK</th>
+                            <th className="text-left py-3 px-4 font-semibold text-gray-600 text-sm">📦 BATCH</th>
                             <th className="text-left py-3 px-4 font-semibold text-gray-600 text-sm">🥩 MEAT TYPE</th>
                             <th className="text-center py-3 px-4 font-semibold text-gray-600 text-sm">⚖️ LOSS (Kg)</th>
                             <th className="text-center py-3 px-4 font-semibold text-gray-600 text-sm">📌 TYPE</th>
@@ -265,7 +283,7 @@ export default function WeightLossPage() {
                             lossRecords.map(record => (
                                 <tr key={record.loss_id} className="border-t hover:bg-orange-50/30 transition-colors">
                                     <td className="py-3 px-4">
-                                        <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{record.stock_code}</span>
+                                        <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{record.batch_code}</span>
                                     </td>
                                     <td className="py-3 px-4 font-semibold text-gray-800">{record.meat_type_name}</td>
                                     <td className="py-3 px-4 text-center">
@@ -299,16 +317,16 @@ export default function WeightLossPage() {
 
                         <div className="space-y-4">
                             <div>
-                                <label className="text-sm text-gray-600 mb-1 block">Select Stock Item *</label>
+                                <label className="text-sm text-gray-600 mb-1 block">Select Batch *</label>
                                 <select
-                                    value={formData.stock_id}
-                                    onChange={(e) => setFormData({ ...formData, stock_id: parseInt(e.target.value) })}
+                                    value={formData.batch_id}
+                                    onChange={(e) => setFormData({ ...formData, batch_id: parseInt(e.target.value) })}
                                     className="w-full p-3 border border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none"
                                 >
-                                    <option value={0}>Select stock</option>
-                                    {stockItems.map(stock => (
-                                        <option key={stock.stock_id} value={stock.stock_id}>
-                                            {stock.stock_code} - {stock.meat_type_name} ({stock.available_kg.toFixed(1)} Kg available)
+                                    <option value={0}>Select batch</option>
+                                    {batches.map(batch => (
+                                        <option key={batch.batch_id} value={batch.batch_id}>
+                                            [{batch.days_old}d] {batch.meat_type_name} - {batch.batch_code} ({batch.available_kg.toFixed(1)} Kg)
                                         </option>
                                     ))}
                                 </select>

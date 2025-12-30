@@ -10,11 +10,9 @@ interface MeatStock {
     stock_code: string;
     meat_type_id: number;
     meat_type_name: string;
-    initial_kg: number;
     available_kg: number;
     cost_per_kg: number;
     selling_price: number;
-    purchase_date: string;
     supplier_name: string;
     status: string;
 }
@@ -33,7 +31,7 @@ export default function MeatStockPage() {
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState({
         meat_type_id: 0,
-        initial_kg: 0,
+        available_kg: 0,
         cost_per_kg: 0,
         selling_price: 0,
         supplier_name: ''
@@ -42,10 +40,10 @@ export default function MeatStockPage() {
     const loadData = async () => {
         setIsLoading(true);
         try {
-            // Load stock
+            // Load stock - only select columns that exist
             const { data: stock, error } = await supabase
                 .from('meat_stock')
-                .select('*, meat_types(meat_type_name)')
+                .select('stock_id, stock_code, meat_type_id, available_kg, cost_per_kg, selling_price, supplier_name, meat_types(meat_type_name)')
                 .order('stock_id', { ascending: false });
 
             if (error) throw error;
@@ -53,28 +51,25 @@ export default function MeatStockPage() {
                 stock_id: s.stock_id,
                 stock_code: s.stock_code || `STK-${s.stock_id}`,
                 meat_type_id: s.meat_type_id,
-                meat_type_name: s.meat_types?.meat_type_name || 'Unknown',
-                initial_kg: s.initial_kg || 0,
+                meat_type_name: (s as any).meat_types?.meat_type_name || 'Unknown',
                 available_kg: s.available_kg || 0,
                 cost_per_kg: s.cost_per_kg || 0,
                 selling_price: s.selling_price || 0,
-                purchase_date: s.purchase_date || new Date().toISOString(),
                 supplier_name: s.supplier_name || '',
-                status: s.available_kg > 0 ? 'In Stock' : 'Sold Out'
+                status: (s.available_kg || 0) > 0 ? 'In Stock' : 'Sold Out'
             })));
 
             // Load meat types
             const { data: types } = await supabase
                 .from('meat_types')
-                .select('*')
-                .eq('is_active', true)
+                .select('meat_type_id, meat_type_name')
                 .order('meat_type_name');
 
             setMeatTypes(types || []);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error loading stock:', err);
-            toast.error('Failed to load stock');
+            toast.error(err.message || 'Failed to load stock');
         } finally {
             setIsLoading(false);
         }
@@ -89,7 +84,7 @@ export default function MeatStockPage() {
             setEditingId(stock.stock_id);
             setFormData({
                 meat_type_id: stock.meat_type_id,
-                initial_kg: stock.initial_kg,
+                available_kg: stock.available_kg,
                 cost_per_kg: stock.cost_per_kg,
                 selling_price: stock.selling_price,
                 supplier_name: stock.supplier_name
@@ -98,7 +93,7 @@ export default function MeatStockPage() {
             setEditingId(null);
             setFormData({
                 meat_type_id: meatTypes[0]?.meat_type_id || 0,
-                initial_kg: 0,
+                available_kg: 0,
                 cost_per_kg: 0,
                 selling_price: 0,
                 supplier_name: ''
@@ -118,7 +113,7 @@ export default function MeatStockPage() {
             toast.error('Please select a meat type');
             return;
         }
-        if (formData.initial_kg <= 0) {
+        if (formData.available_kg <= 0) {
             toast.error('Please enter weight');
             return;
         }
@@ -130,6 +125,7 @@ export default function MeatStockPage() {
                     .from('meat_stock')
                     .update({
                         meat_type_id: formData.meat_type_id,
+                        available_kg: formData.available_kg,
                         cost_per_kg: formData.cost_per_kg,
                         selling_price: formData.selling_price,
                         supplier_name: formData.supplier_name
@@ -144,12 +140,10 @@ export default function MeatStockPage() {
                     .insert({
                         stock_code: generateStockCode(),
                         meat_type_id: formData.meat_type_id,
-                        initial_kg: formData.initial_kg,
-                        available_kg: formData.initial_kg,
+                        available_kg: formData.available_kg,
                         cost_per_kg: formData.cost_per_kg,
                         selling_price: formData.selling_price,
-                        supplier_name: formData.supplier_name,
-                        purchase_date: new Date().toISOString()
+                        supplier_name: formData.supplier_name
                     });
 
                 if (error) throw error;
@@ -225,8 +219,7 @@ export default function MeatStockPage() {
                         <tr>
                             <th className="text-left py-4 px-4 font-bold text-sm text-white">📦 STOCK CODE</th>
                             <th className="text-left py-4 px-4 font-bold text-sm text-white">🥩 MEAT TYPE</th>
-                            <th className="text-center py-4 px-4 font-bold text-sm text-white">⚖️ INITIAL</th>
-                            <th className="text-center py-4 px-4 font-bold text-sm text-white">📊 AVAILABLE</th>
+                            <th className="text-center py-4 px-4 font-bold text-sm text-white">⚖️ AVAILABLE</th>
                             <th className="text-right py-4 px-4 font-bold text-sm text-white">💰 COST/KG</th>
                             <th className="text-right py-4 px-4 font-bold text-sm text-white">💵 SELL/KG</th>
                             <th className="text-right py-4 px-4 font-bold text-sm text-white">📈 VALUE</th>
@@ -237,7 +230,7 @@ export default function MeatStockPage() {
                     <tbody>
                         {isLoading ? (
                             <tr>
-                                <td colSpan={9} className="py-16 text-center">
+                                <td colSpan={8} className="py-16 text-center">
                                     <div className="flex items-center justify-center gap-3">
                                         <div className="w-8 h-8 border-4 border-cyan-500 border-t-transparent rounded-full animate-spin"></div>
                                         <span>Loading stock...</span>
@@ -246,7 +239,7 @@ export default function MeatStockPage() {
                             </tr>
                         ) : stockItems.length === 0 ? (
                             <tr>
-                                <td colSpan={9} className="py-16 text-center text-gray-500">
+                                <td colSpan={8} className="py-16 text-center text-gray-500">
                                     📦 No stock items yet. Add your first stock!
                                 </td>
                             </tr>
@@ -257,7 +250,6 @@ export default function MeatStockPage() {
                                         <span className="font-mono text-sm bg-gray-100 px-2 py-1 rounded">{stock.stock_code}</span>
                                     </td>
                                     <td className="py-3 px-4 font-semibold text-gray-800">{stock.meat_type_name}</td>
-                                    <td className="py-3 px-4 text-center">{stock.initial_kg.toFixed(1)} Kg</td>
                                     <td className="py-3 px-4 text-center">
                                         <span className={`px-3 py-1 rounded-lg font-bold ${stock.available_kg > 0 ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                                             }`}>
@@ -303,13 +295,7 @@ export default function MeatStockPage() {
                                 <label className="text-sm text-gray-600 mb-1 block">Meat Type *</label>
                                 <select
                                     value={formData.meat_type_id}
-                                    onChange={(e) => {
-                                        const typeId = parseInt(e.target.value);
-                                        setFormData({
-                                            ...formData,
-                                            meat_type_id: typeId
-                                        });
-                                    }}
+                                    onChange={(e) => setFormData({ ...formData, meat_type_id: parseInt(e.target.value) })}
                                     className="w-full p-3 border border-gray-200 rounded-xl focus:border-cyan-500 focus:outline-none"
                                 >
                                     <option value={0}>Select meat type</option>
@@ -321,19 +307,17 @@ export default function MeatStockPage() {
                                 </select>
                             </div>
 
-                            {!editingId && (
-                                <div>
-                                    <label className="text-sm text-gray-600 mb-1 block">Initial Weight (Kg) *</label>
-                                    <input
-                                        type="number"
-                                        step="0.1"
-                                        value={formData.initial_kg}
-                                        onChange={(e) => setFormData({ ...formData, initial_kg: parseFloat(e.target.value) || 0 })}
-                                        placeholder="e.g. 50"
-                                        className="w-full p-3 border border-gray-200 rounded-xl focus:border-cyan-500 focus:outline-none"
-                                    />
-                                </div>
-                            )}
+                            <div>
+                                <label className="text-sm text-gray-600 mb-1 block">Available Weight (Kg) *</label>
+                                <input
+                                    type="number"
+                                    step="0.1"
+                                    value={formData.available_kg}
+                                    onChange={(e) => setFormData({ ...formData, available_kg: parseFloat(e.target.value) || 0 })}
+                                    placeholder="e.g. 50"
+                                    className="w-full p-3 border border-gray-200 rounded-xl focus:border-cyan-500 focus:outline-none"
+                                />
+                            </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
