@@ -14,7 +14,8 @@ import {
     createKOTData,
     generateReceiptHTML,
     generateKOTHTML,
-    generateCustomerBillHTML
+    generateCustomerBillHTML,
+    loadCompanyInfo
 } from '@/lib/receiptPrinter';
 
 // Types
@@ -1248,12 +1249,15 @@ export default function POSPage() {
                 }
             );
 
-            const kotHtmlContent = generateKOTHTML(kotData);
+            // Load company info from database for receipts
+            const companyInfo = await loadCompanyInfo();
+
+            const kotHtmlContent = generateKOTHTML(kotData, companyInfo);
             setKOTHTML(kotHtmlContent);
 
             // Create Customer Bill (Unpaid) data for printing
             const billData = createUnpaidBillData();
-            const billHtmlContent = generateCustomerBillHTML(billData, undefined, false);
+            const billHtmlContent = generateCustomerBillHTML(billData, companyInfo, false);
             setBillHTML(billHtmlContent);
 
             // Get current logged in user
@@ -1553,7 +1557,10 @@ export default function POSPage() {
             }
         );
 
-        const html = generateCustomerBillHTML(receiptData, undefined, true);
+        // Load company info from database for receipt
+        const companyInfo = await loadCompanyInfo();
+
+        const html = generateCustomerBillHTML(receiptData, companyInfo, true);
         setReceiptHTML(html);
         setShowPayment(false);
         setShowReceiptPreview(true);

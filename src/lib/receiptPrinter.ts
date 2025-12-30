@@ -69,12 +69,12 @@ const defaultCompanyInfo: CompanyInfo = {
   slogan: 'Quality Food, Great Service!'
 };
 
-// Load company info from database
+// Load company info from database (organisation_settings table)
 export async function loadCompanyInfo(): Promise<CompanyInfo> {
   if (cachedCompanyInfo) return cachedCompanyInfo;
 
   try {
-    // Try to load from localStorage first (cached by SettingsContext)
+    // First try localStorage cache
     const storedSettings = localStorage.getItem('company_settings');
     if (storedSettings) {
       const settings = JSON.parse(storedSettings);
@@ -88,6 +88,49 @@ export async function loadCompanyInfo(): Promise<CompanyInfo> {
         logo: settings.logo
       };
       return cachedCompanyInfo;
+    }
+
+    // If not in localStorage, try to fetch from Supabase
+    const { createClient } = await import('@supabase/supabase-js');
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+
+    if (supabaseUrl && supabaseKey) {
+      const supabase = createClient(supabaseUrl, supabaseKey);
+      const { data: settingsData } = await supabase
+        .from('organisation_settings')
+        .select('setting_key, setting_value');
+
+      if (settingsData && settingsData.length > 0) {
+        const settingsMap: { [key: string]: string } = {};
+        settingsData.forEach((item: { setting_key: string; setting_value: string }) => {
+          settingsMap[item.setting_key] = item.setting_value;
+        });
+
+        cachedCompanyInfo = {
+          name: settingsMap['company_name'] || defaultCompanyInfo.name,
+          address: settingsMap['address'] ?
+            (settingsMap['city'] ? `${settingsMap['address']}, ${settingsMap['city']}` : settingsMap['address'])
+            : defaultCompanyInfo.address,
+          phone: settingsMap['phone'] || defaultCompanyInfo.phone,
+          email: settingsMap['email'] || defaultCompanyInfo.email,
+          pin: settingsMap['kra_pin'] || defaultCompanyInfo.pin,
+          slogan: settingsMap['footer_note'] || settingsMap['slogan'] || defaultCompanyInfo.slogan,
+        };
+
+        // Cache to localStorage for faster subsequent loads
+        localStorage.setItem('company_settings', JSON.stringify({
+          company_name: cachedCompanyInfo.name,
+          address: settingsMap['address'] || '',
+          city: settingsMap['city'] || '',
+          phone: cachedCompanyInfo.phone,
+          email: cachedCompanyInfo.email,
+          kra_pin: cachedCompanyInfo.pin,
+          slogan: cachedCompanyInfo.slogan
+        }));
+
+        return cachedCompanyInfo;
+      }
     }
 
     return defaultCompanyInfo;
