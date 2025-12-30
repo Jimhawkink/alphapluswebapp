@@ -79,7 +79,6 @@ export default function DashboardPage() {
         setIsLoading(true);
         const today = new Date().toISOString().split('T')[0];
         const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-        const currentMonth = new Date().toISOString().slice(0, 7);
 
         try {
             // Today's sales - FIXED: use total_amount instead of grand_total
@@ -214,33 +213,37 @@ export default function DashboardPage() {
             });
             setWaiterSales(Array.from(waiterMap.entries()).map(([name, data]) => ({ name, ...data })).sort((a, b) => b.sales - a.sales));
 
-            // NEW: Load Expenses for current month
+            // Load Expenses - STRICTLY filter by date range
             const { data: expensesData } = await supabase
                 .from('expenses')
-                .select('amount')
-                .gte('expense_date', `${currentMonth}-01`)
+                .select('amount, created_at')
+                .gte('expense_date', dateFrom)
                 .lte('expense_date', dateTo);
             setTotalExpenses((expensesData || []).reduce((sum, e) => sum + (e.amount || 0), 0));
 
-            // NEW: Load Salary Advances
+            // Load Salary Advances - STRICTLY filter by date range
             const { data: advancesData } = await supabase
                 .from('salary_advances')
-                .select('amount')
-                .eq('status', 'Approved');
+                .select('amount, created_at')
+                .eq('status', 'Approved')
+                .gte('created_at', `${dateFrom}T00:00:00`)
+                .lte('created_at', `${dateTo}T23:59:59`);
             setTotalAdvances((advancesData || []).reduce((sum, a) => sum + (a.amount || 0), 0));
 
-            // NEW: Load Vouchers
+            // Load Vouchers - STRICTLY filter by date range
             const { data: vouchersData } = await supabase
                 .from('vouchers')
-                .select('amount')
-                .gte('voucher_date', `${currentMonth}-01`)
-                .lte('voucher_date', dateTo);
+                .select('amount, created_at')
+                .gte('created_at', `${dateFrom}T00:00:00`)
+                .lte('created_at', `${dateTo}T23:59:59`);
             setTotalVouchers((vouchersData || []).reduce((sum, v) => sum + (v.amount || 0), 0));
 
-            // NEW: Load Shifts
+            // Load Shifts - filter by date range
             const { data: shiftsData } = await supabase
                 .from('shifts')
-                .select('shift_id, status');
+                .select('shift_id, status, shift_date')
+                .gte('shift_date', dateFrom)
+                .lte('shift_date', dateTo);
             setActiveShifts((shiftsData || []).filter(s => s.status === 'Open').length);
             setClosedShifts((shiftsData || []).filter(s => s.status === 'Closed').length);
 

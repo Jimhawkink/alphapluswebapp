@@ -146,20 +146,35 @@ export default function ShiftsPage() {
     };
 
     const printShiftReport = async (shift: Shift, stats: { sales: number; expenses: number; vouchers: number; advances: number }, closing: number, net: number) => {
-        // ========== FETCH COMPANY INFO ==========
+        // ========== FETCH COMPANY INFO FROM ORGANISATION_SETTINGS ==========
         let companyName = 'Your Business Name';
         let companyPhone = '';
         let companyAddress = '';
 
         try {
-            const { data: company } = await supabase.from('companies').select('*').limit(1).single();
-            if (company) {
-                companyName = company.company_name || 'Your Business Name';
-                companyPhone = company.phone || '';
-                companyAddress = company.address || '';
+            const { data: settingsData, error: settingsError } = await supabase
+                .from('organisation_settings')
+                .select('setting_key, setting_value');
+
+            console.log('Organisation settings data:', settingsData, 'Error:', settingsError);
+
+            if (settingsData && settingsData.length > 0) {
+                const settingsMap: { [key: string]: string } = {};
+                settingsData.forEach((item: { setting_key: string; setting_value: string }) => {
+                    settingsMap[item.setting_key] = item.setting_value;
+                });
+
+                companyName = settingsMap['company_name'] || 'Your Business Name';
+                companyPhone = settingsMap['phone'] || '';
+                companyAddress = settingsMap['address'] || '';
+
+                // Add city if available
+                if (settingsMap['city']) {
+                    companyAddress = companyAddress ? `${companyAddress}, ${settingsMap['city']}` : settingsMap['city'];
+                }
             }
         } catch (err) {
-            console.log('Could not fetch company info');
+            console.log('Could not fetch organisation settings:', err);
         }
 
         // ========== FETCH ALL SALES DATA ==========
@@ -177,11 +192,29 @@ export default function ShiftsPage() {
         let totalTransactions = 0;
         const userSalesMap: { [key: string]: number } = {};
 
+        // Create shift start datetime for filtering
+        const shiftStartDateTime = new Date(`${shift.shift_date}T${shift.start_time || '00:00:00'}`).toISOString();
+        console.log('Fetching sales for shift_id:', shift.shift_id, 'or after:', shiftStartDateTime);
+
         try {
-            const { data } = await supabase
+            // Try to get sales by shift_id first, then fallback to date+time
+            let { data } = await supabase
                 .from('sales')
                 .select('sale_id, total_amount, payment_method, status, waiter_name, created_by')
                 .eq('shift_id', shift.shift_id);
+
+            // If no sales with shift_id, fallback to sales made during this shift time period
+            if (!data || data.length === 0) {
+                console.log('No sales with shift_id, trying date/time filter...');
+                const result = await supabase
+                    .from('sales')
+                    .select('sale_id, total_amount, payment_method, status, waiter_name, created_by')
+                    .eq('sale_date', shift.shift_date)
+                    .gte('created_at', shiftStartDateTime);
+                data = result.data;
+            }
+
+            console.log('Sales data found:', data?.length || 0, 'records');
 
             if (data) {
                 salesData = data;
@@ -204,7 +237,7 @@ export default function ShiftsPage() {
                 });
             }
         } catch (err) {
-            console.log('Could not fetch sales data');
+            console.log('Could not fetch sales data:', err);
         }
 
         // ========== FETCH SALES ITEMS FOR CATEGORY & QUANTITY BREAKDOWN ==========
@@ -268,9 +301,9 @@ export default function ShiftsPage() {
             console.log('Could not fetch sales items');
         }
 
+
         // ========== FETCH EXPENSE DETAILS ==========
-        // Create shift start datetime for filtering
-        const shiftStartDateTime = new Date(`${shift.shift_date}T${shift.start_time || '00:00:00'}`).toISOString();
+        // Use shiftStartDateTime already defined above for filtering
 
         interface ExpenseItem { name: string; amount: number; category: string }
         let expensesList: ExpenseItem[] = [];

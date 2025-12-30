@@ -84,20 +84,33 @@ export default function ShiftReportsPage() {
     };
 
     const printShiftReport = async (shift: ShiftReport) => {
-        // Fetch company info
+        // Fetch company info from organisation_settings
         let companyName = 'Your Business Name';
         let companyPhone = '';
         let companyAddress = '';
 
         try {
-            const { data: company } = await supabase.from('companies').select('*').limit(1).single();
-            if (company) {
-                companyName = company.company_name || company.name || 'Your Business Name';
-                companyPhone = company.phone || company.contact_phone || '';
-                companyAddress = company.address || company.location || '';
+            const { data: settingsData } = await supabase
+                .from('organisation_settings')
+                .select('setting_key, setting_value');
+
+            if (settingsData && settingsData.length > 0) {
+                const settingsMap: { [key: string]: string } = {};
+                settingsData.forEach((item: { setting_key: string; setting_value: string }) => {
+                    settingsMap[item.setting_key] = item.setting_value;
+                });
+
+                companyName = settingsMap['company_name'] || 'Your Business Name';
+                companyPhone = settingsMap['phone'] || '';
+                companyAddress = settingsMap['address'] || '';
+
+                // Add city if available
+                if (settingsMap['city']) {
+                    companyAddress = companyAddress ? `${companyAddress}, ${settingsMap['city']}` : settingsMap['city'];
+                }
             }
         } catch (err) {
-            console.log('Could not fetch company info');
+            console.log('Could not fetch organisation settings');
         }
 
         const shiftType = shift.shift_type === 'Morning' ? 'DAY SHIFT' : 'NIGHT SHIFT';
