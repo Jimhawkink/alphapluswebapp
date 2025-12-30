@@ -9,7 +9,6 @@ interface MeatType {
     meat_type_id: number;
     meat_type_name: string;
     description: string;
-    default_price: number;
     is_active: boolean;
     created_at: string;
 }
@@ -23,7 +22,6 @@ export default function MeatTypesPage() {
     const [formData, setFormData] = useState({
         meat_type_name: '',
         description: '',
-        default_price: 0,
         is_active: true
     });
 
@@ -55,15 +53,13 @@ export default function MeatTypesPage() {
             setFormData({
                 meat_type_name: meatType.meat_type_name,
                 description: meatType.description || '',
-                default_price: meatType.default_price || 0,
-                is_active: meatType.is_active
+                is_active: meatType.is_active !== false
             });
         } else {
             setEditingId(null);
             setFormData({
                 meat_type_name: '',
                 description: '',
-                default_price: 0,
                 is_active: true
             });
         }
@@ -84,7 +80,6 @@ export default function MeatTypesPage() {
                     .update({
                         meat_type_name: formData.meat_type_name,
                         description: formData.description,
-                        default_price: formData.default_price,
                         is_active: formData.is_active
                     })
                     .eq('meat_type_id', editingId);
@@ -97,7 +92,6 @@ export default function MeatTypesPage() {
                     .insert({
                         meat_type_name: formData.meat_type_name,
                         description: formData.description,
-                        default_price: formData.default_price,
                         is_active: formData.is_active
                     });
 
@@ -227,12 +221,11 @@ export default function MeatTypesPage() {
                                 <h3 className="font-bold text-gray-800 text-lg">{meat.meat_type_name}</h3>
                                 <p className="text-gray-500 text-sm mb-2 line-clamp-2">{meat.description || 'No description'}</p>
                                 <div className="flex items-center justify-between mb-3">
-                                    <span className="text-lg font-bold text-green-600">KES {meat.default_price}/Kg</span>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${meat.is_active
-                                            ? 'bg-green-100 text-green-600'
-                                            : 'bg-gray-100 text-gray-600'
+                                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${meat.is_active !== false
+                                        ? 'bg-green-100 text-green-600'
+                                        : 'bg-gray-100 text-gray-600'
                                         }`}>
-                                        {meat.is_active ? '✅ Active' : '⏸️ Inactive'}
+                                        {meat.is_active !== false ? '✅ Active' : '⏸️ Inactive'}
                                     </span>
                                 </div>
                                 <div className="flex gap-2">
@@ -286,16 +279,7 @@ export default function MeatTypesPage() {
                                 />
                             </div>
 
-                            <div>
-                                <label className="text-sm text-gray-600 mb-1 block">Default Price per Kg (KES)</label>
-                                <input
-                                    type="number"
-                                    value={formData.default_price}
-                                    onChange={(e) => setFormData({ ...formData, default_price: parseFloat(e.target.value) || 0 })}
-                                    placeholder="e.g. 500"
-                                    className="w-full p-3 border border-gray-200 rounded-xl focus:border-red-500 focus:outline-none"
-                                />
-                            </div>
+
 
                             <div className="flex items-center gap-3">
                                 <input

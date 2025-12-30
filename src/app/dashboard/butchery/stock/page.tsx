@@ -22,7 +22,6 @@ interface MeatStock {
 interface MeatType {
     meat_type_id: number;
     meat_type_name: string;
-    default_price: number;
 }
 
 export default function MeatStockPage() {
@@ -306,11 +305,9 @@ export default function MeatStockPage() {
                                     value={formData.meat_type_id}
                                     onChange={(e) => {
                                         const typeId = parseInt(e.target.value);
-                                        const type = meatTypes.find(t => t.meat_type_id === typeId);
                                         setFormData({
                                             ...formData,
-                                            meat_type_id: typeId,
-                                            selling_price: type?.default_price || formData.selling_price
+                                            meat_type_id: typeId
                                         });
                                     }}
                                     className="w-full p-3 border border-gray-200 rounded-xl focus:border-cyan-500 focus:outline-none"
