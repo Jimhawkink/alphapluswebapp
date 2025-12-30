@@ -15,6 +15,17 @@ const menuItems = [
         ]
     },
     {
+        category: 'Butchery',
+        items: [
+            { name: 'Butchery Dashboard', icon: '🥩', href: '/dashboard/butchery', badge: 'New' },
+            { name: 'Butchery POS', icon: '🛒', href: '/dashboard/butchery/pos', badge: 'Live' },
+            { name: 'Meat Types', icon: '🍖', href: '/dashboard/butchery/meat-types', badge: null },
+            { name: 'Meat Stock', icon: '📦', href: '/dashboard/butchery/stock', badge: null },
+            { name: 'Weight Loss', icon: '⚖️', href: '/dashboard/butchery/weight-loss', badge: null },
+            { name: 'Sales Report', icon: '📋', href: '/dashboard/butchery/sales-report', badge: null },
+        ]
+    },
+    {
         category: 'Sales & Products',
         items: [
             { name: 'Products', icon: '🍕', href: '/dashboard/products', badge: null },
