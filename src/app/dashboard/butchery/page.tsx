@@ -48,31 +48,43 @@ export default function ButcheryDashboardPage() {
         try {
             const today = new Date().toISOString().split('T')[0];
 
-            // Load today's sales
-            const { data: salesData } = await supabase
+            // Load today's sales from butchery_sales
+            const { data: salesData, error: salesError } = await supabase
                 .from('butchery_sales')
                 .select('*')
                 .gte('sale_date', today)
                 .order('sale_date', { ascending: false });
 
+            if (salesError) {
+                console.error('Sales error:', salesError);
+            }
+
             const todaySalesArray = salesData || [];
             const todaySales = todaySalesArray.reduce((sum, s) => sum + (s.net_amount || 0), 0);
             const todayWeight = todaySalesArray.reduce((sum, s) => sum + (s.weight_kg || 0), 0);
 
-            // Load available stock
-            const { data: stockData } = await supabase
-                .from('meat_stock')
+            // Load available stock from meat_batches (NOT meat_stock)
+            const { data: batchData, error: batchError } = await supabase
+                .from('meat_batches')
                 .select('available_kg, cost_per_kg, selling_price')
                 .gt('available_kg', 0);
 
-            const totalStock = (stockData || []).reduce((sum, s) => sum + (s.available_kg || 0), 0);
+            if (batchError) {
+                console.error('Batch error:', batchError);
+            }
 
-            // Low stock count
-            const { data: lowStockData } = await supabase
-                .from('meat_stock')
-                .select('*')
+            const totalStock = (batchData || []).reduce((sum, s) => sum + (s.available_kg || 0), 0);
+
+            // Low stock count (batches with < 5kg remaining)
+            const { data: lowStockData, error: lowError } = await supabase
+                .from('meat_batches')
+                .select('batch_id')
                 .lte('available_kg', 5)
                 .gt('available_kg', 0);
+
+            if (lowError) {
+                console.error('Low stock error:', lowError);
+            }
 
             setDashboard({
                 todaySales,
@@ -85,16 +97,17 @@ export default function ButcheryDashboardPage() {
 
             setRecentSales(todaySalesArray.slice(0, 5).map(s => ({
                 sale_id: s.sale_id,
-                sale_code: s.sale_code,
+                sale_code: s.sale_code || `SALE-${s.sale_id}`,
                 meat_type: s.meat_type_name || 'Meat',
-                weight_kg: s.weight_kg,
-                net_amount: s.net_amount,
-                payment_mode: s.payment_mode,
+                weight_kg: s.weight_kg || 0,
+                net_amount: s.net_amount || 0,
+                payment_mode: s.payment_mode || 'Cash',
                 sale_date: s.sale_date
             })));
 
         } catch (err) {
             console.error('Error loading dashboard:', err);
+            toast.error('Failed to load dashboard');
         } finally {
             setIsLoading(false);
         }
@@ -118,15 +131,13 @@ export default function ButcheryDashboardPage() {
 
     const quickActions = [
         { href: '/dashboard/butchery/pos', emoji: '🛒', title: 'New Sale', subtitle: 'Process meat sale', gradient: 'from-green-500 to-emerald-600' },
-        { href: '/dashboard/butchery/stock', emoji: '📦', title: 'Stock', subtitle: 'Manage inventory', gradient: 'from-cyan-500 to-blue-600' },
+        { href: '/dashboard/butchery/batches', emoji: '📦', title: 'Batches', subtitle: 'Manage inventory', gradient: 'from-cyan-500 to-blue-600' },
         { href: '/dashboard/butchery/meat-types', emoji: '🥩', title: 'Meat Types', subtitle: 'Beef, Goat, Chicken...', gradient: 'from-red-500 to-rose-600' },
         { href: '/dashboard/butchery/weight-loss', emoji: '⚖️', title: 'Weight Loss', subtitle: 'Bone, Drying loss', gradient: 'from-orange-500 to-amber-600' },
     ];
 
     const reportActions = [
         { href: '/dashboard/butchery/sales-report', emoji: '📋', title: 'Sales Report', gradient: 'from-purple-500 to-violet-600' },
-        { href: '/dashboard/butchery/analytics', emoji: '📈', title: 'Analytics', gradient: 'from-blue-500 to-indigo-600' },
-        { href: '/dashboard/butchery/settings', emoji: '⚙️', title: 'Settings', gradient: 'from-gray-500 to-slate-600' },
     ];
 
     return (
@@ -156,7 +167,7 @@ export default function ButcheryDashboardPage() {
                 <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white shadow-lg">
                     <div className="flex items-center gap-2 mb-2">
                         <span className="text-2xl">💰</span>
-                        <span className="text-sm opacity-90">Today's Sales</span>
+                        <span className="text-sm opacity-90">Today&apos;s Sales</span>
                     </div>
                     <p className="text-2xl font-bold">KES {dashboard.todaySales.toLocaleString()}</p>
                 </div>
@@ -254,7 +265,7 @@ export default function ButcheryDashboardPage() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="font-semibold text-gray-800">{sale.sale_code}</p>
-                                        <p className="text-sm text-gray-500">{sale.meat_type} • {sale.weight_kg} Kg</p>
+                                        <p className="text-sm text-gray-500">{sale.meat_type} • {sale.weight_kg.toFixed(2)} Kg</p>
                                     </div>
                                     <div className="text-right">
                                         <p className="font-bold text-green-600">KES {sale.net_amount.toLocaleString()}</p>
