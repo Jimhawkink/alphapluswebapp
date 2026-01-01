@@ -77,39 +77,54 @@ CREATE TABLE IF NOT EXISTS public.hotel_rooms (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 4. GUESTS TABLE
+-- 4. GUESTS TABLE (Comprehensive Guest Registration)
 CREATE TABLE IF NOT EXISTS public.hotel_guests (
     guest_id SERIAL PRIMARY KEY,
     guest_code VARCHAR(20) UNIQUE,
     -- Personal Info
-    title VARCHAR(10) DEFAULT 'Mr.', -- Mr., Mrs., Ms., Dr., etc.
+    title VARCHAR(10) DEFAULT 'Mr.', -- Mr., Mrs., Ms., Dr., Prof., Hon.
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100),
     full_name VARCHAR(200),
+    gender VARCHAR(10) DEFAULT 'Male', -- Male, Female
+    date_of_birth DATE,
     email VARCHAR(200),
     phone VARCHAR(50),
     phone2 VARCHAR(50),
     -- Identification
-    id_type VARCHAR(50) DEFAULT 'National ID', -- National ID, Passport, Driving License
+    id_type VARCHAR(50) DEFAULT 'National ID', -- National ID, Passport, Driving License, Military ID, Student ID, Work Permit, Alien ID
     id_number VARCHAR(100),
-    nationality VARCHAR(100) DEFAULT 'Kenyan',
-    -- Address
-    address TEXT,
-    city VARCHAR(100),
+    nationality VARCHAR(100) DEFAULT 'Kenya',
+    -- Address & Location
     country VARCHAR(100) DEFAULT 'Kenya',
+    county VARCHAR(100), -- County for Kenya, State/Province for other countries
+    town VARCHAR(100), -- Town/City
+    area_of_residence VARCHAR(200), -- e.g. Westlands, Kilimani
+    address TEXT,
     postal_code VARCHAR(20),
-    -- Guest Category
-    guest_type VARCHAR(50) DEFAULT 'Walk-in', -- Walk-in, Corporate, VIP, Regular
+    -- Guest Category & Sponsorship
+    guest_type VARCHAR(50) DEFAULT 'Regular', -- Walk-in, Corporate, VIP, Regular
+    sponsor_type VARCHAR(50) DEFAULT 'Self Sponsored', -- Self Sponsored, Organisation
     company_id INTEGER,
     company_name VARCHAR(200),
+    -- Vehicle Information
+    vehicle_type VARCHAR(50), -- Sedan, SUV, Pickup, Van, Bus, Motorcycle, Truck
+    vehicle_registration VARCHAR(50), -- Registration/Plate number
+    vehicle_color VARCHAR(50),
+    -- Next of Kin / Emergency Contact
+    next_of_kin_name VARCHAR(200),
+    next_of_kin_phone VARCHAR(50),
+    next_of_kin_relationship VARCHAR(50), -- Spouse, Parent, Sibling, Child, Friend, Colleague
+    next_of_kin_address TEXT,
     -- Preferences & Notes
     preferences TEXT,
     special_requests TEXT,
     notes TEXT,
-    -- Loyalty
+    -- Loyalty & Statistics
     loyalty_points INTEGER DEFAULT 0,
     total_stays INTEGER DEFAULT 0,
     total_spent NUMERIC DEFAULT 0,
+    last_stay_date DATE,
     -- Status
     is_blacklisted BOOLEAN DEFAULT FALSE,
     blacklist_reason TEXT,
