@@ -96,6 +96,8 @@ export default function GuestsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [filterType, setFilterType] = useState('All');
     const [activeTab, setActiveTab] = useState('personal');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
 
     const loadGuests = useCallback(async () => {
         setIsLoading(true);
@@ -254,6 +256,10 @@ export default function GuestsPage() {
         selfSponsored: guests.filter(g => g.sponsor_type === 'Self Sponsored').length,
         orgSponsored: guests.filter(g => g.sponsor_type === 'Organisation').length,
     };
+
+    // Pagination
+    const totalPages = Math.ceil(filteredGuests.length / itemsPerPage);
+    const paginatedGuests = filteredGuests.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
     const tabs = [
         { id: 'personal', label: '👤 Personal Info', icon: '👤' },
@@ -435,14 +441,14 @@ export default function GuestsPage() {
                                         <span className="text-gray-500">Loading guests...</span>
                                     </div>
                                 </td></tr>
-                            ) : filteredGuests.length === 0 ? (
+                            ) : paginatedGuests.length === 0 ? (
                                 <tr><td colSpan={9} className="px-4 py-12 text-center">
                                     <span className="text-5xl">👥</span>
                                     <p className="text-gray-500 mt-2">No guests found</p>
-                                    <button onClick={openAddModal} className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-xl">Register First Guest</button>
+                                    <button onClick={openAddModal} className="mt-4 px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-lg transition-all">Register First Guest</button>
                                 </td></tr>
                             ) : (
-                                filteredGuests.map(guest => (
+                                paginatedGuests.map(guest => (
                                     <tr key={guest.guest_id} className="border-t border-gray-50 hover:bg-blue-50/50 transition-colors">
                                         <td className="px-4 py-4">
                                             <div className="flex items-center gap-3">
@@ -492,9 +498,9 @@ export default function GuestsPage() {
                                         </td>
                                         <td className="px-4 py-4">
                                             <div className="flex items-center justify-center gap-2">
-                                                <button onClick={() => router.push(`/dashboard/hotel/checkin?guestId=${guest.guest_id}`)} className="p-2 bg-green-100 hover:bg-green-200 text-green-600 rounded-xl transition-all hover:scale-110" title="Check-In">🔑</button>
-                                                <button onClick={() => openEditModal(guest)} className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-all hover:scale-110" title="Edit">✏️</button>
-                                                <button onClick={() => deleteGuest(guest)} className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-all hover:scale-110" title="Delete">🗑️</button>
+                                                <button onClick={() => router.push(`/dashboard/hotel/checkin?guestId=${guest.guest_id}`)} className="p-2 bg-gradient-to-r from-green-400 to-emerald-500 hover:from-green-500 hover:to-emerald-600 text-white rounded-xl transition-all hover:scale-110 shadow-sm" title="Check-In">🔑</button>
+                                                <button onClick={() => openEditModal(guest)} className="p-2 bg-gradient-to-r from-blue-400 to-indigo-500 hover:from-blue-500 hover:to-indigo-600 text-white rounded-xl transition-all hover:scale-110 shadow-sm" title="Edit">✏️</button>
+                                                <button onClick={() => deleteGuest(guest)} className="p-2 bg-gradient-to-r from-red-400 to-rose-500 hover:from-red-500 hover:to-rose-600 text-white rounded-xl transition-all hover:scale-110 shadow-sm" title="Delete">🗑️</button>
                                             </div>
                                         </td>
                                     </tr>
@@ -503,6 +509,31 @@ export default function GuestsPage() {
                         </tbody>
                     </table>
                 </div>
+                {/* Pagination Footer */}
+                {filteredGuests.length > 0 && (
+                    <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-gray-100 border-t border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
+                        <p className="text-sm text-gray-600">
+                            Showing <span className="font-semibold text-gray-800">{((currentPage - 1) * itemsPerPage) + 1}</span> to <span className="font-semibold text-gray-800">{Math.min(currentPage * itemsPerPage, filteredGuests.length)}</span> of <span className="font-semibold text-gray-800">{filteredGuests.length}</span> guests
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-600">Page {currentPage} of {totalPages || 1}</span>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="px-4 py-2 bg-gradient-to-r from-gray-200 to-gray-300 hover:from-gray-300 hover:to-gray-400 text-gray-700 rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                ← Previous
+                            </button>
+                            <button
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages || totalPages === 0}
+                                className="px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white rounded-xl font-medium transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Next →
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Guest Registration Modal */}
