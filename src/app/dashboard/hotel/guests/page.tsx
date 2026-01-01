@@ -162,7 +162,43 @@ export default function GuestsPage() {
         setIsSaving(true);
         try {
             const fullName = `${formData.title} ${formData.first_name} ${formData.last_name}`.trim();
-            const guestData = { ...formData, full_name: fullName, updated_at: new Date().toISOString() };
+
+            // Build guest data with only the fields we're sending
+            const guestData: Record<string, unknown> = {
+                title: formData.title,
+                first_name: formData.first_name,
+                last_name: formData.last_name,
+                full_name: fullName,
+                email: formData.email || null,
+                phone: formData.phone,
+                phone2: formData.phone2 || null,
+                id_type: formData.id_type,
+                id_number: formData.id_number || null,
+                nationality: formData.nationality,
+                address: formData.address || null,
+                country: formData.country,
+                postal_code: formData.postal_code || null,
+                guest_type: formData.guest_type,
+                company_name: formData.company_name || null,
+                preferences: formData.preferences || null,
+                special_requests: formData.special_requests || null,
+                notes: formData.notes || null,
+                updated_at: new Date().toISOString(),
+                // New fields - only include if they have values
+                ...(formData.gender && { gender: formData.gender }),
+                ...(formData.date_of_birth && { date_of_birth: formData.date_of_birth }),
+                ...(formData.county && { county: formData.county }),
+                ...(formData.town && { town: formData.town }),
+                ...(formData.area_of_residence && { area_of_residence: formData.area_of_residence }),
+                ...(formData.sponsor_type && { sponsor_type: formData.sponsor_type }),
+                ...(formData.vehicle_type && { vehicle_type: formData.vehicle_type }),
+                ...(formData.vehicle_registration && { vehicle_registration: formData.vehicle_registration }),
+                ...(formData.vehicle_color && { vehicle_color: formData.vehicle_color }),
+                ...(formData.next_of_kin_name && { next_of_kin_name: formData.next_of_kin_name }),
+                ...(formData.next_of_kin_phone && { next_of_kin_phone: formData.next_of_kin_phone }),
+                ...(formData.next_of_kin_relationship && { next_of_kin_relationship: formData.next_of_kin_relationship }),
+                ...(formData.next_of_kin_address && { next_of_kin_address: formData.next_of_kin_address }),
+            };
 
             if (editingGuest) {
                 const { error } = await supabase.from('hotel_guests').update(guestData).eq('guest_id', editingGuest.guest_id);
@@ -176,9 +212,10 @@ export default function GuestsPage() {
             }
             setShowModal(false);
             loadGuests();
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('Error saving guest:', err);
-            toast.error('Failed to save guest');
+            const errorMessage = err instanceof Error ? err.message : (err as { message?: string })?.message || 'Unknown error';
+            toast.error(`Failed to save: ${errorMessage}`);
         }
         setIsSaving(false);
     };
