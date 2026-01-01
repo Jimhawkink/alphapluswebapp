@@ -134,37 +134,55 @@ export default function RoomRevenuePage() {
                 <button onClick={exportToExcel} className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all">📥 Export Excel</button>
             </div>
 
-            {/* KPI Cards */}
+            {/* KPI Cards - Dashboard Glassmorphic Style */}
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">💰</span>
-                    <p className="text-xs opacity-80 mt-2">Total Revenue</p>
-                    <p className="text-2xl font-bold">Ksh {totalRevenue.toLocaleString()}</p>
+                <div className="bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">💰</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Total Revenue</p>
+                    <p className="text-2xl font-bold mt-1">Ksh {totalRevenue.toLocaleString()}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">🏨</span>
-                    <p className="text-xs opacity-80 mt-2">Room Revenue</p>
-                    <p className="text-2xl font-bold">Ksh {totalRoomRevenue.toLocaleString()}</p>
+                <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">🏨</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Room Revenue</p>
+                    <p className="text-2xl font-bold mt-1">Ksh {totalRoomRevenue.toLocaleString()}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">➕</span>
-                    <p className="text-xs opacity-80 mt-2">Extra Revenue</p>
-                    <p className="text-2xl font-bold">Ksh {totalExtraRevenue.toLocaleString()}</p>
+                <div className="bg-gradient-to-br from-purple-400 via-purple-500 to-violet-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">➕</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Extra Revenue</p>
+                    <p className="text-2xl font-bold mt-1">Ksh {totalExtraRevenue.toLocaleString()}</p>
                 </div>
-                <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">📋</span>
-                    <p className="text-xs opacity-80 mt-2">Bookings</p>
-                    <p className="text-3xl font-bold">{totalBookings}</p>
+                <div className="bg-gradient-to-br from-orange-400 via-orange-500 to-red-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">📋</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Bookings</p>
+                    <p className="text-3xl font-bold mt-1">{totalBookings}</p>
                 </div>
-                <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">🌙</span>
-                    <p className="text-xs opacity-80 mt-2">Room Nights</p>
-                    <p className="text-3xl font-bold">{totalNights}</p>
+                <div className="bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">🌙</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Room Nights</p>
+                    <p className="text-3xl font-bold mt-1">{totalNights}</p>
                 </div>
-                <div className="bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">📊</span>
-                    <p className="text-xs opacity-80 mt-2">Avg/Booking</p>
-                    <p className="text-2xl font-bold">Ksh {avgRevPerBooking.toFixed(0)}</p>
+                <div className="bg-gradient-to-br from-pink-400 via-pink-500 to-rose-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">📊</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Avg/Booking</p>
+                    <p className="text-2xl font-bold mt-1">Ksh {avgRevPerBooking.toFixed(0)}</p>
                 </div>
             </div>
 

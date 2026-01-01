@@ -187,38 +187,55 @@ export default function RoomsOverviewPage() {
                 </div>
             </div>
 
-            {/* Stats Cards */}
+            {/* Stats Cards - Dashboard Glassmorphic Style */}
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                <div className="bg-gradient-to-br from-slate-700 to-slate-900 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">🏨</span>
-                    <p className="text-xs opacity-80 mt-2">Total Rooms</p>
-                    <p className="text-3xl font-bold">{stats.total}</p>
+                <div className="bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">🏨</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Total Rooms</p>
+                    <p className="text-3xl font-bold mt-1">{stats.total}</p>
                 </div>
-                <div className="bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">✅</span>
-                    <p className="text-xs opacity-80 mt-2">Vacant</p>
-                    <p className="text-3xl font-bold">{stats.vacant}</p>
+                <div className="bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">✅</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Vacant</p>
+                    <p className="text-3xl font-bold mt-1">{stats.vacant}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">🔑</span>
-                    <p className="text-xs opacity-80 mt-2">Occupied</p>
-                    <p className="text-3xl font-bold">{stats.occupied}</p>
+                <div className="bg-gradient-to-br from-orange-400 via-orange-500 to-amber-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">🔑</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Occupied</p>
+                    <p className="text-3xl font-bold mt-1">{stats.occupied}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">📅</span>
-                    <p className="text-xs opacity-80 mt-2">Reserved</p>
-                    <p className="text-3xl font-bold">{stats.reserved}</p>
+                <div className="bg-gradient-to-br from-purple-400 via-purple-500 to-violet-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">📅</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Reserved</p>
+                    <p className="text-3xl font-bold mt-1">{stats.reserved}</p>
                 </div>
-                <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">🧹</span>
-                    <p className="text-xs opacity-80 mt-2">Dirty</p>
-                    <p className="text-3xl font-bold">{stats.dirty}</p>
+                <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">🧹</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Dirty</p>
+                    <p className="text-3xl font-bold mt-1">{stats.dirty}</p>
                 </div>
-                <div className="bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl p-5 text-white relative overflow-hidden">
-                    <div className="absolute -top-4 -right-4 w-20 h-20 bg-white/10 rounded-full" />
-                    <span className="text-3xl">📊</span>
-                    <p className="text-xs opacity-80 mt-2">Occupancy</p>
-                    <p className="text-3xl font-bold">{occupancyRate}%</p>
+                <div className="bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">📊</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Occupancy</p>
+                    <p className="text-3xl font-bold mt-1">{occupancyRate}%</p>
                 </div>
             </div>
 

@@ -139,27 +139,39 @@ export default function AvailabilityPage() {
                 <button onClick={loadData} className="px-5 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all">🔄 Refresh</button>
             </div>
 
-            {/* Stats */}
+            {/* Stats - Dashboard Glassmorphic Style */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">✅</span>
-                    <p className="text-xs opacity-80 mt-2">Available</p>
-                    <p className="text-3xl font-bold">{stats.available}</p>
+                <div className="bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">✅</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Available</p>
+                    <p className="text-3xl font-bold mt-1">{stats.available}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">🔑</span>
-                    <p className="text-xs opacity-80 mt-2">Occupied</p>
-                    <p className="text-3xl font-bold">{stats.occupied}</p>
+                <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">🔑</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Occupied</p>
+                    <p className="text-3xl font-bold mt-1">{stats.occupied}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-500 to-violet-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">📅</span>
-                    <p className="text-xs opacity-80 mt-2">Reserved</p>
-                    <p className="text-3xl font-bold">{stats.reserved}</p>
+                <div className="bg-gradient-to-br from-purple-400 via-purple-500 to-violet-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">📅</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Reserved</p>
+                    <p className="text-3xl font-bold mt-1">{stats.reserved}</p>
                 </div>
-                <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">📈</span>
-                    <p className="text-xs opacity-80 mt-2">Occupancy Rate</p>
-                    <p className="text-3xl font-bold">{occupancyRate}%</p>
+                <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">📈</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Occupancy Rate</p>
+                    <p className="text-3xl font-bold mt-1">{occupancyRate}%</p>
                 </div>
             </div>
 

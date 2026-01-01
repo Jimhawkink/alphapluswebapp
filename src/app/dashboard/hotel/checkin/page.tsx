@@ -461,31 +461,39 @@ function CheckInPageContent() {
                 </div>
             </div>
 
-            {/* Stats */}
+            {/* Stats - Dashboard Glassmorphic Style */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 rounded-3xl p-5 text-white shadow-xl relative overflow-hidden">
+                <div className="bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                    <span className="text-3xl">✅</span>
-                    <p className="text-xs opacity-80 mt-2">Available Rooms</p>
-                    <p className="text-3xl font-bold">{rooms.filter(r => r.status === 'Vacant').length}</p>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">✅</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Available Rooms</p>
+                    <p className="text-3xl font-bold mt-1">{rooms.filter(r => r.status === 'Vacant').length}</p>
                 </div>
-                <div className="bg-gradient-to-br from-purple-400 via-purple-500 to-violet-600 rounded-3xl p-5 text-white shadow-xl relative overflow-hidden">
+                <div className="bg-gradient-to-br from-purple-400 via-purple-500 to-violet-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                    <span className="text-3xl">📅</span>
-                    <p className="text-xs opacity-80 mt-2">Reserved Today</p>
-                    <p className="text-3xl font-bold">{todaysReservations.length}</p>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">📅</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Reserved Today</p>
+                    <p className="text-3xl font-bold mt-1">{todaysReservations.length}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 rounded-3xl p-5 text-white shadow-xl relative overflow-hidden">
+                <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                    <span className="text-3xl">🔑</span>
-                    <p className="text-xs opacity-80 mt-2">Pending Check-Ins</p>
-                    <p className="text-3xl font-bold">{reservations.length}</p>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">🔑</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Pending Check-Ins</p>
+                    <p className="text-3xl font-bold mt-1">{reservations.length}</p>
                 </div>
-                <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 rounded-3xl p-5 text-white shadow-xl relative overflow-hidden">
+                <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
                     <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                    <span className="text-3xl">👥</span>
-                    <p className="text-xs opacity-80 mt-2">Registered Guests</p>
-                    <p className="text-3xl font-bold">{guests.length}</p>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">👥</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Registered Guests</p>
+                    <p className="text-3xl font-bold mt-1">{guests.length}</p>
                 </div>
             </div>
 

@@ -234,27 +234,39 @@ export default function ReservationsPage() {
                 </button>
             </div>
 
-            {/* Stats */}
+            {/* Stats - Dashboard Glassmorphic Style */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-slate-700 to-slate-900 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">📋</span>
-                    <p className="text-xs opacity-80 mt-2">Total</p>
-                    <p className="text-3xl font-bold">{stats.total}</p>
+                <div className="bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">📋</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Total</p>
+                    <p className="text-3xl font-bold mt-1">{stats.total}</p>
                 </div>
-                <div className="bg-gradient-to-br from-yellow-500 to-orange-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">⏳</span>
-                    <p className="text-xs opacity-80 mt-2">Pending</p>
-                    <p className="text-3xl font-bold">{stats.pending}</p>
+                <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">⏳</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Pending</p>
+                    <p className="text-3xl font-bold mt-1">{stats.pending}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">✅</span>
-                    <p className="text-xs opacity-80 mt-2">Confirmed</p>
-                    <p className="text-3xl font-bold">{stats.confirmed}</p>
+                <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">✅</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Confirmed</p>
+                    <p className="text-3xl font-bold mt-1">{stats.confirmed}</p>
                 </div>
-                <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">🔑</span>
-                    <p className="text-xs opacity-80 mt-2">Checked-In</p>
-                    <p className="text-3xl font-bold">{stats.checkedIn}</p>
+                <div className="bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">🔑</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Checked-In</p>
+                    <p className="text-3xl font-bold mt-1">{stats.checkedIn}</p>
                 </div>
             </div>
 

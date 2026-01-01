@@ -191,27 +191,39 @@ export default function CheckOutPage() {
                 <button onClick={loadBookings} className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all">🔄 Refresh</button>
             </div>
 
-            {/* Stats */}
+            {/* Stats - Dashboard Glassmorphic Style */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">🏨</span>
-                    <p className="text-xs opacity-80 mt-2">Occupied Rooms</p>
-                    <p className="text-3xl font-bold">{bookings.length}</p>
+                <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">🏨</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Occupied Rooms</p>
+                    <p className="text-3xl font-bold mt-1">{bookings.length}</p>
                 </div>
-                <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">📅</span>
-                    <p className="text-xs opacity-80 mt-2">Checkout Today</p>
-                    <p className="text-3xl font-bold">{todayCheckouts.length}</p>
+                <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-orange-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">📅</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Checkout Today</p>
+                    <p className="text-3xl font-bold mt-1">{todayCheckouts.length}</p>
                 </div>
-                <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">⚠️</span>
-                    <p className="text-xs opacity-80 mt-2">Overdue</p>
-                    <p className="text-3xl font-bold">{overdueCheckouts.length}</p>
+                <div className="bg-gradient-to-br from-red-400 via-red-500 to-rose-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">⚠️</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Overdue</p>
+                    <p className="text-3xl font-bold mt-1">{overdueCheckouts.length}</p>
                 </div>
-                <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">💰</span>
-                    <p className="text-xs opacity-80 mt-2">Outstanding</p>
-                    <p className="text-3xl font-bold">Ksh {bookings.reduce((sum, b) => sum + (b.balance || 0), 0).toLocaleString()}</p>
+                <div className="bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">💰</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Outstanding</p>
+                    <p className="text-3xl font-bold mt-1">Ksh {bookings.reduce((sum, b) => sum + (b.balance || 0), 0).toLocaleString()}</p>
                 </div>
             </div>
 

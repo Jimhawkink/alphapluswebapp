@@ -164,37 +164,55 @@ export default function HousekeepingPage() {
                 </div>
             </div>
 
-            {/* Stats */}
+            {/* Stats - Dashboard Glassmorphic Style */}
             <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                <div className="bg-gradient-to-br from-slate-700 to-slate-900 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">🏨</span>
-                    <p className="text-xs opacity-80 mt-2">Total Rooms</p>
-                    <p className="text-3xl font-bold">{stats.total}</p>
+                <div className="bg-gradient-to-br from-green-400 via-green-500 to-emerald-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">🏨</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Total Rooms</p>
+                    <p className="text-3xl font-bold mt-1">{stats.total}</p>
                 </div>
-                <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">✨</span>
-                    <p className="text-xs opacity-80 mt-2">Clean</p>
-                    <p className="text-3xl font-bold">{stats.clean}</p>
+                <div className="bg-gradient-to-br from-emerald-400 via-emerald-500 to-teal-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">✨</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Clean</p>
+                    <p className="text-3xl font-bold mt-1">{stats.clean}</p>
                 </div>
-                <div className="bg-gradient-to-br from-red-500 to-rose-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">🧹</span>
-                    <p className="text-xs opacity-80 mt-2">Dirty</p>
-                    <p className="text-3xl font-bold">{stats.dirty}</p>
+                <div className="bg-gradient-to-br from-red-400 via-red-500 to-rose-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">🧹</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Dirty</p>
+                    <p className="text-3xl font-bold mt-1">{stats.dirty}</p>
                 </div>
-                <div className="bg-gradient-to-br from-yellow-500 to-amber-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">⏳</span>
-                    <p className="text-xs opacity-80 mt-2">In Progress</p>
-                    <p className="text-3xl font-bold">{stats.inProgress}</p>
+                <div className="bg-gradient-to-br from-amber-400 via-amber-500 to-yellow-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">⏳</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">In Progress</p>
+                    <p className="text-3xl font-bold mt-1">{stats.inProgress}</p>
                 </div>
-                <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">✅</span>
-                    <p className="text-xs opacity-80 mt-2">Inspected</p>
-                    <p className="text-3xl font-bold">{stats.inspected}</p>
+                <div className="bg-gradient-to-br from-blue-400 via-blue-500 to-indigo-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">✅</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Inspected</p>
+                    <p className="text-3xl font-bold mt-1">{stats.inspected}</p>
                 </div>
-                <div className="bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl p-5 text-white">
-                    <span className="text-3xl">📋</span>
-                    <p className="text-xs opacity-80 mt-2">Pending Tasks</p>
-                    <p className="text-3xl font-bold">{stats.pendingTasks}</p>
+                <div className="bg-gradient-to-br from-orange-400 via-orange-500 to-red-600 rounded-3xl p-5 text-white shadow-lg relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-20 h-20 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center mb-3">
+                        <span className="text-xl">📋</span>
+                    </div>
+                    <p className="text-xs opacity-80 font-medium">Pending Tasks</p>
+                    <p className="text-3xl font-bold mt-1">{stats.pendingTasks}</p>
                 </div>
             </div>
 
