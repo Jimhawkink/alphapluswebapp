@@ -387,6 +387,17 @@ ALTER TABLE public.hotel_payments ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.housekeeping_tasks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.room_status_log ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (to allow re-running this script)
+DROP POLICY IF EXISTS "Allow all for room_types" ON public.room_types;
+DROP POLICY IF EXISTS "Allow all for room_plans" ON public.room_plans;
+DROP POLICY IF EXISTS "Allow all for hotel_rooms" ON public.hotel_rooms;
+DROP POLICY IF EXISTS "Allow all for hotel_guests" ON public.hotel_guests;
+DROP POLICY IF EXISTS "Allow all for hotel_reservations" ON public.hotel_reservations;
+DROP POLICY IF EXISTS "Allow all for hotel_bookings" ON public.hotel_bookings;
+DROP POLICY IF EXISTS "Allow all for hotel_payments" ON public.hotel_payments;
+DROP POLICY IF EXISTS "Allow all for housekeeping_tasks" ON public.housekeeping_tasks;
+DROP POLICY IF EXISTS "Allow all for room_status_log" ON public.room_status_log;
+
 -- Create permissive policies
 CREATE POLICY "Allow all for room_types" ON public.room_types FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for room_plans" ON public.room_plans FOR ALL USING (true) WITH CHECK (true);
