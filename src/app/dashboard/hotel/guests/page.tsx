@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -85,6 +86,7 @@ const kenyanCounties = [
 ];
 
 export default function GuestsPage() {
+    const router = useRouter();
     const [guests, setGuests] = useState<Guest[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [showModal, setShowModal] = useState(false);
@@ -490,6 +492,7 @@ export default function GuestsPage() {
                                         </td>
                                         <td className="px-4 py-4">
                                             <div className="flex items-center justify-center gap-2">
+                                                <button onClick={() => router.push(`/dashboard/hotel/checkin?guestId=${guest.guest_id}`)} className="p-2 bg-green-100 hover:bg-green-200 text-green-600 rounded-xl transition-all hover:scale-110" title="Check-In">🔑</button>
                                                 <button onClick={() => openEditModal(guest)} className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-all hover:scale-110" title="Edit">✏️</button>
                                                 <button onClick={() => deleteGuest(guest)} className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-all hover:scale-110" title="Delete">🗑️</button>
                                             </div>
