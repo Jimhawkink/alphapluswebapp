@@ -1,0 +1,85 @@
+﻿
+> alphaplus-pos-web@1.0.0 build
+> next build
+
+   Γû▓ Next.js 14.0.4
+   - Environments: .env.local
+
+   Creating an optimized production build ...
+ Γ£ô Compiled successfully
+   Linting and checking validity of types ...
+   Collecting page data ...
+   Generating static pages (0/54) ...
+
+   Generating static pages (13/54) 
+
+   Generating static pages (26/54) 
+
+   Generating static pages (40/54) 
+
+ Γ£ô Generating static pages (54/54) 
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                              Size     First Load JS
+Γöî Γùï /                                    5.44 kB         139 kB
+Γö£ Γùï /_not-found                          872 B          82.8 kB
+Γö£ Γùï /dashboard                           4.77 kB         138 kB
+Γö£ Γùï /dashboard/advances                  8.71 kB         142 kB
+Γö£ Γùï /dashboard/batches                   7.57 kB         141 kB
+Γö£ Γùï /dashboard/bill-payment              10.3 kB         144 kB
+Γö£ Γùï /dashboard/bills                     10 kB           143 kB
+Γö£ Γùï /dashboard/butchery                  7.06 kB         147 kB
+Γö£ Γùï /dashboard/butchery/batches          7.95 kB         148 kB
+Γö£ Γùï /dashboard/butchery/meat-types       7.03 kB         147 kB
+Γö£ Γùï /dashboard/butchery/pos              8.42 kB         149 kB
+Γö£ Γùï /dashboard/butchery/sales-report     7.59 kB         148 kB
+Γö£ Γùï /dashboard/butchery/stock            7.57 kB         148 kB
+Γö£ Γùï /dashboard/butchery/weight-loss      7.92 kB         148 kB
+Γö£ Γùï /dashboard/categories                7.56 kB         141 kB
+Γö£ Γùï /dashboard/company                   9.14 kB         143 kB
+Γö£ Γùï /dashboard/dish-movement             8.58 kB         142 kB
+Γö£ Γùï /dashboard/expenses                  7.18 kB         141 kB
+Γö£ Γùï /dashboard/food-notes                7.95 kB         141 kB
+Γö£ Γùï /dashboard/hotel/availability        7.32 kB         141 kB
+Γö£ Γùï /dashboard/hotel/checkin             8.92 kB         142 kB
+Γö£ Γùï /dashboard/hotel/checkout            9.15 kB         143 kB
+Γö£ Γùï /dashboard/hotel/guests              8.42 kB         142 kB
+Γö£ Γùï /dashboard/hotel/housekeeping        8.51 kB         142 kB
+Γö£ Γùï /dashboard/hotel/night-audit         8.18 kB         142 kB
+Γö£ Γùï /dashboard/hotel/occupancy-report    7.51 kB         141 kB
+Γö£ Γùï /dashboard/hotel/reservations        9 kB            142 kB
+Γö£ Γùï /dashboard/hotel/revenue             7.69 kB         141 kB
+Γö£ Γùï /dashboard/hotel/room-plans          7.67 kB         141 kB
+Γö£ Γùï /dashboard/hotel/room-types          7.74 kB         141 kB
+Γö£ Γùï /dashboard/hotel/rooms               10.4 kB         144 kB
+Γö£ Γùï /dashboard/ingredients               8.63 kB         142 kB
+Γö£ Γùï /dashboard/low-stock                 6.15 kB         140 kB
+Γö£ Γùï /dashboard/payroll                   11 kB           144 kB
+Γö£ Γùï /dashboard/pos                       20.9 kB         154 kB
+Γö£ Γùï /dashboard/products                  10.5 kB         144 kB
+Γö£ Γùï /dashboard/purchase                  8.35 kB         142 kB
+Γö£ Γùï /dashboard/purchase-return           6.82 kB         140 kB
+Γö£ Γùï /dashboard/purchases                 7.68 kB         141 kB
+Γö£ Γùï /dashboard/recipe                    9.56 kB         143 kB
+Γö£ Γùï /dashboard/sales                     3.01 kB         136 kB
+Γö£ Γùï /dashboard/sales-return              6.79 kB         140 kB
+Γö£ Γùï /dashboard/shift-reports             8.74 kB         142 kB
+Γö£ Γùï /dashboard/shifts                    10.8 kB         144 kB
+Γö£ Γùï /dashboard/stock-movement            8.51 kB         142 kB
+Γö£ Γùï /dashboard/suppliers                 8.71 kB         142 kB
+Γö£ Γùï /dashboard/tables-rooms              8.52 kB         142 kB
+Γö£ Γùï /dashboard/tax-settings              8.22 kB         142 kB
+Γö£ Γùï /dashboard/units                     7.6 kB          141 kB
+Γö£ Γùï /dashboard/user-roles                8.44 kB         142 kB
+Γö£ Γùï /dashboard/users                     9.29 kB         143 kB
+Γöö Γùï /dashboard/vouchers                  6.75 kB         140 kB
++ First Load JS shared by all            81.9 kB
+  Γö£ chunks/4938-d287e3649ee53cbb.js      26.7 kB
+  Γö£ chunks/fd9d1056-aa3b2c282d036767.js  53.3 kB
+  Γö£ chunks/main-app-0ffc331c9dd3c681.js  223 B
+  Γöö chunks/webpack-c5cb78f1aa334f3b.js   1.74 kB
+
+
+Γùï  (Static)  prerendered as static content
+

@@ -15,6 +15,28 @@ const menuItems = [
         ]
     },
     {
+        category: 'Hotel Management',
+        items: [
+            { name: 'Rooms Overview', icon: '🏨', href: '/dashboard/hotel/rooms', badge: 'New' },
+            { name: 'Room Types', icon: '🛏️', href: '/dashboard/hotel/room-types', badge: null },
+            { name: 'Room Plans', icon: '📋', href: '/dashboard/hotel/room-plans', badge: null },
+            { name: 'Guests', icon: '👥', href: '/dashboard/hotel/guests', badge: null },
+            { name: 'Reservations', icon: '📅', href: '/dashboard/hotel/reservations', badge: 'New' },
+            { name: 'Check-In', icon: '🔑', href: '/dashboard/hotel/checkin', badge: 'Live' },
+            { name: 'Check-Out', icon: '🚪', href: '/dashboard/hotel/checkout', badge: null },
+            { name: 'Housekeeping', icon: '🧹', href: '/dashboard/hotel/housekeeping', badge: null },
+        ]
+    },
+    {
+        category: 'Hotel Reports',
+        items: [
+            { name: 'Room Availability', icon: '📊', href: '/dashboard/hotel/availability', badge: null },
+            { name: 'Occupancy Report', icon: '📈', href: '/dashboard/hotel/occupancy-report', badge: null },
+            { name: 'Night Audit', icon: '🌙', href: '/dashboard/hotel/night-audit', badge: 'New' },
+            { name: 'Room Revenue', icon: '💰', href: '/dashboard/hotel/revenue', badge: null },
+        ]
+    },
+    {
         category: 'Butchery',
         items: [
             { name: 'Butchery Dashboard', icon: '🥩', href: '/dashboard/butchery', badge: 'New' },
