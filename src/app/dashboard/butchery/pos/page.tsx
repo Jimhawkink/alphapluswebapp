@@ -156,18 +156,17 @@ export default function ButcheryPOSPage() {
                 .insert({
                     sale_code: saleCode,
                     stock_id: selectedBatch.stock_id,
-                    meat_type_name: selectedBatch.meat_type_name,
                     weight_kg: weightKg,
                     price_per_kg: pricePerKg,
                     total_amount: amountValue,
                     discount: discountValue,
                     net_amount: netAmount,
-                    cost_per_kg: selectedBatch.cost_per_kg,
                     payment_mode: paymentMode,
                     payment_reference: paymentReference || null,
                     customer_name: customerName || null,
                     customer_contact: customerContact || null,
                     notes: notes || null,
+                    served_by: 'Web POS',
                     sale_date: new Date().toISOString()
                 });
 
