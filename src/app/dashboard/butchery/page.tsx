@@ -48,9 +48,9 @@ export default function ButcheryDashboardPage() {
         try {
             const today = new Date().toISOString().split('T')[0];
 
-            // Load today's sales from butchery_sales
+            // Load today's sales from meat_sales
             const { data: salesData, error: salesError } = await supabase
-                .from('butchery_sales')
+                .from('meat_sales')
                 .select('*')
                 .gte('sale_date', today)
                 .order('sale_date', { ascending: false });
@@ -63,9 +63,9 @@ export default function ButcheryDashboardPage() {
             const todaySales = todaySalesArray.reduce((sum, s) => sum + (s.net_amount || 0), 0);
             const todayWeight = todaySalesArray.reduce((sum, s) => sum + (s.weight_kg || 0), 0);
 
-            // Load available stock from meat_batches (NOT meat_stock)
+            // Load available stock from meat_stock table
             const { data: batchData, error: batchError } = await supabase
-                .from('meat_batches')
+                .from('meat_stock')
                 .select('available_kg, cost_per_kg, selling_price')
                 .gt('available_kg', 0);
 
@@ -77,8 +77,8 @@ export default function ButcheryDashboardPage() {
 
             // Low stock count (batches with < 5kg remaining)
             const { data: lowStockData, error: lowError } = await supabase
-                .from('meat_batches')
-                .select('batch_id')
+                .from('meat_stock')
+                .select('stock_id')
                 .lte('available_kg', 5)
                 .gt('available_kg', 0);
 

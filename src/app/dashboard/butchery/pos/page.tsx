@@ -5,9 +5,9 @@ import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 
-interface MeatBatch {
-    batch_id: number;
-    batch_code: string;
+interface MeatStock {
+    stock_id: number;
+    stock_code: string;
     meat_type_name: string;
     available_kg: number;
     cost_per_kg: number;
@@ -33,7 +33,7 @@ interface TodaySale {
 
 export default function ButcheryPOSPage() {
     // State
-    const [batches, setBatches] = useState<MeatBatch[]>([]);
+    const [batches, setBatches] = useState<MeatStock[]>([]);
     const [dashboard, setDashboard] = useState<ButcheryDashboard>({ todaySales: 0, todayWeightSold: 0, todayTransactions: 0, availableStock: 0 });
     const [todaySales, setTodaySales] = useState<TodaySale[]>([]);
     const [saleCode, setSaleCode] = useState('SAL000001');
@@ -42,7 +42,7 @@ export default function ButcheryPOSPage() {
     const [showPaymentModal, setShowPaymentModal] = useState(false);
 
     // Form state
-    const [selectedBatch, setSelectedBatch] = useState<MeatBatch | null>(null);
+    const [selectedBatch, setSelectedBatch] = useState<MeatStock | null>(null);
     const [amount, setAmount] = useState('');
     const [discount, setDiscount] = useState('0');
     const [customerName, setCustomerName] = useState('');
@@ -65,21 +65,21 @@ export default function ButcheryPOSPage() {
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
 
-            // Load batches with available quantity
-            const { data: batchData, error: batchError } = await supabase
-                .from('meat_batches')
+            // Load stock/batches with available quantity from meat_stock table
+            const { data: stockData, error: stockError } = await supabase
+                .from('meat_stock')
                 .select('*, meat_types(meat_type_name)')
                 .gt('available_kg', 0)
-                .order('purchase_date', { ascending: true });
+                .order('purchase_date', { ascending: true }); // FIFO - oldest first
 
-            if (batchError) throw batchError;
+            if (stockError) throw stockError;
 
-            setBatches((batchData || []).map(b => {
+            setBatches((stockData || []).map(b => {
                 const purchaseDate = new Date(b.purchase_date);
                 const daysOld = Math.floor((today.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24));
                 return {
-                    batch_id: b.batch_id,
-                    batch_code: b.batch_code,
+                    stock_id: b.stock_id,
+                    stock_code: b.stock_code || `STK-${b.stock_id}`,
                     meat_type_name: (b as any).meat_types?.meat_type_name || 'Unknown',
                     available_kg: b.available_kg || 0,
                     cost_per_kg: b.cost_per_kg || 0,
@@ -88,9 +88,9 @@ export default function ButcheryPOSPage() {
                 };
             }));
 
-            // Load today's sales
+            // Load today's sales from meat_sales table
             const { data: salesData } = await supabase
-                .from('butchery_sales')
+                .from('meat_sales')
                 .select('*')
                 .gte('sale_date', todayStr)
                 .order('sale_date', { ascending: false });
@@ -108,7 +108,7 @@ export default function ButcheryPOSPage() {
             // Calculate dashboard
             const totalSales = sales.reduce((sum, s) => sum + (s.net_amount || 0), 0);
             const totalWeight = sales.reduce((sum, s) => sum + (s.weight_kg || 0), 0);
-            const totalStock = (batchData || []).reduce((sum, s) => sum + (s.available_kg || 0), 0);
+            const totalStock = (stockData || []).reduce((sum, s) => sum + (s.available_kg || 0), 0);
 
             setDashboard({
                 todaySales: totalSales,
@@ -150,12 +150,12 @@ export default function ButcheryPOSPage() {
 
         setIsProcessing(true);
         try {
-            // Insert sale
+            // 1. Insert sale into meat_sales table
             const { error: saleError } = await supabase
-                .from('butchery_sales')
+                .from('meat_sales')
                 .insert({
                     sale_code: saleCode,
-                    batch_id: selectedBatch.batch_id,
+                    stock_id: selectedBatch.stock_id,
                     meat_type_name: selectedBatch.meat_type_name,
                     weight_kg: weightKg,
                     price_per_kg: pricePerKg,
@@ -173,17 +173,26 @@ export default function ButcheryPOSPage() {
 
             if (saleError) throw saleError;
 
-            // Update batch
+            // 2. Update meat_stock - decrease available_kg, increase sold_kg
             const newAvailable = selectedBatch.available_kg - weightKg;
-            const { error: batchError } = await supabase
-                .from('meat_batches')
+            const { data: currentStock } = await supabase
+                .from('meat_stock')
+                .select('sold_kg')
+                .eq('stock_id', selectedBatch.stock_id)
+                .single();
+
+            const newSoldKg = (currentStock?.sold_kg || 0) + weightKg;
+
+            const { error: stockError } = await supabase
+                .from('meat_stock')
                 .update({
                     available_kg: newAvailable,
-                    status: newAvailable <= 0 ? 'Sold Out' : 'Active'
+                    sold_kg: newSoldKg,
+                    status: newAvailable <= 0 ? 'Sold Out' : 'Available'
                 })
-                .eq('batch_id', selectedBatch.batch_id);
+                .eq('stock_id', selectedBatch.stock_id);
 
-            if (batchError) throw batchError;
+            if (stockError) throw stockError;
 
             toast.success(`✅ Sale processed! ${saleCode}`);
 
@@ -236,7 +245,7 @@ export default function ButcheryPOSPage() {
                             <h1 className="text-2xl font-extrabold flex items-center gap-2">
                                 🥩 Butchery POS
                             </h1>
-                            <p className="text-white/80 text-sm">Meat Sales System (By Batch)</p>
+                            <p className="text-white/80 text-sm">Meat Sales System (By Batch - FIFO)</p>
                         </div>
                     </div>
                     <div className="px-4 py-2 bg-white/20 rounded-xl">
@@ -290,17 +299,17 @@ export default function ButcheryPOSPage() {
                         <div>
                             <label className="text-gray-400 text-sm mb-2 block">Select Batch (FIFO - Oldest First)</label>
                             <select
-                                value={selectedBatch?.batch_id || ''}
+                                value={selectedBatch?.stock_id || ''}
                                 onChange={(e) => {
-                                    const batch = batches.find(b => b.batch_id === parseInt(e.target.value));
+                                    const batch = batches.find(b => b.stock_id === parseInt(e.target.value));
                                     setSelectedBatch(batch || null);
                                 }}
                                 className="w-full p-4 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-red-500 focus:outline-none"
                             >
                                 <option value="">🥩 Tap to select batch</option>
                                 {batches.map(batch => (
-                                    <option key={batch.batch_id} value={batch.batch_id}>
-                                        [{batch.days_old}d] {batch.meat_type_name} - {batch.batch_code} ({batch.available_kg.toFixed(1)} Kg) @ KES {batch.selling_price}/Kg
+                                    <option key={batch.stock_id} value={batch.stock_id}>
+                                        [{batch.days_old}d] {batch.meat_type_name} - {batch.stock_code} ({batch.available_kg.toFixed(1)} Kg) @ KES {batch.selling_price}/Kg
                                     </option>
                                 ))}
                             </select>

@@ -31,7 +31,7 @@ export default function ButcherySalesReportPage() {
         setIsLoading(true);
         try {
             let query = supabase
-                .from('butchery_sales')
+                .from('meat_sales')
                 .select('*')
                 .gte('sale_date', `${dateFrom}T00:00:00`)
                 .lte('sale_date', `${dateTo}T23:59:59`)
@@ -285,9 +285,9 @@ export default function ButcherySalesReportPage() {
                                             </td>
                                             <td className="py-3 px-3 text-center">
                                                 <span className={`px-2 py-1 rounded-full text-xs font-semibold ${sale.payment_mode === 'Cash' ? 'bg-green-100 text-green-700' :
-                                                        sale.payment_mode === 'M-Pesa' ? 'bg-emerald-100 text-emerald-700' :
-                                                            sale.payment_mode === 'Credit' ? 'bg-red-100 text-red-700' :
-                                                                'bg-blue-100 text-blue-700'
+                                                    sale.payment_mode === 'M-Pesa' ? 'bg-emerald-100 text-emerald-700' :
+                                                        sale.payment_mode === 'Credit' ? 'bg-red-100 text-red-700' :
+                                                            'bg-blue-100 text-blue-700'
                                                     }`}>
                                                     {sale.payment_mode}
                                                 </span>
