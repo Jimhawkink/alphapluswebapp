@@ -150,17 +150,17 @@ export default function ButcheryPOSPage() {
 
         setIsProcessing(true);
         try {
-            // 1. Insert sale into meat_sales table
+            // 1. Insert sale into meat_sales table - round values to avoid floating point issues
             const { error: saleError } = await supabase
                 .from('meat_sales')
                 .insert({
                     sale_code: saleCode,
                     stock_id: selectedBatch.stock_id,
-                    weight_kg: weightKg,
+                    weight_kg: Math.round(weightKg * 1000) / 1000, // 3 decimal places
                     price_per_kg: pricePerKg,
-                    total_amount: amountValue,
-                    discount: discountValue,
-                    net_amount: netAmount,
+                    total_amount: Math.round(amountValue), // Exact amount user entered
+                    discount: Math.round(discountValue),
+                    net_amount: Math.round(netAmount), // Exact net amount
                     payment_mode: paymentMode,
                     payment_reference: paymentReference || null,
                     customer_name: customerName || null,
