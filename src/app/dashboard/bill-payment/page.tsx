@@ -66,11 +66,14 @@ function BillPaymentContent() {
     const [filterUser, setFilterUser] = useState('All');
 
     // Payment states
+    const [paymentMode, setPaymentMode] = useState<'STK_PUSH' | 'CALLBACK'>('STK_PUSH');
     const [paymentMethod, setPaymentMethod] = useState('Cash');
     const [paymentAmount, setPaymentAmount] = useState('0');
+    const [customerName, setCustomerName] = useState('');
     const [mpesaPhone, setMpesaPhone] = useState('254');
     const [mpesaStatus, setMpesaStatus] = useState('Ready');
     const [mpesaStatusColor, setMpesaStatusColor] = useState('bg-green-500');
+    const [mpesaReceipt, setMpesaReceipt] = useState('');
 
     // Split payment states
     interface SplitPayment {
@@ -660,54 +663,139 @@ function BillPaymentContent() {
                             </h3>
                         </div>
                         <div className="p-5 space-y-4">
-                            <select
-                                value={paymentMethod}
-                                onChange={(e) => setPaymentMethod(e.target.value)}
-                                className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-100 rounded-xl focus:outline-none focus:border-green-300 font-medium"
-                                disabled={!selectedBill || outstandingAmount <= 0}
-                            >
-                                <option value="Cash">💵 Cash</option>
-                                <option value="M-Pesa">📱 M-Pesa</option>
-                                <option value="Card">💳 Card</option>
-                                <option value="Bank Transfer">🏦 Bank Transfer</option>
-                            </select>
-
+                            {/* Payment Mode Toggle */}
                             <div>
-                                <label className="text-sm font-medium text-gray-600 mb-2 block">💰 Pay Amount</label>
+                                <label className="text-sm font-medium text-gray-600 mb-2 block">📲 Payment Mode</label>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setPaymentMode('STK_PUSH')}
+                                        className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${paymentMode === 'STK_PUSH'
+                                                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                    >
+                                        <span>📲</span> STK Push
+                                    </button>
+                                    <button
+                                        onClick={() => setPaymentMode('CALLBACK')}
+                                        className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${paymentMode === 'CALLBACK'
+                                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
+                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            }`}
+                                    >
+                                        <span>📥</span> Callback
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Customer Name */}
+                            <div>
+                                <label className="text-sm font-medium text-gray-600 mb-2 block">
+                                    👤 Customer Name {paymentMode === 'CALLBACK' ? '(Required)' : ''}
+                                </label>
                                 <input
-                                    type="number"
-                                    value={paymentAmount}
-                                    onChange={(e) => setPaymentAmount(e.target.value)}
-                                    className="w-full px-4 py-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-100 rounded-xl focus:outline-none focus:border-green-400 font-bold text-xl text-center"
-                                    placeholder="0.00"
-                                    disabled={!selectedBill || outstandingAmount <= 0}
+                                    type="text"
+                                    value={customerName}
+                                    onChange={(e) => setCustomerName(e.target.value)}
+                                    placeholder="Enter customer name"
+                                    className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-100 rounded-xl focus:outline-none focus:border-blue-300"
+                                    disabled={!selectedBill}
                                 />
                             </div>
 
-                            {/* M-Pesa Panel */}
-                            {paymentMethod === 'M-Pesa' && selectedBill && outstandingAmount > 0 && (
-                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200 space-y-3">
-                                    <h4 className="font-bold text-green-700 flex items-center gap-2">
-                                        <span>📱</span> M-Pesa Phone
-                                    </h4>
-                                    <div className="flex gap-2">
+                            {paymentMode === 'STK_PUSH' && (
+                                <>
+                                    <select
+                                        value={paymentMethod}
+                                        onChange={(e) => setPaymentMethod(e.target.value)}
+                                        className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-100 rounded-xl focus:outline-none focus:border-green-300 font-medium"
+                                        disabled={!selectedBill || outstandingAmount <= 0}
+                                    >
+                                        <option value="Cash">💵 Cash</option>
+                                        <option value="M-Pesa">📱 M-Pesa</option>
+                                        <option value="Card">💳 Card</option>
+                                        <option value="Bank Transfer">🏦 Bank Transfer</option>
+                                    </select>
+
+                                    <div>
+                                        <label className="text-sm font-medium text-gray-600 mb-2 block">💰 Pay Amount</label>
                                         <input
-                                            type="text"
-                                            value={mpesaPhone}
-                                            onChange={(e) => setMpesaPhone(e.target.value)}
-                                            placeholder="2547XXXXXXXX"
-                                            className="flex-1 px-4 py-3 bg-white border-2 border-green-200 rounded-xl focus:outline-none focus:border-green-400 font-medium"
+                                            type="number"
+                                            value={paymentAmount}
+                                            onChange={(e) => setPaymentAmount(e.target.value)}
+                                            className="w-full px-4 py-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-100 rounded-xl focus:outline-none focus:border-green-400 font-bold text-xl text-center"
+                                            placeholder="0.00"
+                                            disabled={!selectedBill || outstandingAmount <= 0}
                                         />
-                                        <button
-                                            onClick={initiateMpesaPayment}
-                                            disabled={isProcessing}
-                                            className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg disabled:opacity-50"
-                                        >
-                                            M-Pesa
-                                        </button>
                                     </div>
-                                    <div className={`${mpesaStatusColor} text-white px-4 py-2 rounded-lg text-center font-medium`}>
-                                        M-Pesa Status: {mpesaStatus}
+
+                                    {/* M-Pesa Panel */}
+                                    {paymentMethod === 'M-Pesa' && selectedBill && outstandingAmount > 0 && (
+                                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200 space-y-3">
+                                            <h4 className="font-bold text-green-700 flex items-center gap-2">
+                                                <span>📱</span> M-Pesa STK Push
+                                            </h4>
+                                            <div className="flex gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={mpesaPhone}
+                                                    onChange={(e) => setMpesaPhone(e.target.value)}
+                                                    placeholder="2547XXXXXXXX"
+                                                    className="flex-1 px-4 py-3 bg-white border-2 border-green-200 rounded-xl focus:outline-none focus:border-green-400 font-medium"
+                                                />
+                                                <button
+                                                    onClick={initiateMpesaPayment}
+                                                    disabled={isProcessing}
+                                                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg disabled:opacity-50"
+                                                >
+                                                    📤 Send
+                                                </button>
+                                            </div>
+                                            <div className={`${mpesaStatusColor} text-white px-4 py-2 rounded-lg text-center font-medium`}>
+                                                M-Pesa Status: {mpesaStatus}
+                                            </div>
+                                            {mpesaReceipt && (
+                                                <div className="bg-white p-3 rounded-lg border border-green-300 flex justify-between items-center">
+                                                    <span className="text-gray-600 text-sm">Receipt:</span>
+                                                    <span className="font-bold text-green-600">{mpesaReceipt}</span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            {/* Callback Mode Panel */}
+                            {paymentMode === 'CALLBACK' && selectedBill && outstandingAmount > 0 && (
+                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-5 rounded-xl border-2 border-amber-200 space-y-4">
+                                    <div className="flex items-center gap-3 text-amber-700">
+                                        <span className="text-3xl">📥</span>
+                                        <div>
+                                            <h4 className="font-bold">Waiting for C2B Payment</h4>
+                                            <p className="text-sm opacity-80">Customer to pay via M-Pesa</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-xl p-4 text-center space-y-1">
+                                        <p className="text-gray-500 text-sm">Pay to Till Number</p>
+                                        <p className="text-3xl font-bold text-gray-800">174379</p>
+                                    </div>
+
+                                    <div className="bg-white rounded-xl p-4 text-center space-y-1">
+                                        <p className="text-gray-500 text-sm">Amount</p>
+                                        <p className="text-2xl font-bold text-green-600">Ksh {outstandingAmount.toLocaleString()}</p>
+                                    </div>
+
+                                    {customerName && (
+                                        <div className="bg-white rounded-xl p-3 text-center">
+                                            <p className="text-gray-500 text-sm">Customer</p>
+                                            <p className="font-semibold text-gray-800">{customerName}</p>
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center justify-center gap-3 py-3">
+                                        <div className="animate-spin text-2xl">⏳</div>
+                                        <span className="text-amber-700 font-medium">Listening for payment...</span>
                                     </div>
                                 </div>
                             )}

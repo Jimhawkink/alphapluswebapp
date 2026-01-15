@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+
+// M-Pesa API URL - uses Supabase Edge Functions
+const MPESA_API_URL = 'https://pxcdaivlvltmdifxietb.supabase.co/functions/v1';
 
 interface MeatStock {
     stock_id: number;
@@ -50,6 +53,14 @@ export default function ButcheryPOSPage() {
     const [paymentMode, setPaymentMode] = useState('Cash');
     const [paymentReference, setPaymentReference] = useState('');
     const [notes, setNotes] = useState('');
+
+    // M-Pesa State
+    const [mpesaMode, setMpesaMode] = useState<'STK_PUSH' | 'CALLBACK'>('STK_PUSH');
+    const [mpesaPhone, setMpesaPhone] = useState('');
+    const [mpesaStatus, setMpesaStatus] = useState<'idle' | 'sending' | 'waiting' | 'success' | 'failed'>('idle');
+    const [mpesaStatusMessage, setMpesaStatusMessage] = useState('');
+    const [checkoutRequestId, setCheckoutRequestId] = useState('');
+    const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
     // Calculated values
     const amountValue = parseFloat(amount) || 0;
@@ -133,8 +144,134 @@ export default function ButcheryPOSPage() {
         loadData();
     }, [loadData]);
 
+    // Cleanup polling on unmount
+    useEffect(() => {
+        return () => {
+            if (pollIntervalRef.current) {
+                clearInterval(pollIntervalRef.current);
+            }
+        };
+    }, []);
+
+    // Format phone number
+    const formatMpesaPhone = (phone: string): string => {
+        let cleaned = phone.replace(/\s/g, '').replace(/\+/g, '').replace(/-/g, '');
+        if (cleaned.startsWith('0')) {
+            cleaned = '254' + cleaned.substring(1);
+        } else if (!cleaned.startsWith('254')) {
+            cleaned = '254' + cleaned;
+        }
+        return cleaned;
+    };
+
+    // Validate Kenyan phone
+    const isValidKenyanPhone = (phone: string): boolean => {
+        const cleaned = phone.replace(/\s/g, '').replace(/\+/g, '').replace(/-/g, '');
+        return /^(07\d{8}|01\d{8}|254\d{9})$/.test(cleaned);
+    };
+
+    // Initiate M-Pesa STK Push
+    const handleMpesaSTKPush = async () => {
+        if (!isValidKenyanPhone(mpesaPhone)) {
+            toast.error('📱 Please enter a valid Kenyan phone number');
+            return;
+        }
+
+        setMpesaStatus('sending');
+        setMpesaStatusMessage('Sending STK Push...');
+
+        try {
+            const phone = formatMpesaPhone(mpesaPhone);
+            const response = await fetch(`${MPESA_API_URL}/stkpush`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone,
+                    amount: Math.ceil(netAmount),
+                    accountReference: saleCode,
+                    transactionDesc: `Butchery Sale - ${selectedBatch?.meat_type_name || 'Meat'}`,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (data.success && (data.CheckoutRequestID || data.checkoutRequestId)) {
+                const requestId = data.CheckoutRequestID || data.checkoutRequestId;
+                setCheckoutRequestId(requestId);
+                setMpesaStatus('waiting');
+                setMpesaStatusMessage('📲 Enter your M-Pesa PIN on your phone...');
+
+                // Save transaction to Supabase with correct column names
+                await supabase.from('mpesa_transactions').insert({
+                    checkout_request_id: requestId,
+                    phone_number: phone,
+                    amount: netAmount,
+                    account_reference: saleCode,
+                    status: 'Pending',
+                });
+
+                // Start polling
+                startStatusPolling(requestId);
+            } else {
+                setMpesaStatus('failed');
+                setMpesaStatusMessage(data.error || data.message || 'Failed to send STK Push');
+            }
+        } catch (err: any) {
+            setMpesaStatus('failed');
+            setMpesaStatusMessage(err.message || 'Network error');
+        }
+    };
+
+    // Poll for M-Pesa payment status
+    const startStatusPolling = (requestId: string) => {
+        let attempts = 0;
+        const maxAttempts = 24;
+
+        pollIntervalRef.current = setInterval(async () => {
+            attempts++;
+
+            try {
+                const response = await fetch(`${MPESA_API_URL}/status?checkoutRequestId=${requestId}`);
+                const data = await response.json();
+
+                if (data.ResultCode === 0 && data.MpesaReceiptNumber) {
+                    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+                    setMpesaStatus('success');
+                    setMpesaStatusMessage(`✅ Payment received! Receipt: ${data.MpesaReceiptNumber}`);
+                    setPaymentReference(data.MpesaReceiptNumber);
+
+                    // Auto-complete the sale
+                    setTimeout(() => processSale(data.MpesaReceiptNumber), 1000);
+                } else if (data.ResultCode !== undefined && data.ResultCode !== null && data.ResultCode !== 0) {
+                    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+                    setMpesaStatus('failed');
+                    const desc = data.ResultCode === 1032 ? 'Cancelled by User' :
+                        data.ResultCode === 1 ? 'Insufficient Funds' :
+                            `Payment failed (Code: ${data.ResultCode})`;
+                    setMpesaStatusMessage(desc);
+                } else if (attempts >= maxAttempts) {
+                    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+                    setMpesaStatus('failed');
+                    setMpesaStatusMessage('⏰ Payment timeout - please check your M-Pesa messages');
+                }
+            } catch {
+                // Continue polling on error
+            }
+        }, 5000);
+    };
+
+    // Reset M-Pesa state
+    const resetMpesaState = () => {
+        if (pollIntervalRef.current) {
+            clearInterval(pollIntervalRef.current);
+        }
+        setMpesaStatus('idle');
+        setMpesaStatusMessage('');
+        setCheckoutRequestId('');
+    };
+
     // Process sale
-    const processSale = async () => {
+    const processSale = async (mpesaReceipt?: string) => {
         if (!selectedBatch) {
             toast.error('🥩 Please select a batch!');
             return;
@@ -150,19 +287,24 @@ export default function ButcheryPOSPage() {
 
         setIsProcessing(true);
         try {
-            // 1. Insert sale into meat_sales table - round values to avoid floating point issues
+            const finalPaymentMode = paymentMode === 'M-Pesa' ? 'M-Pesa' : paymentMode;
+            const finalReference = mpesaReceipt || paymentReference || null;
+
+            // 1. Insert sale into meat_sales table
             const { error: saleError } = await supabase
                 .from('meat_sales')
                 .insert({
                     sale_code: saleCode,
                     stock_id: selectedBatch.stock_id,
-                    weight_kg: Math.round(weightKg * 1000) / 1000, // 3 decimal places
+                    weight_kg: Math.round(weightKg * 1000) / 1000,
                     price_per_kg: pricePerKg,
-                    total_amount: Math.round(amountValue), // Exact amount user entered
+                    total_amount: Math.round(amountValue),
                     discount: Math.round(discountValue),
-                    net_amount: Math.round(netAmount), // Exact net amount
-                    payment_mode: paymentMode,
-                    payment_reference: paymentReference || null,
+                    net_amount: Math.round(netAmount),
+                    payment_mode: finalPaymentMode,
+                    payment_reference: finalReference,
+                    mpesa_receipt_number: mpesaReceipt || null,
+                    checkout_request_id: checkoutRequestId || null,
                     customer_name: customerName || null,
                     customer_contact: customerContact || null,
                     notes: notes || null,
@@ -172,7 +314,7 @@ export default function ButcheryPOSPage() {
 
             if (saleError) throw saleError;
 
-            // 2. Update meat_stock - decrease available_kg, increase sold_kg
+            // 2. Update meat_stock
             const newAvailable = selectedBatch.available_kg - weightKg;
             const { data: currentStock } = await supabase
                 .from('meat_stock')
@@ -193,7 +335,7 @@ export default function ButcheryPOSPage() {
 
             if (stockError) throw stockError;
 
-            toast.success(`✅ Sale processed! ${saleCode}`);
+            toast.success(`✅ Sale processed! ${saleCode}${mpesaReceipt ? ` | M-Pesa: ${mpesaReceipt}` : ''}`);
 
             // Reset form
             setSelectedBatch(null);
@@ -204,6 +346,8 @@ export default function ButcheryPOSPage() {
             setPaymentMode('Cash');
             setPaymentReference('');
             setNotes('');
+            setMpesaPhone('');
+            resetMpesaState();
             setShowPaymentModal(false);
 
             // Reload data
@@ -442,13 +586,16 @@ export default function ButcheryPOSPage() {
             {/* Payment Modal */}
             {showPaymentModal && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-gray-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl">
+                    <div className="bg-gray-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-bold text-white flex items-center gap-2">
                                 💳 Payment
                             </h2>
                             <button
-                                onClick={() => setShowPaymentModal(false)}
+                                onClick={() => {
+                                    resetMpesaState();
+                                    setShowPaymentModal(false);
+                                }}
                                 className="text-gray-400 hover:text-white text-2xl"
                             >
                                 ✕
@@ -467,7 +614,10 @@ export default function ButcheryPOSPage() {
                             {paymentMethods.map(method => (
                                 <button
                                     key={method.id}
-                                    onClick={() => setPaymentMode(method.id)}
+                                    onClick={() => {
+                                        setPaymentMode(method.id);
+                                        resetMpesaState();
+                                    }}
                                     className={`p-3 rounded-xl border-2 transition-all ${paymentMode === method.id
                                         ? 'bg-red-500 border-red-500 text-white'
                                         : 'bg-gray-700 border-gray-600 text-gray-300 hover:border-gray-500'
@@ -479,12 +629,106 @@ export default function ButcheryPOSPage() {
                             ))}
                         </div>
 
-                        {/* Reference */}
-                        {paymentMode !== 'Cash' && (
+                        {/* M-Pesa Options */}
+                        {paymentMode === 'M-Pesa' && (
                             <div className="mb-6">
-                                <label className="text-gray-400 text-sm mb-2 block">
-                                    {paymentMode === 'M-Pesa' ? '📱 M-Pesa Transaction Code' : '💳 Reference'}
-                                </label>
+                                {/* Mode Toggle */}
+                                <div className="flex gap-2 mb-4">
+                                    <button
+                                        onClick={() => { setMpesaMode('STK_PUSH'); resetMpesaState(); }}
+                                        className={`flex-1 py-3 rounded-xl font-medium transition-all ${mpesaMode === 'STK_PUSH'
+                                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
+                                            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                            }`}
+                                    >
+                                        📲 STK Push
+                                    </button>
+                                    <button
+                                        onClick={() => { setMpesaMode('CALLBACK'); resetMpesaState(); }}
+                                        className={`flex-1 py-3 rounded-xl font-medium transition-all ${mpesaMode === 'CALLBACK'
+                                            ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white'
+                                            : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                            }`}
+                                    >
+                                        📥 Callback
+                                    </button>
+                                </div>
+
+                                {/* STK Push Mode */}
+                                {mpesaMode === 'STK_PUSH' && (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-2 block">📱 Customer Phone Number</label>
+                                            <input
+                                                type="tel"
+                                                value={mpesaPhone}
+                                                onChange={(e) => setMpesaPhone(e.target.value)}
+                                                placeholder="07XX XXX XXX"
+                                                className="w-full p-4 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-green-500 focus:outline-none"
+                                                disabled={mpesaStatus === 'sending' || mpesaStatus === 'waiting'}
+                                            />
+                                        </div>
+
+                                        {/* Status Display */}
+                                        {mpesaStatus !== 'idle' && (
+                                            <div className={`p-4 rounded-xl flex items-center gap-3 ${mpesaStatus === 'sending' ? 'bg-amber-500/20 border border-amber-500' :
+                                                mpesaStatus === 'waiting' ? 'bg-blue-500/20 border border-blue-500' :
+                                                    mpesaStatus === 'success' ? 'bg-green-500/20 border border-green-500' :
+                                                        'bg-red-500/20 border border-red-500'
+                                                }`}>
+                                                {(mpesaStatus === 'sending' || mpesaStatus === 'waiting') && (
+                                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                )}
+                                                <span className={`${mpesaStatus === 'sending' ? 'text-amber-400' :
+                                                    mpesaStatus === 'waiting' ? 'text-blue-400' :
+                                                        mpesaStatus === 'success' ? 'text-green-400' :
+                                                            'text-red-400'
+                                                    }`}>{mpesaStatusMessage}</span>
+                                            </div>
+                                        )}
+
+                                        {/* Send STK Button */}
+                                        {(mpesaStatus === 'idle' || mpesaStatus === 'failed') && (
+                                            <button
+                                                onClick={handleMpesaSTKPush}
+                                                className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-xl transition-all"
+                                            >
+                                                📤 Send STK Push
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Callback Mode */}
+                                {mpesaMode === 'CALLBACK' && (
+                                    <div className="space-y-4">
+                                        <div className="bg-gray-700 rounded-xl p-4 text-center">
+                                            <p className="text-gray-400 text-sm">Pay to Till Number</p>
+                                            <p className="text-green-400 text-3xl font-bold">174379</p>
+                                        </div>
+                                        <div className="bg-green-500/10 border border-green-500 rounded-xl p-4 text-center">
+                                            <p className="text-gray-400 text-sm">Amount</p>
+                                            <p className="text-green-400 text-2xl font-bold">KES {netAmount.toLocaleString()}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-gray-400 text-sm mb-2 block">📱 M-Pesa Receipt Code</label>
+                                            <input
+                                                type="text"
+                                                value={paymentReference}
+                                                onChange={(e) => setPaymentReference(e.target.value.toUpperCase())}
+                                                placeholder="Enter M-Pesa code e.g. RLJ5XXXXXX"
+                                                className="w-full p-4 bg-gray-900 border border-gray-700 rounded-xl text-white focus:border-green-500 focus:outline-none uppercase"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Reference for non-M-Pesa */}
+                        {paymentMode !== 'Cash' && paymentMode !== 'M-Pesa' && (
+                            <div className="mb-6">
+                                <label className="text-gray-400 text-sm mb-2 block">💳 Reference</label>
                                 <input
                                     type="text"
                                     value={paymentReference}
@@ -498,27 +742,33 @@ export default function ButcheryPOSPage() {
                         {/* Actions */}
                         <div className="flex gap-4">
                             <button
-                                onClick={() => setShowPaymentModal(false)}
+                                onClick={() => {
+                                    resetMpesaState();
+                                    setShowPaymentModal(false);
+                                }}
                                 className="flex-1 py-4 border-2 border-gray-600 text-gray-300 rounded-xl font-semibold hover:bg-gray-700 transition-colors"
                             >
                                 Cancel
                             </button>
-                            <button
-                                onClick={processSale}
-                                disabled={isProcessing}
-                                className="flex-1 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-xl disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-                            >
-                                {isProcessing ? (
-                                    <>
-                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                                        Processing...
-                                    </>
-                                ) : (
-                                    <>
-                                        ✅ Complete Sale
-                                    </>
-                                )}
-                            </button>
+                            {/* Only show Complete button for non-M-Pesa or Callback mode */}
+                            {(paymentMode !== 'M-Pesa' || mpesaMode === 'CALLBACK') && (
+                                <button
+                                    onClick={() => processSale()}
+                                    disabled={isProcessing}
+                                    className="flex-1 py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-xl disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                                >
+                                    {isProcessing ? (
+                                        <>
+                                            <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            Processing...
+                                        </>
+                                    ) : (
+                                        <>
+                                            ✅ Complete Sale
+                                        </>
+                                    )}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
