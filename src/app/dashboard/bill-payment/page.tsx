@@ -670,8 +670,8 @@ function BillPaymentContent() {
                                     <button
                                         onClick={() => setPaymentMode('STK_PUSH')}
                                         className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${paymentMode === 'STK_PUSH'
-                                                ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                             }`}
                                     >
                                         <span>📲</span> STK Push
@@ -679,8 +679,8 @@ function BillPaymentContent() {
                                     <button
                                         onClick={() => setPaymentMode('CALLBACK')}
                                         className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${paymentMode === 'CALLBACK'
-                                                ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                             }`}
                                     >
                                         <span>📥</span> Callback
@@ -778,7 +778,7 @@ function BillPaymentContent() {
 
                                     <div className="bg-white rounded-xl p-4 text-center space-y-1">
                                         <p className="text-gray-500 text-sm">Pay to Till Number</p>
-                                        <p className="text-3xl font-bold text-gray-800">174379</p>
+                                        <p className="text-3xl font-bold text-gray-800">9830453</p>
                                     </div>
 
                                     <div className="bg-white rounded-xl p-4 text-center space-y-1">
