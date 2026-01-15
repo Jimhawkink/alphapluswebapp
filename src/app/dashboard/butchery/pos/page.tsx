@@ -62,6 +62,19 @@ export default function ButcheryPOSPage() {
     const [checkoutRequestId, setCheckoutRequestId] = useState('');
     const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+    // C2B Payment State
+    interface C2BPayment {
+        id: number;
+        trans_id: string;
+        trans_amount: number;
+        msisdn: string;
+        first_name: string;
+        is_linked: boolean;
+    }
+    const [c2bPayments, setC2bPayments] = useState<C2BPayment[]>([]);
+    const [selectedC2B, setSelectedC2B] = useState<C2BPayment | null>(null);
+    const [loadingC2B, setLoadingC2B] = useState(false);
+
     // Calculated values
     const amountValue = parseFloat(amount) || 0;
     const discountValue = parseFloat(discount) || 0;
@@ -268,6 +281,34 @@ export default function ButcheryPOSPage() {
         setMpesaStatus('idle');
         setMpesaStatusMessage('');
         setCheckoutRequestId('');
+        setSelectedC2B(null);
+    };
+
+    // Load unlinked C2B payments
+    const loadC2BPayments = async () => {
+        setLoadingC2B(true);
+        try {
+            const { data, error } = await supabase
+                .from('c2b_transactions')
+                .select('*')
+                .eq('is_linked', false)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) throw error;
+            setC2bPayments(data || []);
+        } catch (err: any) {
+            console.error('Error loading C2B payments:', err);
+            setC2bPayments([]);
+        } finally {
+            setLoadingC2B(false);
+        }
+    };
+
+    // Select C2B payment
+    const selectC2BPayment = (payment: C2BPayment) => {
+        setSelectedC2B(payment);
+        setPaymentReference(payment.trans_id);
     };
 
     // Process sale
@@ -704,14 +745,69 @@ export default function ButcheryPOSPage() {
                                     <div className="space-y-4">
                                         <div className="bg-gray-700 rounded-xl p-4 text-center">
                                             <p className="text-gray-400 text-sm">Pay to Till Number</p>
-                                            <p className="text-green-400 text-3xl font-bold">174379</p>
+                                            <p className="text-green-400 text-3xl font-bold">9830453</p>
                                         </div>
                                         <div className="bg-green-500/10 border border-green-500 rounded-xl p-4 text-center">
                                             <p className="text-gray-400 text-sm">Amount</p>
                                             <p className="text-green-400 text-2xl font-bold">KES {netAmount.toLocaleString()}</p>
                                         </div>
+
+                                        {/* C2B Payments DataGrid */}
+                                        <div className="bg-gray-700 rounded-xl p-4">
+                                            <div className="flex justify-between items-center mb-3">
+                                                <h4 className="text-white font-medium">📥 Unlinked Payments</h4>
+                                                <button
+                                                    onClick={loadC2BPayments}
+                                                    className="text-xl hover:scale-110 transition-transform"
+                                                >
+                                                    {loadingC2B ? '⏳' : '🔄'}
+                                                </button>
+                                            </div>
+
+                                            {loadingC2B ? (
+                                                <div className="flex justify-center py-4">
+                                                    <div className="w-6 h-6 border-2 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                                                </div>
+                                            ) : c2bPayments.length === 0 ? (
+                                                <div className="text-center py-4">
+                                                    <p className="text-gray-400 text-sm mb-2">No unlinked payments found</p>
+                                                    <button
+                                                        onClick={loadC2BPayments}
+                                                        className="bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-600 transition-colors"
+                                                    >
+                                                        Load Payments
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <div className="max-h-40 overflow-y-auto space-y-2">
+                                                    {c2bPayments.map(payment => (
+                                                        <div
+                                                            key={payment.id}
+                                                            onClick={() => selectC2BPayment(payment)}
+                                                            className={`flex justify-between items-center p-3 rounded-lg cursor-pointer transition-all border-2 ${selectedC2B?.id === payment.id
+                                                                    ? 'bg-green-500/20 border-green-500'
+                                                                    : 'bg-gray-600 border-transparent hover:bg-gray-500'
+                                                                }`}
+                                                        >
+                                                            <div>
+                                                                <p className="text-white font-medium">{payment.trans_id}</p>
+                                                                <p className="text-gray-400 text-xs">{payment.msisdn} • {payment.first_name}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="text-green-400 font-bold">KES {payment.trans_amount.toLocaleString()}</p>
+                                                                {selectedC2B?.id === payment.id && (
+                                                                    <p className="text-green-400 text-xs">✓ Selected</p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {/* Manual Entry Fallback */}
                                         <div>
-                                            <label className="text-gray-400 text-sm mb-2 block">📱 M-Pesa Receipt Code</label>
+                                            <label className="text-gray-400 text-sm mb-2 block">📱 Or Enter Receipt Code Manually</label>
                                             <input
                                                 type="text"
                                                 value={paymentReference}
