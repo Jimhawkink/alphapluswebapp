@@ -75,6 +75,20 @@ function BillPaymentContent() {
     const [mpesaStatusColor, setMpesaStatusColor] = useState('bg-green-500');
     const [mpesaReceipt, setMpesaReceipt] = useState('');
 
+    // C2B Payments State
+    interface C2BPayment {
+        id: number;
+        trans_id: string;
+        trans_amount: number;
+        msisdn: string;
+        first_name: string;
+        is_linked: boolean;
+    }
+    const [c2bPayments, setC2bPayments] = useState<C2BPayment[]>([]);
+    const [selectedC2B, setSelectedC2B] = useState<C2BPayment | null>(null);
+    const [loadingC2B, setLoadingC2B] = useState(false);
+
+
     // Split payment states
     interface SplitPayment {
         method: string;
@@ -169,6 +183,41 @@ function BillPaymentContent() {
     useEffect(() => {
         loadBills();
     }, [loadBills]);
+
+    // Load unlinked C2B payments
+    const loadC2BPayments = async () => {
+        setLoadingC2B(true);
+        try {
+            const { data, error } = await supabase
+                .from('c2b_transactions')
+                .select('*')
+                .eq('is_linked', false)
+                .order('created_at', { ascending: false })
+                .limit(20);
+
+            if (error) {
+                console.error('C2B query error:', error);
+                toast.error('Failed to load C2B payments. Please check if table exists.');
+                setC2bPayments([]);
+            } else {
+                setC2bPayments(data || []);
+            }
+        } catch (err: any) {
+            console.error('Error loading C2B payments:', err);
+            setC2bPayments([]);
+        } finally {
+            setLoadingC2B(false);
+        }
+    };
+
+    // Select C2B payment
+    const selectC2BPayment = (payment: C2BPayment) => {
+        setSelectedC2B(payment);
+        setMpesaReceipt(payment.trans_id);
+        setPaymentAmount(payment.trans_amount.toString());
+        setPaymentMethod('M-Pesa');
+    };
+
 
     // Filter bills by search
     const filteredBills = bills.filter(bill => {
@@ -765,38 +814,96 @@ function BillPaymentContent() {
                                 </>
                             )}
 
-                            {/* Callback Mode Panel */}
+                            {/* Callback Mode Panel with C2B DataGrid */}
                             {paymentMode === 'CALLBACK' && selectedBill && outstandingAmount > 0 && (
                                 <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-5 rounded-xl border-2 border-amber-200 space-y-4">
                                     <div className="flex items-center gap-3 text-amber-700">
                                         <span className="text-3xl">📥</span>
                                         <div>
-                                            <h4 className="font-bold">Waiting for C2B Payment</h4>
-                                            <p className="text-sm opacity-80">Customer to pay via M-Pesa</p>
+                                            <h4 className="font-bold">C2B Payment Linking</h4>
+                                            <p className="text-sm opacity-80">Select unlinked payment to link</p>
                                         </div>
                                     </div>
 
-                                    <div className="bg-white rounded-xl p-4 text-center space-y-1">
-                                        <p className="text-gray-500 text-sm">Pay to Till Number</p>
-                                        <p className="text-3xl font-bold text-gray-800">9830453</p>
-                                    </div>
-
-                                    <div className="bg-white rounded-xl p-4 text-center space-y-1">
-                                        <p className="text-gray-500 text-sm">Amount</p>
-                                        <p className="text-2xl font-bold text-green-600">Ksh {outstandingAmount.toLocaleString()}</p>
-                                    </div>
-
-                                    {customerName && (
-                                        <div className="bg-white rounded-xl p-3 text-center">
-                                            <p className="text-gray-500 text-sm">Customer</p>
-                                            <p className="font-semibold text-gray-800">{customerName}</p>
+                                    {/* Till & Amount Row */}
+                                    <div className="flex gap-3">
+                                        <div className="flex-1 bg-white rounded-xl p-3 text-center">
+                                            <p className="text-gray-500 text-xs">Till Number</p>
+                                            <p className="text-xl font-bold text-gray-800">9830453</p>
                                         </div>
+                                        <div className="flex-1 bg-white rounded-xl p-3 text-center">
+                                            <p className="text-gray-500 text-xs">Balance Due</p>
+                                            <p className="text-xl font-bold text-green-600">Ksh {outstandingAmount.toLocaleString()}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* C2B DataGrid */}
+                                    <div className="bg-white rounded-xl p-4">
+                                        <div className="flex justify-between items-center mb-3">
+                                            <h5 className="text-amber-700 font-bold text-sm">📥 Unlinked Payments</h5>
+                                            <button
+                                                onClick={loadC2BPayments}
+                                                className="text-xl hover:scale-110 transition-transform"
+                                            >
+                                                {loadingC2B ? '⏳' : '🔄'}
+                                            </button>
+                                        </div>
+
+                                        {loadingC2B ? (
+                                            <div className="flex justify-center py-6">
+                                                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                                            </div>
+                                        ) : c2bPayments.length === 0 ? (
+                                            <div className="text-center py-6">
+                                                <p className="text-gray-400 mb-3">No unlinked payments found</p>
+                                                <button
+                                                    onClick={loadC2BPayments}
+                                                    className="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-600"
+                                                >
+                                                    Load Payments
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <div className="max-h-48 overflow-y-auto space-y-2">
+                                                {c2bPayments.map(payment => (
+                                                    <div
+                                                        key={payment.id}
+                                                        onClick={() => selectC2BPayment(payment)}
+                                                        className={`flex justify-between items-center p-3 rounded-lg cursor-pointer transition-all border-2 ${selectedC2B?.id === payment.id
+                                                                ? 'bg-green-50 border-green-500'
+                                                                : 'bg-gray-50 border-transparent hover:bg-amber-50'
+                                                            }`}
+                                                    >
+                                                        <div>
+                                                            <p className="font-bold text-gray-800">{payment.trans_id}</p>
+                                                            <p className="text-gray-500 text-xs">{payment.msisdn} • {payment.first_name}</p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="font-bold text-green-600">Ksh {payment.trans_amount.toLocaleString()}</p>
+                                                            {selectedC2B?.id === payment.id && (
+                                                                <p className="text-green-600 text-xs font-bold">✓ Selected</p>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Link & Save Button */}
+                                    {selectedC2B && (
+                                        <button
+                                            onClick={handleProcessPayment}
+                                            disabled={isProcessing}
+                                            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                        >
+                                            {isProcessing ? (
+                                                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                            ) : (
+                                                <>✅ Link & Save Payment</>
+                                            )}
+                                        </button>
                                     )}
-
-                                    <div className="flex items-center justify-center gap-3 py-3">
-                                        <div className="animate-spin text-2xl">⏳</div>
-                                        <span className="text-amber-700 font-medium">Listening for payment...</span>
-                                    </div>
                                 </div>
                             )}
 
