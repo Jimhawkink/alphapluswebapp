@@ -870,8 +870,8 @@ function BillPaymentContent() {
                                                         key={payment.id}
                                                         onClick={() => selectC2BPayment(payment)}
                                                         className={`flex justify-between items-center p-3 rounded-lg cursor-pointer transition-all border-2 ${selectedC2B?.id === payment.id
-                                                                ? 'bg-green-50 border-green-500'
-                                                                : 'bg-gray-50 border-transparent hover:bg-amber-50'
+                                                            ? 'bg-green-50 border-green-500'
+                                                            : 'bg-gray-50 border-transparent hover:bg-amber-50'
                                                             }`}
                                                     >
                                                         <div>
@@ -893,14 +893,14 @@ function BillPaymentContent() {
                                     {/* Link & Save Button */}
                                     {selectedC2B && (
                                         <button
-                                            onClick={handleProcessPayment}
+                                            onClick={() => processPayment()}
                                             disabled={isProcessing}
                                             className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
                                         >
                                             {isProcessing ? (
                                                 <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                             ) : (
-                                                <>✅ Link & Save Payment</>
+                                                <>✅ Link &amp; Save Payment</>
                                             )}
                                         </button>
                                     )}
