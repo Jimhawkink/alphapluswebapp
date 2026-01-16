@@ -219,9 +219,11 @@ export default function UsersPage() {
 
             setShowModal(false);
             loadUsers();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error saving user:', err);
-            toast.error('Failed to save user');
+            const errorMsg = err?.message || err?.error_description || err?.hint || 'Unknown error';
+            const errorCode = err?.code || '';
+            toast.error(`Failed to save user: ${errorCode} ${errorMsg}`, { duration: 6000 });
         }
     };
 
