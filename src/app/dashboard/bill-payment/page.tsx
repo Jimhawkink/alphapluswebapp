@@ -897,7 +897,7 @@ function BillPaymentContent() {
                                                 </button>
                                             </div>
                                         ) : (
-                                            <div className="max-h-96 overflow-y-auto space-y-2">{/* Increased from max-h-48 to max-h-96 */}
+                                            <div className="max-h-[32rem] overflow-y-auto space-y-2">{/* Increased to 512px for better visibility */}
                                                 {c2bPayments.map(payment => (
                                                     <div
                                                         key={payment.id}
