@@ -385,6 +385,33 @@ function BillPaymentContent() {
                     : `💰 Payment of Ksh ${totalPaymentAmount.toLocaleString()} received (${paymentsToProcess.length} payment${paymentsToProcess.length > 1 ? 's' : ''})`
             );
 
+            // Mark C2B payment as linked if one was selected
+            if (selectedC2B && paymentMethod === 'M-Pesa') {
+                try {
+                    const { error: linkError } = await c2bSupabase
+                        .from('c2b_transactions')
+                        .update({
+                            is_linked: true,
+                            linked_sale_id: selectedBill.sale_id,
+                            linked_receipt_no: selectedBill.receipt_no,
+                            linked_by: currentUser?.name || 'Unknown',
+                            linked_at: new Date().toISOString()
+                        })
+                        .eq('id', selectedC2B.id);
+
+                    if (linkError) {
+                        console.error('Failed to mark C2B as linked:', linkError);
+                    } else {
+                        console.log('✅ C2B payment marked as linked:', selectedC2B.id);
+                        // Remove from local state
+                        setC2bPayments(prev => prev.filter(p => p.id !== selectedC2B.id));
+                        setSelectedC2B(null);
+                    }
+                } catch (linkErr) {
+                    console.error('C2B link update error:', linkErr);
+                }
+            }
+
             // Reload bills and reset
             await loadBills();
             setSelectedBill(null);
