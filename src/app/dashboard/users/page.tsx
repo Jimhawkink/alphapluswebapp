@@ -182,26 +182,38 @@ export default function UsersPage() {
                 if (error) throw error;
                 toast.success('User updated successfully! ✅');
             } else {
-                // Create new user
-                const { error } = await supabase
+                // Create new user - user_code will be set to null initially
+                const { data, error } = await supabase
                     .from('users')
                     .insert([{
-                        user_code: formData.user_code,
+                        user_code: null, // Let database handle or update after insert
                         user_name: formData.user_name,
                         password_hash: formData.password || formData.pin,
                         name: formData.name,
                         user_type: formData.user_type,
-                        email: formData.email,
-                        phone: formData.phone,
-                        national_id: formData.national_id,
+                        email: formData.email || null,
+                        phone: formData.phone || null,
+                        national_id: formData.national_id || null,
                         salary_type: formData.salary_type,
-                        salary_amount: formData.salary_amount,
-                        pin: formData.pin,
+                        salary_amount: formData.salary_amount || 0,
+                        pin: formData.pin || null,
                         active: formData.active,
                         is_super_admin: false,
-                    }]);
+                    }])
+                    .select()
+                    .single();
 
                 if (error) throw error;
+
+                // Update user_code based on user_id
+                if (data) {
+                    const userCode = `US-${String(data.user_id).padStart(4, '0')}`;
+                    await supabase
+                        .from('users')
+                        .update({ user_code: userCode })
+                        .eq('user_id', data.user_id);
+                }
+
                 toast.success('User created successfully! 🎉');
             }
 
