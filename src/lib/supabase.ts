@@ -9,7 +9,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 // SEPARATE C2B Supabase client (Energy App) - ONLY for C2B transactions
 const c2bSupabaseUrl = 'https://pxcdaivlvltmdifxietb.supabase.co';
-const c2bSupabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Y2RhaXZsdmx0bWRpZnhpZXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQxNzQ5OTksImV4cCI6MjA0OTc1MDk5OX0.c2d99368d625b02cb5fbd6d28bc902d9ad80af8ce83d';
+const c2bSupabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Y2RhaXZsdmx0bWRpZnhpZXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3NDI3NDIsImV4cCI6MjA4MTMxODc0Mn0.s6nv24s6M83gAcW_nSKCBfcXcqJ_7owwqdObPDT7Ky0';
 
 // Create separate client ONLY for C2B queries
 export const c2bSupabase = createClient(c2bSupabaseUrl, c2bSupabaseAnonKey);
