@@ -387,7 +387,9 @@ function BillPaymentContent() {
             );
 
             // Mark C2B payment as linked if one was selected
-            if (selectedC2B && paymentMethod === 'M-Pesa') {
+            console.log('🔍 Checking C2B linking:', { selectedC2B: selectedC2B?.id, paymentMethod, mpesaReceipt });
+            if (selectedC2B) {
+                console.log('🔗 Attempting to mark C2B as linked...');
                 try {
                     const { error: linkError } = await c2bSupabase
                         .from('c2b_transactions')
@@ -401,7 +403,7 @@ function BillPaymentContent() {
                         .eq('id', selectedC2B.id);
 
                     if (linkError) {
-                        console.error('Failed to mark C2B as linked:', linkError);
+                        console.error('❌ Failed to mark C2B as linked:', linkError);
                     } else {
                         console.log('✅ C2B payment marked as linked:', selectedC2B.id);
                         // Remove from local state
@@ -409,8 +411,10 @@ function BillPaymentContent() {
                         setSelectedC2B(null);
                     }
                 } catch (linkErr) {
-                    console.error('C2B link update error:', linkErr);
+                    console.error('❌ C2B link update error:', linkErr);
                 }
+            } else {
+                console.log('⚠️ No C2B selected, skipping link update');
             }
 
             // Reload bills and reset
