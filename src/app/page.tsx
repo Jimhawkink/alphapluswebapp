@@ -174,8 +174,8 @@ export default function LoginPage() {
                             <button
                                 onClick={() => { setLoginMode('admin'); setError(''); setPin(''); }}
                                 className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 ${loginMode === 'admin'
-                                        ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg shadow-indigo-500/30'
-                                        : 'text-gray-600 hover:text-gray-800'
+                                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg shadow-indigo-500/30'
+                                    : 'text-gray-600 hover:text-gray-800'
                                     }`}
                             >
                                 👨‍💼 Admin Login
@@ -183,8 +183,8 @@ export default function LoginPage() {
                             <button
                                 onClick={() => { setLoginMode('waiter'); setError(''); setUsername(''); setPassword(''); }}
                                 className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 ${loginMode === 'waiter'
-                                        ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-lg shadow-emerald-500/30'
-                                        : 'text-gray-600 hover:text-gray-800'
+                                    ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-lg shadow-emerald-500/30'
+                                    : 'text-gray-600 hover:text-gray-800'
                                     }`}
                             >
                                 🧑‍🍳 Waiter Login
@@ -310,8 +310,8 @@ export default function LoginPage() {
                                             <div
                                                 key={i}
                                                 className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold transition-all duration-300 ${pin[i]
-                                                        ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 scale-110'
-                                                        : 'bg-gray-100 border-2 border-gray-200 text-gray-300'
+                                                    ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 scale-110'
+                                                    : 'bg-gray-100 border-2 border-gray-200 text-gray-300'
                                                     }`}
                                             >
                                                 {pin[i] ? '●' : '○'}
@@ -328,44 +328,51 @@ export default function LoginPage() {
                                     </div>
                                 )}
 
-                                {/* Numeric Keypad */}
-                                <div className="grid grid-cols-3 gap-3">
+                                {/* Numeric Keypad - Ultra Premium Design */}
+                                <div className="grid grid-cols-3 gap-4">
                                     {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                                         <button
                                             key={num}
                                             onClick={() => handlePinInput(num.toString())}
                                             disabled={isLoading}
-                                            className="h-20 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-2xl text-2xl font-bold text-gray-700 hover:from-blue-50 hover:to-indigo-50 hover:border-indigo-300 hover:text-indigo-600 hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                            className="group relative h-24 bg-gradient-to-br from-white via-gray-50 to-blue-50 border-2 border-gray-200 rounded-3xl text-3xl font-black text-gray-700 hover:from-blue-500 hover:via-indigo-600 hover:to-purple-600 hover:text-white hover:border-indigo-400 hover:scale-110 hover:shadow-2xl hover:shadow-indigo-500/50 active:scale-95 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
                                         >
-                                            {num}
+                                            {/* Glow effect on hover */}
+                                            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/0 via-indigo-400/0 to-purple-400/0 group-hover:from-blue-400/20 group-hover:via-indigo-400/20 group-hover:to-purple-400/20 rounded-3xl transition-all duration-300"></div>
+                                            <span className="relative z-10 drop-shadow-sm">{num}</span>
                                         </button>
                                     ))}
-                                    {/* Clear Button */}
+                                    {/* Clear Button - Premium Red */}
                                     <button
                                         onClick={handlePinClear}
                                         disabled={isLoading}
-                                        className="h-20 bg-gradient-to-br from-red-50 to-pink-50 border-2 border-red-200 rounded-2xl text-xl font-bold text-red-600 hover:from-red-100 hover:to-pink-100 hover:border-red-300 hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                        className="group relative h-24 bg-gradient-to-br from-red-50 via-pink-50 to-rose-50 border-2 border-red-200 rounded-3xl text-2xl font-bold text-red-600 hover:from-red-500 hover:via-pink-600 hover:to-rose-600 hover:text-white hover:border-red-400 hover:scale-110 hover:shadow-2xl hover:shadow-red-500/50 active:scale-95 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
                                     >
-                                        ⌫
+                                        <div className="absolute inset-0 bg-gradient-to-br from-red-400/0 to-pink-400/0 group-hover:from-red-400/20 group-hover:to-pink-400/20 rounded-3xl transition-all duration-300"></div>
+                                        <span className="relative z-10">⌫</span>
                                     </button>
-                                    {/* 0 Button */}
+                                    {/* 0 Button - Premium Design */}
                                     <button
                                         onClick={() => handlePinInput('0')}
                                         disabled={isLoading}
-                                        className="h-20 bg-gradient-to-br from-gray-50 to-white border-2 border-gray-200 rounded-2xl text-2xl font-bold text-gray-700 hover:from-blue-50 hover:to-indigo-50 hover:border-indigo-300 hover:text-indigo-600 hover:scale-105 active:scale-95 transition-all duration-200 shadow-sm hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                                        className="group relative h-24 bg-gradient-to-br from-white via-gray-50 to-blue-50 border-2 border-gray-200 rounded-3xl text-3xl font-black text-gray-700 hover:from-blue-500 hover:via-indigo-600 hover:to-purple-600 hover:text-white hover:border-indigo-400 hover:scale-110 hover:shadow-2xl hover:shadow-indigo-500/50 active:scale-95 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
                                     >
-                                        0
+                                        <div className="absolute inset-0 bg-gradient-to-br from-blue-400/0 via-indigo-400/0 to-purple-400/0 group-hover:from-blue-400/20 group-hover:via-indigo-400/20 group-hover:to-purple-400/20 rounded-3xl transition-all duration-300"></div>
+                                        <span className="relative z-10 drop-shadow-sm">0</span>
                                     </button>
-                                    {/* Submit Button */}
+                                    {/* Submit Button - Ultra Premium Green */}
                                     <button
                                         onClick={handleWaiterLogin}
                                         disabled={isLoading || pin.length !== 6}
-                                        className="h-20 bg-gradient-to-br from-emerald-500 to-green-600 border-2 border-emerald-400 rounded-2xl text-2xl font-bold text-white hover:from-emerald-600 hover:to-green-700 hover:scale-105 active:scale-95 transition-all duration-200 shadow-lg shadow-emerald-500/30 hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-300 disabled:to-gray-400 disabled:border-gray-300 disabled:shadow-none disabled:hover:scale-100"
+                                        className="group relative h-24 bg-gradient-to-br from-emerald-500 via-green-600 to-teal-600 border-2 border-emerald-400 rounded-3xl text-3xl font-black text-white hover:from-emerald-600 hover:via-green-700 hover:to-teal-700 hover:scale-110 hover:shadow-2xl hover:shadow-emerald-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-300 disabled:via-gray-400 disabled:to-gray-400 disabled:border-gray-300 disabled:shadow-none disabled:hover:scale-100 overflow-hidden animate-pulse"
                                     >
+                                        {/* Shimmer effect */}
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/0 to-teal-400/0 group-hover:from-emerald-400/30 group-hover:to-teal-400/30 rounded-3xl transition-all duration-300"></div>
                                         {isLoading ? (
-                                            <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
+                                            <div className="relative z-10 w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
                                         ) : (
-                                            '✓'
+                                            <span className="relative z-10 drop-shadow-lg">✓</span>
                                         )}
                                     </button>
                                 </div>
