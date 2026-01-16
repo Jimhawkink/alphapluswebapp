@@ -102,6 +102,8 @@ export default function LoginPage() {
         setError('');
 
         try {
+            console.log('🔍 Waiter login attempt:', { pin, pinLength: pin.length });
+
             const { data, error: dbError } = await supabase
                 .from('users')
                 .select('*')
@@ -110,13 +112,17 @@ export default function LoginPage() {
                 .eq('user_type', 'Waiter')
                 .single();
 
+            console.log('🔍 Query result:', { data, dbError });
+
             if (dbError || !data) {
-                setError('Invalid PIN');
+                console.error('❌ Login failed:', dbError?.message || 'No user found');
+                setError(`Invalid PIN or waiter not found. Error: ${dbError?.message || 'No match'}`);
                 setIsLoading(false);
                 setPin(''); // Clear PIN
                 return;
             }
 
+            console.log('✅ Waiter found:', data.name);
             localStorage.setItem('user', JSON.stringify({
                 userId: data.user_id,
                 userName: data.user_name,
