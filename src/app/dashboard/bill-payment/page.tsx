@@ -75,13 +75,13 @@ function BillPaymentContent() {
     const [mpesaStatusColor, setMpesaStatusColor] = useState('bg-green-500');
     const [mpesaReceipt, setMpesaReceipt] = useState('');
 
-    // C2B Payments State
+    // C2B Payments State (using Energy App column names)
     interface C2BPayment {
         id: number;
-        trans_id: string;
-        trans_amount: number;
-        msisdn: string;
-        first_name: string;
+        mpesa_receipt: string;
+        phone: string;
+        amount: number;
+        customer_name: string;
         is_linked: boolean;
     }
     const [c2bPayments, setC2bPayments] = useState<C2BPayment[]>([]);
@@ -213,8 +213,8 @@ function BillPaymentContent() {
     // Select C2B payment
     const selectC2BPayment = (payment: C2BPayment) => {
         setSelectedC2B(payment);
-        setMpesaReceipt(payment.trans_id);
-        setPaymentAmount(payment.trans_amount.toString());
+        setMpesaReceipt(payment.mpesa_receipt);
+        setPaymentAmount(payment.amount.toString());
         setPaymentMethod('M-Pesa');
     };
 
@@ -875,11 +875,11 @@ function BillPaymentContent() {
                                                             }`}
                                                     >
                                                         <div>
-                                                            <p className="font-bold text-gray-800">{payment.trans_id}</p>
-                                                            <p className="text-gray-500 text-xs">{payment.msisdn} • {payment.first_name}</p>
+                                                            <p className="font-bold text-gray-800">{payment.mpesa_receipt}</p>
+                                                            <p className="text-gray-500 text-xs">{payment.phone} • {payment.customer_name}</p>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="font-bold text-green-600">Ksh {payment.trans_amount.toLocaleString()}</p>
+                                                            <p className="font-bold text-green-600">Ksh {payment.amount.toLocaleString()}</p>
                                                             {selectedC2B?.id === payment.id && (
                                                                 <p className="text-green-600 text-xs font-bold">✓ Selected</p>
                                                             )}
