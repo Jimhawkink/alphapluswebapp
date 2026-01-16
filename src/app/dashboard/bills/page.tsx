@@ -158,7 +158,14 @@ const BillRow = ({
                     )}
                 </td>
                 <td className="py-3 px-4">
-                    {getPaymentMethodBadge()}
+                    <div>
+                        {getPaymentMethodBadge()}
+                        {bill.mpesa_code && (
+                            <p className="text-xs text-gray-600 mt-1 font-mono">
+                                📱 {bill.mpesa_code}
+                            </p>
+                        )}
+                    </div>
                 </td>
                 <td className="py-3 px-4">
                     <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${getStatusColor()}`}>
