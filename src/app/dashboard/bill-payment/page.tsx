@@ -363,6 +363,7 @@ function BillPaymentContent() {
                             amount_paid: newPaidAmount,
                             change_amount: newChange,
                             payment_method: combinedMethod,
+                            mpesa_code: selectedC2B?.mpesa_receipt || null, // Save M-Pesa receipt from C2B
                             status: isFullyPaid ? 'Completed' : 'Pending',
                             paid_at: isFullyPaid ? new Date().toISOString() : null,
                             paid_by: isFullyPaid ? (currentUser?.name || 'Unknown') : null,
