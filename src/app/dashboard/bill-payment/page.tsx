@@ -637,6 +637,7 @@ function BillPaymentContent() {
                                     <tr>
                                         <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Receipt</th>
                                         <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Date</th>
+                                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">M-Pesa Code</th>
                                         <th className="text-right py-3 px-4 text-xs font-bold text-gray-500">Total</th>
                                         <th className="text-right py-3 px-4 text-xs font-bold text-gray-500">Balance</th>
                                         <th className="text-center py-3 px-4 text-xs font-bold text-gray-500">Status</th>
@@ -659,6 +660,15 @@ function BillPaymentContent() {
                                             </td>
                                             <td className="py-3 px-4 text-sm text-gray-600">
                                                 {new Date(bill.sale_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                            </td>
+                                            <td className="py-3 px-4 text-sm">
+                                                {bill.mpesa_code ? (
+                                                    <span className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-mono">
+                                                        {bill.mpesa_code}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400 text-xs">-</span>
+                                                )}
                                             </td>
                                             <td className="py-3 px-4 text-right font-semibold text-gray-800">
                                                 {bill.total_amount?.toLocaleString()}
