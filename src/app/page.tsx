@@ -328,37 +328,66 @@ export default function LoginPage() {
                                     </div>
                                 )}
 
-                                {/* Numeric Keypad - Ultra Premium Design */}
+                                {/* Numeric Keypad - Rainbow Vibrant Design */}
                                 <div className="grid grid-cols-3 gap-4">
-                                    {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                                        <button
-                                            key={num}
-                                            onClick={() => handlePinInput(num.toString())}
-                                            disabled={isLoading}
-                                            className="group relative h-24 bg-gradient-to-br from-white via-gray-50 to-blue-50 border-2 border-gray-200 rounded-3xl text-3xl font-black text-gray-700 hover:from-blue-500 hover:via-indigo-600 hover:to-purple-600 hover:text-white hover:border-indigo-400 hover:scale-110 hover:shadow-2xl hover:shadow-indigo-500/50 active:scale-95 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
-                                        >
-                                            {/* Glow effect on hover */}
-                                            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/0 via-indigo-400/0 to-purple-400/0 group-hover:from-blue-400/20 group-hover:via-indigo-400/20 group-hover:to-purple-400/20 rounded-3xl transition-all duration-300"></div>
-                                            <span className="relative z-10 drop-shadow-sm">{num}</span>
-                                        </button>
-                                    ))}
+                                    {/* Button 1 - Blue Gradient */}
+                                    <button onClick={() => handlePinInput('1')} disabled={isLoading} className="group relative h-24 bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 border-2 border-blue-300 rounded-3xl text-3xl font-black text-white hover:from-blue-500 hover:via-blue-600 hover:to-blue-700 hover:scale-110 hover:shadow-2xl hover:shadow-blue-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-blue-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                        <span className="relative z-10 drop-shadow-lg">1</span>
+                                    </button>
+                                    {/* Button 2 - Indigo Gradient */}
+                                    <button onClick={() => handlePinInput('2')} disabled={isLoading} className="group relative h-24 bg-gradient-to-br from-indigo-400 via-indigo-500 to-indigo-600 border-2 border-indigo-300 rounded-3xl text-3xl font-black text-white hover:from-indigo-500 hover:via-indigo-600 hover:to-indigo-700 hover:scale-110 hover:shadow-2xl hover:shadow-indigo-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-indigo-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                        <span className="relative z-10 drop-shadow-lg">2</span>
+                                    </button>
+                                    {/* Button 3 - Purple Gradient */}
+                                    <button onClick={() => handlePinInput('3')} disabled={isLoading} className="group relative h-24 bg-gradient-to-br from-purple-400 via-purple-500 to-purple-600 border-2 border-purple-300 rounded-3xl text-3xl font-black text-white hover:from-purple-500 hover:via-purple-600 hover:to-purple-700 hover:scale-110 hover:shadow-2xl hover:shadow-purple-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-purple-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                        <span className="relative z-10 drop-shadow-lg">3</span>
+                                    </button>
+                                    {/* Button 4 - Pink Gradient */}
+                                    <button onClick={() => handlePinInput('4')} disabled={isLoading} className="group relative h-24 bg-gradient-to-br from-pink-400 via-pink-500 to-pink-600 border-2 border-pink-300 rounded-3xl text-3xl font-black text-white hover:from-pink-500 hover:via-pink-600 hover:to-pink-700 hover:scale-110 hover:shadow-2xl hover:shadow-pink-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-pink-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                        <span className="relative z-10 drop-shadow-lg">4</span>
+                                    </button>
+                                    {/* Button 5 - Rose Gradient */}
+                                    <button onClick={() => handlePinInput('5')} disabled={isLoading} className="group relative h-24 bg-gradient-to-br from-rose-400 via-rose-500 to-rose-600 border-2 border-rose-300 rounded-3xl text-3xl font-black text-white hover:from-rose-500 hover:via-rose-600 hover:to-rose-700 hover:scale-110 hover:shadow-2xl hover:shadow-rose-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-rose-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                        <span className="relative z-10 drop-shadow-lg">5</span>
+                                    </button>
+                                    {/* Button 6 - Fuchsia Gradient */}
+                                    <button onClick={() => handlePinInput('6')} disabled={isLoading} className="group relative h-24 bg-gradient-to-br from-fuchsia-400 via-fuchsia-500 to-fuchsia-600 border-2 border-fuchsia-300 rounded-3xl text-3xl font-black text-white hover:from-fuchsia-500 hover:via-fuchsia-600 hover:to-fuchsia-700 hover:scale-110 hover:shadow-2xl hover:shadow-fuchsia-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-fuchsia-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                        <span className="relative z-10 drop-shadow-lg">6</span>
+                                    </button>
+                                    {/* Button 7 - Orange Gradient */}
+                                    <button onClick={() => handlePinInput('7')} disabled={isLoading} className="group relative h-24 bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 border-2 border-orange-300 rounded-3xl text-3xl font-black text-white hover:from-orange-500 hover:via-orange-600 hover:to-orange-700 hover:scale-110 hover:shadow-2xl hover:shadow-orange-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-orange-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                        <span className="relative z-10 drop-shadow-lg">7</span>
+                                    </button>
+                                    {/* Button 8 - Amber Gradient */}
+                                    <button onClick={() => handlePinInput('8')} disabled={isLoading} className="group relative h-24 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 border-2 border-amber-300 rounded-3xl text-3xl font-black text-white hover:from-amber-500 hover:via-amber-600 hover:to-amber-700 hover:scale-110 hover:shadow-2xl hover:shadow-amber-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-amber-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                        <span className="relative z-10 drop-shadow-lg">8</span>
+                                    </button>
+                                    {/* Button 9 - Yellow Gradient */}
+                                    <button onClick={() => handlePinInput('9')} disabled={isLoading} className="group relative h-24 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-2 border-yellow-300 rounded-3xl text-3xl font-black text-white hover:from-yellow-500 hover:via-yellow-600 hover:to-yellow-700 hover:scale-110 hover:shadow-2xl hover:shadow-yellow-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-yellow-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                        <span className="relative z-10 drop-shadow-lg">9</span>
+                                    </button>
                                     {/* Clear Button - Premium Red */}
                                     <button
                                         onClick={handlePinClear}
                                         disabled={isLoading}
-                                        className="group relative h-24 bg-gradient-to-br from-red-50 via-pink-50 to-rose-50 border-2 border-red-200 rounded-3xl text-2xl font-bold text-red-600 hover:from-red-500 hover:via-pink-600 hover:to-rose-600 hover:text-white hover:border-red-400 hover:scale-110 hover:shadow-2xl hover:shadow-red-500/50 active:scale-95 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
+                                        className="group relative h-24 bg-gradient-to-br from-red-500 via-red-600 to-red-700 border-2 border-red-400 rounded-3xl text-2xl font-bold text-white hover:from-red-600 hover:via-red-700 hover:to-red-800 hover:scale-110 hover:shadow-2xl hover:shadow-red-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-red-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
                                     >
-                                        <div className="absolute inset-0 bg-gradient-to-br from-red-400/0 to-pink-400/0 group-hover:from-red-400/20 group-hover:to-pink-400/20 rounded-3xl transition-all duration-300"></div>
-                                        <span className="relative z-10">⌫</span>
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                        <span className="relative z-10 drop-shadow-lg">⌫</span>
                                     </button>
-                                    {/* 0 Button - Premium Design */}
-                                    <button
-                                        onClick={() => handlePinInput('0')}
-                                        disabled={isLoading}
-                                        className="group relative h-24 bg-gradient-to-br from-white via-gray-50 to-blue-50 border-2 border-gray-200 rounded-3xl text-3xl font-black text-gray-700 hover:from-blue-500 hover:via-indigo-600 hover:to-purple-600 hover:text-white hover:border-indigo-400 hover:scale-110 hover:shadow-2xl hover:shadow-indigo-500/50 active:scale-95 transition-all duration-300 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 overflow-hidden"
-                                    >
-                                        <div className="absolute inset-0 bg-gradient-to-br from-blue-400/0 via-indigo-400/0 to-purple-400/0 group-hover:from-blue-400/20 group-hover:via-indigo-400/20 group-hover:to-purple-400/20 rounded-3xl transition-all duration-300"></div>
-                                        <span className="relative z-10 drop-shadow-sm">0</span>
+                                    {/* 0 Button - Cyan Gradient */}
+                                    <button onClick={() => handlePinInput('0')} disabled={isLoading} className="group relative h-24 bg-gradient-to-br from-cyan-400 via-cyan-500 to-cyan-600 border-2 border-cyan-300 rounded-3xl text-3xl font-black text-white hover:from-cyan-500 hover:via-cyan-600 hover:to-cyan-700 hover:scale-110 hover:shadow-2xl hover:shadow-cyan-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-cyan-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100">
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                                        <span className="relative z-10 drop-shadow-lg">0</span>
                                     </button>
                                     {/* Submit Button - Ultra Premium Green */}
                                     <button
@@ -367,7 +396,7 @@ export default function LoginPage() {
                                         className="group relative h-24 bg-gradient-to-br from-emerald-500 via-green-600 to-teal-600 border-2 border-emerald-400 rounded-3xl text-3xl font-black text-white hover:from-emerald-600 hover:via-green-700 hover:to-teal-700 hover:scale-110 hover:shadow-2xl hover:shadow-emerald-500/60 active:scale-95 transition-all duration-300 shadow-xl shadow-emerald-500/40 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-300 disabled:via-gray-400 disabled:to-gray-400 disabled:border-gray-300 disabled:shadow-none disabled:hover:scale-100 overflow-hidden animate-pulse"
                                     >
                                         {/* Shimmer effect */}
-                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
+                                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000"></div>
                                         <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/0 to-teal-400/0 group-hover:from-emerald-400/30 group-hover:to-teal-400/30 rounded-3xl transition-all duration-300"></div>
                                         {isLoading ? (
                                             <div className="relative z-10 w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>
