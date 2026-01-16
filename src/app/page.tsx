@@ -110,7 +110,7 @@ export default function LoginPage() {
                 .eq('pin', pin)
                 .eq('active', true)
                 .eq('user_type', 'Waiter')
-                .single();
+                .maybeSingle(); // Use maybeSingle to handle duplicate PINs gracefully
 
             console.log('🔍 Query result:', { data, dbError });
 
