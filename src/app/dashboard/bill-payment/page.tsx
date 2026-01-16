@@ -216,9 +216,9 @@ function BillPaymentContent() {
     // Select C2B payment (handles Energy App schema)
     const selectC2BPayment = (payment: C2BPayment) => {
         setSelectedC2B(payment);
-        // Use Energy App column names
-        const receipt = payment.trans_id || payment.id;
-        const amount = payment.trans_amount || 0;
+        // Use Energy App column names (mpesa_receipt, amount)
+        const receipt = payment.mpesa_receipt || payment.trans_id || payment.id;
+        const amount = payment.amount || payment.trans_amount || 0;
         setMpesaReceipt(String(receipt));
         setPaymentAmount(String(amount));
         setPaymentMethod('M-Pesa');
@@ -882,15 +882,15 @@ function BillPaymentContent() {
                                                     >
                                                         <div>
                                                             <p className="font-bold text-gray-800">
-                                                                {payment.trans_id || payment.id}
+                                                                {payment.mpesa_receipt || payment.trans_id || payment.id}
                                                             </p>
                                                             <p className="text-gray-500 text-xs">
-                                                                {payment.msisdn || payment.phone || 'N/A'} • {payment.first_name || payment.customer_name || 'Customer'}
+                                                                {payment.phone || payment.msisdn || 'N/A'} • {payment.customer_name || payment.first_name || 'Customer'}
                                                             </p>
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="font-bold text-green-600">
-                                                                Ksh {(payment.trans_amount || payment.amount || 0).toLocaleString()}
+                                                                Ksh {(payment.amount || payment.trans_amount || 0).toLocaleString()}
                                                             </p>
                                                             {selectedC2B?.id === payment.id && (
                                                                 <p className="text-green-600 text-xs font-bold">✓ Selected</p>
