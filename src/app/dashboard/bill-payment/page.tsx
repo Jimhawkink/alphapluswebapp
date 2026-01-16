@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
+import { supabase, c2bSupabase } from '@/lib/supabase'; // Import both clients
 import toast from 'react-hot-toast';
 
 // Type definitions
@@ -187,7 +187,7 @@ function BillPaymentContent() {
     const loadC2BPayments = async () => {
         setLoadingC2B(true);
         try {
-            const { data, error } = await supabase
+            const { data, error } = await c2bSupabase // Use Energy App Supabase for C2B
                 .from('c2b_transactions')
                 .select('*')
                 .eq('is_linked', false)

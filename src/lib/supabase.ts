@@ -1,14 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Supabase Configuration
-// Using Energy App Supabase (pxcdaivlvltmdifxietb) which has working C2B callbacks
-// Uses environment variables with fallback to hardcoded values
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://pxcdaivlvltmdifxietb.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'c2d99368d625b02cb5fbd6d28bc902d9ad80af8ce83d';
+// Main Hotel App Supabase (AlphaPlusWeb) - for all hotel data
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://enlqpifpxuecxxozyiak.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVubHFwaWZweHVlY3h4b3p5aWFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjUzNjgsImV4cCI6MjA4MTYwMTM2OH0.-z3-2Mf3SkkZR3ZryOGyG-60jWERX9YLKIee048OziE';
 
-
-// Create Supabase client
+// Create main Supabase client for hotel data
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// SEPARATE C2B Supabase client (Energy App) - ONLY for C2B transactions
+const c2bSupabaseUrl = 'https://pxcdaivlvltmdifxietb.supabase.co';
+const c2bSupabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Y2RhaXZsdmx0bWRpZnhpZXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzQxNzQ5OTksImV4cCI6MjA0OTc1MDk5OX0.c2d99368d625b02cb5fbd6d28bc902d9ad80af8ce83d';
+
+// Create separate client ONLY for C2B queries
+export const c2bSupabase = createClient(c2bSupabaseUrl, c2bSupabaseAnonKey);
 
 // ============================================
 // DATABASE FUNCTIONS
