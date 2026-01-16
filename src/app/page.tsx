@@ -13,6 +13,7 @@ export default function LoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
+    const [showPin, setShowPin] = useState(false);
     const [currentTime, setCurrentTime] = useState('');
     const [currentDate, setCurrentDate] = useState('');
     const [licensedTo, setLicensedTo] = useState('');
@@ -104,21 +105,31 @@ export default function LoginPage() {
         try {
             console.log('🔍 Waiter login attempt:', { pin, pinLength: pin.length });
 
+            // First, check all waiters to debug
+            const { data: allWaiters } = await supabase
+                .from('users')
+                .select('user_id, user_name, name, pin, user_type, active')
+                .eq('user_type', 'Waiter')
+                .eq('active', true);
+
+            console.log('🔍 All active waiters in DB:', allWaiters);
+
             const { data, error: dbError } = await supabase
                 .from('users')
                 .select('*')
                 .eq('pin', pin)
                 .eq('active', true)
                 .eq('user_type', 'Waiter')
-                .maybeSingle(); // Use maybeSingle to handle duplicate PINs gracefully
+                .maybeSingle();
 
             console.log('🔍 Query result:', { data, dbError });
 
             if (dbError || !data) {
                 console.error('❌ Login failed:', dbError?.message || 'No user found');
-                setError(`Invalid PIN or waiter not found. Error: ${dbError?.message || 'No match'}`);
+                setError(`Invalid PIN. Error: ${dbError?.message || 'No waiter with this PIN'}`);
                 setIsLoading(false);
-                setPin(''); // Clear PIN
+                setPin('');
+                setShowPin(false);
                 return;
             }
 
@@ -143,16 +154,22 @@ export default function LoginPage() {
     const handlePinInput = (digit: string) => {
         if (pin.length < 6) {
             setPin(pin + digit);
+            setError(''); // Clear error on input
         }
     };
 
     const handlePinClear = () => {
         setPin('');
         setError('');
+        setShowPin(false);
     };
 
     const handlePinDelete = () => {
         setPin(pin.slice(0, -1));
+    };
+
+    const togglePinVisibility = () => {
+        setShowPin(!showPin);
     };
 
     return (
@@ -308,9 +325,19 @@ export default function LoginPage() {
                             <div className="space-y-6">
                                 {/* PIN Display */}
                                 <div className="text-center space-y-4">
-                                    <label className="text-sm font-bold text-gray-700 flex items-center justify-center gap-2">
-                                        <span className="text-xl">🔢</span> Enter 6-Digit PIN
-                                    </label>
+                                    <div className="flex items-center justify-center gap-3">
+                                        <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                                            <span className="text-xl">🔢</span> Enter 6-Digit PIN
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={togglePinVisibility}
+                                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                                            title={showPin ? 'Hide PIN' : 'Show PIN'}
+                                        >
+                                            <span className="text-xl">{showPin ? '👁️' : '👁️‍🗨️'}</span>
+                                        </button>
+                                    </div>
                                     <div className="flex items-center justify-center gap-3">
                                         {[0, 1, 2, 3, 4, 5].map((i) => (
                                             <div
@@ -320,7 +347,7 @@ export default function LoginPage() {
                                                     : 'bg-gray-100 border-2 border-gray-200 text-gray-300'
                                                     }`}
                                             >
-                                                {pin[i] ? '●' : '○'}
+                                                {pin[i] ? (showPin ? pin[i] : '●') : '○'}
                                             </div>
                                         ))}
                                     </div>
