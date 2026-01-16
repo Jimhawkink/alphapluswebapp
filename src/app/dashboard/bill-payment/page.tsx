@@ -75,14 +75,12 @@ function BillPaymentContent() {
     const [mpesaStatusColor, setMpesaStatusColor] = useState('bg-green-500');
     const [mpesaReceipt, setMpesaReceipt] = useState('');
 
-    // C2B Payments State (using Energy App column names)
+    // C2B Payments State (flexible schema from Energy App)
     interface C2BPayment {
         id: number;
-        mpesa_receipt: string;
-        phone: string;
-        amount: number;
-        customer_name: string;
         is_linked: boolean;
+        created_at?: string;
+        [key: string]: any; // Allow any additional fields from Energy App
     }
     const [c2bPayments, setC2bPayments] = useState<C2BPayment[]>([]);
     const [selectedC2B, setSelectedC2B] = useState<C2BPayment | null>(null);
@@ -191,7 +189,7 @@ function BillPaymentContent() {
         try {
             const { data, error } = await supabase
                 .from('c2b_transactions')
-                .select('id, mpesa_receipt, phone, amount, customer_name, is_linked, created_at')
+                .select('*')
                 .eq('is_linked', false)
                 .order('created_at', { ascending: false })
                 .limit(20);
@@ -201,6 +199,8 @@ function BillPaymentContent() {
                 toast.error(`Failed to load C2B payments: ${error.message}`);
                 setC2bPayments([]);
             } else {
+                console.log('✅ C2B Data loaded:', data);
+                console.log('📋 First record columns:', data?.[0] ? Object.keys(data[0]) : 'No data');
                 setC2bPayments(data || []);
                 toast.success(`Loaded ${data?.length || 0} unlinked C2B payments`);
             }
@@ -213,11 +213,14 @@ function BillPaymentContent() {
         }
     };
 
-    // Select C2B payment
+    // Select C2B payment (handles any column schema)
     const selectC2BPayment = (payment: C2BPayment) => {
         setSelectedC2B(payment);
-        setMpesaReceipt(payment.mpesa_receipt);
-        setPaymentAmount(payment.amount.toString());
+        // Try different possible column names for receipt
+        const receipt = payment.mpesa_receipt || payment.trans_id || payment.transaction_id || payment.receipt || '';
+        const amount = payment.amount || payment.trans_amount || payment.transaction_amount || 0;
+        setMpesaReceipt(String(receipt));
+        setPaymentAmount(String(amount));
         setPaymentMethod('M-Pesa');
     };
 
@@ -878,11 +881,17 @@ function BillPaymentContent() {
                                                             }`}
                                                     >
                                                         <div>
-                                                            <p className="font-bold text-gray-800">{payment.mpesa_receipt}</p>
-                                                            <p className="text-gray-500 text-xs">{payment.phone} • {payment.customer_name}</p>
+                                                            <p className="font-bold text-gray-800">
+                                                                {payment.mpesa_receipt || payment.trans_id || payment.transaction_id || payment.id}
+                                                            </p>
+                                                            <p className="text-gray-500 text-xs">
+                                                                {payment.phone || payment.msisdn || 'N/A'} • {payment.customer_name || payment.first_name || 'Customer'}
+                                                            </p>
                                                         </div>
                                                         <div className="text-right">
-                                                            <p className="font-bold text-green-600">Ksh {payment.amount.toLocaleString()}</p>
+                                                            <p className="font-bold text-green-600">
+                                                                Ksh {(payment.amount || payment.trans_amount || 0).toLocaleString()}
+                                                            </p>
                                                             {selectedC2B?.id === payment.id && (
                                                                 <p className="text-green-600 text-xs font-bold">✓ Selected</p>
                                                             )}
