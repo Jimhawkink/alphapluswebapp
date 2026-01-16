@@ -213,12 +213,12 @@ function BillPaymentContent() {
         }
     };
 
-    // Select C2B payment (handles any column schema)
+    // Select C2B payment (handles Energy App schema)
     const selectC2BPayment = (payment: C2BPayment) => {
         setSelectedC2B(payment);
-        // Try different possible column names for receipt
-        const receipt = payment.mpesa_receipt || payment.trans_id || payment.transaction_id || payment.receipt || '';
-        const amount = payment.amount || payment.trans_amount || payment.transaction_amount || 0;
+        // Use Energy App column names
+        const receipt = payment.trans_id || payment.id;
+        const amount = payment.trans_amount || 0;
         setMpesaReceipt(String(receipt));
         setPaymentAmount(String(amount));
         setPaymentMethod('M-Pesa');
@@ -870,7 +870,7 @@ function BillPaymentContent() {
                                                 </button>
                                             </div>
                                         ) : (
-                                            <div className="max-h-48 overflow-y-auto space-y-2">
+                                            <div className="max-h-96 overflow-y-auto space-y-2">{/* Increased from max-h-48 to max-h-96 */}
                                                 {c2bPayments.map(payment => (
                                                     <div
                                                         key={payment.id}
@@ -882,15 +882,15 @@ function BillPaymentContent() {
                                                     >
                                                         <div>
                                                             <p className="font-bold text-gray-800">
-                                                                {payment.mpesa_receipt || payment.trans_id || payment.transaction_id || payment.id}
+                                                                {payment.trans_id || payment.id}
                                                             </p>
                                                             <p className="text-gray-500 text-xs">
-                                                                {payment.phone || payment.msisdn || 'N/A'} • {payment.customer_name || payment.first_name || 'Customer'}
+                                                                {payment.msisdn || payment.phone || 'N/A'} • {payment.first_name || payment.customer_name || 'Customer'}
                                                             </p>
                                                         </div>
                                                         <div className="text-right">
                                                             <p className="font-bold text-green-600">
-                                                                Ksh {(payment.amount || payment.trans_amount || 0).toLocaleString()}
+                                                                Ksh {(payment.trans_amount || payment.amount || 0).toLocaleString()}
                                                             </p>
                                                             {selectedC2B?.id === payment.id && (
                                                                 <p className="text-green-600 text-xs font-bold">✓ Selected</p>
