@@ -394,11 +394,8 @@ function BillPaymentContent() {
                     const { error: linkError } = await c2bSupabase
                         .from('c2b_transactions')
                         .update({
-                            is_linked: true,
-                            linked_sale_id: selectedBill.sale_id,
-                            linked_receipt_no: selectedBill.receipt_no,
-                            linked_by: currentUser?.name || 'Unknown',
-                            linked_at: new Date().toISOString()
+                            is_linked: true
+                            // Energy App table only has is_linked column
                         })
                         .eq('id', selectedC2B.id);
 
