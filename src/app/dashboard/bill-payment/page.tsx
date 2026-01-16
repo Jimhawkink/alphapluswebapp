@@ -182,6 +182,7 @@ function BillPaymentContent() {
 
     useEffect(() => {
         loadBills();
+        loadC2BPayments(); // Auto-load C2B payments on mount
     }, [loadBills]);
 
     // Load unlinked C2B payments
@@ -190,20 +191,22 @@ function BillPaymentContent() {
         try {
             const { data, error } = await supabase
                 .from('c2b_transactions')
-                .select('*')
+                .select('id, mpesa_receipt, phone, amount, customer_name, is_linked, created_at')
                 .eq('is_linked', false)
                 .order('created_at', { ascending: false })
                 .limit(20);
 
             if (error) {
                 console.error('C2B query error:', error);
-                toast.error('Failed to load C2B payments. Please check if table exists.');
+                toast.error(`Failed to load C2B payments: ${error.message}`);
                 setC2bPayments([]);
             } else {
                 setC2bPayments(data || []);
+                toast.success(`Loaded ${data?.length || 0} unlinked C2B payments`);
             }
         } catch (err: any) {
             console.error('Error loading C2B payments:', err);
+            toast.error(`Error: ${err.message || 'Unknown error'}`);
             setC2bPayments([]);
         } finally {
             setLoadingC2B(false);
