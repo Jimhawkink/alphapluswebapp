@@ -4,6 +4,19 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
+// Session timeout (30 minutes in ms)
+const SESSION_TIMEOUT = 30 * 60 * 1000;
+
+// License status interface
+interface LicenseStatus {
+    valid: boolean;
+    type?: string;
+    client?: string;
+    daysRemaining?: number;
+    expired?: boolean;
+    error?: string;
+}
+
 export default function LoginPage() {
     const router = useRouter();
     const [loginMode, setLoginMode] = useState<'admin' | 'waiter'>('admin');
@@ -17,6 +30,108 @@ export default function LoginPage() {
     const [currentTime, setCurrentTime] = useState('');
     const [currentDate, setCurrentDate] = useState('');
     const [licensedTo, setLicensedTo] = useState('');
+    // License state
+    const [licenseStatus, setLicenseStatus] = useState<LicenseStatus>({ valid: true });
+    const [checkingLicense, setCheckingLicense] = useState(true);
+
+    // Generate a simple machine ID for license binding
+    const getMachineId = (): string => {
+        let machineId = localStorage.getItem('machine_id');
+        if (!machineId) {
+            machineId = 'WEB-' + Math.random().toString(36).substring(2, 15) +
+                '-' + Date.now().toString(36);
+            localStorage.setItem('machine_id', machineId);
+        }
+        return machineId;
+    };
+
+    // Check license status
+    const checkLicense = async () => {
+        setCheckingLicense(true);
+        try {
+            const machineId = getMachineId();
+            const { data, error } = await supabase
+                .from('licenses')
+                .select('*')
+                .eq('machine_id', machineId)
+                .eq('is_active', true)
+                .single();
+
+            if (error || !data) {
+                // No license bound to this machine - check if there's any active license
+                const { data: anyLicense } = await supabase
+                    .from('licenses')
+                    .select('*')
+                    .is('machine_id', null)
+                    .eq('is_active', true)
+                    .limit(1);
+
+                if (anyLicense && anyLicense.length > 0) {
+                    // There's an unbound license available
+                    setLicenseStatus({ valid: false, error: 'License not activated. Please enter your license key.' });
+                } else {
+                    setLicenseStatus({ valid: false, error: 'No valid license found.' });
+                }
+            } else {
+                const now = new Date();
+                const expiryDate = new Date(data.expiry_date);
+                const daysRemaining = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+                if (now > expiryDate) {
+                    setLicenseStatus({ valid: false, expired: true, error: 'License has expired.' });
+                } else {
+                    setLicenseStatus({
+                        valid: true,
+                        type: data.license_type,
+                        client: data.client_name,
+                        daysRemaining: daysRemaining
+                    });
+                }
+            }
+        } catch (err) {
+            console.log('License check failed, allowing access');
+            setLicenseStatus({ valid: true }); // Allow access if check fails
+        } finally {
+            setCheckingLicense(false);
+        }
+    };
+
+    // Session timeout management
+    const setupSessionTimeout = () => {
+        let timeoutId: NodeJS.Timeout;
+
+        const resetTimeout = () => {
+            clearTimeout(timeoutId);
+            const user = localStorage.getItem('user');
+            if (user) {
+                localStorage.setItem('last_activity', Date.now().toString());
+                timeoutId = setTimeout(() => {
+                    localStorage.removeItem('user');
+                    localStorage.removeItem('last_activity');
+                    window.location.href = '/';
+                }, SESSION_TIMEOUT);
+            }
+        };
+
+        // Check for session expiry on page load
+        const lastActivity = localStorage.getItem('last_activity');
+        if (lastActivity) {
+            const elapsed = Date.now() - parseInt(lastActivity);
+            if (elapsed > SESSION_TIMEOUT) {
+                localStorage.removeItem('user');
+                localStorage.removeItem('last_activity');
+            }
+        }
+
+        // Listen for user activity
+        const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
+        events.forEach(event => window.addEventListener(event, resetTimeout));
+
+        return () => {
+            clearTimeout(timeoutId);
+            events.forEach(event => window.removeEventListener(event, resetTimeout));
+        };
+    };
 
     useEffect(() => {
         const updateDateTime = () => {
@@ -44,8 +159,97 @@ export default function LoginPage() {
         };
         loadCompanyName();
 
-        return () => clearInterval(interval);
+        // Check license status
+        checkLicense();
+
+        // Setup session timeout
+        const cleanupSession = setupSessionTimeout();
+
+        return () => {
+            clearInterval(interval);
+            cleanupSession();
+        };
     }, []);
+
+    // License key input state
+    const [licenseKey, setLicenseKey] = useState('');
+    const [activatingLicense, setActivatingLicense] = useState(false);
+
+    // Activate license with a key
+    const activateLicense = async () => {
+        if (!licenseKey.trim()) {
+            setError('Please enter a license key');
+            return;
+        }
+
+        setActivatingLicense(true);
+        setError('');
+
+        try {
+            const machineId = getMachineId();
+
+            // Find the license by key
+            const { data: license, error: findError } = await supabase
+                .from('licenses')
+                .select('*')
+                .eq('license_key', licenseKey.trim().toUpperCase())
+                .single();
+
+            if (findError || !license) {
+                setError('Invalid license key. Please check and try again.');
+                setActivatingLicense(false);
+                return;
+            }
+
+            // Check if already bound
+            if (license.machine_id && license.machine_id !== machineId) {
+                setError('This license is already activated on another device.');
+                setActivatingLicense(false);
+                return;
+            }
+
+            // Check expiry
+            const now = new Date();
+            const expiryDate = new Date(license.expiry_date);
+            if (now > expiryDate) {
+                setError('This license has expired.');
+                setActivatingLicense(false);
+                return;
+            }
+
+            // Bind license to this machine
+            const { error: updateError } = await supabase
+                .from('licenses')
+                .update({
+                    machine_id: machineId,
+                    activation_date: new Date().toISOString()
+                })
+                .eq('license_id', license.license_id);
+
+            if (updateError) {
+                setError('Failed to activate license. Please try again.');
+                setActivatingLicense(false);
+                return;
+            }
+
+            // Log activation
+            await supabase.from('license_activations').insert({
+                license_id: license.license_id,
+                machine_id: machineId,
+                activation_type: 'activate',
+                success: true
+            });
+
+            // Re-check license
+            await checkLicense();
+            setLicenseKey('');
+        } catch (err) {
+            console.error('License activation error:', err);
+            setError('Activation failed. Please try again.');
+        } finally {
+            setActivatingLicense(false);
+        }
+    };
 
     const handleAdminLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -191,6 +395,52 @@ export default function LoginPage() {
             <div className="relative z-10 w-full max-w-md">
                 {/* Glass Card */}
                 <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-indigo-500/10 border border-white/50 overflow-hidden">
+
+                    {/* License Status Banner */}
+                    {!checkingLicense && (
+                        <div className={`px-4 py-2 text-center text-sm ${licenseStatus.valid
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-red-100 text-red-700'
+                            }`}>
+                            {licenseStatus.valid ? (
+                                <span>✅ Licensed: {licenseStatus.client || 'Active'}
+                                    {licenseStatus.daysRemaining !== undefined && (
+                                        <span className="ml-2">
+                                            ({licenseStatus.daysRemaining} days remaining)
+                                        </span>
+                                    )}
+                                </span>
+                            ) : (
+                                <span>⚠️ {licenseStatus.error || 'License Required'}</span>
+                            )}
+                        </div>
+                    )}
+
+                    {/* License Activation Form - Only show when license is invalid */}
+                    {!checkingLicense && !licenseStatus.valid && (
+                        <div className="px-6 pt-4 pb-4 bg-amber-50 border-b border-amber-200">
+                            <p className="text-sm text-amber-800 mb-3 font-medium">
+                                🔑 Enter your license key to activate this system:
+                            </p>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={licenseKey}
+                                    onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
+                                    placeholder="APS-XXXX-XXXX-XXXX-XXXX"
+                                    className="flex-1 px-4 py-3 rounded-xl border border-amber-300 bg-white text-gray-800 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                />
+                                <button
+                                    onClick={activateLicense}
+                                    disabled={activatingLicense}
+                                    className="px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 transition-all"
+                                >
+                                    {activatingLicense ? '...' : '✓'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* Mode Toggle */}
                     <div className="px-6 pt-6">
                         <div className="flex gap-2 p-1.5 bg-gradient-to-r from-gray-100 to-gray-50 rounded-2xl border border-gray-200">
