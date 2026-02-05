@@ -881,14 +881,78 @@ export function createReceiptData(
     discount?: number;
     tax?: number;
     isPaid?: boolean;
+    // Kenya Tax Fields
+    taxMode?: 'inclusive' | 'exclusive';
+    vatRate?: number;
+    levyRate?: number;
+    hotelName?: string;
   }
 ): ReceiptData {
   const now = new Date();
   const subtotal = items.reduce((sum, item) => sum + (item.price * item.qty), 0);
   const itemDiscounts = items.reduce((sum, item) => sum + (item.discount || 0), 0);
   const totalDiscount = itemDiscounts + (options?.discount || 0);
-  const total = subtotal - totalDiscount + (options?.tax || 0);
+
+  // Calculate Kenya Tax (VAT 16% + Levy 2%)
+  const taxMode = options?.taxMode || 'inclusive';
+  const vatRate = options?.vatRate || 16;
+  const levyRate = options?.levyRate || 2;
+  const totalTaxRate = (vatRate + levyRate) / 100; // 0.18
+
+  const amountAfterDiscount = subtotal - totalDiscount;
+  let netAmount: number;
+  let vatAmount: number;
+  let levyAmount: number;
+  let totalTax: number;
+
+  if (taxMode === 'inclusive') {
+    // Tax already included in price
+    netAmount = amountAfterDiscount / (1 + totalTaxRate);
+    vatAmount = netAmount * (vatRate / 100);
+    levyAmount = netAmount * (levyRate / 100);
+    totalTax = vatAmount + levyAmount;
+  } else {
+    // Tax added on top
+    netAmount = amountAfterDiscount;
+    vatAmount = netAmount * (vatRate / 100);
+    levyAmount = netAmount * (levyRate / 100);
+    totalTax = vatAmount + levyAmount;
+  }
+
+  const total = taxMode === 'inclusive' ? amountAfterDiscount : (amountAfterDiscount + totalTax);
   const change = paymentMethod === 'cash' ? Math.max(0, amountPaid - total) : 0;
+
+  // Generate QR Code Data for receipt validation
+  let qrCodeData: string | undefined;
+  let verificationHash: string | undefined;
+
+  if (options?.isPaid !== false) {
+    try {
+      // Create QR code data URL
+      const baseUrl = typeof window !== 'undefined'
+        ? `${window.location.protocol}//${window.location.host}`
+        : process.env.NEXT_PUBLIC_SITE_URL || 'https://alphapluswebapp.vercel.app';
+
+      // Simple verification data
+      const qrPayload = {
+        receipt: invoiceNo,
+        amount: total.toFixed(2),
+        date: now.toISOString().split('T')[0],
+        hotel: options?.hotelName || 'Alpha Plus Hotel',
+        time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+      };
+
+      const qrString = JSON.stringify(qrPayload);
+      const params = new URLSearchParams({
+        data: Buffer.from(qrString).toString('base64')
+      });
+
+      qrCodeData = `${baseUrl}/hotel-verify-receipt?${params.toString()}`;
+      verificationHash = invoiceNo + '_' + total.toFixed(2); // Simple hash for now
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+    }
+  }
 
   return {
     invoiceNo,
@@ -905,7 +969,7 @@ export function createReceiptData(
     })),
     subtotal,
     discount: totalDiscount,
-    tax: options?.tax || 0,
+    tax: options?.tax || totalTax, // Backward compatibility
     total,
     paymentMethod,
     amountPaid,
@@ -915,7 +979,17 @@ export function createReceiptData(
     tableNo: options?.tableNo,
     orderNotes: options?.orderNotes,
     shiftCode: options?.shiftCode,
-    isPaid: options?.isPaid ?? true
+    isPaid: options?.isPaid ?? true,
+    // Kenya Tax Fields
+    taxMode,
+    netAmount: Math.round(netAmount * 100) / 100,
+    vatRate,
+    vatAmount: Math.round(vatAmount * 100) / 100,
+    levyRate,
+    levyAmount: Math.round(levyAmount * 100) / 100,
+    totalTax: Math.round(totalTax * 100) / 100,
+    qrCodeData,
+    verificationHash
   };
 }
 

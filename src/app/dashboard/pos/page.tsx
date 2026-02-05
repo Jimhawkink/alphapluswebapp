@@ -1226,7 +1226,17 @@ export default function POSPage() {
     // Calculate totals
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
     const totalDiscount = cart.reduce((sum, item) => sum + item.discount, 0);
-    const total = subtotal - totalDiscount;
+
+    // Kenya Tax Calculation (VAT 16% + Levy 2%)
+    // Tax is INCLUSIVE in prices (default for hotels in Kenya)
+    const amountAfterDiscount = subtotal - totalDiscount;
+    const taxRate = 0.18; // 16% VAT + 2% Levy
+    const netAmount = amountAfterDiscount / (1 + taxRate); // Extract net from inclusive price
+    const vatAmount = netAmount * 0.16;
+    const levyAmount = netAmount * 0.02;
+    const totalTax = vatAmount + levyAmount;
+
+    const total = amountAfterDiscount; // Customer pays the inclusive amount
 
     // Create receipt data for unpaid bill
     const createUnpaidBillData = () => {
@@ -1246,7 +1256,12 @@ export default function POSPage() {
                 tableNo: tableNo || undefined,
                 orderNotes: orderNotes || undefined,
                 shiftCode: shift?.code || 'NO-SHIFT',
-                isPaid: false
+                isPaid: false,
+                // Kenya Tax Fields
+                taxMode: 'inclusive',
+                vatRate: 16,
+                levyRate: 2,
+                hotelName: 'Alpha Plus Hotel' // Will be loaded from DB in receipt printer
             }
         );
     };
@@ -1557,6 +1572,9 @@ export default function POSPage() {
             return;
         }
 
+        // Load company info from database for receipt
+        const companyInfo = await loadCompanyInfo();
+
         // Create receipt data
         const receiptData = createReceiptData(
             invoiceNo,
@@ -1576,12 +1594,14 @@ export default function POSPage() {
                 tableNo: tableNo || undefined,
                 orderNotes: orderNotes || undefined,
                 shiftCode: shift?.code || 'NO-SHIFT',
-                isPaid: true
+                isPaid: true,
+                // Kenya Tax Fields
+                taxMode: 'inclusive',
+                vatRate: 16,
+                levyRate: 2,
+                hotelName: companyInfo?.name || 'Alpha Plus Hotel'
             }
         );
-
-        // Load company info from database for receipt
-        const companyInfo = await loadCompanyInfo();
 
         const html = generateCustomerBillHTML(receiptData, companyInfo, true);
         setReceiptHTML(html);
@@ -1926,6 +1946,30 @@ export default function POSPage() {
                                     <span className="font-medium">- Ksh {totalDiscount.toLocaleString()}</span>
                                 </div>
                             )}
+
+                            {/* Tax Breakdown */}
+                            {totalTax > 0 && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 space-y-1">
+                                    <div className="text-xs font-bold text-blue-700 mb-1">📊 Tax Breakdown (Inclusive)</div>
+                                    <div className="flex justify-between text-xs text-gray-600">
+                                        <span>Net Amount:</span>
+                                        <span>Ksh {Math.round(netAmount).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs text-blue-600">
+                                        <span>VAT 16%:</span>
+                                        <span>Ksh {Math.round(vatAmount).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs text-blue-600">
+                                        <span>Tourism Levy 2%:</span>
+                                        <span>Ksh {Math.round(levyAmount).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between text-xs font-bold text-blue-700 border-t border-blue-300 pt-1">
+                                        <span>Total Tax:</span>
+                                        <span>Ksh {Math.round(totalTax).toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            )}
+
                             <div className="flex justify-between text-xl font-bold text-gray-800 pt-2 border-t border-gray-200">
                                 <span>Total</span>
                                 <span className="text-blue-600">Ksh {total.toLocaleString()}</span>
