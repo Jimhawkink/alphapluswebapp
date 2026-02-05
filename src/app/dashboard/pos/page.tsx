@@ -135,15 +135,8 @@ const ProductCard = ({ product, onAdd }: { product: Product; onAdd: () => void }
     </button>
 );
 
-// Cart Item Row Component - Light Theme
-const CartItemRow = ({
-    item,
-    onIncrease,
-    onDecrease,
-    onRemove,
-    onEditNotes,
-    onEditDiscount
-}: {
+// Cart Item Row - Light Theme
+const CartItemRow = ({ item, onIncrease, onDecrease, onRemove, onEditNotes, onEditDiscount }: {
     item: CartItem;
     onIncrease: () => void;
     onDecrease: () => void;
@@ -153,27 +146,37 @@ const CartItemRow = ({
 }) => {
     const itemTotal = (item.price * item.qty) - item.discount;
 
+    // Calculate per-item tax (18% inclusive = VAT 16% + Levy 2%)
+    const taxRate = 0.18;
+    const netAmount = itemTotal / (1 + taxRate);
+    const taxAmount = itemTotal - netAmount;
+    const vatAmount = netAmount * 0.16;
+    const levyAmount = netAmount * 0.02;
+
     return (
-        <div className="bg-white rounded-xl p-3 space-y-2 border border-gray-100 shadow-sm">
-            <div className="flex items-center gap-3">
-                <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 text-sm truncate">{item.name}</p>
-                    <p className="text-xs text-gray-500">@ Ksh {item.price}</p>
+        <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm hover:shadow-md transition-all">
+            <div className="flex items-start gap-3 mb-2">
+                <div className="flex-1">
+                    <h3 className="font-bold text-gray-800 text-sm">{item.name}</h3>
                     {item.notes && (
-                        <p className="text-xs text-orange-600 italic mt-1">📝 {item.notes}</p>
+                        <p className="text-xs text-amber-600 mt-1 italic">📝 {item.notes}</p>
                     )}
+                    {/* Tax Breakdown */}
+                    <div className="mt-1 text-xs text-blue-600">
+                        💰 Tax: Ksh {Math.round(taxAmount)} (VAT: {Math.round(vatAmount)} + Levy: {Math.round(levyAmount)})
+                    </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
                     <button
                         onClick={onDecrease}
-                        className="w-8 h-8 rounded-lg bg-orange-500 hover:bg-orange-600 flex items-center justify-center font-bold text-white transition-colors text-lg shadow-sm"
+                        className="w-7 h-7 rounded-lg bg-orange-500 hover:bg-orange-600 flex items-center justify-center text-white font-bold transition-colors"
                     >
                         −
                     </button>
-                    <span className="w-8 text-center font-bold text-gray-800">{item.qty}</span>
+                    <span className="text-lg font-bold text-gray-700 min-w-[30px] text-center">{item.qty}</span>
                     <button
                         onClick={onIncrease}
-                        className="w-8 h-8 rounded-lg bg-green-500 hover:bg-green-600 flex items-center justify-center font-bold text-white transition-colors text-lg shadow-sm"
+                        className="w-7 h-7 rounded-lg bg-green-500 hover:bg-green-600 flex items-center justify-center text-white font-bold transition-colors"
                     >
                         +
                     </button>

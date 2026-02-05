@@ -940,36 +940,34 @@ export function createReceiptData(
   const total = taxMode === 'inclusive' ? amountAfterDiscount : (amountAfterDiscount + totalTax);
   const change = paymentMethod === 'cash' ? Math.max(0, amountPaid - total) : 0;
 
-  // Generate QR Code Data for receipt validation
+  // Generate QR Code Data for receipt validation (ALL receipts, paid or unpaid)
   let qrCodeData: string | undefined;
   let verificationHash: string | undefined;
 
-  if (options?.isPaid !== false) {
-    try {
-      // Create QR code data URL
-      const baseUrl = typeof window !== 'undefined'
-        ? `${window.location.protocol}//${window.location.host}`
-        : process.env.NEXT_PUBLIC_SITE_URL || 'https://alphapluswebapp.vercel.app';
+  try {
+    // Create QR code data URL
+    const baseUrl = typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.host}`
+      : process.env.NEXT_PUBLIC_SITE_URL || 'https://alphapluswebapp.vercel.app';
 
-      // Simple verification data
-      const qrPayload = {
-        receipt: invoiceNo,
-        amount: total.toFixed(2),
-        date: now.toISOString().split('T')[0],
-        hotel: options?.hotelName || 'Alpha Plus Hotel',
-        time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-      };
+    // Simple verification data
+    const qrPayload = {
+      receipt: invoiceNo,
+      amount: total.toFixed(2),
+      date: now.toISOString().split('T')[0],
+      hotel: options?.hotelName || 'Alpha Plus Hotel',
+      time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+    };
 
-      const qrString = JSON.stringify(qrPayload);
-      const params = new URLSearchParams({
-        data: Buffer.from(qrString).toString('base64')
-      });
+    const qrString = JSON.stringify(qrPayload);
+    const params = new URLSearchParams({
+      data: Buffer.from(qrString).toString('base64')
+    });
 
-      qrCodeData = `${baseUrl}/hotel-verify-receipt?${params.toString()}`;
-      verificationHash = invoiceNo + '_' + total.toFixed(2); // Simple hash for now
-    } catch (error) {
-      console.error('Error generating QR code:', error);
-    }
+    qrCodeData = `${baseUrl}/hotel-verify-receipt?${params.toString()}`;
+    verificationHash = invoiceNo + '_' + total.toFixed(2); // Simple hash for now
+  } catch (error) {
+    console.error('Error generating QR code:', error);
   }
 
   return {
