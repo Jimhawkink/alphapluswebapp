@@ -79,6 +79,11 @@ const defaultCompanyInfo: CompanyInfo = {
   slogan: 'Quality Food, Great Service!'
 };
 
+// Reset cached company info (call after saving company settings)
+export function resetCompanyInfoCache(): void {
+  cachedCompanyInfo = null;
+}
+
 // Load company info from database (organisation_settings table)
 export async function loadCompanyInfo(): Promise<CompanyInfo> {
   if (cachedCompanyInfo) return cachedCompanyInfo;

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
+import { resetCompanyInfoCache } from '@/lib/receiptPrinter';
 import toast from 'react-hot-toast';
 
 interface OrganisationSettings {
@@ -133,6 +134,24 @@ export default function CompanyPage() {
             }
 
             console.log(`Saved ${savedCount} settings successfully`);
+
+            // Clear localStorage cache so loadCompanyInfo will fetch fresh data
+            localStorage.removeItem('company_settings');
+
+            // Also update the cache with new values for immediate use
+            localStorage.setItem('company_settings', JSON.stringify({
+                company_name: settings.company_name,
+                address: settings.address,
+                city: settings.city,
+                phone: settings.phone,
+                email: settings.email,
+                kra_pin: settings.kra_pin,
+                slogan: settings.footer_note
+            }));
+
+            // Also reset the memory cache in receiptPrinter
+            resetCompanyInfoCache();
+
             toast.success('Settings saved! ✓');
         } catch (err: unknown) {
             console.error('Save error:', err);
