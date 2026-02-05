@@ -938,6 +938,7 @@ export default function POSPage() {
     const [runningOrders, setRunningOrders] = useState<RunningOrder[]>([]);
     const [unpaidOrders, setUnpaidOrders] = useState<any[]>([]); // NEW: For fetching from database
     const [isLoadingOrders, setIsLoadingOrders] = useState(false); // NEW: Loading state
+    const [runningOrdersSearch, setRunningOrdersSearch] = useState(''); // NEW: Search filter
     const [orderNotes, setOrderNotes] = useState('');
     const [tableNo, setTableNo] = useState('');
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1555,6 +1556,45 @@ export default function POSPage() {
         toast.success('Ready for next order! 🛒');
     };
 
+    // Reopen unpaid order for payment
+    const reopenOrderForPayment = async (order: any) => {
+        try {
+            // Clear current cart
+            setCart([]);
+
+            // Load order items into cart
+            const cartItems: CartItem[] = order.items.map((item: any) => ({
+                id: item.product_id || Math.random(),
+                name: item.product_name,
+                price: item.unit_price,
+                qty: item.quantity,
+                discount: item.discount || 0,
+                notes: item.notes || '',
+                costPerUnit: item.cost_per_unit
+            }));
+
+            setCart(cartItems);
+
+            // Set order details
+            setInvoiceNo(order.invoice_no);
+            if (order.table_no) setTableNo(order.table_no);
+            if (order.customer_name) setOrderNotes(order.customer_name);
+
+            // Close running orders sidebar
+            setShowRunningOrders(false);
+
+            // Open payment modal
+            setTimeout(() => {
+                setShowPayment(true);
+            }, 300);
+
+            toast.success(`Loaded order ${order.invoice_no}`);
+        } catch (error) {
+            console.error('Error reopening order:', error);
+            toast.error('Failed to load order');
+        }
+    };
+
     // Save completed sale to database
     const saveSaleToDatabase = async (paymentMethod: string, amountPaid: number, mpesaReceipt?: string, customerName?: string) => {
         try {
@@ -2140,7 +2180,7 @@ export default function POSPage() {
                             className="absolute right-0 top-0 h-full w-96 bg-white border-l border-gray-200 p-4 overflow-y-auto shadow-2xl"
                             onClick={e => e.stopPropagation()}
                         >
-                            <div className="flex items-center justify-between mb-6">
+                            <div className="flex items-center justify-between mb-4">
                                 <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                                     <span>📋</span> Running Orders
                                     <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs font-bold rounded-full">
@@ -2155,29 +2195,51 @@ export default function POSPage() {
                                 </button>
                             </div>
 
+                            {/* Search Input */}
+                            <div className="mb-4">
+                                <input
+                                    type="text"
+                                    placeholder="🔍 Search by receipt, customer, or table..."
+                                    value={runningOrdersSearch}
+                                    onChange={(e) => setRunningOrdersSearch(e.target.value)}
+                                    className="w-full px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-orange-400 focus:outline-none text-sm"
+                                />
+                            </div>
+
                             {isLoadingOrders ? (
                                 <div className="text-center text-gray-400 py-12">
                                     <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mx-auto mb-3"></div>
                                     <p className="font-medium">Loading orders...</p>
                                 </div>
-                            ) : unpaidOrders.length === 0 ? (
+                            ) : unpaidOrders.filter(order =>
+                                !runningOrdersSearch ||
+                                order.invoice_no?.toLowerCase().includes(runningOrdersSearch.toLowerCase()) ||
+                                order.customer_name?.toLowerCase().includes(runningOrdersSearch.toLowerCase()) ||
+                                order.table_no?.toLowerCase().includes(runningOrdersSearch.toLowerCase())
+                            ).length === 0 ? (
                                 <div className="text-center text-gray-400 py-12">
                                     <span className="text-5xl block mb-3 opacity-50">📭</span>
-                                    <p className="font-medium">No unpaid orders</p>
+                                    <p className="font-medium">
+                                        {runningOrdersSearch ? 'No matching orders' : 'No unpaid orders'}
+                                    </p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {unpaidOrders.map(order => (
-                                        <RunningOrderCard
-                                            key={order.id}
-                                            order={order}
-                                            onReopen={(order) => {
-                                                // TODO: Reopen order for payment
-                                                console.log('Reopen order:', order);
-                                                setShowRunningOrders(false);
-                                            }}
-                                        />
-                                    ))}
+                                    {unpaidOrders
+                                        .filter(order =>
+                                            !runningOrdersSearch ||
+                                            order.invoice_no?.toLowerCase().includes(runningOrdersSearch.toLowerCase()) ||
+                                            order.customer_name?.toLowerCase().includes(runningOrdersSearch.toLowerCase()) ||
+                                            order.table_no?.toLowerCase().includes(runningOrdersSearch.toLowerCase())
+                                        )
+                                        .map(order => (
+                                            <RunningOrderCard
+                                                key={order.id}
+                                                order={order}
+                                                onReopen={reopenOrderForPayment}
+                                            />
+                                        ))
+                                    }
                                 </div>
                             )}
                         </div>

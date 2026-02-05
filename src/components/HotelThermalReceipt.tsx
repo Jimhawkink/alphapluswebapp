@@ -191,9 +191,9 @@ export const HotelThermalReceipt = React.forwardRef<HTMLDivElement, HotelReceipt
                         <div className="flex flex-col items-center mt-3 mb-2">
                             <QRCodeSVG
                                 value={receiptData.qrCodeData}
-                                size={120}
-                                level="M"
-                                includeMargin={false}
+                                size={160}
+                                level="H"
+                                includeMargin={true}
                             />
                             <p className="text-[8px] text-gray-600 mt-2 text-center uppercase">
                                 Scan to verify receipt
