@@ -157,15 +157,32 @@ export function getCompanyInfo(): CompanyInfo {
 
 // Generate SUPER POWERFUL Customer Bill HTML with NOT PAID watermark
 export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo = defaultCompanyInfo, isPaid: boolean = false): string {
-  const itemRows = data.items.map((item, index) => `
-    <tr>
-      <td style="text-align:left;padding:4px 0;border-bottom:1px dotted #ccc;">${index + 1}. ${item.name}</td>
-      <td style="text-align:center;padding:4px 0;border-bottom:1px dotted #ccc;">${item.qty}</td>
-      <td style="text-align:right;padding:4px 0;border-bottom:1px dotted #ccc;">${item.price.toLocaleString()}</td>
-      <td style="text-align:right;padding:4px 0;border-bottom:1px dotted #ccc;font-weight:bold;">${item.total.toLocaleString()}</td>
-    </tr>
-    ${item.notes ? `<tr><td colspan="4" style="font-size:10px;color:#c00;padding:2px 0 4px 15px;font-style:italic;">↳ ${item.notes}</td></tr>` : ''}
-  `).join('');
+  // Generate item rows with per-item tax
+  const itemRows = data.items.map(item => {
+    // Calculate per-item tax (18% inclusive)
+    const itemSubtotal = item.total - (item.discount || 0);
+    const itemTaxRate = 0.18; // 16% VAT + 2% Levy
+    const itemNetAmount = itemSubtotal / (1 + itemTaxRate);
+    const itemTaxAmount = itemSubtotal - itemNetAmount;
+
+    const itemNotes = item.notes ? `<div style="font-size:9px;color:#666;font-style:italic;">${item.notes}</div>` : '';
+    const itemDiscount = item.discount && item.discount > 0
+      ? `<div style="font-size:9px;color:#4CAF50;font-weight:bold;">-Ksh ${item.discount.toLocaleString()} discount</div>`
+      : '';
+    return `
+      <tr>
+        <td>
+          <div style="font-weight:bold;">${item.name}</div>
+          ${itemNotes}
+          ${itemDiscount}
+        </td>
+        <td style="text-align:center;">${item.qty}</td>
+        <td style="text-align:right;">Ksh ${item.price.toLocaleString()}</td>
+        <td style="text-align:right;color:#2196F3;font-weight:600;">Ksh ${Math.round(itemTaxAmount).toLocaleString()}</td>
+        <td style="text-align:right;font-weight:bold;">Ksh ${item.total.toLocaleString()}</td>
+      </tr>
+    `;
+  }).join('');
 
   const watermarkStyle = !isPaid ? `
     <div style="
@@ -470,10 +487,11 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
   <table class="items-table">
     <thead>
       <tr>
-        <th style="width:45%">ITEM</th>
-        <th style="width:15%">QTY</th>
-        <th style="width:20%">PRICE</th>
-        <th style="width:20%">TOTAL</th>
+        <th style="width:35%">ITEM</th>
+        <th style="width:10%">QTY</th>
+        <th style="width:18%">PRICE</th>
+        <th style="width:18%">TAX</th>
+        <th style="width:19%">TOTAL</th>
       </tr>
     </thead>
     <tbody>
