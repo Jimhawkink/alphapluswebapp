@@ -44,8 +44,8 @@ export async function GET(request: NextRequest) {
 
             sale = data;
         } else if (receiptNo) {
-            // Look up by receipt number
-            const { data, error } = await supabase
+            // Try hotel_sales first
+            let { data, error } = await supabase
                 .from('hotel_sales')
                 .select('*')
                 .eq('receipt_no', receiptNo)
@@ -53,20 +53,66 @@ export async function GET(request: NextRequest) {
                 .single();
 
             if (error || !data) {
-                return NextResponse.json({
-                    valid: false,
-                    message: 'Receipt not found'
-                }, { status: 200 });
-            }
+                // Fallback to regular sales table
+                const { data: regularSale, error: regError } = await supabase
+                    .from('sales')
+                    .select('*')
+                    .eq('invoice_no', receiptNo)
+                    .single();
 
-            sale = data;
+                if (regError || !regularSale) {
+                    return NextResponse.json({
+                        valid: false,
+                        message: 'Receipt not found'
+                    }, { status: 200 });
+                }
+
+                // Transform regular sale to match hotel sale format
+                sale = {
+                    sale_id: regularSale.id,
+                    receipt_no: regularSale.invoice_no,
+                    establishment_name: 'Alpha Plus Hotel',
+                    sale_date: regularSale.sale_date,
+                    sale_datetime: regularSale.sale_date,
+                    customer_name: regularSale.customer_name || 'Walk-in Customer',
+                    payment_method: regularSale.payment_method,
+                    tax_mode: regularSale.tax_mode || 'inclusive',
+                    subtotal: regularSale.subtotal,
+                    discount: regularSale.discount || 0,
+                    net_amount: regularSale.net_amount || regularSale.subtotal,
+                    vat_rate: regularSale.vat_rate || 16,
+                    vat_amount: regularSale.vat_amount || 0,
+                    levy_rate: regularSale.levy_rate || 2,
+                    levy_amount: regularSale.levy_amount || 0,
+                    total_tax: regularSale.total_tax || 0,
+                    total_amount: regularSale.total_amount,
+                    mpesa_code: regularSale.mpesa_receipt,
+                    items_count: 0 // Will be counted from items
+                };
+            } else {
+                sale = data;
+            }
         }
 
-        // Fetch sale items
-        const { data: items } = await supabase
+        // Fetch sale items from hotel_sales_items or sales_items
+        let { data: items } = await supabase
             .from('hotel_sales_items')
             .select('*')
             .eq('sale_id', sale.sale_id);
+
+        // If no hotel items found, try regular sales_items
+        if (!items || items.length === 0) {
+            const { data: regularItems } = await supabase
+                .from('sales_items')
+                .select('*')
+                .eq('sale_id', sale.sale_id);
+            items = regularItems;
+        }
+
+        // Update items count
+        if (items) {
+            sale.items_count = items.length;
+        }
 
         return NextResponse.json({
             valid: true,

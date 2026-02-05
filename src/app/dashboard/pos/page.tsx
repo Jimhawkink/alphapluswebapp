@@ -212,39 +212,116 @@ const CartItemRow = ({ item, onIncrease, onDecrease, onRemove, onEditNotes, onEd
     );
 };
 
-// Running Order Card - Light Theme
-const RunningOrderCard = ({ order, onResume, onDelete }: {
-    order: RunningOrder;
-    onResume: () => void;
-    onDelete: () => void;
-}) => (
-    <div className="bg-white rounded-xl p-4 border border-gray-200 hover:border-blue-400 transition-colors shadow-sm">
-        <div className="flex items-start justify-between mb-2">
-            <div>
-                <p className="font-semibold text-gray-800">{order.name}</p>
-                <p className="text-xs text-gray-500">{order.items.length} items • {new Date(order.createdAt).toLocaleTimeString()}</p>
+// Running Order Card with Time Tracking and Expandable Items
+const RunningOrderCard = ({
+    order,
+    onReopen
+}: {
+    order: any;
+    onReopen: (order: any) => void;
+}) => {
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [timeElapsed, setTimeElapsed] = useState('');
+
+    // Calculate elapsed time
+    useEffect(() => {
+        const updateTime = () => {
+            const created = new Date(order.sale_datetime || order.created_at);
+            const now = new Date();
+            const diffMs = now.getTime() - created.getTime();
+            const diffMins = Math.floor(diffMs / 60000);
+            const hours = Math.floor(diffMins / 60);
+            const mins = diffMins % 60;
+
+            if (hours > 0) {
+                setTimeElapsed(`${hours}h ${mins}m`);
+            } else {
+                setTimeElapsed(`${mins}m`);
+            }
+        };
+
+        updateTime();
+        const interval = setInterval(updateTime, 60000); // Update every minute
+
+        return () => clearInterval(interval);
+    }, [order]);
+
+    return (
+        <div className="bg-white rounded-xl border-2 border-orange-200 shadow-lg hover:shadow-xl transition-all">
+            {/* Header - Clickable to expand */}
+            <div
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="p-4 cursor-pointer hover:bg-orange-50 transition-colors rounded-t-xl"
+            >
+                <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <span className="text-2xl">🧾</span>
+                        <div>
+                            <h3 className="font-bold text-gray-800">{order.invoice_no || order.receipt_no}</h3>
+                            <p className="text-xs text-gray-500">
+                                {order.table_no && `Table ${order.table_no} • `}
+                                {order.customer_name || 'Walk-in'}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <p className="font-bold text-lg text-orange-600">Ksh {(order.total_amount || 0).toLocaleString()}</p>
+                        <p className="text-xs text-gray-500">
+                            ⏱️ {timeElapsed}
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-600">
+                        👤 Served by: <span className="font-semibold">{order.cashier_name || 'Cashier'}</span>
+                    </span>
+                    <button
+                        className="text-blue-600 hover:text-blue-700 font-semibold text-sm flex items-center gap-1"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsExpanded(!isExpanded);
+                        }}
+                    >
+                        {isExpanded ? '▲ Collapse' : '▼ Expand'}
+                    </button>
+                </div>
             </div>
-            <span className="text-lg font-bold text-blue-600">Ksh {order.total.toLocaleString()}</span>
+
+            {/* Expandable Items List */}
+            {isExpanded && (
+                <div className="border-t border-orange-200 p-4 bg-orange-50">
+                    <h4 className="font-bold text-sm text-gray-700 mb-2">Order Items:</h4>
+                    <div className="space-y-2">
+                        {order.items && order.items.map((item: any, idx: number) => (
+                            <div key={idx} className="flex justify-between items-center bg-white rounded-lg p-2 text-sm">
+                                <div className="flex-1">
+                                    <p className="font-semibold text-gray-800">{item.product_name || item.name}</p>
+                                    <p className="text-xs text-gray-500">Qty: {item.quantity || item.qty} × Ksh {(item.unit_price || item.price || 0).toLocaleString()}</p>
+                                </div>
+                                <p className="font-bold text-gray-800">Ksh {(item.subtotal || item.total || 0).toLocaleString()}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="mt-4 flex gap-2">
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onReopen(order);
+                            }}
+                            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors"
+                        >
+                            💳 Complete Payment
+                        </button>
+                    </div>
+                </div>
+            )}
         </div>
-        <div className="text-xs text-gray-400 mb-3 line-clamp-2">
-            {order.items.map(i => i.name).join(', ')}
-        </div>
-        <div className="flex gap-2">
-            <button
-                onClick={onResume}
-                className="flex-1 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium text-sm transition-colors shadow-sm"
-            >
-                Resume
-            </button>
-            <button
-                onClick={onDelete}
-                className="px-3 py-2 bg-red-50 hover:bg-red-100 text-red-500 rounded-lg transition-colors"
-            >
-                🗑️
-            </button>
-        </div>
-    </div>
-);
+    );
+};
+
 
 // Receipt Preview Modal
 const ReceiptPreviewModal = ({
@@ -859,6 +936,8 @@ export default function POSPage() {
     const [editingItemId, setEditingItemId] = useState<number | null>(null);
     const [invoiceNo, setInvoiceNo] = useState('RCP-00001');
     const [runningOrders, setRunningOrders] = useState<RunningOrder[]>([]);
+    const [unpaidOrders, setUnpaidOrders] = useState<any[]>([]); // NEW: For fetching from database
+    const [isLoadingOrders, setIsLoadingOrders] = useState(false); // NEW: Loading state
     const [orderNotes, setOrderNotes] = useState('');
     const [tableNo, setTableNo] = useState('');
     const [isFullscreen, setIsFullscreen] = useState(false);
@@ -996,6 +1075,47 @@ export default function POSPage() {
         setIsLoadingProducts(false);
     }, []);
 
+    // Load unpaid orders from database
+    const loadUnpaidOrders = useCallback(async () => {
+        setIsLoadingOrders(true);
+        try {
+            // Fetch unpaid sales from database (status = 'Pending')
+            const { data: sales, error } = await supabase
+                .from('sales')
+                .select('*')
+                .eq('status', 'Pending')
+                .order('sale_datetime', { ascending: false })
+                .limit(20);
+
+            if (error) throw error;
+
+            if (sales && sales.length > 0) {
+                // Fetch items for each sale
+                const ordersWithItems = await Promise.all(
+                    sales.map(async (sale) => {
+                        const { data: items } = await supabase
+                            .from('sales_items')
+                            .select('*')
+                            .eq('sale_id', sale.id);
+
+                        return {
+                            ...sale,
+                            items: items || []
+                        };
+                    })
+                );
+
+                setUnpaidOrders(ordersWithItems);
+            } else {
+                setUnpaidOrders([]);
+            }
+        } catch (error) {
+            console.error('Error loading unpaid orders:', error);
+            toast.error('Failed to load running orders');
+        }
+        setIsLoadingOrders(false);
+    }, []);
+
     // Load products on mount
     useEffect(() => {
         loadProducts();
@@ -1040,13 +1160,17 @@ export default function POSPage() {
                         role: u.user_type
                     })));
                 }
+
+                // Load unpaid orders (running orders)
+                await loadUnpaidOrders();
+
             } catch (err) {
                 console.error('Error loading initial data:', err);
             }
         };
 
         loadInitialData();
-    }, [loadActiveShift, loadHotelName]);
+    }, [loadActiveShift, loadHotelName, loadUnpaidOrders]);
 
     // Toggle Fullscreen
     const toggleFullscreen = () => {
@@ -2020,7 +2144,7 @@ export default function POSPage() {
                                 <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                                     <span>📋</span> Running Orders
                                     <span className="px-2 py-1 bg-orange-100 text-orange-600 text-xs font-bold rounded-full">
-                                        {runningOrders.length}
+                                        {unpaidOrders.length}
                                     </span>
                                 </h2>
                                 <button
@@ -2031,19 +2155,27 @@ export default function POSPage() {
                                 </button>
                             </div>
 
-                            {runningOrders.length === 0 ? (
+                            {isLoadingOrders ? (
+                                <div className="text-center text-gray-400 py-12">
+                                    <div className="w-12 h-12 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mx-auto mb-3"></div>
+                                    <p className="font-medium">Loading orders...</p>
+                                </div>
+                            ) : unpaidOrders.length === 0 ? (
                                 <div className="text-center text-gray-400 py-12">
                                     <span className="text-5xl block mb-3 opacity-50">📭</span>
-                                    <p className="font-medium">No running orders</p>
+                                    <p className="font-medium">No unpaid orders</p>
                                 </div>
                             ) : (
                                 <div className="space-y-3">
-                                    {runningOrders.map(order => (
+                                    {unpaidOrders.map(order => (
                                         <RunningOrderCard
                                             key={order.id}
                                             order={order}
-                                            onResume={() => resumeOrder(order.id)}
-                                            onDelete={() => deleteRunningOrder(order.id)}
+                                            onReopen={(order) => {
+                                                // TODO: Reopen order for payment
+                                                console.log('Reopen order:', order);
+                                                setShowRunningOrders(false);
+                                            }}
                                         />
                                     ))}
                                 </div>
