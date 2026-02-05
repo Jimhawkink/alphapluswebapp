@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 
 interface ReceiptData {
@@ -31,6 +32,7 @@ interface ReceiptData {
 }
 
 export default function VerifyHotelReceiptPage() {
+    const searchParams = useSearchParams();
     const [qrData, setQrData] = useState('');
     const [receiptNo, setReceiptNo] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -39,6 +41,60 @@ export default function VerifyHotelReceiptPage() {
         message: string;
         receipt?: ReceiptData;
     } | null>(null);
+
+    // Auto-verify from URL params when page loads via QR code scan
+    useEffect(() => {
+        const rParam = searchParams.get('r'); // receipt number
+        const aParam = searchParams.get('a'); // amount
+        const dParam = searchParams.get('d'); // date
+        const dataParam = searchParams.get('data'); // old base64 format (backward compat)
+
+        if (rParam) {
+            // New simple format: ?r=RCP-53967&a=1500&d=05-02-26
+            setReceiptNo(rParam);
+            // Auto-verify
+            setTimeout(() => {
+                verifyReceipt(rParam);
+            }, 100);
+        } else if (dataParam) {
+            // Old base64 format for backward compatibility
+            try {
+                const decoded = atob(dataParam);
+                const parsed = JSON.parse(decoded);
+                if (parsed.receipt) {
+                    setReceiptNo(parsed.receipt);
+                    setTimeout(() => {
+                        verifyReceipt(parsed.receipt);
+                    }, 100);
+                }
+            } catch (e) {
+                console.error('Failed to decode QR data:', e);
+            }
+        }
+    }, [searchParams]);
+
+    const verifyReceipt = async (receiptNumber: string) => {
+        setIsLoading(true);
+        setResult(null);
+
+        try {
+            const params = new URLSearchParams();
+            params.append('receipt', receiptNumber);
+
+            const response = await fetch(`/api/validate-receipt?${params.toString()}`);
+            const data = await response.json();
+
+            setResult(data);
+        } catch (error) {
+            setResult({
+                valid: false,
+                message: 'Failed to validate receipt. Please try again.'
+            });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
 
     const handleVerify = async () => {
         if (!qrData && !receiptNo) {
@@ -148,8 +204,8 @@ export default function VerifyHotelReceiptPage() {
                 {/* Result Display */}
                 {result && (
                     <div className={`rounded-2xl shadow-xl p-8 ${result.valid
-                            ? 'bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300'
-                            : 'bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300'
+                        ? 'bg-gradient-to-br from-green-50 to-green-100 border-2 border-green-300'
+                        : 'bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300'
                         }`}>
                         {result.valid ? (
                             <>

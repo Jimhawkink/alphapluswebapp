@@ -599,12 +599,12 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
 
   ${data.qrCodeData ? `
   <!-- QR Code Section -->
-  <div class="barcode-section" style="border:2px solid #000;background:#fff;">
-    <div style="font-weight:bold;font-size:11px;margin-bottom:5px;">✓ Scan to Verify Receipt</div>
-    <div class="qr-code" style="width:100px;height:100px;margin:5px auto;background:#f8f8f8;display:flex;align-items:center;justify-content:center;border:1px solid #ddd;">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(data.qrCodeData)}" alt="QR Code" style="width:100%;height:100%;" />
+  <div class="barcode-section" style="border:2px solid #000;background:#fff;padding:10px;">
+    <div style="font-weight:bold;font-size:11px;margin-bottom:8px;">✓ Scan to Verify Receipt</div>
+    <div class="qr-code" style="width:150px;height:150px;margin:0 auto;background:#fff;display:flex;align-items:center;justify-content:center;">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&ecc=M&data=${encodeURIComponent(data.qrCodeData)}" alt="QR Code" style="width:100%;height:100%;" />
     </div>
-    <div style="font-size:9px;color:#666;margin-top:3px;">Scan with camera to validate</div>
+    <div style="font-size:9px;color:#666;margin-top:5px;">Scan with camera to validate</div>
   </div>
   ` : ''}
 
@@ -945,27 +945,18 @@ export function createReceiptData(
   let verificationHash: string | undefined;
 
   try {
-    // Create QR code data URL
+    // Create simple verification URL - no complex encoding
     const baseUrl = typeof window !== 'undefined'
       ? `${window.location.protocol}//${window.location.host}`
       : process.env.NEXT_PUBLIC_SITE_URL || 'https://alphapluswebapp.vercel.app';
 
-    // Simple verification data
-    const qrPayload = {
-      receipt: invoiceNo,
-      amount: total.toFixed(2),
-      date: now.toISOString().split('T')[0],
-      hotel: options?.hotelName || 'Alpha Plus Hotel',
-      time: now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-    };
+    // Simple direct URL for easy scanning
+    const hotelName = options?.hotelName || 'AlphaPlus';
+    const shortDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '-');
 
-    const qrString = JSON.stringify(qrPayload);
-    const params = new URLSearchParams({
-      data: Buffer.from(qrString).toString('base64')
-    });
-
-    qrCodeData = `${baseUrl}/hotel-verify-receipt?${params.toString()}`;
-    verificationHash = invoiceNo + '_' + total.toFixed(2); // Simple hash for now
+    // Create simple, short QR data URL
+    qrCodeData = `${baseUrl}/hotel-verify-receipt?r=${encodeURIComponent(invoiceNo)}&a=${total.toFixed(0)}&d=${shortDate}`;
+    verificationHash = invoiceNo + '_' + total.toFixed(2);
   } catch (error) {
     console.error('Error generating QR code:', error);
   }
