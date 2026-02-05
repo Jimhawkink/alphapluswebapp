@@ -878,24 +878,41 @@ export async function getCompanyInfo() {
 
 // Get next receipt number for sales
 export async function getNextReceiptNumber(): Promise<string> {
-    const { data, error } = await supabase
-        .from('sales')
-        .select('receipt_no')
-        .order('sale_id', { ascending: false })
-        .limit(1)
-        .single();
+    try {
+        // Get all receipt numbers and find the highest one
+        const { data, error } = await supabase
+            .from('sales')
+            .select('receipt_no')
+            .not('receipt_no', 'is', null)
+            .order('sale_id', { ascending: false })
+            .limit(100);
 
-    if (error && error.code !== 'PGRST116') throw error;
-
-    if (data?.receipt_no) {
-        // Parse existing receipt number (e.g., "RCP-00001")
-        const match = data.receipt_no.match(/RCP-(\d+)/);
-        if (match) {
-            const nextNum = parseInt(match[1]) + 1;
-            return `RCP-${String(nextNum).padStart(5, '0')}`;
+        if (error) {
+            console.error('Error fetching receipt numbers:', error);
+            throw error;
         }
+
+        if (data && data.length > 0) {
+            // Find the highest receipt number
+            let maxNum = 0;
+            for (const row of data) {
+                if (row.receipt_no) {
+                    const match = row.receipt_no.match(/RCP-(\d+)/);
+                    if (match) {
+                        const num = parseInt(match[1]);
+                        if (num > maxNum) maxNum = num;
+                    }
+                }
+            }
+            if (maxNum > 0) {
+                return `RCP-${String(maxNum + 1).padStart(5, '0')}`;
+            }
+        }
+        return 'RCP-00001';
+    } catch (err) {
+        console.error('getNextReceiptNumber error:', err);
+        return 'RCP-00001';
     }
-    return 'RCP-00001';
 }
 
 // Get next KOT number
