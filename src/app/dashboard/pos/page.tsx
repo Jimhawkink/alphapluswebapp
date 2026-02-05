@@ -257,9 +257,9 @@ const RunningOrderCard = ({
                     <div className="flex items-center gap-2">
                         <span className="text-2xl">🧾</span>
                         <div>
-                            <h3 className="font-bold text-gray-800">{order.invoice_no || order.receipt_no}</h3>
+                            <h3 className="font-bold text-gray-800">{order.receipt_no || order.invoice_no}</h3>
                             <p className="text-xs text-gray-500">
-                                {order.table_no && `Table ${order.table_no} • `}
+                                {(order.table_name || order.table_no) && `Table ${order.table_name || order.table_no} • `}
                                 {order.customer_name || 'Walk-in'}
                             </p>
                         </div>
@@ -1097,7 +1097,7 @@ export default function POSPage() {
                         const { data: items } = await supabase
                             .from('sales_items')
                             .select('*')
-                            .eq('sale_id', sale.id);
+                            .eq('sale_id', sale.sale_id);
 
                         return {
                             ...sale,
@@ -1556,42 +1556,20 @@ export default function POSPage() {
         toast.success('Ready for next order! 🛒');
     };
 
-    // Reopen unpaid order for payment
+    // Navigate to Bill Payment page with selected receipt
     const reopenOrderForPayment = async (order: any) => {
         try {
-            // Clear current cart
-            setCart([]);
-
-            // Load order items into cart
-            const cartItems: CartItem[] = order.items.map((item: any) => ({
-                id: item.product_id || Math.random(),
-                name: item.product_name,
-                price: item.unit_price,
-                qty: item.quantity,
-                discount: item.discount || 0,
-                notes: item.notes || '',
-                costPerUnit: item.cost_per_unit
-            }));
-
-            setCart(cartItems);
-
-            // Set order details
-            setInvoiceNo(order.invoice_no);
-            if (order.table_no) setTableNo(order.table_no);
-            if (order.customer_name) setOrderNotes(order.customer_name);
-
             // Close running orders sidebar
             setShowRunningOrders(false);
 
-            // Open payment modal
-            setTimeout(() => {
-                setShowPayment(true);
-            }, 300);
+            // Navigate to Bill Payment page with the receipt number
+            const receiptNo = order.receipt_no || order.invoice_no;
+            window.location.href = `/dashboard/bill-payment?receipt=${receiptNo}`;
 
-            toast.success(`Loaded order ${order.invoice_no}`);
+            toast.success(`Opening payment for ${receiptNo}`);
         } catch (error) {
-            console.error('Error reopening order:', error);
-            toast.error('Failed to load order');
+            console.error('Error opening payment:', error);
+            toast.error('Failed to open payment page');
         }
     };
 
