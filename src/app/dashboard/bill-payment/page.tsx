@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase, c2bSupabase } from '@/lib/supabase'; // Import both clients
 import toast from 'react-hot-toast';
+import { generateCustomerBillHTML, printReceipt, loadCompanyInfo, createReceiptData, ReceiptData } from '@/lib/receiptPrinter';
 
 // Type definitions
 interface SaleItem {
@@ -385,6 +386,52 @@ function BillPaymentContent() {
                     ? `✅ Payment complete! Bill ${selectedBill.receipt_no} is now PAID`
                     : `💰 Payment of Ksh ${totalPaymentAmount.toLocaleString()} received (${paymentsToProcess.length} payment${paymentsToProcess.length > 1 ? 's' : ''})`
             );
+
+            // Print PAID receipt after successful full payment
+            if (isFullyPaid) {
+                try {
+                    const company = await loadCompanyInfo();
+                    const combinedMethod = paymentMethodNames.length > 1
+                        ? `Split (${paymentMethodNames.join(' + ')})`
+                        : paymentMethodNames[0];
+
+                    // Create receipt data with all tax details
+                    const receiptData = createReceiptData(
+                        selectedBill.receipt_no,
+                        (selectedBill.items || []).map(item => ({
+                            name: item.product_name || 'Item',
+                            qty: item.quantity || 1,
+                            price: item.unit_price || 0,
+                            notes: item.notes,
+                            discount: item.discount || 0
+                        })),
+                        combinedMethod,
+                        newPaidAmount,
+                        currentUser?.name || 'Cashier',
+                        {
+                            customerName: selectedBill.customer_name || customerName || 'Walk-in Customer',
+                            mpesaReceipt: selectedC2B?.mpesa_receipt || mpesaReceipt || selectedBill.mpesa_code,
+                            tableNo: selectedBill.table_name,
+                            orderNotes: selectedBill.notes,
+                            shiftCode: selectedBill.shift_code,
+                            discount: selectedBill.discount || 0,
+                            isPaid: true,
+                            taxMode: 'inclusive' as 'inclusive' | 'exclusive',
+                            vatRate: 16,
+                            levyRate: 2,
+                            hotelName: company.name
+                        }
+                    );
+
+                    // Generate and print PAID customer bill with QR code
+                    const receiptHTML = generateCustomerBillHTML(receiptData, company, true); // isPaid = true
+                    printReceipt(receiptHTML);
+                    toast.success('🖨️ Receipt printed!');
+                } catch (printErr) {
+                    console.error('Error printing receipt:', printErr);
+                    // Don't block payment if print fails
+                }
+            }
 
             // Mark C2B payment as linked if one was selected
             console.log('🔍 Checking C2B linking:', { selectedC2B: selectedC2B?.id, paymentMethod, mpesaReceipt });
