@@ -964,6 +964,12 @@ export async function savePendingSale(sale: {
     customerPhone?: string;
     orderNotes?: string;
 }) {
+    // Helper function to ensure safe numeric values
+    const safeNum = (val: any, defaultVal = 0) => {
+        const num = Number(val);
+        return isNaN(num) || val === undefined || val === null ? defaultVal : num;
+    };
+
     // 1. Create sale record with Pending status
     const { data: saleData, error: saleError } = await supabase
         .from('sales')
@@ -972,36 +978,39 @@ export async function savePendingSale(sale: {
             sale_date: new Date().toISOString().split('T')[0],
             sale_time: new Date().toTimeString().split(' ')[0],
             sale_datetime: new Date().toISOString(),
-            shift_id: sale.shiftId,
-            shift_name: sale.shiftName,
-            shift_code: sale.shiftCode,
-            waiter_id: sale.waiterId,
-            waiter_name: sale.waiterName || sale.cashierName,
-            table_id: sale.tableId,
-            table_name: sale.tableName,
-            room_name: sale.roomName,
+            shift_id: sale.shiftId || null,
+            shift_name: sale.shiftName || null,
+            shift_code: sale.shiftCode || null,
+            waiter_id: sale.waiterId || null,
+            waiter_name: sale.waiterName || sale.cashierName || 'Cashier',
+            table_id: sale.tableId || null,
+            table_name: sale.tableName || null,
+            room_name: sale.roomName || null,
             order_type: sale.orderType || 'Quick Sale',
             kot_number: sale.kotNumber,
-            customer_name: sale.customerName,
-            customer_phone: sale.customerPhone,
-            subtotal: sale.subtotal,
-            discount: sale.discount,
-            discount_percent: sale.subtotal > 0 ? (sale.discount / sale.subtotal) * 100 : 0,
-            tax_amount: sale.taxAmount,
-            total_amount: sale.total,
-            total_cost: sale.items.reduce((sum, item) => sum + (item.costPrice * item.qty), 0),
-            profit: sale.total - sale.items.reduce((sum, item) => sum + (item.costPrice * item.qty), 0),
+            customer_name: sale.customerName || 'Walk-in Customer',
+            customer_phone: sale.customerPhone || null,
+            subtotal: safeNum(sale.subtotal),
+            discount: safeNum(sale.discount),
+            discount_percent: sale.subtotal > 0 ? safeNum((sale.discount / sale.subtotal) * 100) : 0,
+            tax_amount: safeNum(sale.taxAmount),
+            total_amount: safeNum(sale.total),
+            total_cost: safeNum(sale.items.reduce((sum, item) => sum + (safeNum(item.costPrice) * safeNum(item.qty)), 0)),
+            profit: safeNum(sale.total) - safeNum(sale.items.reduce((sum, item) => sum + (safeNum(item.costPrice) * safeNum(item.qty)), 0)),
             payment_method: 'Pending',
             amount_paid: 0,
             change_amount: 0,
             status: 'Pending',
-            notes: sale.orderNotes,
-            created_by: sale.cashierName,
+            notes: sale.orderNotes || null,
+            created_by: sale.cashierName || 'System',
         }])
         .select()
         .single();
 
-    if (saleError) throw saleError;
+    if (saleError) {
+        console.error('Error creating sale record:', saleError);
+        throw saleError;
+    }
 
     const saleId = saleData.sale_id;
 
@@ -1009,23 +1018,26 @@ export async function savePendingSale(sale: {
     const saleItems = sale.items.map(item => ({
         sale_id: saleId,
         product_id: item.productId,
-        product_name: item.productName,
-        batch_id: item.batchId,
-        batch_number: item.batchNumber,
-        quantity: item.qty,
-        unit_price: item.price,
-        cost_price: item.costPrice,
-        discount: item.discount,
-        subtotal: (item.price * item.qty) - item.discount,
-        profit: ((item.price * item.qty) - item.discount) - (item.costPrice * item.qty),
-        notes: item.notes,
+        product_name: item.productName || 'Unknown Item',
+        batch_id: item.batchId || null,
+        batch_number: item.batchNumber || null,
+        quantity: safeNum(item.qty, 1),
+        unit_price: safeNum(item.price),
+        cost_price: safeNum(item.costPrice),
+        discount: safeNum(item.discount),
+        subtotal: safeNum((item.price * item.qty) - item.discount),
+        profit: safeNum(((item.price * item.qty) - item.discount) - (item.costPrice * item.qty)),
+        notes: item.notes || null,
     }));
 
     const { error: itemsError } = await supabase
         .from('sales_items')
         .insert(saleItems);
 
-    if (itemsError) throw itemsError;
+    if (itemsError) {
+        console.error('Error creating sale items:', itemsError);
+        throw itemsError;
+    }
 
     // 3. Create KOT record
     const { data: kotData, error: kotError } = await supabase

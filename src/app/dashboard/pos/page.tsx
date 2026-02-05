@@ -1470,9 +1470,11 @@ export default function POSPage() {
 
             // Show KOT preview
             setShowKOTPreview(true);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error saving pending sale:', error);
-            toast.error('Failed to save order. Please try again.');
+            // Show detailed error message for debugging
+            const errorMsg = error?.message || error?.details || error?.hint || JSON.stringify(error);
+            toast.error(`KOT Error: ${errorMsg}`, { duration: 8000 });
         } finally {
             setIsSavingPending(false);
         }
