@@ -49,15 +49,14 @@ export async function GET(request: NextRequest) {
                 .from('hotel_sales')
                 .select('*')
                 .eq('receipt_no', receiptNo)
-                .eq('status', 'Completed')
                 .single();
 
             if (error || !data) {
-                // Fallback to regular sales table
+                // Fallback to regular sales table - search by receipt_no (not invoice_no)
                 const { data: regularSale, error: regError } = await supabase
                     .from('sales')
                     .select('*')
-                    .eq('invoice_no', receiptNo)
+                    .eq('receipt_no', receiptNo)
                     .single();
 
                 if (regError || !regularSale) {
@@ -69,11 +68,11 @@ export async function GET(request: NextRequest) {
 
                 // Transform regular sale to match hotel sale format
                 sale = {
-                    sale_id: regularSale.id,
-                    receipt_no: regularSale.invoice_no,
+                    sale_id: regularSale.sale_id,
+                    receipt_no: regularSale.receipt_no,
                     establishment_name: 'Alpha Plus Hotel',
                     sale_date: regularSale.sale_date,
-                    sale_datetime: regularSale.sale_date,
+                    sale_datetime: regularSale.sale_datetime || regularSale.sale_date,
                     customer_name: regularSale.customer_name || 'Walk-in Customer',
                     payment_method: regularSale.payment_method,
                     tax_mode: regularSale.tax_mode || 'inclusive',
@@ -86,7 +85,8 @@ export async function GET(request: NextRequest) {
                     levy_amount: regularSale.levy_amount || 0,
                     total_tax: regularSale.total_tax || 0,
                     total_amount: regularSale.total_amount,
-                    mpesa_code: regularSale.mpesa_receipt,
+                    mpesa_code: regularSale.mpesa_receipt || regularSale.mpesa_code,
+                    status: regularSale.status,
                     items_count: 0 // Will be counted from items
                 };
             } else {
