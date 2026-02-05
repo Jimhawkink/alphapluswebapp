@@ -135,16 +135,16 @@ export default function VerifyHotelReceiptPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 py-12 px-4">
-            <div className="max-w-4xl mx-auto">
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <h1 className="text-4xl font-bold text-gray-800 mb-3 flex items-center justify-center gap-3">
-                        <span className="text-5xl">🏨</span>
-                        Hotel Receipt Verification
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50 py-4 sm:py-8 px-2 sm:px-4">
+            <div className="w-full max-w-xl sm:max-w-2xl lg:max-w-4xl mx-auto">
+                {/* Header - More compact on mobile */}
+                <div className="text-center mb-4 sm:mb-6">
+                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800 mb-2 flex items-center justify-center gap-2">
+                        <span className="text-2xl sm:text-3xl">🏨</span>
+                        Receipt Verification
                     </h1>
-                    <p className="text-gray-600 text-lg">
-                        Verify the authenticity of your hotel/restaurant receipt
+                    <p className="text-gray-600 text-sm sm:text-base">
+                        Verify authenticity of your receipt
                     </p>
                 </div>
 
@@ -209,42 +209,46 @@ export default function VerifyHotelReceiptPage() {
                         }`}>
                         {result.valid ? (
                             <>
-                                {/* Valid Receipt */}
-                                <div className="flex items-center gap-3 mb-6">
-                                    <div className="w-16 h-16 bg-green-500 rounded-full flex items-center justify-center text-white text-3xl">
+                                {/* Valid Receipt + PAID Badge */}
+                                <div className="flex flex-col sm:flex-row items-center gap-3 mb-4 sm:mb-6">
+                                    <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-500 rounded-full flex items-center justify-center text-white text-2xl sm:text-3xl flex-shrink-0">
                                         ✓
                                     </div>
-                                    <div>
-                                        <h2 className="text-2xl font-bold text-green-800">VALID RECEIPT</h2>
-                                        <p className="text-green-700">This receipt is authentic and verified</p>
+                                    <div className="text-center sm:text-left flex-1">
+                                        <h2 className="text-xl sm:text-2xl font-bold text-green-800">VALID RECEIPT</h2>
+                                        <p className="text-green-700 text-sm sm:text-base">This receipt is authentic and verified</p>
+                                    </div>
+                                    {/* PAID Badge - Prominent */}
+                                    <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold text-lg sm:text-xl shadow-lg animate-pulse">
+                                        ✓ PAID
                                     </div>
                                 </div>
 
                                 {result.receipt && (
-                                    <div className="bg-white rounded-xl p-6 space-y-4">
+                                    <div className="bg-white rounded-xl p-3 sm:p-6 space-y-3 sm:space-y-4">
                                         {/* Hotel Name - Prominent */}
-                                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-4 text-center">
-                                            <div className="text-4xl mb-2">🏨</div>
-                                            <h3 className="text-2xl font-bold">{result.receipt.hotelName}</h3>
+                                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg p-3 sm:p-4 text-center">
+                                            <div className="text-2xl sm:text-4xl mb-1 sm:mb-2">🏨</div>
+                                            <h3 className="text-lg sm:text-2xl font-bold">{result.receipt.hotelName}</h3>
                                         </div>
 
-                                        {/* Receipt Details */}
-                                        <div className="grid grid-cols-2 gap-4 text-sm">
-                                            <div>
-                                                <span className="text-gray-600">Receipt No:</span>
-                                                <p className="font-bold text-gray-900">{result.receipt.receiptNo}</p>
+                                        {/* Receipt Details - 2x2 Grid */}
+                                        <div className="grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
+                                            <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                                                <span className="text-gray-500 text-xs">Receipt No:</span>
+                                                <p className="font-bold text-gray-900 text-sm sm:text-base">{result.receipt.receiptNo}</p>
                                             </div>
-                                            <div>
-                                                <span className="text-gray-600">Date & Time:</span>
-                                                <p className="font-bold text-gray-900">{result.receipt.date} {result.receipt.time}</p>
+                                            <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                                                <span className="text-gray-500 text-xs">Date & Time:</span>
+                                                <p className="font-bold text-gray-900 text-sm sm:text-base">{result.receipt.date} {result.receipt.time}</p>
                                             </div>
-                                            <div>
-                                                <span className="text-gray-600">Customer:</span>
-                                                <p className="font-bold text-gray-900">{result.receipt.customerName}</p>
+                                            <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                                                <span className="text-gray-500 text-xs">Customer:</span>
+                                                <p className="font-bold text-gray-900 text-sm sm:text-base">{result.receipt.customerName}</p>
                                             </div>
-                                            <div>
-                                                <span className="text-gray-600">Payment Method:</span>
-                                                <p className="font-bold text-gray-900">{result.receipt.paymentMethod}</p>
+                                            <div className="bg-gray-50 p-2 sm:p-3 rounded-lg">
+                                                <span className="text-gray-500 text-xs">Payment:</span>
+                                                <p className="font-bold text-green-700 text-sm sm:text-base">{result.receipt.paymentMethod}</p>
                                             </div>
                                         </div>
 
@@ -267,44 +271,47 @@ export default function VerifyHotelReceiptPage() {
                                             </div>
                                         )}
 
-                                        {/* Tax Breakdown */}
-                                        <div>
-                                            <h4 className="font-bold text-gray-800 mb-3">
-                                                Tax Breakdown ({result.receipt.taxMode === 'inclusive' ? 'Inclusive' : 'Exclusive'})
+                                        {/* Tax Breakdown - Prominent Box */}
+                                        <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-3 sm:p-4 border-2 border-blue-200">
+                                            <h4 className="font-bold text-blue-800 mb-2 sm:mb-3 text-sm sm:text-base flex items-center gap-2">
+                                                📊 Tax Breakdown ({result.receipt.taxMode === 'inclusive' ? 'Incl.' : 'Excl.'})
                                             </h4>
-                                            <div className="bg-blue-50 rounded-lg p-4 space-y-2">
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-700">Subtotal:</span>
+                                            <div className="space-y-1 sm:space-y-2 text-xs sm:text-sm">
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Subtotal:</span>
                                                     <span className="font-semibold">{formatKES(result.receipt.subtotal)}</span>
                                                 </div>
                                                 {result.receipt.discount > 0 && (
-                                                    <div className="flex justify-between text-sm text-green-600">
+                                                    <div className="flex justify-between text-green-600">
                                                         <span>Discount:</span>
                                                         <span className="font-semibold">- {formatKES(result.receipt.discount)}</span>
                                                     </div>
                                                 )}
-                                                <div className="flex justify-between text-sm">
-                                                    <span className="text-gray-700">Net Amount:</span>
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-600">Net Amount:</span>
                                                     <span className="font-semibold">{formatKES(result.receipt.netAmount)}</span>
                                                 </div>
-                                                <div className="border-t border-blue-200 pt-2 mt-2 space-y-1">
-                                                    <div className="flex justify-between text-sm">
-                                                        <span>VAT ({result.receipt.vatRate}%):</span>
-                                                        <span className="font-semibold">{formatKES(result.receipt.vatAmount)}</span>
+                                                <div className="border-t border-blue-300 pt-2 mt-2 space-y-1">
+                                                    <div className="flex justify-between bg-white/60 px-2 py-1 rounded">
+                                                        <span className="text-blue-700">VAT ({result.receipt.vatRate || 16}%):</span>
+                                                        <span className="font-bold text-blue-800">{formatKES(result.receipt.vatAmount)}</span>
                                                     </div>
-                                                    <div className="flex justify-between text-sm">
-                                                        <span>Levy ({result.receipt.levyRate}%):</span>
-                                                        <span className="font-semibold">{formatKES(result.receipt.levyAmount)}</span>
+                                                    <div className="flex justify-between bg-white/60 px-2 py-1 rounded">
+                                                        <span className="text-blue-700">Levy ({result.receipt.levyRate || 2}%):</span>
+                                                        <span className="font-bold text-blue-800">{formatKES(result.receipt.levyAmount)}</span>
                                                     </div>
-                                                    <div className="flex justify-between font-bold text-blue-700">
-                                                        <span>Total Tax:</span>
-                                                        <span>{formatKES(result.receipt.totalTax)}</span>
+                                                    <div className="flex justify-between bg-blue-200/50 px-2 py-1 rounded font-bold">
+                                                        <span className="text-blue-900">Total Tax:</span>
+                                                        <span className="text-blue-900">{formatKES(result.receipt.totalTax)}</span>
                                                     </div>
                                                 </div>
-                                                <div className="border-t-2 border-blue-300 pt-3 mt-3">
-                                                    <div className="flex justify-between text-lg font-bold text-gray-900">
-                                                        <span>TOTAL AMOUNT:</span>
-                                                        <span>{formatKES(result.receipt.totalAmount)}</span>
+                                                <div className="border-t-2 border-green-400 pt-2 sm:pt-3 mt-2 sm:mt-3 bg-gradient-to-r from-green-100 to-emerald-100 -mx-3 sm:-mx-4 px-3 sm:px-4 py-2 sm:py-3 rounded-b-xl">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-base sm:text-lg font-bold text-gray-800">TOTAL PAID:</span>
+                                                        <span className="text-lg sm:text-xl font-bold text-green-700">{formatKES(result.receipt.totalAmount)}</span>
+                                                    </div>
+                                                    <div className="text-center mt-1">
+                                                        <span className="bg-green-600 text-white px-3 py-1 rounded-full text-xs sm:text-sm font-bold">✓ FULLY PAID</span>
                                                     </div>
                                                 </div>
                                             </div>
