@@ -18,7 +18,7 @@ export interface ReceiptData {
   items: ReceiptItem[];
   subtotal: number;
   discount: number;
-  tax: number;
+  tax: number; // For backward compatibility
   total: number;
   paymentMethod: string;
   amountPaid: number;
@@ -29,6 +29,16 @@ export interface ReceiptData {
   orderNotes?: string;
   shiftCode?: string;
   isPaid?: boolean;
+  // Kenya Tax Fields
+  taxMode?: 'inclusive' | 'exclusive';
+  netAmount?: number;
+  vatRate?: number;
+  vatAmount?: number;
+  levyRate?: number;
+  levyAmount?: number;
+  totalTax?: number;
+  qrCodeData?: string;
+  verificationHash?: string;
 }
 
 export interface KOTData {
@@ -483,7 +493,35 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
       <span style="font-weight:bold;">- Ksh ${data.discount.toLocaleString()}</span>
     </div>
     ` : ''}
-    ${data.tax > 0 ? `
+    
+    ${data.taxMode === 'inclusive' && data.netAmount ? `
+    <div class="total-row" style="font-size:10px;color:#666;border-top:1px dashed #ccc;padding-top:5px;margin-top:5px;">
+      <span>Net Amount (excl. tax):</span>
+      <span>Ksh ${data.netAmount.toLocaleString()}</span>
+    </div>
+    ` : ''}
+    
+    ${(data.vatAmount && data.vatAmount > 0) || (data.levyAmount && data.levyAmount > 0) ? `
+    <div style="background:#f5f5f5;padding:8px;margin:8px 0;border-radius:5px;">
+      <div style="font-weight:bold;font-size:11px;margin-bottom:5px;color:#333;">📊 Tax Breakdown:</div>
+      ${data.vatAmount && data.vatAmount > 0 ? `
+      <div class="total-row" style="font-size:11px;">
+        <span>VAT ${data.vatRate || 16}%:</span>
+        <span>Ksh ${data.vatAmount.toLocaleString()}</span>
+      </div>
+      ` : ''}
+      ${data.levyAmount && data.levyAmount > 0 ? `
+      <div class="total-row" style="font-size:11px;">
+        <span>Tourism Levy ${data.levyRate || 2}%:</span>
+        <span>Ksh ${data.levyAmount.toLocaleString()}</span>
+      </div>
+      ` : ''}
+      <div class="total-row" style="font-size:11px;font-weight:bold;border-top:1px solid #ccc;padding-top:4px;margin-top:4px;">
+        <span>Total Tax:</span>
+        <span>Ksh ${(data.totalTax || data.tax || 0).toLocaleString()}</span>
+      </div>
+    </div>
+    ` : data.tax > 0 ? `
     <div class="total-row">
       <span>VAT (16%):</span>
       <span>Ksh ${data.tax.toLocaleString()}</span>
@@ -538,6 +576,17 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
   ${data.orderNotes ? `
   <div class="order-notes">
     📝 <strong>Note:</strong> ${data.orderNotes}
+  </div>
+  ` : ''}
+
+  ${data.qrCodeData ? `
+  <!-- QR Code Section -->
+  <div class="barcode-section" style="border:2px solid #000;background:#fff;">
+    <div style="font-weight:bold;font-size:11px;margin-bottom:5px;">✓ Scan to Verify Receipt</div>
+    <div class="qr-code" style="width:100px;height:100px;margin:5px auto;background:#f8f8f8;display:flex;align-items:center;justify-content:center;border:1px solid #ddd;">
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(data.qrCodeData)}" alt="QR Code" style="width:100%;height:100%;" />
+    </div>
+    <div style="font-size:9px;color:#666;margin-top:3px;">Scan with camera to validate</div>
   </div>
   ` : ''}
 

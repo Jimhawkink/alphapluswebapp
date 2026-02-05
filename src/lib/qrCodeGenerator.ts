@@ -135,59 +135,56 @@ export function formatKES(amount: number): string {
 }
 
 /**
- * Calculate tax amounts based on mode
+ * Calculate Kenya taxes from subtotal
+ * 
+ * @param subtotal - Base amount before tax
+ * @param taxMode - 'inclusive' or 'exclusive'
+ * @param vatRate - VAT percentage (default 16%)
+ * @param levyRate - Tourism/Catering Levy percentage (default 2%)
+ * @returns Object with tax breakdown
  */
-export interface TaxCalculation {
-    subtotal: number;
-    discount: number;
+export function calculateKenyaTax(
+    subtotal: number,
+    taxMode: 'inclusive' | 'exclusive' = 'inclusive',
+    vatRate: number = 16,
+    levyRate: number = 2
+): {
     netAmount: number;
     vatAmount: number;
     levyAmount: number;
     totalTax: number;
     grandTotal: number;
-}
-
-export function calculateTax(
-    subtotal: number,
-    discount: number,
-    vatRate: number,
-    levyRate: number,
-    taxMode: 'inclusive' | 'exclusive'
-): TaxCalculation {
-    const amountAfterDiscount = subtotal - discount;
-    const totalTaxRate = (vatRate + levyRate) / 100;
+} {
+    const totalTaxRate = vatRate + levyRate; // 18% total
 
     if (taxMode === 'inclusive') {
-        // Tax is already included in the price
-        const netAmount = amountAfterDiscount / (1 + totalTaxRate);
-        const vatAmount = netAmount * (vatRate / 100);
-        const levyAmount = netAmount * (levyRate / 100);
-        const totalTax = vatAmount + levyAmount;
+        // Prices already include tax
+        // Net = Subtotal / (1 + TaxRate/100)
+        const netAmount = subtotal / (1 + totalTaxRate / 100);
+        const totalTax = subtotal - netAmount;
+        const vatAmount = (netAmount * vatRate) / 100;
+        const levyAmount = (netAmount * levyRate) / 100;
 
         return {
-            subtotal,
-            discount,
-            netAmount,
-            vatAmount,
-            levyAmount,
-            totalTax,
-            grandTotal: amountAfterDiscount, // Customer pays the inclusive amount
+            netAmount: Math.round(netAmount * 100) / 100,
+            vatAmount: Math.round(vatAmount * 100) / 100,
+            levyAmount: Math.round(levyAmount * 100) / 100,
+            totalTax: Math.round(totalTax * 100) / 100,
+            grandTotal: subtotal
         };
     } else {
-        // Tax is added on top
-        const netAmount = amountAfterDiscount;
-        const vatAmount = netAmount * (vatRate / 100);
-        const levyAmount = netAmount * (levyRate / 100);
+        // Prices don't include tax - add tax on top
+        const vatAmount = (subtotal * vatRate) / 100;
+        const levyAmount = (subtotal * levyRate) / 100;
         const totalTax = vatAmount + levyAmount;
+        const grandTotal = subtotal + totalTax;
 
         return {
-            subtotal,
-            discount,
-            netAmount,
-            vatAmount,
-            levyAmount,
-            totalTax,
-            grandTotal: netAmount + totalTax, // Customer pays net + tax
+            netAmount: subtotal,
+            vatAmount: Math.round(vatAmount * 100) / 100,
+            levyAmount: Math.round(levyAmount * 100) / 100,
+            totalTax: Math.round(totalTax * 100) / 100,
+            grandTotal: Math.round(grandTotal * 100) / 100
         };
     }
 }
