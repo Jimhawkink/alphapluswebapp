@@ -15,6 +15,18 @@ export async function GET(request: NextRequest) {
             }, { status: 400 });
         }
 
+        // Fetch company name from organisation_settings table
+        let companyName = 'Alpha Plus';
+        const { data: orgSettings } = await supabase
+            .from('organisation_settings')
+            .select('setting_key, setting_value')
+            .eq('setting_key', 'company_name')
+            .single();
+
+        if (orgSettings?.setting_value) {
+            companyName = orgSettings.setting_value;
+        }
+
         let sale;
 
         if (qrData) {
@@ -66,11 +78,11 @@ export async function GET(request: NextRequest) {
                     }, { status: 200 });
                 }
 
-                // Transform regular sale to match hotel sale format
+                // Transform regular sale to match hotel sale format (uses companyName from top of function)
                 sale = {
                     sale_id: regularSale.sale_id,
                     receipt_no: regularSale.receipt_no,
-                    establishment_name: 'Alpha Plus Hotel',
+                    establishment_name: companyName,
                     sale_date: regularSale.sale_date,
                     sale_datetime: regularSale.sale_datetime || regularSale.sale_date,
                     customer_name: regularSale.customer_name || 'Walk-in Customer',
@@ -143,7 +155,7 @@ export async function GET(request: NextRequest) {
             message: 'Receipt verified successfully',
             receipt: {
                 receiptNo: sale.receipt_no,
-                hotelName: sale.establishment_name || 'Alpha Plus',
+                hotelName: sale.establishment_name || companyName,
                 date: sale.sale_date,
                 time: new Date(sale.sale_datetime).toLocaleTimeString('en-GB', {
                     hour: '2-digit',
