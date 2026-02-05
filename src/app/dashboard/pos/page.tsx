@@ -1430,10 +1430,16 @@ export default function POSPage() {
             const userData = localStorage.getItem('user');
             const currentUser = userData ? JSON.parse(userData) : null;
 
+            // Get FRESH receipt and KOT numbers to avoid duplicate constraint errors
+            const freshReceiptNo = await getNextReceiptNumber();
+            const freshKOTNumber = await getNextKOTNumber();
+            setInvoiceNo(freshReceiptNo);
+            setCurrentKOTNumber(freshKOTNumber);
+
             // Save pending sale to database with waiter info
             await savePendingSale({
-                receiptNo: invoiceNo,
-                kotNumber: currentKOTNumber,
+                receiptNo: freshReceiptNo,
+                kotNumber: freshKOTNumber,
                 items: cart.map(item => ({
                     productId: item.id,
                     productName: item.name,
