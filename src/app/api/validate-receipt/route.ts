@@ -114,32 +114,57 @@ export async function GET(request: NextRequest) {
             sale.items_count = items.length;
         }
 
+        // Calculate tax values if not stored (backward compatibility for older receipts)
+        let subtotal = sale.subtotal || 0;
+        let discount = sale.discount || 0;
+        let netAmount = sale.net_amount || subtotal - discount;
+        let totalAmount = sale.total_amount || 0;
+        let vatRate = sale.vat_rate || 16;
+        let levyRate = sale.levy_rate || 2;
+        let vatAmount = sale.vat_amount || 0;
+        let levyAmount = sale.levy_amount || 0;
+        let totalTax = sale.total_tax || 0;
+        let taxMode = sale.tax_mode || 'inclusive';
+
+        // If tax values are 0 but we have total, calculate them (inclusive tax mode)
+        if (totalTax === 0 && totalAmount > 0) {
+            // Tax inclusive: Calculate from total
+            const totalTaxRate = vatRate + levyRate; // 18% total
+            const netFromTotal = totalAmount / (1 + totalTaxRate / 100);
+            netAmount = Math.round(netFromTotal * 100) / 100;
+            vatAmount = Math.round((netAmount * vatRate / 100) * 100) / 100;
+            levyAmount = Math.round((netAmount * levyRate / 100) * 100) / 100;
+            totalTax = Math.round((vatAmount + levyAmount) * 100) / 100;
+            subtotal = totalAmount; // For inclusive, subtotal = total
+        }
+
         return NextResponse.json({
             valid: true,
             message: 'Receipt verified successfully',
             receipt: {
                 receiptNo: sale.receipt_no,
-                hotelName: sale.establishment_name,
+                hotelName: sale.establishment_name || 'Alpha Plus',
                 date: sale.sale_date,
                 time: new Date(sale.sale_datetime).toLocaleTimeString('en-GB', {
                     hour: '2-digit',
                     minute: '2-digit'
                 }),
-                customerName: sale.customer_name,
+                customerName: sale.customer_name || 'Walk-in Customer',
                 paymentMethod: sale.payment_method,
-                taxMode: sale.tax_mode,
-                subtotal: sale.subtotal,
-                discount: sale.discount,
-                netAmount: sale.net_amount,
-                vatRate: sale.vat_rate,
-                vatAmount: sale.vat_amount,
-                levyRate: sale.levy_rate,
-                levyAmount: sale.levy_amount,
-                totalTax: sale.total_tax,
-                totalAmount: sale.total_amount,
+                taxMode: taxMode,
+                subtotal: subtotal,
+                discount: discount,
+                netAmount: netAmount,
+                vatRate: vatRate,
+                vatAmount: vatAmount,
+                levyRate: levyRate,
+                levyAmount: levyAmount,
+                totalTax: totalTax,
+                totalAmount: totalAmount,
                 mpesaCode: sale.mpesa_code,
                 items: items || [],
-                itemsCount: sale.items_count
+                itemsCount: sale.items_count,
+                status: sale.status
             }
         });
 
