@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { SettingsProvider, useCompanyName } from '@/context/SettingsContext';
+import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 
 // Menu Items for Hotel System
 const menuItems = [
@@ -138,6 +139,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [isWaiter, setIsWaiter] = useState(false);
     const [currentTime, setCurrentTime] = useState(new Date());
     const [activeMenu, setActiveMenu] = useState('/dashboard');
+
+    // Initialize session timeout
+    useSessionTimeout();
 
     useEffect(() => {
         const userData = localStorage.getItem('user');
