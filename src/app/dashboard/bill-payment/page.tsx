@@ -541,192 +541,163 @@ function BillPaymentContent() {
     };
 
     return (
-        <div className="space-y-6">
-            {/* Header */}
+        <div className="space-y-4">
+            {/* Header - Compact */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-                        <span className="text-3xl">💰</span>
-                        <span className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
-                            Bill Payment
-                        </span>
-                    </h1>
-                    <p className="text-gray-500 mt-1">Receive payments for pending bills</p>
+                <div className="flex items-center gap-3">
+                    <span className="text-2xl">💰</span>
+                    <div>
+                        <h1 className="text-xl font-bold text-gray-800">Bill Payment</h1>
+                        <p className="text-xs text-gray-500">Receive payments for pending bills</p>
+                    </div>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex items-center gap-2">
                     <button
                         onClick={loadBills}
-                        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl hover:shadow-md transition-all"
+                        className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
                     >
                         <span>🔄</span>
-                        <span className="font-medium text-blue-700">Refresh</span>
+                        <span className="font-medium text-gray-700">Refresh</span>
                     </button>
                     <a
                         href="/dashboard/bills"
-                        className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl hover:shadow-md transition-all"
+                        className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
                     >
                         <span>📋</span>
-                        <span className="font-medium text-purple-700">View All Bills</span>
+                        <span className="font-medium text-gray-700">All Bills</span>
                     </a>
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-4 gap-4">
-                <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-red-500 rounded-2xl p-5 text-white shadow-lg shadow-amber-500/30">
-                    <div className="flex items-center gap-3 mb-3">
-                        <span className="text-3xl">⏳</span>
-                        <span className="font-medium opacity-90">Pending Bills</span>
-                    </div>
-                    <p className="text-3xl font-bold">{stats.totalPending}</p>
-                    <p className="text-sm opacity-80 mt-1">Ksh {stats.totalPendingAmount.toLocaleString()}</p>
+            {/* Stats Strip - Compact Inline */}
+            <div className="flex items-center gap-6 bg-white rounded-xl px-5 py-3 border border-gray-100 shadow-sm">
+                <div className="flex items-center gap-2">
+                    <span className="text-amber-500">⏳</span>
+                    <span className="text-sm text-gray-600">Pending:</span>
+                    <span className="font-bold text-amber-600">{stats.totalPending}</span>
+                    <span className="text-xs text-gray-400">(Ksh {stats.totalPendingAmount.toLocaleString()})</span>
                 </div>
-                <div className="bg-gradient-to-br from-green-500 via-emerald-500 to-teal-500 rounded-2xl p-5 text-white shadow-lg shadow-green-500/30">
-                    <div className="flex items-center gap-3 mb-3">
-                        <span className="text-3xl">✅</span>
-                        <span className="font-medium opacity-90">Paid Bills</span>
-                    </div>
-                    <p className="text-3xl font-bold">{stats.totalPaid}</p>
-                    <p className="text-sm opacity-80 mt-1">Ksh {stats.totalPaidAmount.toLocaleString()}</p>
+                <div className="w-px h-5 bg-gray-200" />
+                <div className="flex items-center gap-2">
+                    <span className="text-green-500">✅</span>
+                    <span className="text-sm text-gray-600">Paid:</span>
+                    <span className="font-bold text-green-600">{stats.totalPaid}</span>
+                    <span className="text-xs text-gray-400">(Ksh {stats.totalPaidAmount.toLocaleString()})</span>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center">
-                            <span className="text-2xl">🧾</span>
-                        </div>
-                        <span className="text-sm font-medium text-blue-600">Selected Bill</span>
-                    </div>
-                    <p className="text-xl font-bold text-gray-800">{selectedBill?.receipt_no || '-'}</p>
-                    <p className="text-sm text-gray-500">{selectedBill?.customer_name || 'No bill selected'}</p>
+                <div className="w-px h-5 bg-gray-200" />
+                <div className="flex items-center gap-2">
+                    <span className="text-blue-500">🧾</span>
+                    <span className="text-sm text-gray-600">Selected:</span>
+                    <span className="font-bold text-blue-600">{selectedBill?.receipt_no || '-'}</span>
                 </div>
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3">
-                        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-100 to-orange-100 flex items-center justify-center">
-                            <span className="text-2xl">💳</span>
-                        </div>
-                        <span className="text-sm font-medium text-red-600">Outstanding</span>
-                    </div>
-                    <p className="text-xl font-bold text-red-600">Ksh {outstandingAmount.toLocaleString()}</p>
+                <div className="w-px h-5 bg-gray-200" />
+                <div className="flex items-center gap-2">
+                    <span className="text-red-500">💳</span>
+                    <span className="text-sm text-gray-600">Balance:</span>
+                    <span className="font-bold text-red-600">Ksh {outstandingAmount.toLocaleString()}</span>
                 </div>
             </div>
 
             {/* Main Content - 3 Column Layout */}
             <div className="grid grid-cols-12 gap-6">
                 {/* Bills List - Left Panel */}
-                <div className="col-span-5 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    {/* Filters */}
-                    <div className="p-4 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-                        <div className="flex items-center gap-2 mb-3">
-                            <span className="text-xl">🔍</span>
-                            <h3 className="font-semibold text-gray-700">Find Bills</h3>
-                        </div>
-                        <div className="space-y-3">
+                <div className="col-span-5 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    {/* Compact Filters */}
+                    <div className="p-3 border-b border-gray-100 bg-gray-50/50">
+                        <div className="flex items-center gap-2 mb-2">
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Search receipt, customer, M-Pesa code..."
-                                className="w-full px-4 py-2.5 bg-white border-2 border-gray-100 rounded-xl focus:outline-none focus:border-blue-300 text-sm"
+                                className="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 text-sm"
                             />
-                            <div className="grid grid-cols-2 gap-2">
-                                <input
-                                    type="date"
-                                    value={dateFrom}
-                                    onChange={(e) => setDateFrom(e.target.value)}
-                                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
-                                    placeholder="From"
-                                />
-                                <input
-                                    type="date"
-                                    value={dateTo}
-                                    onChange={(e) => setDateTo(e.target.value)}
-                                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
-                                    placeholder="To"
-                                />
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <select
-                                    value={filterStatus}
-                                    onChange={(e) => setFilterStatus(e.target.value)}
-                                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
-                                >
-                                    <option value="All">All Status</option>
-                                    <option value="Pending">⏳ Pending</option>
-                                    <option value="Paid">✅ Paid</option>
-                                </select>
-                                <select
-                                    value={filterUser}
-                                    onChange={(e) => setFilterUser(e.target.value)}
-                                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm"
-                                >
-                                    <option value="All">All Users</option>
-                                    {users.map(user => (
-                                        <option key={user} value={user}>{user}</option>
-                                    ))}
-                                </select>
-                            </div>
+                            <select
+                                value={filterStatus}
+                                onChange={(e) => setFilterStatus(e.target.value)}
+                                className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium"
+                            >
+                                <option value="All">All</option>
+                                <option value="Pending">⏳ Pending</option>
+                                <option value="Paid">✅ Paid</option>
+                            </select>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="date"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                className="flex-1 px-2 py-1.5 bg-white border border-gray-200 rounded text-xs"
+                            />
+                            <span className="text-gray-400 text-xs">to</span>
+                            <input
+                                type="date"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                className="flex-1 px-2 py-1.5 bg-white border border-gray-200 rounded text-xs"
+                            />
+                            <select
+                                value={filterUser}
+                                onChange={(e) => setFilterUser(e.target.value)}
+                                className="px-2 py-1.5 bg-white border border-gray-200 rounded text-xs"
+                            >
+                                <option value="All">All Users</option>
+                                {users.map(user => (
+                                    <option key={user} value={user}>{user}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
-                    {/* Bills Table */}
-                    <div className="max-h-[500px] overflow-y-auto">
+                    {/* Bills Table - Compact */}
+                    <div className="max-h-[420px] overflow-y-auto">
                         {isLoading ? (
-                            <div className="p-8 text-center">
-                                <div className="inline-block animate-spin text-4xl mb-3">🔄</div>
-                                <p className="text-gray-500">Loading bills...</p>
+                            <div className="p-6 text-center">
+                                <div className="inline-block animate-spin text-2xl mb-2">🔄</div>
+                                <p className="text-gray-500 text-sm">Loading...</p>
                             </div>
                         ) : filteredBills.length === 0 ? (
-                            <div className="p-8 text-center">
-                                <span className="text-5xl block mb-3">📭</span>
-                                <p className="text-gray-500">No bills found</p>
+                            <div className="p-6 text-center">
+                                <span className="text-3xl block mb-2">📭</span>
+                                <p className="text-gray-500 text-sm">No bills found</p>
                             </div>
                         ) : (
                             <table className="w-full">
                                 <thead className="bg-gray-50 sticky top-0">
                                     <tr>
-                                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Receipt</th>
-                                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">Date</th>
-                                        <th className="text-left py-3 px-4 text-xs font-bold text-gray-500">M-Pesa Code</th>
-                                        <th className="text-right py-3 px-4 text-xs font-bold text-gray-500">Total</th>
-                                        <th className="text-right py-3 px-4 text-xs font-bold text-gray-500">Balance</th>
-                                        <th className="text-center py-3 px-4 text-xs font-bold text-gray-500">Status</th>
+                                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wider font-semibold text-gray-500">Receipt</th>
+                                        <th className="text-left py-2 px-2 text-[10px] uppercase tracking-wider font-semibold text-gray-500">Date</th>
+                                        <th className="text-right py-2 px-2 text-[10px] uppercase tracking-wider font-semibold text-gray-500">Total</th>
+                                        <th className="text-right py-2 px-2 text-[10px] uppercase tracking-wider font-semibold text-gray-500">Balance</th>
+                                        <th className="text-center py-2 px-2 text-[10px] uppercase tracking-wider font-semibold text-gray-500">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                <tbody className="divide-y divide-gray-50">
                                     {filteredBills.map(bill => (
                                         <tr
                                             key={bill.sale_id}
                                             onClick={() => selectBill(bill)}
-                                            className={`border-t border-gray-50 cursor-pointer transition-all ${selectedBill?.sale_id === bill.sale_id
-                                                ? 'bg-blue-50 border-l-4 border-l-blue-500'
+                                            className={`cursor-pointer transition-all ${selectedBill?.sale_id === bill.sale_id
+                                                ? 'bg-indigo-50 border-l-2 border-l-indigo-500'
                                                 : 'hover:bg-gray-50'
                                                 }`}
                                         >
-                                            <td className="py-3 px-4">
-                                                <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded text-xs font-bold">
+                                            <td className="py-2 px-3">
+                                                <span className="text-[11px] font-semibold text-indigo-600">
                                                     {bill.receipt_no}
                                                 </span>
                                             </td>
-                                            <td className="py-3 px-4 text-sm text-gray-600">
+                                            <td className="py-2 px-2 text-[11px] text-gray-500">
                                                 {new Date(bill.sale_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                                             </td>
-                                            <td className="py-3 px-4 text-sm">
-                                                {bill.mpesa_code ? (
-                                                    <span className="px-2 py-1 bg-green-50 text-green-700 rounded text-xs font-mono">
-                                                        {bill.mpesa_code}
-                                                    </span>
-                                                ) : (
-                                                    <span className="text-gray-400 text-xs">-</span>
-                                                )}
-                                            </td>
-                                            <td className="py-3 px-4 text-right font-semibold text-gray-800">
+                                            <td className="py-2 px-2 text-right text-xs font-medium text-gray-700">
                                                 {bill.total_amount?.toLocaleString()}
                                             </td>
-                                            <td className="py-3 px-4 text-right font-bold text-red-600">
+                                            <td className="py-2 px-2 text-right text-xs font-bold text-red-600">
                                                 {Math.max(0, (bill.total_amount || 0) - (bill.amount_paid || 0)).toLocaleString()}
                                             </td>
-                                            <td className="py-3 px-4 text-center">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold border ${getStatusBadge(bill.status)}`}>
+                                            <td className="py-2 px-2 text-center">
+                                                <span className={`text-[10px] font-bold ${bill.status === 'Completed' || bill.status === 'Paid' ? 'text-green-600' : 'text-amber-600'}`}>
                                                     {bill.status === 'Completed' || bill.status === 'Paid' ? '✅' : '⏳'}
                                                 </span>
                                             </td>
@@ -739,165 +710,160 @@ function BillPaymentContent() {
                 </div>
 
                 {/* Payment Panel - Middle */}
-                <div className="col-span-4 space-y-4">
-                    {/* Bill Details Card */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-5 py-4">
-                            <h3 className="font-bold flex items-center gap-2">
-                                <span>🧾</span> Bill Details
-                            </h3>
+                <div className="col-span-4 space-y-3">
+                    {/* Bill Details Card - Clean */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50">
+                            <span className="text-base">🧾</span>
+                            <h3 className="font-semibold text-gray-700 text-sm">Bill Details</h3>
                         </div>
-                        <div className="p-5 space-y-4">
+                        <div className="p-4">
                             {selectedBill ? (
-                                <>
-                                    <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-3">
+                                    <div className="flex justify-between items-start">
                                         <div>
-                                            <label className="text-xs font-medium text-gray-500">Receipt No.</label>
-                                            <p className="font-bold text-gray-800 text-lg">{selectedBill.receipt_no}</p>
+                                            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Receipt</p>
+                                            <p className="font-bold text-gray-800">{selectedBill.receipt_no}</p>
                                         </div>
-                                        <div>
-                                            <label className="text-xs font-medium text-gray-500">Customer</label>
-                                            <p className="font-semibold text-gray-700">{selectedBill.customer_name || 'Walk-in Customer'}</p>
+                                        <div className="text-right">
+                                            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Customer</p>
+                                            <p className="font-medium text-gray-700 text-sm">{selectedBill.customer_name || 'Walk-in'}</p>
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <label className="text-xs font-medium text-gray-500">Date</label>
-                                            <p className="text-gray-700">{selectedBill.sale_date}</p>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500">Date</span>
+                                        <span className="text-gray-700">{selectedBill.sale_date}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-sm">
+                                        <span className="text-gray-500">Status</span>
+                                        <span className={`font-semibold ${selectedBill.status === 'Pending' ? 'text-amber-600' : 'text-green-600'}`}>
+                                            {selectedBill.status === 'Pending' ? '⏳ Not Paid' : '✅ Paid'}
+                                        </span>
+                                    </div>
+                                    <div className="border-t border-gray-100 pt-3 space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Bill Total</span>
+                                            <span className="font-semibold text-gray-800">Ksh {selectedBill.total_amount?.toLocaleString()}</span>
                                         </div>
-                                        <div>
-                                            <label className="text-xs font-medium text-gray-500">Status</label>
-                                            <p className={`font-bold ${selectedBill.status === 'Pending' ? 'text-amber-600' : 'text-green-600'}`}>
-                                                {selectedBill.status === 'Pending' ? '⏳ Not Paid' : '✅ Paid'}
-                                            </p>
+                                        <div className="flex justify-between text-sm">
+                                            <span className="text-gray-500">Paid</span>
+                                            <span className="font-semibold text-green-600">Ksh {paidAmount.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center bg-red-50 p-2.5 rounded-lg">
+                                            <span className="text-red-700 font-medium text-sm">Balance</span>
+                                            <span className="font-bold text-red-600 text-lg">Ksh {outstandingAmount.toLocaleString()}</span>
                                         </div>
                                     </div>
-                                    <div className="border-t border-gray-100 pt-4 space-y-2">
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">💵 Bill Total:</span>
-                                            <span className="font-bold text-gray-800 text-lg">Ksh {selectedBill.total_amount?.toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span className="text-gray-500">✅ Paid Total:</span>
-                                            <span className="font-bold text-green-600">Ksh {paidAmount.toLocaleString()}</span>
-                                        </div>
-                                        <div className="flex justify-between bg-gradient-to-r from-red-50 to-orange-50 p-3 rounded-xl">
-                                            <span className="text-red-700 font-medium">💸 Balance:</span>
-                                            <span className="font-bold text-red-600 text-xl">Ksh {outstandingAmount.toLocaleString()}</span>
-                                        </div>
-                                    </div>
-                                </>
+                                </div>
                             ) : (
-                                <div className="text-center py-8 text-gray-400">
-                                    <span className="text-5xl block mb-3">👆</span>
-                                    <p>Select a bill from the list</p>
+                                <div className="text-center py-6 text-gray-400">
+                                    <span className="text-3xl block mb-2">👆</span>
+                                    <p className="text-sm">Select a bill</p>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Payment Method Card */}
-                    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                        <div className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-5 py-4">
-                            <h3 className="font-bold flex items-center gap-2">
-                                <span>💳</span> Payment Method
-                            </h3>
+                    {/* Payment Method Card - Clean */}
+                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50">
+                            <span className="text-base">💳</span>
+                            <h3 className="font-semibold text-gray-700 text-sm">Payment</h3>
                         </div>
-                        <div className="p-5 space-y-4">
-                            {/* Payment Mode Toggle */}
-                            <div>
-                                <label className="text-sm font-medium text-gray-600 mb-2 block">📲 Payment Mode</label>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setPaymentMode('STK_PUSH')}
-                                        className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${paymentMode === 'STK_PUSH'
-                                            ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow-lg'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                            }`}
-                                    >
-                                        <span>📲</span> STK Push
-                                    </button>
-                                    <button
-                                        onClick={() => setPaymentMode('CALLBACK')}
-                                        className={`flex-1 py-3 rounded-xl font-medium flex items-center justify-center gap-2 transition-all ${paymentMode === 'CALLBACK'
-                                            ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                            }`}
-                                    >
-                                        <span>📥</span> Callback
-                                    </button>
-                                </div>
+                        <div className="p-4 space-y-3">
+                            {/* Payment Mode Toggle - Compact */}
+                            <div className="flex p-1 bg-gray-100 rounded-lg">
+                                <button
+                                    onClick={() => setPaymentMode('STK_PUSH')}
+                                    className={`flex-1 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-1.5 transition-all ${paymentMode === 'STK_PUSH'
+                                        ? 'bg-white text-indigo-600 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                >
+                                    <span>📲</span> STK Push
+                                </button>
+                                <button
+                                    onClick={() => setPaymentMode('CALLBACK')}
+                                    className={`flex-1 py-2 rounded-md text-sm font-medium flex items-center justify-center gap-1.5 transition-all ${paymentMode === 'CALLBACK'
+                                        ? 'bg-white text-amber-600 shadow-sm'
+                                        : 'text-gray-500 hover:text-gray-700'
+                                        }`}
+                                >
+                                    <span>📥</span> Callback
+                                </button>
                             </div>
 
-                            {/* Customer Name */}
+                            {/* Customer Name - Compact */}
                             <div>
-                                <label className="text-sm font-medium text-gray-600 mb-2 block">
-                                    👤 Customer Name {paymentMode === 'CALLBACK' ? '(Required)' : ''}
+                                <label className="text-xs font-medium text-gray-500 mb-1 block">
+                                    Customer Name {paymentMode === 'CALLBACK' ? '*' : ''}
                                 </label>
                                 <input
                                     type="text"
                                     value={customerName}
                                     onChange={(e) => setCustomerName(e.target.value)}
                                     placeholder="Enter customer name"
-                                    className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-100 rounded-xl focus:outline-none focus:border-blue-300"
+                                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg focus:outline-none focus:border-indigo-400 text-sm"
                                     disabled={!selectedBill}
                                 />
                             </div>
 
                             {paymentMode === 'STK_PUSH' && (
                                 <>
-                                    <select
-                                        value={paymentMethod}
-                                        onChange={(e) => setPaymentMethod(e.target.value)}
-                                        className="w-full px-4 py-3 bg-gradient-to-r from-gray-50 to-white border-2 border-gray-100 rounded-xl focus:outline-none focus:border-green-300 font-medium"
-                                        disabled={!selectedBill || outstandingAmount <= 0}
-                                    >
-                                        <option value="Cash">💵 Cash</option>
-                                        <option value="M-Pesa">📱 M-Pesa</option>
-                                        <option value="Card">💳 Card</option>
-                                        <option value="Bank Transfer">🏦 Bank Transfer</option>
-                                    </select>
-
-                                    <div>
-                                        <label className="text-sm font-medium text-gray-600 mb-2 block">💰 Pay Amount</label>
-                                        <input
-                                            type="number"
-                                            value={paymentAmount}
-                                            onChange={(e) => setPaymentAmount(e.target.value)}
-                                            className="w-full px-4 py-3 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-100 rounded-xl focus:outline-none focus:border-green-400 font-bold text-xl text-center"
-                                            placeholder="0.00"
-                                            disabled={!selectedBill || outstandingAmount <= 0}
-                                        />
+                                    {/* Payment Type & Amount Row */}
+                                    <div className="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 mb-1 block">Type</label>
+                                            <select
+                                                value={paymentMethod}
+                                                onChange={(e) => setPaymentMethod(e.target.value)}
+                                                className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm font-medium"
+                                                disabled={!selectedBill || outstandingAmount <= 0}
+                                            >
+                                                <option value="Cash">💵 Cash</option>
+                                                <option value="M-Pesa">📱 M-Pesa</option>
+                                                <option value="Card">💳 Card</option>
+                                                <option value="Bank Transfer">🏦 Bank</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-medium text-gray-500 mb-1 block">Amount</label>
+                                            <input
+                                                type="number"
+                                                value={paymentAmount}
+                                                onChange={(e) => setPaymentAmount(e.target.value)}
+                                                className="w-full px-3 py-2 bg-green-50 border border-green-200 rounded-lg font-bold text-gray-800 text-center"
+                                                placeholder="0"
+                                                disabled={!selectedBill || outstandingAmount <= 0}
+                                            />
+                                        </div>
                                     </div>
 
-                                    {/* M-Pesa Panel */}
+                                    {/* M-Pesa Panel - Compact */}
                                     {paymentMethod === 'M-Pesa' && selectedBill && outstandingAmount > 0 && (
-                                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 p-4 rounded-xl border border-green-200 space-y-3">
-                                            <h4 className="font-bold text-green-700 flex items-center gap-2">
-                                                <span>📱</span> M-Pesa STK Push
-                                            </h4>
+                                        <div className="bg-green-50 p-3 rounded-lg border border-green-200 space-y-2">
                                             <div className="flex gap-2">
                                                 <input
                                                     type="text"
                                                     value={mpesaPhone}
                                                     onChange={(e) => setMpesaPhone(e.target.value)}
                                                     placeholder="2547XXXXXXXX"
-                                                    className="flex-1 px-4 py-3 bg-white border-2 border-green-200 rounded-xl focus:outline-none focus:border-green-400 font-medium"
+                                                    className="flex-1 px-3 py-2 bg-white border border-green-200 rounded-lg text-sm font-medium"
                                                 />
                                                 <button
                                                     onClick={initiateMpesaPayment}
                                                     disabled={isProcessing}
-                                                    className="px-6 py-3 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg disabled:opacity-50"
+                                                    className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-bold hover:bg-green-700 disabled:opacity-50"
                                                 >
-                                                    📤 Send
+                                                    Send
                                                 </button>
                                             </div>
-                                            <div className={`${mpesaStatusColor} text-white px-4 py-2 rounded-lg text-center font-medium`}>
-                                                M-Pesa Status: {mpesaStatus}
+                                            <div className={`${mpesaStatusColor} text-white px-3 py-1.5 rounded text-center text-xs font-medium`}>
+                                                {mpesaStatus}
                                             </div>
                                             {mpesaReceipt && (
-                                                <div className="bg-white p-3 rounded-lg border border-green-300 flex justify-between items-center">
-                                                    <span className="text-gray-600 text-sm">Receipt:</span>
+                                                <div className="bg-white px-3 py-2 rounded border border-green-200 flex justify-between items-center text-sm">
+                                                    <span className="text-gray-500">Receipt:</span>
                                                     <span className="font-bold text-green-600">{mpesaReceipt}</span>
                                                 </div>
                                             )}
@@ -906,82 +872,72 @@ function BillPaymentContent() {
                                 </>
                             )}
 
-                            {/* Callback Mode Panel with C2B DataGrid */}
+                            {/* Callback Mode Panel - Compact C2B DataGrid */}
                             {paymentMode === 'CALLBACK' && selectedBill && outstandingAmount > 0 && (
-                                <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-5 rounded-xl border-2 border-amber-200 space-y-4">
-                                    <div className="flex items-center gap-3 text-amber-700">
-                                        <span className="text-3xl">📥</span>
-                                        <div>
-                                            <h4 className="font-bold">C2B Payment Linking</h4>
-                                            <p className="text-sm opacity-80">Select unlinked payment to link</p>
+                                <div className="bg-amber-50 p-3 rounded-lg border border-amber-200 space-y-3">
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-2 text-amber-700">
+                                            <span className="text-lg">📥</span>
+                                            <h4 className="font-semibold text-sm">C2B Payments</h4>
                                         </div>
+                                        <button
+                                            onClick={loadC2BPayments}
+                                            className="text-sm hover:scale-110 transition-transform"
+                                        >
+                                            {loadingC2B ? '⏳' : '🔄'}
+                                        </button>
                                     </div>
 
                                     {/* Till & Amount Row */}
-                                    <div className="flex gap-3">
-                                        <div className="flex-1 bg-white rounded-xl p-3 text-center">
-                                            <p className="text-gray-500 text-xs">Till Number</p>
-                                            <p className="text-xl font-bold text-gray-800">9830453</p>
+                                    <div className="flex gap-2">
+                                        <div className="flex-1 bg-white rounded-lg p-2 text-center">
+                                            <p className="text-[10px] text-gray-500 uppercase">Till</p>
+                                            <p className="text-sm font-bold text-gray-800">9830453</p>
                                         </div>
-                                        <div className="flex-1 bg-white rounded-xl p-3 text-center">
-                                            <p className="text-gray-500 text-xs">Balance Due</p>
-                                            <p className="text-xl font-bold text-green-600">Ksh {outstandingAmount.toLocaleString()}</p>
+                                        <div className="flex-1 bg-white rounded-lg p-2 text-center">
+                                            <p className="text-[10px] text-gray-500 uppercase">Balance</p>
+                                            <p className="text-sm font-bold text-green-600">Ksh {outstandingAmount.toLocaleString()}</p>
                                         </div>
                                     </div>
 
-                                    {/* C2B DataGrid */}
-                                    <div className="bg-white rounded-xl p-4">
-                                        <div className="flex justify-between items-center mb-3">
-                                            <h5 className="text-amber-700 font-bold text-sm">📥 Unlinked Payments</h5>
-                                            <button
-                                                onClick={loadC2BPayments}
-                                                className="text-xl hover:scale-110 transition-transform"
-                                            >
-                                                {loadingC2B ? '⏳' : '🔄'}
-                                            </button>
-                                        </div>
-
+                                    {/* C2B DataGrid - Compact */}
+                                    <div className="bg-white rounded-lg p-2">
                                         {loadingC2B ? (
-                                            <div className="flex justify-center py-6">
-                                                <div className="w-8 h-8 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
+                                            <div className="flex justify-center py-4">
+                                                <div className="w-5 h-5 border-2 border-amber-500 border-t-transparent rounded-full animate-spin"></div>
                                             </div>
                                         ) : c2bPayments.length === 0 ? (
-                                            <div className="text-center py-6">
-                                                <p className="text-gray-400 mb-3">No unlinked payments found</p>
+                                            <div className="text-center py-4">
+                                                <p className="text-gray-400 text-xs mb-2">No unlinked payments</p>
                                                 <button
                                                     onClick={loadC2BPayments}
-                                                    className="bg-amber-500 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-amber-600"
+                                                    className="bg-amber-500 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-amber-600"
                                                 >
-                                                    Load Payments
+                                                    Load
                                                 </button>
                                             </div>
                                         ) : (
-                                            <div className="max-h-[32rem] overflow-y-auto space-y-2">{/* Increased to 512px for better visibility */}
+                                            <div className="max-h-40 overflow-y-auto space-y-1">
                                                 {c2bPayments.map(payment => (
                                                     <div
                                                         key={payment.id}
                                                         onClick={() => selectC2BPayment(payment)}
-                                                        className={`flex justify-between items-center p-3 rounded-lg cursor-pointer transition-all border-2 ${selectedC2B?.id === payment.id
-                                                            ? 'bg-green-50 border-green-500'
-                                                            : 'bg-gray-50 border-transparent hover:bg-amber-50'
+                                                        className={`flex justify-between items-center p-2 rounded cursor-pointer text-sm ${selectedC2B?.id === payment.id
+                                                            ? 'bg-green-50 border border-green-400'
+                                                            : 'bg-gray-50 hover:bg-amber-50'
                                                             }`}
                                                     >
                                                         <div>
-                                                            <p className="font-bold text-gray-800">
+                                                            <p className="font-semibold text-gray-800 text-xs">
                                                                 {payment.mpesa_receipt || payment.id}
                                                             </p>
-                                                            <p className="text-gray-500 text-xs">
-                                                                {payment.customer_name || 'Customer'} • Ksh {payment.amount?.toLocaleString() || 0}
+                                                            <p className="text-gray-500 text-[10px]">
+                                                                {payment.customer_name || 'Customer'}
                                                             </p>
                                                         </div>
-                                                        <div className="text-right">
-                                                            <p className="font-bold text-green-600">
-                                                                Ksh {(payment.amount || 0).toLocaleString()}
-                                                            </p>
-                                                            {selectedC2B?.id === payment.id && (
-                                                                <p className="text-green-600 text-xs font-bold">✓ Selected</p>
-                                                            )}
-                                                        </div>
+                                                        <p className="font-bold text-green-600 text-xs">
+                                                            Ksh {(payment.amount || 0).toLocaleString()}
+                                                        </p>
                                                     </div>
                                                 ))}
                                             </div>
@@ -993,52 +949,52 @@ function BillPaymentContent() {
                                         <button
                                             onClick={() => processPayment()}
                                             disabled={isProcessing}
-                                            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 text-white py-4 rounded-xl font-bold text-lg hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 flex items-center justify-center gap-2"
+                                            className="w-full bg-green-600 text-white py-2.5 rounded-lg font-bold text-sm hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-1"
                                         >
                                             {isProcessing ? (
-                                                <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                                                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                                             ) : (
-                                                <>✅ Link &amp; Save Payment</>
+                                                <>✅ Link & Save</>
                                             )}
                                         </button>
                                     )}
                                 </div>
                             )}
 
-                            {/* Split Payment UI */}
+                            {/* Split Payment UI - Compact */}
                             {selectedBill && outstandingAmount > 0 && (
-                                <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-4 rounded-xl border border-purple-200 space-y-3">
+                                <div className="bg-purple-50 p-3 rounded-lg border border-purple-200 space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <h4 className="font-bold text-purple-700 flex items-center gap-2">
+                                        <h4 className="font-semibold text-purple-700 text-sm flex items-center gap-1">
                                             <span>💸</span> Split Payment
                                         </h4>
                                         <button
                                             onClick={addSplitPayment}
                                             disabled={parseFloat(paymentAmount) <= 0}
-                                            className="px-4 py-2 bg-purple-500 text-white rounded-lg text-sm font-bold hover:bg-purple-600 disabled:opacity-50"
+                                            className="px-2 py-1 bg-purple-500 text-white rounded text-xs font-bold hover:bg-purple-600 disabled:opacity-50"
                                         >
-                                            + Add Payment
+                                            + Add
                                         </button>
                                     </div>
 
                                     {/* Split Payments List */}
                                     {splitPayments.length > 0 && (
-                                        <div className="space-y-2">
+                                        <div className="space-y-1">
                                             {splitPayments.map((payment, idx) => (
-                                                <div key={idx} className="flex items-center justify-between bg-white p-2 rounded-lg border border-purple-100">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="text-lg">
+                                                <div key={idx} className="flex items-center justify-between bg-white p-1.5 rounded border border-purple-100 text-sm">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="text-sm">
                                                             {payment.method === 'Cash' ? '💵' : payment.method === 'M-Pesa' ? '📱' : '💳'}
                                                         </span>
-                                                        <span className="font-medium text-gray-700">{payment.method}</span>
+                                                        <span className="font-medium text-gray-700 text-xs">{payment.method}</span>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-purple-700">
+                                                    <div className="flex items-center gap-1">
+                                                        <span className="font-bold text-purple-700 text-xs">
                                                             Ksh {payment.amount.toLocaleString()}
                                                         </span>
                                                         <button
                                                             onClick={() => removeSplitPayment(idx)}
-                                                            className="p-1 text-red-500 hover:bg-red-50 rounded"
+                                                            className="p-0.5 text-red-500 hover:bg-red-50 rounded text-xs"
                                                         >
                                                             ✕
                                                         </button>
@@ -1047,12 +1003,12 @@ function BillPaymentContent() {
                                             ))}
 
                                             {/* Summary */}
-                                            <div className="bg-purple-100 p-3 rounded-lg space-y-1">
-                                                <div className="flex justify-between text-sm text-purple-700">
-                                                    <span>Total Split Payments:</span>
+                                            <div className="bg-purple-100 p-2 rounded text-xs space-y-0.5">
+                                                <div className="flex justify-between text-purple-700">
+                                                    <span>Split Total:</span>
                                                     <span className="font-bold">Ksh {splitPaymentTotal.toLocaleString()}</span>
                                                 </div>
-                                                <div className="flex justify-between text-sm text-purple-700">
+                                                <div className="flex justify-between text-purple-700">
                                                     <span>Remaining:</span>
                                                     <span className={`font-bold ${remainingAfterSplit > 0 ? 'text-red-600' : 'text-green-600'}`}>
                                                         Ksh {remainingAfterSplit.toLocaleString()}
@@ -1062,93 +1018,92 @@ function BillPaymentContent() {
 
                                             <button
                                                 onClick={clearSplitPayments}
-                                                className="w-full py-2 text-red-600 bg-red-50 rounded-lg text-sm font-medium hover:bg-red-100"
+                                                className="w-full py-1 text-red-600 bg-red-50 rounded text-xs font-medium hover:bg-red-100"
                                             >
-                                                🗑️ Clear All Payments
+                                                🗑️ Clear
                                             </button>
                                         </div>
                                     )}
 
                                     {splitPayments.length === 0 && (
-                                        <p className="text-xs text-purple-600 text-center">
-                                            Add multiple payment methods (e.g., Cash + M-Pesa) for this bill
+                                        <p className="text-[10px] text-purple-600 text-center">
+                                            Add multiple payment methods
                                         </p>
                                     )}
                                 </div>
                             )}
 
-                            {/* Action Buttons */}
-                            <div className="grid grid-cols-2 gap-3 pt-2">
+                            {/* Action Buttons - Compact */}
+                            <div className="grid grid-cols-2 gap-2 pt-2">
                                 <button
                                     onClick={payFullBalance}
                                     disabled={!selectedBill || outstandingAmount <= 0 || isProcessing || splitPayments.length > 0}
-                                    className="py-4 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-bold hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
+                                    className="py-2.5 bg-indigo-600 text-white rounded-lg font-bold text-sm hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-1 transition-all"
                                 >
                                     <span>💯</span>
-                                    <span>Pay Full Balance</span>
+                                    <span>Pay Full</span>
                                 </button>
                                 <button
                                     onClick={() => processPayment(false)}
                                     disabled={!selectedBill || outstandingAmount <= 0 || isProcessing}
-                                    className="py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
+                                    className="py-2.5 bg-green-600 text-white rounded-lg font-bold text-sm hover:bg-green-700 disabled:opacity-50 flex items-center justify-center gap-1 transition-all"
                                 >
                                     <span>✅</span>
-                                    <span>{splitPayments.length > 0 ? `Process ${splitPayments.length} Payments` : 'Process'}</span>
+                                    <span>{splitPayments.length > 0 ? `Process (${splitPayments.length})` : 'Process'}</span>
                                 </button>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                {/* Order Items - Right Panel */}
-                <div className="col-span-3 bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-                    <div className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-5 py-4">
-                        <h3 className="font-bold flex items-center gap-2">
-                            <span>🍽️</span> Order Items
-                        </h3>
+                {/* Order Items - Right Panel - Clean */}
+                <div className="col-span-3 bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50">
+                        <span className="text-base">🍽️</span>
+                        <h3 className="font-semibold text-gray-700 text-sm">Order Items</h3>
                     </div>
-                    <div className="p-4 max-h-[450px] overflow-y-auto">
+                    <div className="p-3 max-h-[380px] overflow-y-auto">
                         {selectedBill && selectedBill.items && selectedBill.items.length > 0 ? (
-                            <div className="space-y-2">
+                            <div className="space-y-1.5">
                                 {selectedBill.items.map((item, idx) => (
-                                    <div key={idx} className="bg-gradient-to-r from-gray-50 to-white p-3 rounded-xl border border-gray-100">
+                                    <div key={idx} className="bg-gray-50 p-2 rounded-lg">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <p className="font-semibold text-gray-800">{item.product_name}</p>
-                                                <p className="text-xs text-gray-500">Qty: {item.quantity} × {item.unit_price?.toLocaleString()}</p>
+                                                <p className="font-medium text-gray-800 text-sm">{item.product_name}</p>
+                                                <p className="text-[10px] text-gray-500">{item.quantity} × {item.unit_price?.toLocaleString()}</p>
                                             </div>
-                                            <p className="font-bold text-gray-800">{item.subtotal?.toLocaleString()}</p>
+                                            <p className="font-bold text-gray-800 text-sm">{item.subtotal?.toLocaleString()}</p>
                                         </div>
                                         {item.notes && (
-                                            <p className="text-xs text-amber-600 mt-1 italic">📝 {item.notes}</p>
+                                            <p className="text-[10px] text-amber-600 mt-0.5 italic">📝 {item.notes}</p>
                                         )}
                                     </div>
                                 ))}
                             </div>
                         ) : (
-                            <div className="text-center py-12 text-gray-400">
-                                <span className="text-5xl block mb-3">📦</span>
-                                <p>{selectedBill ? 'No items' : 'Select a bill to view items'}</p>
+                            <div className="text-center py-8 text-gray-400">
+                                <span className="text-3xl block mb-2">📦</span>
+                                <p className="text-sm">{selectedBill ? 'No items' : 'Select a bill'}</p>
                             </div>
                         )}
                     </div>
 
-                    {/* Summary */}
+                    {/* Summary - Compact */}
                     {selectedBill && (
-                        <div className="border-t border-gray-100 p-4 bg-gradient-to-r from-gray-50 to-white">
-                            <div className="flex justify-between text-sm mb-1">
+                        <div className="border-t border-gray-100 p-3 bg-gray-50">
+                            <div className="flex justify-between text-xs mb-1">
                                 <span className="text-gray-500">Subtotal:</span>
                                 <span className="font-medium">{selectedBill.subtotal?.toLocaleString()}</span>
                             </div>
                             {selectedBill.discount > 0 && (
-                                <div className="flex justify-between text-sm text-green-600 mb-1">
+                                <div className="flex justify-between text-xs text-green-600 mb-1">
                                     <span>Discount:</span>
                                     <span>-{selectedBill.discount?.toLocaleString()}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between font-bold text-lg pt-2 border-t border-gray-200">
+                            <div className="flex justify-between font-bold text-sm pt-2 border-t border-gray-200">
                                 <span>Total:</span>
-                                <span className="text-blue-600">{selectedBill.total_amount?.toLocaleString()}</span>
+                                <span className="text-indigo-600">{selectedBill.total_amount?.toLocaleString()}</span>
                             </div>
                         </div>
                     )}
