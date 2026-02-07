@@ -365,16 +365,16 @@ export default function LoginPage() {
         <div className="min-h-screen flex flex-col lg:flex-row overflow-hidden bg-gray-50 font-sans">
 
             {/* LEFT SIDE: BRANDING & ATMOSPHERE */}
-            <div className="hidden lg:flex w-1/2 bg-[#0f172a] relative items-center justify-center text-white p-12 overflow-hidden">
-                {/* Abstract Background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-slate-900 opacity-90"></div>
-                {/* Hotel Interior Image */}
+            <div className="hidden lg:flex w-1/2 bg-[#1e293b] relative items-center justify-center text-white p-12 overflow-hidden">
+                {/* Abstract Background - Lighter Gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/80 to-indigo-900/80 z-10"></div>
+                {/* Hotel Interior Image - Bright & Visible */}
                 <div
-                    className="absolute inset-0 bg-cover bg-center mix-blend-overlay opacity-50 transition-opacity duration-1000"
+                    className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
                     style={{ backgroundImage: "url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80')" }}
                 ></div>
 
-                <div className="relative z-10 max-w-lg text-center animate-fade-in-up">
+                <div className="relative z-20 max-w-lg text-center animate-fade-in-up">
                     <div className="mb-6 inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-2xl shadow-blue-900/50 transform hover:scale-105 transition-transform duration-300">
                         <span className="text-5xl text-white drop-shadow-md">💎</span>
                     </div>
