@@ -170,9 +170,9 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
     const itemNetAmount = itemSubtotal / (1 + itemTaxRate);
     const itemTaxAmount = itemSubtotal - itemNetAmount;
 
-    const itemNotes = item.notes ? `<div style="font-size:9px;color:#666;font-style:italic;">${item.notes}</div>` : '';
+    const itemNotes = item.notes ? `<div style="font-size:8px;color:#666;font-style:italic;">${item.notes}</div>` : '';
     const itemDiscount = item.discount && item.discount > 0
-      ? `<div style="font-size:9px;color:#4CAF50;font-weight:bold;">-Ksh ${item.discount.toLocaleString()} discount</div>`
+      ? `<div style="font-size:8px;color:#4CAF50;font-weight:bold;">-Ksh ${item.discount.toLocaleString()}</div>`
       : '';
     return `
       <tr>
@@ -182,29 +182,12 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
           ${itemDiscount}
         </td>
         <td style="text-align:center;">${item.qty}</td>
-        <td style="text-align:right;">Ksh ${item.price.toLocaleString()}</td>
-        <td style="text-align:right;color:#2196F3;font-weight:600;">Ksh ${Math.round(itemTaxAmount).toLocaleString()}</td>
-        <td style="text-align:right;font-weight:bold;">Ksh ${item.total.toLocaleString()}</td>
+        <td style="text-align:right;">${item.price.toLocaleString()}</td>
+        <td style="text-align:right;font-size:8px;color:#2563eb;">${Math.round(itemTaxAmount).toLocaleString()}</td>
+        <td style="text-align:right;font-weight:bold;">${item.total.toLocaleString()}</td>
       </tr>
     `;
   }).join('');
-
-  const watermarkStyle = !isPaid ? `
-    <div style="
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%) rotate(-45deg);
-      font-size: 60px;
-      font-weight: bold;
-      color: rgba(255, 0, 0, 0.15);
-      text-transform: uppercase;
-      letter-spacing: 10px;
-      white-space: nowrap;
-      pointer-events: none;
-      z-index: 1000;
-    ">NOT PAID</div>
-  ` : '';
 
   return `
 <!DOCTYPE html>
@@ -212,6 +195,8 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
 <head>
   <meta charset="UTF-8">
   <title>Customer Bill - ${data.invoiceNo}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39+Text&display=swap" rel="stylesheet">
   <style>
     @page {
       margin: 0;
@@ -223,8 +208,8 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
       box-sizing: border-box;
     }
     body {
-      font-family: 'Segoe UI', 'Arial', sans-serif;
-      font-size: 11px;
+      font-family: 'Roboto', sans-serif;
+      font-size: 10px;
       width: 80mm;
       padding: 4mm;
       background: #fff;
@@ -233,210 +218,142 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
     }
     .header {
       text-align: center;
-      padding-bottom: 10px;
-      border-bottom: 3px double #000;
-      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 2px double #000;
+      margin-bottom: 8px;
     }
     .company-logo {
-      font-size: 28px;
-      margin-bottom: 5px;
+      font-size: 24px;
+      margin-bottom: 2px;
     }
     .company-name {
-      font-size: 18px;
-      font-weight: bold;
+      font-size: 14px;
+      font-weight: 900;
       text-transform: uppercase;
-      letter-spacing: 2px;
-      margin-bottom: 3px;
     }
     .company-details {
-      font-size: 10px;
-      color: #333;
-      line-height: 1.4;
-    }
-    .slogan {
       font-size: 9px;
-      font-style: italic;
-      color: #666;
-      margin-top: 5px;
+      color: #333;
+      line-height: 1.2;
     }
-    .bill-title {
-      background: #000;
-      color: #fff;
-      text-align: center;
-      padding: 8px;
-      font-size: 16px;
-      font-weight: bold;
-      letter-spacing: 3px;
-      margin: 10px 0;
+    .warning-strip {
+        background: #000;
+        color: #fff;
+        text-align: center;
+        font-weight: bold;
+        padding: 4px;
+        font-size: 12px;
+        margin: 8px 0;
+        text-transform: uppercase;
     }
-    .info-section {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 5px;
-      padding: 8px;
-      background: #f5f5f5;
-      border-radius: 5px;
-      margin: 10px 0;
+    .info-compact-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        background: #f3f4f6;
+        padding: 6px;
+        border-radius: 4px;
+        gap: 2px 8px;
+        margin-bottom: 8px;
     }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 2px 0;
+    .info-compact-label {
+        font-size: 8px;
+        color: #666;
     }
-    .info-label {
-      color: #666;
-      font-size: 10px;
-    }
-    .info-value {
-      font-weight: bold;
-      font-size: 11px;
-    }
-    .table-badge {
-      background: #000;
-      color: #fff;
-      padding: 5px 15px;
-      border-radius: 20px;
-      font-size: 14px;
-      font-weight: bold;
-      display: inline-block;
-      margin: 5px 0;
+    .info-compact-value {
+        font-size: 10px;
+        font-weight: 700;
     }
     .items-table {
       width: 100%;
       border-collapse: collapse;
-      margin: 10px 0;
-    }
-    .items-table th {
-      background: #eee;
-      padding: 6px 4px;
-      text-align: left;
       font-size: 10px;
-      font-weight: bold;
-      border-top: 2px solid #000;
-      border-bottom: 2px solid #000;
-    }
-    .items-table th:nth-child(2),
-    .items-table th:nth-child(3),
-    .items-table th:nth-child(4) {
-      text-align: center;
-    }
-    .items-table th:last-child {
-      text-align: right;
-    }
-    .totals-section {
-      border-top: 2px solid #000;
-      padding-top: 10px;
-      margin-top: 10px;
-    }
-    .total-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 0;
-      font-size: 12px;
-    }
-    .grand-total {
-      background: linear-gradient(135deg, #000 0%, #333 100%);
-      color: #fff;
-      padding: 12px;
-      margin: 10px 0;
-      border-radius: 5px;
-    }
-    .grand-total .total-row {
-      font-size: 20px;
-      font-weight: bold;
-    }
-    .payment-section {
-      background: #f0fff0;
-      border: 2px solid #4CAF50;
-      padding: 10px;
-      border-radius: 5px;
-      margin: 10px 0;
-    }
-    .payment-section.unpaid {
-      background: #fff0f0;
-      border-color: #f44336;
-    }
-    .payment-badge {
-      display: inline-block;
-      padding: 3px 10px;
-      border-radius: 3px;
-      font-size: 10px;
-      font-weight: bold;
-      text-transform: uppercase;
-    }
-    .payment-badge.paid {
-      background: #4CAF50;
-      color: #fff;
-    }
-    .payment-badge.unpaid {
-      background: #f44336;
-      color: #fff;
-    }
-    .order-notes {
-      background: #fff3cd;
-      border: 1px solid #ffc107;
-      padding: 8px;
-      border-radius: 5px;
-      margin: 10px 0;
-      font-size: 10px;
-    }
-    .footer {
-      text-align: center;
-      margin-top: 15px;
-      padding-top: 10px;
-      border-top: 1px dashed #000;
-    }
-    .thank-you {
-      font-size: 14px;
-      font-weight: bold;
       margin-bottom: 5px;
     }
-    .footer-note {
+    .items-table th {
+      background: #e5e5e5;
+      padding: 4px 2px;
+      text-align: left;
       font-size: 9px;
-      color: #666;
-      margin-top: 5px;
+      font-weight: 800;
+      text-transform: uppercase;
+    }
+    .items-table td {
+      padding: 3px 2px;
+      border-bottom: 1px dashed #ccc;
+    }
+     .items-table tr:last-child td {
+        border-bottom: 2px solid #000;
+    }
+    .totals-compact {
+        margin-top: 5px;
+    }
+    .total-line {
+        display: flex;
+        justify-content: space-between;
+        padding: 1px 0;
+    }
+    .tax-breakdown-box {
+        background: #f9fafb;
+        border: 1px dashed #d1d5db;
+        padding: 4px;
+        margin: 5px 0;
+        border-radius: 3px;
+    }
+    .grand-total-black {
+        background: #000;
+        color: #fff;
+        padding: 8px;
+        display: flex;
+        justify-content: space-between;
+        font-weight: 900;
+        font-size: 16px;
+        margin: 5px 0;
+        border-radius: 4px;
+    }
+    .status-unpaid {
+        border: 2px solid #ef4444;
+        color: #ef4444;
+        padding: 4px;
+        text-align: center;
+        font-weight: 800;
+        background: #fef2f2;
+        font-size: 12px;
+        margin-bottom: 5px;
+        border-radius: 4px;
+    }
+    .status-paid {
+        border: 2px solid #22c55e;
+        color: #15803d;
+        padding: 4px;
+        text-align: center;
+        font-weight: 800;
+        background: #f0fdf4;
+        font-size: 12px;
+        margin-bottom: 5px;
+        border-radius: 4px;
     }
     .barcode-section {
       text-align: center;
-      margin: 15px 0 5px 0;
-      padding: 10px;
-      border: 1px dashed #ccc;
+      margin: 5px 0;
     }
     .barcode {
-      font-family: 'Libre Barcode 39', monospace;
-      font-size: 35px;
-      letter-spacing: 2px;
+      font-family: 'Libre Barcode 39 Text', monospace;
+      font-size: 30px;
     }
-    .invoice-no-large {
-      font-size: 12px;
-      font-weight: bold;
-      letter-spacing: 2px;
-      margin-top: 5px;
-    }
-    .qr-code {
-      width: 60px;
-      height: 60px;
-      background: #f0f0f0;
-      margin: 5px auto;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 8px;
-      color: #999;
-    }
-    .powered-by {
-      font-size: 8px;
-      color: #999;
+    .footer {
+      text-align: center;
       margin-top: 10px;
+      padding-top: 5px;
+      border-top: 1px dashed #000;
+      font-size: 9px;
+      color: #555;
     }
     @media print {
       body { width: 80mm; }
-      .no-print { display: none; }
     }
   </style>
 </head>
 <body>
-  ${watermarkStyle}
 
   <!-- Header -->
   <div class="header">
@@ -445,58 +362,57 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
     <div class="company-details">
       📍 ${company.address}<br>
       📞 ${company.phone}
-      ${company.email ? `<br>✉️ ${company.email}` : ''}
       ${company.pin ? `<br>PIN: ${company.pin}` : ''}
     </div>
-    ${company.slogan ? `<div class="slogan">"${company.slogan}"</div>` : ''}
+    ${company.slogan ? `<div style="font-size:8px;font-style:italic;margin-top:2px;">"${company.slogan}"</div>` : ''}
   </div>
 
   <!-- Bill Title -->
-  <div class="bill-title">
+  <div class="warning-strip">
     ${isPaid ? '✓ TAX INVOICE ✓' : '⚠ CUSTOMER BILL ⚠'}
   </div>
 
-  <!-- Invoice Info -->
-  <div class="info-section">
+  <!-- Info Grid -->
+  <div class="info-compact-grid">
     <div>
-      <div class="info-label">Invoice No:</div>
-      <div class="info-value">${data.invoiceNo}</div>
+      <div class="info-compact-label">Invoice No:</div>
+      <div class="info-compact-value">${data.invoiceNo}</div>
     </div>
     <div>
-      <div class="info-label">Date:</div>
-      <div class="info-value">${data.date}</div>
+      <div class="info-compact-label">Date:</div>
+      <div class="info-compact-value">${data.date}</div>
     </div>
     <div>
-      <div class="info-label">Time:</div>
-      <div class="info-value">${data.time}</div>
+      <div class="info-compact-label">Time:</div>
+      <div class="info-compact-value">${data.time}</div>
     </div>
     <div>
-      <div class="info-label">Cashier:</div>
-      <div class="info-value">${data.cashier}</div>
+      <div class="info-compact-label">Cashier:</div>
+      <div class="info-compact-value">${data.cashier}</div>
     </div>
+    ${data.tableNo ? `
+    <div>
+      <div class="info-compact-label">Table:</div>
+      <div class="info-compact-value">${data.tableNo}</div>
+    </div>
+    ` : ''}
+    ${data.customerName ? `
+    <div>
+       <div class="info-compact-label">Customer:</div>
+       <div class="info-compact-value">${data.customerName}</div>
+    </div>
+    ` : ''}
   </div>
-
-  ${data.tableNo ? `
-  <div style="text-align:center;">
-    <span class="table-badge">🪑 TABLE ${data.tableNo}</span>
-  </div>
-  ` : ''}
-
-  ${data.customerName ? `
-  <div style="text-align:center;margin:5px 0;">
-    <span style="font-size:12px;">👤 Customer: <strong>${data.customerName}</strong></span>
-  </div>
-  ` : ''}
 
   <!-- Items -->
   <table class="items-table">
     <thead>
       <tr>
-        <th style="width:35%">ITEM</th>
-        <th style="width:10%">QTY</th>
-        <th style="width:18%">PRICE</th>
-        <th style="width:18%">TAX</th>
-        <th style="width:19%">TOTAL</th>
+        <th style="width:40%">ITEM</th>
+        <th style="width:10%;text-center">QTY</th>
+        <th style="width:20%;text-align:right">PRICE</th>
+        <th style="width:15%;text-align:right">TAX</th>
+        <th style="width:15%;text-align:right">TOTAL</th>
       </tr>
     </thead>
     <tbody>
@@ -505,134 +421,97 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
   </table>
 
   <!-- Totals -->
-  <div class="totals-section">
-    <div class="total-row">
+  <div class="totals-compact">
+    <div class="total-line" style="font-weight:bold; font-size:10px; margin-bottom:2px;">
       <span>Subtotal (${data.items.length} items):</span>
-      <span style="font-weight:bold;">Ksh ${data.subtotal.toLocaleString()}</span>
+      <span>Ksh ${data.subtotal.toLocaleString()}</span>
     </div>
     ${data.discount > 0 ? `
-    <div class="total-row" style="color:#4CAF50;">
-      <span>💰 Discount:</span>
-      <span style="font-weight:bold;">- Ksh ${data.discount.toLocaleString()}</span>
+    <div class="total-line" style="color:#15803d; font-weight:bold;">
+      <span>Discount:</span>
+      <span>- Ksh ${data.discount.toLocaleString()}</span>
     </div>
     ` : ''}
     
     ${data.taxMode === 'inclusive' && data.netAmount ? `
-    <div class="total-row" style="font-size:10px;color:#666;border-top:1px dashed #ccc;padding-top:5px;margin-top:5px;">
+    <div class="total-line" style="font-size:9px; color:#666;">
       <span>Net Amount (excl. tax):</span>
       <span>Ksh ${data.netAmount.toLocaleString()}</span>
     </div>
     ` : ''}
-    
+
+    <!-- Tax Breakdown -->
     ${(data.vatAmount && data.vatAmount > 0) || (data.levyAmount && data.levyAmount > 0) ? `
-    <div style="background:#f5f5f5;padding:8px;margin:8px 0;border-radius:5px;">
-      <div style="font-weight:bold;font-size:11px;margin-bottom:5px;color:#333;">📊 Tax Breakdown:</div>
-      ${data.vatAmount && data.vatAmount > 0 ? `
-      <div class="total-row" style="font-size:11px;">
-        <span>VAT ${data.vatRate || 16}%:</span>
-        <span>Ksh ${data.vatAmount.toLocaleString()}</span>
-      </div>
-      ` : ''}
-      ${data.levyAmount && data.levyAmount > 0 ? `
-      <div class="total-row" style="font-size:11px;">
-        <span>Tourism Levy ${data.levyRate || 2}%:</span>
-        <span>Ksh ${data.levyAmount.toLocaleString()}</span>
-      </div>
-      ` : ''}
-      <div class="total-row" style="font-size:11px;font-weight:bold;border-top:1px solid #ccc;padding-top:4px;margin-top:4px;">
-        <span>Total Tax:</span>
-        <span>Ksh ${(data.totalTax || data.tax || 0).toLocaleString()}</span>
-      </div>
-    </div>
-    ` : data.tax > 0 ? `
-    <div class="total-row">
-      <span>VAT (16%):</span>
-      <span>Ksh ${data.tax.toLocaleString()}</span>
+    <div class="tax-breakdown-box">
+        <div class="total-line"><span style="font-weight:bold;font-size:9px;">Tax Breakdown:</span></div>
+        ${data.vatAmount && data.vatAmount > 0 ? `
+        <div class="total-line" style="font-size:9px;">
+            <span>VAT ${data.vatRate || 16}%:</span>
+            <span>${data.vatAmount.toLocaleString()}</span>
+        </div>
+        ` : ''}
+        ${data.levyAmount && data.levyAmount > 0 ? `
+        <div class="total-line" style="font-size:9px;">
+            <span>Tourism Levy ${data.levyRate || 2}%:</span>
+            <span>${data.levyAmount.toLocaleString()}</span>
+        </div>
+        ` : ''}
+        <div class="total-line" style="border-top:1px solid #ddd; margin-top:2px; padding-top:2px; font-weight:bold; font-size:9px;">
+            <span>Total Tax:</span>
+            <span>Ksh ${(data.totalTax || data.tax || 0).toLocaleString()}</span>
+        </div>
     </div>
     ` : ''}
   </div>
 
   <!-- Grand Total -->
-  <div class="grand-total">
-    <div class="total-row">
-      <span>GRAND TOTAL:</span>
-      <span>Ksh ${data.total.toLocaleString()}</span>
-    </div>
+  <div class="grand-total-black">
+    <span>GRAND TOTAL:</span>
+    <span>Ksh ${data.total.toLocaleString()}</span>
   </div>
 
-  <!-- Payment Status -->
-  <div class="payment-section ${isPaid ? '' : 'unpaid'}">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <span class="payment-badge ${isPaid ? 'paid' : 'unpaid'}">
-        ${isPaid ? '✓ PAID' : '✗ NOT PAID'}
-      </span>
-      <span style="font-weight:bold;font-size:12px;">
-        ${isPaid ? data.paymentMethod.toUpperCase() : 'PENDING'}
-      </span>
-    </div>
-    ${isPaid ? `
-    <div style="margin-top:8px;font-size:11px;">
-      <div class="total-row">
-        <span>Amount Paid:</span>
-        <span>Ksh ${data.amountPaid.toLocaleString()}</span>
-      </div>
-      ${data.change > 0 ? `
-      <div class="total-row" style="color:#4CAF50;font-weight:bold;">
-        <span>🔄 Change:</span>
-        <span>Ksh ${data.change.toLocaleString()}</span>
-      </div>
-      ` : ''}
-      ${data.mpesaReceipt ? `
-      <div class="total-row" style="font-size:10px;">
-        <span>M-Pesa Ref:</span>
-        <span>${data.mpesaReceipt}</span>
-      </div>
-      ` : ''}
-    </div>
-    ` : `
-    <div style="margin-top:8px;text-align:center;font-size:11px;color:#c00;">
-      ⚠️ Please pay at the counter
-    </div>
-    `}
+  <!-- Status -->
+  ${!isPaid ? `
+  <div class="status-unpaid">
+    ❌ NOT PAID (PENDING)
+    <div style="font-size:9px; font-weight:normal; color:#000; margin-top:2px;">Please pay at the counter</div>
   </div>
+  ` : `
+  <div class="status-paid">
+    ✓ PAID (${data.paymentMethod.toUpperCase()})
+    ${data.change > 0 ? `<div style="font-size:9px;color:#15803d;margin-top:2px;">Change: Ksh ${data.change.toLocaleString()}</div>` : ''}
+  </div>
+  `}
 
   ${data.orderNotes ? `
-  <div class="order-notes">
+  <div style="background:#fff3cd; border:1px solid #ffc107; padding:5px; margin:5px 0; font-size:9px; border-radius:3px;">
     📝 <strong>Note:</strong> ${data.orderNotes}
   </div>
   ` : ''}
 
   ${data.qrCodeData ? `
-  <!-- QR Code Section -->
-  <div class="barcode-section" style="border:2px solid #000;background:#fff;padding:10px;">
-    <div style="font-weight:bold;font-size:11px;margin-bottom:8px;">✓ Scan to Verify Receipt</div>
-    <div class="qr-code" style="width:150px;height:150px;margin:0 auto;background:#fff;display:flex;align-items:center;justify-content:center;">
-      <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&ecc=M&data=${encodeURIComponent(data.qrCodeData)}" alt="QR Code" style="width:100%;height:100%;" />
+  <div style="text-align:center; padding:5px; border:1px dashed #ccc; margin-top:5px;">
+    <div style="font-weight:bold; font-size:9px;">✓ Scan to Verify Receipt</div>
+    <div style="display:flex; justify-content:center; margin:3px 0;">
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&ecc=M&data=${encodeURIComponent(data.qrCodeData)}" alt="QR" style="width:60px;height:60px;">
     </div>
-    <div style="font-size:9px;color:#666;margin-top:5px;">Scan with camera to validate</div>
   </div>
   ` : ''}
 
-  <!-- Barcode Section -->
   <div class="barcode-section">
     <div class="barcode">*${data.invoiceNo}*</div>
-    <div class="invoice-no-large">${data.invoiceNo}</div>
   </div>
 
-  <!-- Footer -->
   <div class="footer">
-    <div class="thank-you">★ THANK YOU FOR DINING WITH US! ★</div>
-    <div style="font-size:10px;">We appreciate your business</div>
-    <div class="footer-note">
+    <div style="font-weight:bold; font-size:10px;">★ THANK YOU FOR DINING WITH US! ★</div>
+    <div>We appreciate your business</div>
+    <div style="margin-top:4px;">
       ${isPaid ? 'This serves as your official tax invoice' : 'This is not a tax invoice until payment is complete'}
     </div>
-    <div class="footer-note">
-      Goods once sold are not refundable
-    </div>
-    <div class="powered-by">
-      Powered by Alpha Plus POS v2.0
-    </div>
+    <div>Goods once sold are not refundable</div>
+    <div style="font-size:8px; color:#999; margin-top:5px;">Powered by Alpha Plus POS v2.0</div>
   </div>
+
 </body>
 </html>
 `;
@@ -646,18 +525,15 @@ export function generateReceiptHTML(data: ReceiptData, company: CompanyInfo = de
 // Generate KOT (Kitchen Order Ticket) HTML
 export function generateKOTHTML(data: KOTData, company: CompanyInfo = defaultCompanyInfo): string {
   const itemRows = data.items.map((item, index) => `
-    <tr>
-      <td style="font-size:10px;color:#666;padding:8px 5px;border-bottom:1px solid #ddd;">${index + 1}.</td>
-      <td style="font-size:16px;font-weight:bold;padding:8px 5px;border-bottom:1px solid #ddd;">${item.name}</td>
-      <td style="font-size:20px;font-weight:bold;text-align:center;background:#000;color:#fff;width:50px;padding:8px;">${item.qty}</td>
-    </tr>
+    <div class="kot-item">
+        <span style="max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${index + 1}. ${item.name}</span>
+        <span class="dots"></span>
+        <div class="qty-box-black">${item.qty}</div>
+    </div>
     ${item.notes ? `
-    <tr>
-      <td></td>
-      <td colspan="2" style="font-size:13px;color:#c00;padding:5px 15px;background:#fff0f0;border-radius:5px;font-weight:bold;">
-        ⚠️ ${item.notes.toUpperCase()}
-      </td>
-    </tr>
+    <div style="font-size:11px;color:#c00;margin-top:-4px;margin-bottom:4px;padding-left:10px;font-style:italic;">
+      ⚠️ ${item.notes.toUpperCase()}
+    </div>
     ` : ''}
   `).join('');
 
@@ -667,6 +543,7 @@ export function generateKOTHTML(data: KOTData, company: CompanyInfo = defaultCom
 <head>
   <meta charset="UTF-8">
   <title>KOT - ${data.kotNo}</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
   <style>
     @page {
       margin: 0;
@@ -678,158 +555,164 @@ export function generateKOTHTML(data: KOTData, company: CompanyInfo = defaultCom
       box-sizing: border-box;
     }
     body {
-      font-family: 'Arial', sans-serif;
+      font-family: 'Roboto', sans-serif;
       font-size: 12px;
       width: 80mm;
-      padding: 5mm;
+      padding: 4mm;
       background: #fff;
       color: #000;
     }
-    .header {
-      background: #000;
-      color: #fff;
-      text-align: center;
-      padding: 12px;
-      margin: -5mm -5mm 10px -5mm;
+    .kot-header-black {
+        background-color: #000;
+        color: white;
+        padding: 8px;
+        text-align: center;
+        border-radius: 6px;
+        margin-bottom: 10px;
     }
+    
     .kot-title {
-      font-size: 28px;
-      font-weight: bold;
-      letter-spacing: 3px;
+        font-size: 18px; 
+        font-weight: 900;
+        text-transform: uppercase;
     }
-    .kot-no {
-      font-size: 24px;
-      font-weight: bold;
-      margin-top: 5px;
+    
+    .kot-number {
+         font-size: 16px;
+         font-weight: 700;
+         margin-top: 2px;
     }
-    .rush {
-      background: #c00 !important;
-      animation: blink 0.5s infinite;
+
+    .badge-takeaway {
+        display: inline-block;
+        background: linear-gradient(to right, #f59e0b, #ea580c);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 12px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        text-align: center;
     }
-    @keyframes blink {
-      50% { opacity: 0.7; }
+
+    .badge-dinein {
+        display: inline-block;
+        background: linear-gradient(to right, #3b82f6, #2563eb);
+        color: white;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 12px;
+        text-transform: uppercase;
+        margin-bottom: 8px;
+        text-align: center;
     }
-    .info-box {
-      border: 2px solid #000;
-      padding: 10px;
-      margin: 10px 0;
+
+    .line-info {
+        border-top: 1px solid #000;
+        border-bottom: 1px solid #000;
+        padding: 5px 0;
+        margin: 10px 0;
+        text-align: center;
+        font-size: 10px;
+        font-weight: 700;
     }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      margin: 4px 0;
-      font-size: 13px;
+
+    .kot-item {
+        display: flex;
+        align-items: flex-end; /* Align dots to bottom */
+        justify-content: space-between;
+        margin-bottom: 8px;
+        font-size: 14px;
+        font-weight: 700;
     }
-    .table-no {
-      font-size: 36px;
-      font-weight: bold;
-      text-align: center;
-      padding: 15px;
-      border: 4px solid #000;
-      margin: 10px 0;
-      background: #f0f0f0;
+
+    .dots {
+        flex-grow: 1;
+        border-bottom: 2px dotted #000;
+        margin: 0 5px 4px 5px; /* Adjust margin to align with text baseline */
+        height: 1px;
     }
-    .items-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 15px 0;
+
+    .qty-box-black {
+        background: #000;
+        color: #fff;
+        min-width: 26px;
+        height: 26px;
+        padding: 0 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 900;
+        font-size: 16px;
+        border-radius: 4px;
     }
-    .items-table td {
-      vertical-align: middle;
-    }
-    .order-notes {
-      background: #fff3cd;
-      border: 3px solid #ffc107;
-      padding: 12px;
-      margin: 10px 0;
-      font-size: 14px;
-      font-weight: bold;
-      text-align: center;
-    }
+    
     .footer {
-      text-align: center;
-      margin-top: 15px;
-      font-size: 10px;
-      color: #666;
+        margin-top: 15px; 
+        padding-top: 5px; 
+        border-top: 2px solid #000; 
+        text-center: center;
+        font-size: 10px;
+        font-weight: bold;
     }
-    .time-stamp {
-      font-size: 16px;
-      font-weight: bold;
-      text-align: center;
-      border-top: 3px solid #000;
-      padding-top: 12px;
-      margin-top: 10px;
+
+    .rush-badge {
+       background: #dc2626;
+       color: white;
+       padding: 2px 8px;
+       border-radius: 4px;
+       font-size: 10px;
+       margin-left: 5px;
+       vertical-align: middle;
+       display: inline-block;
     }
+    
     @media print {
       body { width: 80mm; }
-      .no-print { display: none; }
     }
   </style>
 </head>
 <body>
-  <!-- Header -->
-  <div class="header ${data.priority === 'rush' ? 'rush' : ''}">
-    <div class="kot-title">🍳 K.O.T 🍳</div>
-    <div class="kot-no">#${data.kotNo}</div>
-    ${data.priority === 'rush' ? '<div style="font-size:20px;margin-top:5px;">⚡ RUSH ORDER ⚡</div>' : ''}
+  
+  <div class="kot-header-black">
+      <div class="kot-title">
+        K.O.T 👨‍🍳
+        ${data.priority === 'rush' ? '<span class="rush-badge">⚡ RUSH</span>' : ''}
+      </div>
+      <div class="kot-number">#${data.kotNo}</div>
   </div>
 
-  <!-- Table Number -->
-  ${data.tableNo ? `
-  <div class="table-no">
-    🪑 TABLE ${data.tableNo}
+  <div style="text-align: center;">
+      <div class="${data.orderType.toLowerCase().includes('take') ? 'badge-takeaway' : 'badge-dinein'}">
+          ${data.orderType.toLowerCase().includes('take') ? '🛍️' : '🪑'} ${data.orderType.toUpperCase()}
+          ${data.tableNo ? `- TABLE ${data.tableNo}` : ''}
+      </div>
   </div>
-  ` : `
-  <div class="table-no" style="background:#ffe0b2;border-color:#ff9800;">
-    🛍️ ${data.orderType.toUpperCase()}
-  </div>
-  `}
 
-  <!-- Order Info -->
-  <div class="info-box">
-    <div class="info-row">
-      <span>Order Type:</span>
-      <span style="font-weight:bold;font-size:14px;">${data.orderType.toUpperCase()}</span>
-    </div>
-    <div class="info-row">
-      <span>Date:</span>
-      <span>${data.date}</span>
-    </div>
-    <div class="info-row">
-      <span>Time:</span>
-      <span style="font-size:18px;font-weight:bold;">${data.time}</span>
-    </div>
-    ${data.waiter ? `
-    <div class="info-row">
-      <span>Waiter:</span>
-      <span style="font-weight:bold;">${data.waiter}</span>
-    </div>
-    ` : ''}
+  <div class="line-info">
+      ${data.orderType.toUpperCase()} | ${data.date} | ${data.time} | ${data.waiter || 'Server'}
   </div>
 
   <!-- Items -->
-  <table class="items-table">
-    <tbody>
+  <div style="margin-top: 10px;">
       ${itemRows}
-    </tbody>
-  </table>
-
-  <!-- Order Notes -->
+  </div>
+  
   ${data.orderNotes ? `
-  <div class="order-notes">
+  <div style="margin-top:15px;border:2px dashed #000;padding:5px;font-weight:bold;text-align:center;">
     📝 ${data.orderNotes.toUpperCase()}
   </div>
   ` : ''}
 
-  <!-- Time Stamp -->
-  <div class="time-stamp">
-    ⏰ ${data.date} ${data.time}
+  <div class="footer">
+      ${data.date} | ${data.time}<br>
+      <span style="font-size: 9px; color: #666; font-weight: normal; text-transform: uppercase;">
+        ${company.name}
+      </span>
   </div>
 
-  <!-- Footer -->
-  <div class="footer">
-    ${company.name}
-  </div>
 </body>
 </html>
 `;

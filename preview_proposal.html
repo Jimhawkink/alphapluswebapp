@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bill & KOT Redesign Proposal</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Libre+Barcode+39+Text&display=swap');
+
+        body {
+            background-color: #f3f4f6;
+            padding: 40px;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .receipt-container {
+            background: white;
+            width: 320px;
+            /* ~80mm */
+            margin: 0 auto;
+            padding: 15px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-radius: 4px;
+            font-size: 11px;
+            color: #1f2937;
+            border-bottom: 1px dashed #ccc;
+            /* Tear-off look */
+        }
+
+        .receipt-header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .receipt-title {
+            font-weight: 800;
+            font-size: 16px;
+            margin-bottom: 2px;
+            text-transform: uppercase;
+        }
+
+        .bill-warning {
+            background-color: #000;
+            color: white;
+            text-align: center;
+            padding: 5px;
+            font-weight: bold;
+            font-size: 13px;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2px 10px;
+            margin-bottom: 10px;
+            font-size: 10px;
+        }
+
+        .info-label {
+            color: #6b7280;
+            font-size: 9px;
+            text-transform: uppercase;
+        }
+
+        .info-value {
+            font-weight: 600;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+        }
+
+        .items-table th {
+            text-align: left;
+            border-top: 2px solid #000;
+            border-bottom: 1px solid #000;
+            padding: 4px 0;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .items-table td {
+            padding: 4px 0;
+            border-bottom: 1px dashed #e5e7eb;
+        }
+
+        .items-table td.qty {
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .items-table td.price {
+            text-align: right;
+        }
+
+        .totals-section {
+            border-top: 2px solid #000;
+            padding-top: 5px;
+            margin-top: 5px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .grand-total-banner {
+            background: linear-gradient(to right, #000, #333);
+            color: white;
+            padding: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+
+        .status-badge {
+            border: 2px solid #dc2626;
+            background-color: #fef2f2;
+            color: #dc2626;
+            text-align: center;
+            padding: 5px;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .barcode {
+            font-family: 'Libre Barcode 39 Text', cursive;
+            font-size: 36px;
+            text-align: center;
+            margin: 5px 0;
+            line-height: 1;
+        }
+
+        /* KOT Specifics */
+        .kot-header {
+            background: #000;
+            color: #fff;
+            text-align: center;
+            padding: 10px;
+            margin: -15px -15px 10px -15px;
+        }
+
+        .kot-badge {
+            background-color: #f59e0b;
+            color: black;
+            font-weight: 800;
+            text-align: center;
+            padding: 8px;
+            font-size: 16px;
+            border: 2px solid #000;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .kot-item-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e5e7eb;
+            font-size: 13px;
+        }
+
+        .kot-qty {
+            background: #000;
+            color: white;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="flex flex-wrap justify-center gap-10">
+
+        <!-- PROPOSAL 1: Customer Bill -->
+        <div>
+            <h2 class="text-center text-lg font-bold text-gray-500 mb-4">PROPOSED CUSTOMER BILL</h2>
+            <div class="receipt-container">
+                <!-- Header -->
+                <div class="receipt-header">
+                    <div class="text-3xl mb-1">🍽️</div>
+                    <div class="receipt-title">KILOMANJARO HOTEL</div>
+                    <div class="text-xs text-gray-500">Main Street, Nairobi • 0711611125</div>
+                    <div class="text-[9px] text-gray-400 mt-1">PIN: A778871452P</div>
+                </div>
+
+                <div class="bill-warning">
+                    ⚠ CUSTOMER BILL ⚠
+                </div>
+
+                <!-- Info Grid -->
+                <div class="info-grid">
+                    <div>
+                        <div class="info-label">Invoice No</div>
+                        <div class="info-value">RCP-53982</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Date</div>
+                        <div class="info-value">07/02/2026</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Time</div>
+                        <div class="info-value">17:47</div>
+                    </div>
+                    <div>
+                        <div class="info-label">Cashier</div>
+                        <div class="info-value">John Doe</div>
+                    </div>
+                </div>
+
+                <!-- Items -->
+                <table class="items-table">
+                    <thead>
+                        <tr>
+                            <th width="55%">ITEM</th>
+                            <th width="15%" class="text-center">QTY</th>
+                            <th width="30%" class="text-right">TOTAL</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>CHAPATI</td>
+                            <td class="qty">1</td>
+                            <td class="price">30</td>
+                        </tr>
+                        <tr>
+                            <td>DOUGHNUT</td>
+                            <td class="qty">1</td>
+                            <td class="price">30</td>
+                        </tr>
+                        <tr>
+                            <td>WHITE TEA CUP</td>
+                            <td class="qty">2</td>
+                            <td class="price">60</td>
+                        </tr>
+                        <tr>
+                            <td>NDAZI</td>
+                            <td class="qty">1</td>
+                            <td class="price">20</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <!-- Totals -->
+                <div class="totals-section">
+                    <div class="total-row">
+                        <span>Subtotal (4 items)</span>
+                        <span class="font-bold">140</span>
+                    </div>
+                    <div class="total-row text-gray-500 text-[10px]">
+                        <span>VAT (16%)</span>
+                        <span>21.36</span>
+                    </div>
+                </div>
+
+                <!-- Grand Total -->
+                <div class="grand-total-banner">
+                    <span>GRAND TOTAL</span>
+                    <span>Ksh 140</span>
+                </div>
+
+                <!-- Payment Status -->
+                <div class="status-badge">
+                    ⏳ NOT PAID (PENDING)
+                </div>
+                <div class="text-center text-[10px] text-red-600 font-medium mb-4">
+                    Please pay at the counter
+                </div>
+
+                <!-- QR & Barcode -->
+                <div class="flex justify-center mb-2">
+                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=RCP-53982" alt="QR"
+                        class="w-16 h-16 opacity-80">
+                </div>
+                <div class="barcode">RCP-53982</div>
+
+                <!-- Footer -->
+                <div class="text-center mt-4 border-t border-dashed border-gray-300 pt-2">
+                    <div class="font-bold text-xs">★ THANK YOU! ★</div>
+                    <div class="text-[9px] text-gray-400 mt-1">Powered by Alpha Plus POS</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PROPOSAL 2: KOT (Approved Design) -->
+        <div>
+            <h2 class="text-center text-lg font-bold text-gray-500 mb-4">APPROVED K.O.T</h2>
+            <div class="receipt-container">
+                <div class="kot-header">
+                    <div class="text-2xl font-black">🍳 K.O.T</div>
+                    <div class="text-lg font-bold">#K0076</div>
+                </div>
+
+                <div class="kot-badge">
+                    🛍️ TAKE-AWAY
+                </div>
+
+                <div class="flex justify-between items-center text-xs border-b-2 border-black pb-2 mb-2 font-mono">
+                    <span class="font-bold">WAITER: Cashier</span>
+                    <span>17:47</span>
+                </div>
+
+                <!-- Items List -->
+                <div class="space-y-1">
+                    <div class="kot-item-row">
+                        <div class="font-bold text-gray-800">CHAPATI</div>
+                        <div class="kot-qty">1</div>
+                    </div>
+                    <div class="kot-item-row">
+                        <div class="font-bold text-gray-800">DOUGHNUT</div>
+                        <div class="kot-qty">1</div>
+                    </div>
+                    <div class="kot-item-row">
+                        <div class="font-bold text-gray-800">WHITE TEA CUP</div>
+                        <div class="kot-qty">2</div>
+                    </div>
+                    <div class="kot-item-row">
+                        <div class="font-bold text-gray-800">NDAZI</div>
+                        <div class="kot-qty">1</div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t-2 border-black text-center">
+                    <div class="font-mono text-xs font-bold">07/02/2026 17:47:00</div>
+                    <div class="text-[9px] text-gray-400 mt-1 uppercase">Kilomanjaro Hotel - Bomet</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</body>
+
+</html>
