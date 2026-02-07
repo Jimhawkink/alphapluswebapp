@@ -309,15 +309,6 @@ export default function LoginPage() {
         try {
             console.log('🔍 Waiter login attempt:', { pin, pinLength: pin.length });
 
-            // First, check all waiters to debug
-            const { data: allWaiters } = await supabase
-                .from('users')
-                .select('user_id, user_name, name, pin, user_type, active')
-                .eq('user_type', 'Waiter')
-                .eq('active', true);
-
-            console.log('🔍 All active waiters in DB:', allWaiters);
-
             const { data, error: dbError } = await supabase
                 .from('users')
                 .select('*')
@@ -325,8 +316,6 @@ export default function LoginPage() {
                 .eq('active', true)
                 .eq('user_type', 'Waiter')
                 .maybeSingle();
-
-            console.log('🔍 Query result:', { data, dbError });
 
             if (dbError || !data) {
                 console.error('❌ Login failed:', dbError?.message || 'No user found');
@@ -368,363 +357,285 @@ export default function LoginPage() {
         setShowPin(false);
     };
 
-    const handlePinDelete = () => {
-        setPin(pin.slice(0, -1));
-    };
-
     const togglePinVisibility = () => {
         setShowPin(!showPin);
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Animated Background */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-400/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-emerald-400/20 to-cyan-400/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }}></div>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-to-br from-indigo-300/10 to-pink-300/10 rounded-full blur-3xl"></div>
+        <div className="min-h-screen flex flex-col lg:flex-row overflow-hidden bg-gray-50 font-sans">
 
-                {/* Floating Icons */}
-                <div className="absolute top-20 left-[10%] text-4xl opacity-20 animate-bounce" style={{ animationDuration: '3s' }}>🏨</div>
-                <div className="absolute top-40 right-[15%] text-3xl opacity-20 animate-bounce" style={{ animationDuration: '4s', animationDelay: '0.5s' }}>🍽️</div>
-                <div className="absolute bottom-32 left-[20%] text-3xl opacity-20 animate-bounce" style={{ animationDuration: '3.5s', animationDelay: '1s' }}>🛎️</div>
-                <div className="absolute bottom-48 right-[10%] text-4xl opacity-20 animate-bounce" style={{ animationDuration: '4.5s', animationDelay: '0.3s' }}>🍳</div>
-            </div>
+            {/* LEFT SIDE: BRANDING & ATMOSPHERE */}
+            <div className="hidden lg:flex w-1/2 bg-[#0f172a] relative items-center justify-center text-white p-12 overflow-hidden">
+                {/* Abstract Background */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-900 to-slate-900 opacity-90"></div>
+                {/* Hotel Interior Image */}
+                <div
+                    className="absolute inset-0 bg-cover bg-center mix-blend-overlay opacity-50 transition-opacity duration-1000"
+                    style={{ backgroundImage: "url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80')" }}
+                ></div>
 
-            {/* Main Login Card */}
-            <div className="relative z-10 w-full max-w-md">
-                {/* Glass Card */}
-                <div className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl shadow-indigo-500/10 border border-white/50 overflow-hidden">
+                <div className="relative z-10 max-w-lg text-center animate-fade-in-up">
+                    <div className="mb-6 inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-2xl shadow-blue-900/50 transform hover:scale-105 transition-transform duration-300">
+                        <span className="text-5xl text-white drop-shadow-md">💎</span>
+                    </div>
+                    <h1 className="text-6xl font-extrabold mb-4 tracking-tight drop-shadow-lg bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-white">Alpha Plus</h1>
+                    <p className="text-2xl text-blue-100 font-light mb-8 tracking-wide">Premium Hotel Management System</p>
 
-                    {/* License Status Banner */}
-                    {!checkingLicense && (
-                        <div className={`px-4 py-2 text-center text-sm ${licenseStatus.valid
-                                ? 'bg-emerald-100 text-emerald-700'
-                                : 'bg-red-100 text-red-700'
-                            }`}>
-                            {licenseStatus.valid ? (
-                                <span>✅ Licensed: {licenseStatus.client || 'Active'}
-                                    {licenseStatus.daysRemaining !== undefined && (
-                                        <span className="ml-2">
-                                            ({licenseStatus.daysRemaining} days remaining)
-                                        </span>
-                                    )}
-                                </span>
-                            ) : (
-                                <span>⚠️ {licenseStatus.error || 'License Required'}</span>
-                            )}
+                    <div className="grid grid-cols-2 gap-6 text-left mt-12">
+                        <div className="bg-white/10 p-5 rounded-2xl backdrop-blur-md border border-white/10 hover:bg-white/20 transition-colors duration-300">
+                            <div className="text-3xl mb-3">🚀</div>
+                            <div className="font-bold text-lg">Fast & Reliable</div>
+                            <div className="text-sm text-blue-200 mt-1">Optimized for speed</div>
+                        </div>
+                        <div className="bg-white/10 p-5 rounded-2xl backdrop-blur-md border border-white/10 hover:bg-white/20 transition-colors duration-300">
+                            <div className="text-3xl mb-3">🔒</div>
+                            <div className="font-bold text-lg">Secure</div>
+                            <div className="text-sm text-blue-200 mt-1">Enterprise encryption</div>
+                        </div>
+                    </div>
+
+                    {licensedTo && (
+                        <div className="mt-8 pt-6 border-t border-white/10">
+                            <p className="text-xs uppercase tracking-widest text-blue-300 mb-2">Licensed To</p>
+                            <p className="text-xl font-bold">{licensedTo}</p>
                         </div>
                     )}
+                </div>
 
-                    {/* License Activation Form - Only show when license is invalid */}
+                <div className="absolute bottom-8 text-xs text-slate-400 font-medium tracking-wide">
+                    &copy; 2026 Alpha Solutions. All rights reserved.
+                </div>
+            </div>
+
+            {/* RIGHT SIDE: LOGIN FORM */}
+            <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-6 lg:p-12 relative bg-gradient-to-br from-white via-indigo-50 to-blue-50">
+
+                {/* Header for Mobile (visible only on small screens) */}
+                <div className="lg:hidden text-center mb-8 pt-8">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mb-4 shadow-lg">
+                        <span className="text-3xl text-white">💎</span>
+                    </div>
+                    <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Alpha Plus</h2>
+                    <p className="text-slate-500 text-sm mt-1">Premium Hotel Management</p>
+                </div>
+
+                <div className="w-full max-w-md bg-white/60 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white/50 relative overflow-hidden">
+
+                    {/* Decorative Blob */}
+                    <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
+                    <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
+
+                    {/* License Warning Logic */}
                     {!checkingLicense && !licenseStatus.valid && (
-                        <div className="px-6 pt-4 pb-4 bg-amber-50 border-b border-amber-200">
-                            <p className="text-sm text-amber-800 mb-3 font-medium">
-                                🔑 Enter your license key to activate this system:
+                        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl animate-pulse">
+                            <p className="text-sm text-amber-800 font-bold mb-2 flex items-center gap-2">
+                                <span>⚠️</span> {licenseStatus.error || 'Activation Required'}
                             </p>
                             <div className="flex gap-2">
                                 <input
                                     type="text"
                                     value={licenseKey}
                                     onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
-                                    placeholder="APS-XXXX-XXXX-XXXX-XXXX"
-                                    className="flex-1 px-4 py-3 rounded-xl border border-amber-300 bg-white text-gray-800 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-amber-400"
+                                    placeholder="Enter Key: APS-XXXX..."
+                                    className="flex-1 px-3 py-2 text-sm border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none uppercase font-mono"
                                 />
                                 <button
                                     onClick={activateLicense}
                                     disabled={activatingLicense}
-                                    className="px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold rounded-xl hover:from-amber-600 hover:to-orange-600 disabled:opacity-50 transition-all"
+                                    className="px-4 py-2 bg-amber-600 text-white rounded-lg font-bold text-sm hover:bg-amber-700 transition-colors disabled:opacity-50"
                                 >
-                                    {activatingLicense ? '...' : '✓'}
+                                    {activatingLicense ? '...' : 'Activate'}
                                 </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Mode Toggle */}
-                    <div className="px-6 pt-6">
-                        <div className="flex gap-2 p-1.5 bg-gradient-to-r from-gray-100 to-gray-50 rounded-2xl border border-gray-200">
-                            <button
-                                onClick={() => { setLoginMode('admin'); setError(''); setPin(''); }}
-                                className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 ${loginMode === 'admin'
-                                    ? 'bg-gradient-to-r from-indigo-600 to-blue-600 text-white shadow-lg shadow-indigo-500/30'
-                                    : 'text-gray-600 hover:text-gray-800'
-                                    }`}
-                            >
-                                👨‍💼 Admin Login
-                            </button>
-                            <button
-                                onClick={() => { setLoginMode('waiter'); setError(''); setUsername(''); setPassword(''); }}
-                                className={`flex-1 py-3 px-4 rounded-xl font-bold text-sm transition-all duration-300 ${loginMode === 'waiter'
-                                    ? 'bg-gradient-to-r from-emerald-600 to-green-600 text-white shadow-lg shadow-emerald-500/30'
-                                    : 'text-gray-600 hover:text-gray-800'
-                                    }`}
-                            >
-                                🧑‍🍳 Waiter Login
-                            </button>
-                        </div>
+                    {/* TABS */}
+                    <div className="flex p-1.5 bg-gray-100/80 rounded-xl mb-8 relative border border-gray-200/50">
+                        <button
+                            onClick={() => { setLoginMode('admin'); setError(''); setPin(''); }}
+                            className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ${loginMode === 'admin'
+                                ? 'bg-white text-indigo-600 shadow-md ring-1 ring-black/5 transform scale-[1.02]'
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-gray-200/50'}`}
+                        >
+                            <span>👨‍💼</span> Admin Portal
+                        </button>
+                        <button
+                            onClick={() => { setLoginMode('waiter'); setError(''); setUsername(''); setPassword(''); }}
+                            className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ${loginMode === 'waiter'
+                                ? 'bg-white text-emerald-600 shadow-md ring-1 ring-black/5 transform scale-[1.02]'
+                                : 'text-slate-500 hover:text-slate-700 hover:bg-gray-200/50'}`}
+                        >
+                            <span>🧑‍🍳</span> Waiter Station
+                        </button>
                     </div>
 
-                    {/* Header */}
-                    <div className="bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 px-8 py-8 text-center relative overflow-hidden mt-4">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2"></div>
-                        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2"></div>
-
-                        <div className="relative inline-flex items-center justify-center w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl mb-4 shadow-lg border border-white/30">
-                            <span className="text-5xl">{loginMode === 'admin' ? '🏨' : '🧑‍🍳'}</span>
-                        </div>
-
-                        <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">
-                            Alpha Plus Hotel System
-                        </h1>
-                        <p className="text-blue-100 text-sm font-medium">
-                            {loginMode === 'admin' ? '✨ Premium Hotel Management ✨' : '🍽️ Quick Waiter Access 🍽️'}
-                        </p>
-
-                        {/* Time */}
-                        <div className="mt-4 flex items-center justify-center gap-4 text-white/80 text-xs">
-                            <span className="flex items-center gap-1"><span>🕐</span> {currentTime}</span>
-                            <span className="w-1 h-1 rounded-full bg-white/50"></span>
-                            <span className="flex items-center gap-1"><span>📅</span> {currentDate}</span>
-                        </div>
-
-                        {licensedTo && (
-                            <div className="mt-3 text-center">
-                                <span className="text-white/60 text-xs">Licensed to:</span>
-                                <p className="text-white font-semibold text-sm">{licensedTo}</p>
+                    {/* ADMIN FORM */}
+                    {loginMode === 'admin' && (
+                        <div className="space-y-6 animate-fade-in relative z-10">
+                            <div className="text-center mb-6">
+                                <h2 className="text-2xl font-bold text-slate-800">Welcome Back</h2>
+                                <p className="text-slate-500 text-sm mt-2">Please sign in to your dashboard.</p>
                             </div>
-                        )}
-                    </div>
 
-                    {/* Form Section */}
-                    <div className="px-8 py-8">
-                        {loginMode === 'admin' ? (
-                            // Admin Login Form
-                            <form onSubmit={handleAdminLogin} className="space-y-5">
-                                {/* Username */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                        <span className="text-lg">👤</span> Username
-                                    </label>
+                            <form onSubmit={handleAdminLogin} className="space-y-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Username</label>
                                     <div className="relative group">
+                                        <span className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors text-lg">👤</span>
                                         <input
                                             type="text"
                                             value={username}
                                             onChange={(e) => setUsername(e.target.value)}
-                                            placeholder="Enter your username"
-                                            className="w-full px-5 py-4 pl-14 bg-gray-50/80 border-2 border-gray-200 rounded-2xl text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all duration-300 text-base font-medium"
+                                            className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium text-slate-700 placeholder-gray-400"
+                                            placeholder="Enter username"
                                         />
-                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl opacity-60 group-focus-within:opacity-100 transition-opacity">🆔</span>
                                     </div>
                                 </div>
 
-                                {/* Password */}
-                                <div className="space-y-2">
-                                    <label className="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                                        <span className="text-lg">🔐</span> Password / PIN
-                                    </label>
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Password</label>
                                     <div className="relative group">
+                                        <span className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors text-lg">🔒</span>
                                         <input
                                             type={showPassword ? 'text' : 'password'}
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            placeholder="Enter your password"
-                                            className="w-full px-5 py-4 pl-14 pr-14 bg-gray-50/80 border-2 border-gray-200 rounded-2xl text-gray-800 placeholder-gray-400 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10 transition-all duration-300 text-base font-medium"
+                                            className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium text-slate-700 placeholder-gray-400"
+                                            placeholder="Enter password"
                                         />
-                                        <span className="absolute left-5 top-1/2 -translate-y-1/2 text-2xl opacity-60 group-focus-within:opacity-100 transition-opacity">🔑</span>
                                         <button
                                             type="button"
                                             onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-2xl hover:scale-110 active:scale-95 transition-transform p-1"
+                                            className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
                                         >
                                             {showPassword ? '🙈' : '👁️'}
                                         </button>
                                     </div>
                                 </div>
 
-                                {/* Error */}
                                 {error && (
-                                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium animate-shake">
-                                        <span className="text-xl">⚠️</span>
-                                        <span>{error}</span>
+                                    <div className="text-red-500 text-sm font-medium bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2 animate-pulse">
+                                        <span>⚠️</span> {error}
                                     </div>
                                 )}
 
-                                {/* Login Button */}
                                 <button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="w-full py-4 px-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-blue-600 hover:from-indigo-700 hover:via-purple-700 hover:to-blue-700 text-white text-lg font-bold rounded-2xl shadow-lg shadow-indigo-500/30 hover:shadow-xl hover:shadow-indigo-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center justify-center gap-3"
+                                    className="w-full py-4 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white font-bold text-lg rounded-xl shadow-xl shadow-slate-900/20 transform hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
                                 >
                                     {isLoading ? (
-                                        <>
-                                            <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                            <span>Signing in...</span>
-                                        </>
+                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                                     ) : (
                                         <>
-                                            <span>🚀</span>
                                             <span>Sign In</span>
-                                            <span>→</span>
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
                                         </>
                                     )}
                                 </button>
                             </form>
-                        ) : (
-                            // Waiter PIN Login
-                            <div className="space-y-6">
-                                {/* PIN Display */}
-                                <div className="text-center space-y-4">
-                                    <div className="flex items-center justify-center gap-3">
-                                        <label className="text-sm font-bold text-gray-700 flex items-center gap-2">
-                                            <span className="text-xl">🔢</span> Enter 6-Digit PIN
-                                        </label>
-                                        <button
-                                            type="button"
-                                            onClick={togglePinVisibility}
-                                            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                                            title={showPin ? 'Hide PIN' : 'Show PIN'}
-                                        >
-                                            <span className="text-xl">{showPin ? '👁️' : '👁️‍🗨️'}</span>
-                                        </button>
-                                    </div>
-                                    <div className="flex items-center justify-center gap-3">
-                                        {[0, 1, 2, 3, 4, 5].map((i) => (
-                                            <div
-                                                key={i}
-                                                className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl font-bold transition-all duration-300 ${pin[i]
-                                                    ? 'bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg shadow-emerald-500/30 scale-110'
-                                                    : 'bg-gray-100 border-2 border-gray-200 text-gray-300'
-                                                    }`}
-                                            >
-                                                {pin[i] ? (showPin ? pin[i] : '●') : '○'}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Error */}
-                                {error && (
-                                    <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-600 text-sm font-medium animate-shake">
-                                        <span className="text-xl">⚠️</span>
-                                        <span>{error}</span>
-                                    </div>
-                                )}
-
-                                {/* Numeric Keypad - Clean Design (No hover scale to prevent mis-clicks) */}
-                                <div className="grid grid-cols-3 gap-3">
-                                    {/* Button 1 - Blue */}
-                                    <button onClick={() => handlePinInput('1')} disabled={isLoading} className="h-20 bg-gradient-to-br from-blue-400 via-blue-500 to-blue-600 border-2 border-blue-300 rounded-2xl text-3xl font-black text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-blue-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                                        <span className="drop-shadow-lg">1</span>
-                                    </button>
-                                    {/* Button 2 - Indigo */}
-                                    <button onClick={() => handlePinInput('2')} disabled={isLoading} className="h-20 bg-gradient-to-br from-indigo-400 via-indigo-500 to-indigo-600 border-2 border-indigo-300 rounded-2xl text-3xl font-black text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-indigo-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                                        <span className="drop-shadow-lg">2</span>
-                                    </button>
-                                    {/* Button 3 - Purple */}
-                                    <button onClick={() => handlePinInput('3')} disabled={isLoading} className="h-20 bg-gradient-to-br from-purple-400 via-purple-500 to-purple-600 border-2 border-purple-300 rounded-2xl text-3xl font-black text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-purple-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                                        <span className="drop-shadow-lg">3</span>
-                                    </button>
-                                    {/* Button 4 - Pink */}
-                                    <button onClick={() => handlePinInput('4')} disabled={isLoading} className="h-20 bg-gradient-to-br from-pink-400 via-pink-500 to-pink-600 border-2 border-pink-300 rounded-2xl text-3xl font-black text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-pink-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                                        <span className="drop-shadow-lg">4</span>
-                                    </button>
-                                    {/* Button 5 - Rose */}
-                                    <button onClick={() => handlePinInput('5')} disabled={isLoading} className="h-20 bg-gradient-to-br from-rose-400 via-rose-500 to-rose-600 border-2 border-rose-300 rounded-2xl text-3xl font-black text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-rose-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                                        <span className="drop-shadow-lg">5</span>
-                                    </button>
-                                    {/* Button 6 - Fuchsia */}
-                                    <button onClick={() => handlePinInput('6')} disabled={isLoading} className="h-20 bg-gradient-to-br from-fuchsia-400 via-fuchsia-500 to-fuchsia-600 border-2 border-fuchsia-300 rounded-2xl text-3xl font-black text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-fuchsia-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                                        <span className="drop-shadow-lg">6</span>
-                                    </button>
-                                    {/* Button 7 - Orange */}
-                                    <button onClick={() => handlePinInput('7')} disabled={isLoading} className="h-20 bg-gradient-to-br from-orange-400 via-orange-500 to-orange-600 border-2 border-orange-300 rounded-2xl text-3xl font-black text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                                        <span className="drop-shadow-lg">7</span>
-                                    </button>
-                                    {/* Button 8 - Amber */}
-                                    <button onClick={() => handlePinInput('8')} disabled={isLoading} className="h-20 bg-gradient-to-br from-amber-400 via-amber-500 to-amber-600 border-2 border-amber-300 rounded-2xl text-3xl font-black text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-amber-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                                        <span className="drop-shadow-lg">8</span>
-                                    </button>
-                                    {/* Button 9 - Yellow */}
-                                    <button onClick={() => handlePinInput('9')} disabled={isLoading} className="h-20 bg-gradient-to-br from-yellow-400 via-yellow-500 to-yellow-600 border-2 border-yellow-300 rounded-2xl text-3xl font-black text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-yellow-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                                        <span className="drop-shadow-lg">9</span>
-                                    </button>
-                                    {/* Clear Button - Red */}
-                                    <button
-                                        onClick={handlePinClear}
-                                        disabled={isLoading}
-                                        className="h-20 bg-gradient-to-br from-red-500 via-red-600 to-red-700 border-2 border-red-400 rounded-2xl text-2xl font-bold text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-                                    >
-                                        <span className="drop-shadow-lg">⌫</span>
-                                    </button>
-                                    {/* 0 Button - Cyan */}
-                                    <button onClick={() => handlePinInput('0')} disabled={isLoading} className="h-20 bg-gradient-to-br from-cyan-400 via-cyan-500 to-cyan-600 border-2 border-cyan-300 rounded-2xl text-3xl font-black text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-cyan-500/30 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center">
-                                        <span className="drop-shadow-lg">0</span>
-                                    </button>
-                                    {/* Submit Button - Green */}
-                                    <button
-                                        onClick={handleWaiterLogin}
-                                        disabled={isLoading || pin.length !== 6}
-                                        className="h-20 bg-gradient-to-br from-emerald-500 via-green-600 to-teal-600 border-2 border-emerald-400 rounded-2xl text-3xl font-black text-white active:scale-95 transition-colors duration-200 shadow-lg shadow-emerald-500/30 disabled:opacity-50 disabled:cursor-not-allowed disabled:from-gray-300 disabled:via-gray-400 disabled:to-gray-400 disabled:border-gray-300 disabled:shadow-none flex items-center justify-center"
-                                    >
-                                        {isLoading ? (
-                                            <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin"></div>
-                                        ) : (
-                                            <span className="drop-shadow-lg">✓</span>
-                                        )}
-                                    </button>
-                                </div>
-
-                                {/* Delete Helper */}
-                                <p className="text-center text-xs text-gray-500">
-                                    Press ⌫ to clear all • Press number to delete last digit
-                                </p>
-                            </div>
-                        )}
-
-                        {/* Security Badge */}
-                        <div className="mt-6 flex items-center justify-center gap-2 text-xs text-gray-500">
-                            <span className="text-lg">🔒</span>
-                            <span>Secured with Enterprise-Grade Encryption</span>
                         </div>
+                    )}
+
+                    {/* WAITER FORM */}
+                    {loginMode === 'waiter' && (
+                        <div className="space-y-6 animate-fade-in relative z-10">
+                            <div className="text-center">
+                                <h2 className="text-2xl font-bold text-slate-800">Waiter Access</h2>
+                                <p className="text-slate-500 text-sm mt-1">Enter your 6-digit PIN.</p>
+                            </div>
+
+                            {/* PIN Display */}
+                            <div className="flex justify-center gap-2 mb-2">
+                                {[0, 1, 2, 3, 4, 5].map((i) => (
+                                    <div key={i} className={`w-10 h-12 lg:w-12 lg:h-14 rounded-xl border-2 flex items-center justify-center text-xl font-bold transition-all duration-300 ${pin[i] ? 'bg-emerald-50 border-emerald-500 text-emerald-600 shadow-sm transform -translate-y-1' : 'bg-gray-50 border-gray-200 text-gray-300'}`}>
+                                        {pin[i] ? (showPin ? pin[i] : '●') : '○'}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <div className="flex justify-center mb-4">
+                                <button onClick={togglePinVisibility} className="text-xs text-slate-400 hover:text-slate-600 font-medium">
+                                    {showPin ? 'Hide PIN' : 'Show PIN'}
+                                </button>
+                            </div>
+
+                            {error && (
+                                <div className="text-red-500 text-sm font-medium text-center bg-red-50 p-2 rounded-lg border border-red-100 animate-pulse">
+                                    {error}
+                                </div>
+                            )}
+
+                            {/* PIN Pad */}
+                            <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                                    <button
+                                        key={num}
+                                        onClick={() => handlePinInput(num.toString())}
+                                        className="h-16 rounded-2xl bg-white border border-gray-200 text-2xl font-bold text-slate-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 active:scale-95 transition-all duration-200"
+                                    >
+                                        {num}
+                                    </button>
+                                ))}
+                                <button onClick={handlePinClear} className="h-16 rounded-2xl bg-rose-50 border border-rose-100 text-xl font-bold text-rose-500 shadow-sm hover:bg-rose-100 active:scale-95 transition-all duration-200">⌫</button>
+                                <button onClick={() => handlePinInput('0')} className="h-16 rounded-2xl bg-white border border-gray-200 text-2xl font-bold text-slate-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 active:scale-95 transition-all duration-200">0</button>
+                                <button onClick={handleWaiterLogin} disabled={isLoading || pin.length !== 6} className="h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 text-2xl font-bold text-white shadow-lg shadow-emerald-500/30 hover:from-emerald-600 hover:to-green-700 active:scale-95 transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+                                    {isLoading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : '✓'}
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* License Badge */}
+                    {licenseStatus.valid && loginMode !== 'waiter' && (
+                        <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-center gap-2">
+                            <div className="px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full flex items-center gap-2 text-[10px] lg:text-xs text-emerald-700 font-bold uppercase tracking-wide">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                {licenseStatus.client || 'System Active'}
+                                {licenseStatus.daysRemaining && ` (${licenseStatus.daysRemaining} days left)`}
+                            </div>
+                        </div>
+                    )}
+
+                </div>
+
+                {/* Footer Credits */}
+                <div className="mt-12 text-center relative z-10">
+                    <div className="inline-block px-6 py-3 bg-white/40 backdrop-blur-sm rounded-2xl border border-white/40 shadow-sm">
+                        <p className="text-xs text-slate-500 font-medium">
+                            System developed & maintained by <span className="font-bold text-indigo-600">Jimhawkins Korir</span>
+                        </p>
+                        <div className="flex items-center justify-center gap-4 mt-2 text-[11px] text-slate-400 font-medium">
+                            <span className="flex items-center gap-1 hover:text-indigo-500 transition-colors">📞 0720316175</span>
+                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
+                            <span className="flex items-center gap-1 hover:text-indigo-500 transition-colors">✉️ jimhaowkins@gmail.com</span>
+                        </div>
+                        <p className="text-[10px] text-slate-300 mt-2 font-mono">v3.2 • Secure Enterprise Connection</p>
                     </div>
                 </div>
 
-                {/* Footer */}
-                <div className="mt-6 text-center space-y-2">
-                    <div className="flex items-center justify-center gap-2">
-                        <div className="h-px w-12 bg-gradient-to-r from-transparent to-gray-300"></div>
-                        <span className="text-gray-400 text-xs">Powered by</span>
-                        <div className="h-px w-12 bg-gradient-to-l from-transparent to-gray-300"></div>
-                    </div>
-
-                    <div className="bg-white/60 backdrop-blur-sm rounded-2xl px-6 py-4 border border-white/50 shadow-sm">
-                        <p className="text-gray-700 font-semibold text-sm flex items-center justify-center gap-2">
-                            <span className="text-lg">💎</span> Alpha Solutions
-                        </p>
-                        <p className="text-gray-500 text-xs mt-1">
-                            System developed & maintained by <span className="font-semibold text-indigo-600">Jimhawkins Korir</span>
-                        </p>
-                        <p className="text-gray-400 text-xs mt-1 flex items-center justify-center gap-2">
-                            <span>📞</span> 0720316175
-                        </p>
-                    </div>
-
-                    <p className="text-gray-400 text-xs">
-                        © 2025 Alpha Plus Hotel System • v3.2 🚀
-                    </p>
-                </div>
             </div>
 
-            {/* Animations */}
             <style jsx>{`
-                @keyframes shake {
-                    0%, 100% { transform: translateX(0); }
-                    10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-                    20%, 40%, 60%, 80% { transform: translateX(4px); }
+                @keyframes blob {
+                    0% { transform: translate(0px, 0px) scale(1); }
+                    33% { transform: translate(30px, -50px) scale(1.1); }
+                    66% { transform: translate(-20px, 20px) scale(0.9); }
+                    100% { transform: translate(0px, 0px) scale(1); }
                 }
-                .animate-shake {
-                    animation: shake 0.5s ease-in-out;
+                .animate-blob {
+                    animation: blob 7s infinite;
+                }
+                .animation-delay-2000 {
+                    animation-delay: 2s;
+                }
+                 .animate-fade-in-up {
+                    animation: fadeInUp 0.8s ease-out;
+                }
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
                 }
             `}</style>
         </div>
