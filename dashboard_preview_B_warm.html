@@ -1,0 +1,1364 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept B — Warm Executive Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #faf8f5;
+            --card: #fff;
+            --text: #2d2a26;
+            --muted: #9e9a93;
+            --primary: #c26e3a;
+            --primary2: #e8944e;
+            --success: #2e9e6e;
+            --danger: #d94545;
+            --info: #3d7bd9;
+            --purple: #7b5ea7;
+            --r: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit
+        }
+
+        .dashboard {
+            max-width: 1420px;
+            margin: 0 auto;
+            padding: 28px 34px 50px
+        }
+
+        /* ═══ HEADER ═══ */
+        .top-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 28px;
+        }
+
+        .th-left {
+            display: flex;
+            align-items: center;
+            gap: 16px
+        }
+
+        .th-logo {
+            width: 54px;
+            height: 54px;
+            background: linear-gradient(135deg, #c26e3a, #e8944e);
+            border-radius: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: #fff;
+            box-shadow: 0 6px 24px rgba(194, 110, 58, .25);
+        }
+
+        .th-info h1 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: -.3px
+        }
+
+        .th-info h1 em {
+            font-style: normal;
+            color: var(--primary)
+        }
+
+        .th-info p {
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 400
+        }
+
+        .th-right {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .dt-input {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            background: #fff;
+            border: 2px solid #f0ebe5;
+            border-radius: 14px;
+            padding: 10px 16px;
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 500;
+        }
+
+        .dt-input input {
+            border: none;
+            background: transparent;
+            font-family: 'Poppins';
+            font-size: 12px;
+            color: var(--text);
+            outline: none;
+            font-weight: 500
+        }
+
+        .btn-warm {
+            padding: 12px 26px;
+            background: linear-gradient(135deg, #c26e3a, #e8944e);
+            color: #fff;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Poppins';
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            box-shadow: 0 4px 18px rgba(194, 110, 58, .25);
+            transition: all .3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-warm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(194, 110, 58, .35)
+        }
+
+        .avatar-pill {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: #fff;
+            border: 2px solid #f0ebe5;
+            border-radius: 50px;
+            padding: 6px 16px 6px 6px;
+        }
+
+        .avatar-pill .avt {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #c26e3a, #e8944e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 800;
+            font-size: 13px;
+        }
+
+        .avatar-pill .aname {
+            font-size: 12px;
+            font-weight: 600
+        }
+
+        .avatar-pill .arole {
+            font-size: 10px;
+            color: var(--muted)
+        }
+
+        /* ═══ AI CARD ═══ */
+        .insight-card {
+            background: linear-gradient(135deg, #fdf5ef, #fef5f0, #fff8f2);
+            border: 2px solid rgba(194, 110, 58, .1);
+            border-radius: var(--r);
+            padding: 20px 26px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 22px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .insight-card::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(232, 148, 78, .12), transparent);
+        }
+
+        .ins-icon {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            background: linear-gradient(135deg, #c26e3a, #e8944e);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            box-shadow: 0 4px 18px rgba(194, 110, 58, .2);
+            flex-shrink: 0;
+        }
+
+        .ins-body {
+            flex: 1;
+            position: relative;
+            z-index: 1
+        }
+
+        .ins-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--primary);
+            margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .ins-desc {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6
+        }
+
+        .ins-desc b {
+            color: var(--primary)
+        }
+
+        .ins-desc .g {
+            color: var(--success);
+            font-weight: 600
+        }
+
+        .ins-desc .r {
+            color: var(--danger);
+            font-weight: 600
+        }
+
+        /* ═══ ALERT ═══ */
+        .alert-bar {
+            background: linear-gradient(135deg, #fef7ed, #fef2e5);
+            border: 2px solid rgba(194, 110, 58, .08);
+            border-radius: var(--r);
+            padding: 14px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 22px;
+        }
+
+        .ab-left {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .ab-icon {
+            font-size: 26px
+        }
+
+        .ab-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #b45309
+        }
+
+        .ab-sub {
+            font-size: 11px;
+            color: #d97706
+        }
+
+        .ab-right {
+            display: flex;
+            gap: 8px
+        }
+
+        .ab-btn {
+            padding: 8px 18px;
+            background: #fff;
+            border: 2px solid rgba(194, 110, 58, .12);
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            color: #b45309;
+            transition: all .25s;
+        }
+
+        .ab-btn:hover {
+            background: #fef7ed;
+            border-color: rgba(194, 110, 58, .25)
+        }
+
+        /* ═══ METRIC RIBBON ═══ */
+        .metric-ribbon {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .metric {
+            background: #fff;
+            border-radius: 18px;
+            border: 2px solid #f5efe8;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: all .35s;
+        }
+
+        .metric:hover {
+            border-color: rgba(194, 110, 58, .2);
+            box-shadow: 0 6px 28px rgba(194, 110, 58, .08);
+            transform: translateY(-3px)
+        }
+
+        .metric .accent-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .metric .m-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px
+        }
+
+        .metric .m-icon {
+            width: 42px;
+            height: 42px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .metric .m-change {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .metric .m-label {
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            font-weight: 500
+        }
+
+        .metric .m-value {
+            font-size: 26px;
+            font-weight: 800;
+            margin-top: 2px;
+            letter-spacing: -.5px
+        }
+
+        .metric .m-sub {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 4px
+        }
+
+        /* ═══ FINANCE ROW ═══ */
+        .fin-row {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 14px;
+            margin-bottom: 22px;
+        }
+
+        .fin-card {
+            background: #fff;
+            border-radius: 16px;
+            border: 2px solid #f5efe8;
+            padding: 16px;
+            position: relative;
+            overflow: hidden;
+            transition: all .35s;
+        }
+
+        .fin-card:hover {
+            border-color: rgba(194, 110, 58, .15);
+            transform: translateY(-2px)
+        }
+
+        .fin-card .fc-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px
+        }
+
+        .fin-card .fc-icon {
+            font-size: 22px;
+            margin-bottom: 6px;
+            display: block
+        }
+
+        .fin-card .fc-lbl {
+            font-size: 10px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            font-weight: 500
+        }
+
+        .fin-card .fc-val {
+            font-size: 18px;
+            font-weight: 800;
+            margin-top: 2px;
+            letter-spacing: -.3px
+        }
+
+        .fin-card .fc-link {
+            font-size: 10px;
+            color: var(--primary);
+            margin-top: 6px;
+            display: inline-block;
+            font-weight: 500
+        }
+
+        .shift-flex {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-top: 8px
+        }
+
+        .sf-box {
+            text-align: center
+        }
+
+        .sf-v {
+            font-size: 18px;
+            font-weight: 800
+        }
+
+        .sf-l {
+            font-size: 9px;
+            color: var(--muted)
+        }
+
+        .sf-sep {
+            width: 1px;
+            height: 24px;
+            background: #e5ddd3
+        }
+
+        /* ═══ CHARTS ═══ */
+        .chart-row {
+            display: grid;
+            grid-template-columns: 7fr 5fr;
+            gap: 14px;
+            margin-bottom: 22px
+        }
+
+        .c-card {
+            background: #fff;
+            border-radius: var(--r);
+            border: 2px solid #f5efe8;
+            padding: 24px;
+            transition: all .35s;
+        }
+
+        .c-card:hover {
+            border-color: rgba(194, 110, 58, .12)
+        }
+
+        .c-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px
+        }
+
+        .c-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 17px;
+        }
+
+        .c-title {
+            font-size: 15px;
+            font-weight: 700
+        }
+
+        .c-subtitle {
+            margin-left: auto;
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        /* SVG Bar Chart */
+        .hbar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 16px
+        }
+
+        .hbar {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .hbar .day {
+            width: 50px;
+            font-size: 12px;
+            color: var(--muted);
+            font-weight: 500;
+            text-align: right
+        }
+
+        .hbar .track {
+            flex: 1;
+            height: 28px;
+            background: #faf5ef;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative
+        }
+
+        .hbar .fill {
+            height: 100%;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #fff;
+            transition: width 1s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .hbar .amount {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text);
+            width: 80px;
+            text-align: right
+        }
+
+        /* Circular progress for payments */
+        .pay-circles {
+            display: flex;
+            flex-direction: column;
+            gap: 16px
+        }
+
+        .pay-circle-item {
+            display: flex;
+            align-items: center;
+            gap: 16px
+        }
+
+        .ring-wrap {
+            width: 56px;
+            height: 56px;
+            position: relative;
+            flex-shrink: 0
+        }
+
+        .ring-svg {
+            transform: rotate(-90deg)
+        }
+
+        .ring-track {
+            fill: none;
+            stroke: #f5efe8;
+            stroke-width: 5
+        }
+
+        .ring-fill {
+            fill: none;
+            stroke-width: 5;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 1s cubic-bezier(.4, 0, .2, 1)
+        }
+
+        .ring-pct {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .pay-details {
+            flex: 1
+        }
+
+        .pay-method {
+            font-size: 13px;
+            font-weight: 600
+        }
+
+        .pay-amt {
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        .pay-count {
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        /* ═══ BOTTOM 3-COL ═══ */
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 22px
+        }
+
+        .b-card {
+            background: #fff;
+            border-radius: var(--r);
+            border: 2px solid #f5efe8;
+            padding: 22px;
+            transition: all .35s;
+        }
+
+        .b-card:hover {
+            border-color: rgba(194, 110, 58, .12);
+            transform: translateY(-2px)
+        }
+
+        .b-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px
+        }
+
+        .b-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .b-title {
+            font-size: 14px;
+            font-weight: 700
+        }
+
+        /* Products */
+        .p-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #faf5ef
+        }
+
+        .p-item:last-child {
+            border-bottom: 0
+        }
+
+        .p-num {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), var(--primary2));
+            color: #fff;
+            font-weight: 800;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .p-info {
+            flex: 1
+        }
+
+        .p-name {
+            font-size: 12px;
+            font-weight: 600
+        }
+
+        .p-track {
+            height: 4px;
+            background: #faf5ef;
+            border-radius: 8px;
+            margin-top: 4px;
+            overflow: hidden
+        }
+
+        .p-fill {
+            height: 100%;
+            border-radius: 8px;
+            background: linear-gradient(90deg, var(--primary), var(--primary2))
+        }
+
+        .p-qty {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 2px
+        }
+
+        .p-rev {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--success);
+            white-space: nowrap
+        }
+
+        /* Waiters */
+        .w-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: #faf8f5;
+            border-radius: 14px;
+            margin-bottom: 6px;
+            border: 1px solid transparent;
+            transition: all .3s;
+        }
+
+        .w-item:hover {
+            border-color: #f0ebe5
+        }
+
+        .w-medal {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            font-weight: 800;
+            color: #fff;
+            flex-shrink: 0;
+        }
+
+        .w-info {
+            flex: 1
+        }
+
+        .w-name {
+            font-size: 12px;
+            font-weight: 600
+        }
+
+        .w-ord {
+            font-size: 10px;
+            color: var(--muted)
+        }
+
+        .w-sales {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--primary)
+        }
+
+        /* Stock */
+        .s-lbl {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 5px
+        }
+
+        .s-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 12px;
+            border-radius: 10px;
+            margin-bottom: 4px;
+        }
+
+        .s-item.cr {
+            background: #fef2f2;
+            border: 1px solid rgba(217, 69, 69, .06)
+        }
+
+        .s-item.wr {
+            background: #fffbeb;
+            border: 1px solid rgba(245, 158, 11, .06)
+        }
+
+        .s-item.go {
+            background: #f0fdf4;
+            border: 1px solid rgba(46, 158, 110, .06)
+        }
+
+        .s-name {
+            font-size: 12px;
+            font-weight: 500
+        }
+
+        .s-badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700
+        }
+
+        .s-bd-cr {
+            background: rgba(217, 69, 69, .1);
+            color: #d94545
+        }
+
+        .s-bd-wr {
+            background: rgba(245, 158, 11, .1);
+            color: #d97706
+        }
+
+        .s-bd-go {
+            background: rgba(46, 158, 110, .1);
+            color: var(--success)
+        }
+
+        /* ═══ QUICK ACTIONS ═══ */
+        .qa-section {
+            background: #fff;
+            border: 2px solid #f5efe8;
+            border-radius: var(--r);
+            padding: 22px 24px;
+        }
+
+        .qa-head {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .qa-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 10px
+        }
+
+        .qa-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            padding: 16px 8px;
+            background: linear-gradient(135deg, #fdf5ef, #fef8f2);
+            border: 2px solid #f5efe8;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all .35s;
+        }
+
+        .qa-btn:hover {
+            background: linear-gradient(135deg, #fef0e2, #fde8d0);
+            border-color: rgba(194, 110, 58, .2);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(194, 110, 58, .1);
+        }
+
+        .qa-btn .qe {
+            font-size: 26px
+        }
+
+        .qa-btn .qt {
+            font-size: 10px;
+            font-weight: 600;
+            color: #8b7355
+        }
+
+        /* Animations */
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(16px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .an {
+            animation: slideUp .45s ease-out both
+        }
+
+        .a1 {
+            animation-delay: .03s
+        }
+
+        .a2 {
+            animation-delay: .06s
+        }
+
+        .a3 {
+            animation-delay: .1s
+        }
+
+        .a4 {
+            animation-delay: .14s
+        }
+
+        .a5 {
+            animation-delay: .18s
+        }
+
+        .a6 {
+            animation-delay: .22s
+        }
+
+        .a7 {
+            animation-delay: .26s
+        }
+    </style>
+</head>
+
+<body>
+    <div class="dashboard">
+        <!-- HEADER -->
+        <div class="top-header an a1">
+            <div class="th-left">
+                <div class="th-logo">🏨</div>
+                <div class="th-info">
+                    <h1>☀️ Good Afternoon, <em>Admin</em></h1>
+                    <p>Kilimanjaro Hotel — Bomet • Tuesday, 11 Feb 2026</p>
+                </div>
+            </div>
+            <div class="th-right">
+                <div class="dt-input">📅 <input type="date" value="2026-02-11"></div>
+                <div class="dt-input">📅 <input type="date" value="2026-02-11"></div>
+                <button class="btn-warm">🔄 Refresh</button>
+                <div class="avatar-pill">
+                    <div class="avt">SA</div>
+                    <div>
+                        <div class="aname">Super Admin</div>
+                        <div class="arole">Administrator</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- AI Insight -->
+        <div class="insight-card an a2">
+            <div class="ins-icon">🧠</div>
+            <div class="ins-body">
+                <div class="ins-title">✨ AI Business Intelligence</div>
+                <div class="ins-desc">
+                    <b>White Tea Cup</b> is your champion today with <b>93 units</b> (Ksh 2,790).
+                    Revenue is <span class="g">↑ 12% above yesterday</span>.
+                    <span class="r">⚠ SALIT COOKING OIL is at 0 stock</span> — place a reorder before the dinner rush.
+                </div>
+            </div>
+        </div>
+
+        <!-- Alert -->
+        <div class="alert-bar an a2">
+            <div class="ab-left">
+                <span class="ab-icon">🚨</span>
+                <div>
+                    <div class="ab-title">Action Needed</div>
+                    <div class="ab-sub">6 low ingredients • 37 unpaid bills</div>
+                </div>
+            </div>
+            <div class="ab-right">
+                <a href="#" class="ab-btn">Low Stock</a>
+                <a href="#" class="ab-btn">Pending Bills</a>
+            </div>
+        </div>
+
+        <!-- KPI METRICS -->
+        <div class="metric-ribbon an a3">
+            <div class="metric">
+                <div class="accent-bar" style="background:linear-gradient(180deg,#22c993,#0ea5e9)"></div>
+                <div class="m-top">
+                    <div class="m-icon" style="background:#ecfdf5">💰</div>
+                    <div class="m-change" style="background:#ecfdf5;color:#16a34a">↑ 12%</div>
+                </div>
+                <div class="m-label">Today's Sales</div>
+                <div class="m-value" style="color:var(--success)">Ksh 28,450</div>
+                <div class="m-sub">Yesterday: Ksh 25,400</div>
+            </div>
+            <div class="metric">
+                <div class="accent-bar" style="background:linear-gradient(180deg,#5b5fc7,#818cf8)"></div>
+                <div class="m-top">
+                    <div class="m-icon" style="background:#eef0ff">🧾</div>
+                    <div class="m-change" style="background:#eef0ff;color:#4f46e5">↑ 8%</div>
+                </div>
+                <div class="m-label">Orders Today</div>
+                <div class="m-value" style="color:var(--info)">47</div>
+                <div class="m-sub">Yesterday: 43</div>
+            </div>
+            <div class="metric">
+                <div class="accent-bar" style="background:linear-gradient(180deg,#0ea5e9,#06b6d4)"></div>
+                <div class="m-top">
+                    <div class="m-icon" style="background:#ecfeff">📱</div>
+                    <div class="m-change" style="background:#ecfeff;color:#0891b2">↑ 15%</div>
+                </div>
+                <div class="m-label">M-Pesa Today</div>
+                <div class="m-value" style="color:#0891b2">Ksh 14,200</div>
+                <div class="m-sub">Yesterday: Ksh 12,350</div>
+            </div>
+            <div class="metric">
+                <div class="accent-bar" style="background:linear-gradient(180deg,#f59e0b,#f97316)"></div>
+                <div class="m-top">
+                    <div class="m-icon" style="background:#fffbeb">⏳</div>
+                </div>
+                <div class="m-label">Pending Bills</div>
+                <div class="m-value" style="color:#d97706">37</div>
+                <div class="m-sub"><a href="#" style="color:var(--primary);font-size:10px;font-weight:500">View all
+                        →</a></div>
+            </div>
+            <div class="metric">
+                <div class="accent-bar" style="background:linear-gradient(180deg,#ef4444,#f87171)"></div>
+                <div class="m-top">
+                    <div class="m-icon" style="background:#fef2f2">🚨</div>
+                </div>
+                <div class="m-label">Low Stock</div>
+                <div class="m-value" style="color:var(--danger)">6</div>
+                <div class="m-sub"><a href="#" style="color:var(--primary);font-size:10px;font-weight:500">Check now
+                        →</a></div>
+            </div>
+        </div>
+
+        <!-- Financial -->
+        <div class="fin-row an a4">
+            <div class="fin-card">
+                <div class="fc-bar" style="background:linear-gradient(90deg,#e11d48,#f43f5e)"></div><span
+                    class="fc-icon">💸</span>
+                <div class="fc-lbl">Total Expenses</div>
+                <div class="fc-val">Ksh 4,200</div><a href="#" class="fc-link">View →</a>
+            </div>
+            <div class="fin-card">
+                <div class="fc-bar" style="background:linear-gradient(90deg,#7c3aed,#a78bfa)"></div><span
+                    class="fc-icon">💵</span>
+                <div class="fc-lbl">Salary Advances</div>
+                <div class="fc-val">Ksh 2,000</div><a href="#" class="fc-link">View →</a>
+            </div>
+            <div class="fin-card">
+                <div class="fc-bar" style="background:linear-gradient(90deg,#ea580c,#fb923c)"></div><span
+                    class="fc-icon">🎟️</span>
+                <div class="fc-lbl">Vouchers</div>
+                <div class="fc-val">Ksh 800</div><a href="#" class="fc-link">View →</a>
+            </div>
+            <div class="fin-card">
+                <div class="fc-bar" style="background:linear-gradient(90deg,#0891b2,#22d3ee)"></div><span
+                    class="fc-icon">📊</span>
+                <div class="fc-lbl">Net Sales</div>
+                <div class="fc-val">Ksh 23,450</div>
+                <div style="font-size:9px;color:var(--muted);margin-top:3px">After deductions</div>
+            </div>
+            <div class="fin-card">
+                <div class="fc-bar" style="background:linear-gradient(90deg,#2563eb,#60a5fa)"></div>
+                <span class="fc-icon">⏰</span>
+                <div class="fc-lbl">Shifts</div>
+                <div class="shift-flex">
+                    <div class="sf-box">
+                        <div class="sf-v">2</div>
+                        <div class="sf-l">Active</div>
+                    </div>
+                    <div class="sf-sep"></div>
+                    <div class="sf-box">
+                        <div class="sf-v">1</div>
+                        <div class="sf-l">Closed</div>
+                    </div>
+                </div>
+                <a href="#" class="fc-link">Manage →</a>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="chart-row an a5">
+            <!-- HORIZONTAL BAR RACE -->
+            <div class="c-card">
+                <div class="c-header">
+                    <div class="c-icon" style="background:#fef5ef">📊</div>
+                    <div class="c-title">Daily Revenue — Last 7 Days</div>
+                    <div class="c-subtitle">Horizontal bar chart</div>
+                </div>
+                <div class="hbar-chart">
+                    <div class="hbar"><span class="day">05 Feb</span>
+                        <div class="track">
+                            <div class="fill" style="width:43%;background:linear-gradient(90deg,#c26e3a,#e8944e)">12.3K
+                            </div>
+                        </div><span class="amount">Ksh 12,300</span>
+                    </div>
+                    <div class="hbar"><span class="day">06 Feb</span>
+                        <div class="track">
+                            <div class="fill" style="width:66%;background:linear-gradient(90deg,#c26e3a,#e8944e)">18.7K
+                            </div>
+                        </div><span class="amount">Ksh 18,700</span>
+                    </div>
+                    <div class="hbar"><span class="day">07 Feb</span>
+                        <div class="track">
+                            <div class="fill" style="width:33%;background:linear-gradient(90deg,#c26e3a,#e8944e)">9.5K
+                            </div>
+                        </div><span class="amount">Ksh 9,450</span>
+                    </div>
+                    <div class="hbar"><span class="day">08 Feb</span>
+                        <div class="track">
+                            <div class="fill" style="width:78%;background:linear-gradient(90deg,#c26e3a,#e8944e)">22.1K
+                            </div>
+                        </div><span class="amount">Ksh 22,100</span>
+                    </div>
+                    <div class="hbar"><span class="day">09 Feb</span>
+                        <div class="track">
+                            <div class="fill" style="width:55%;background:linear-gradient(90deg,#c26e3a,#e8944e)">15.8K
+                            </div>
+                        </div><span class="amount">Ksh 15,800</span>
+                    </div>
+                    <div class="hbar"><span class="day">10 Feb</span>
+                        <div class="track">
+                            <div class="fill" style="width:39%;background:linear-gradient(90deg,#c26e3a,#e8944e)">11.2K
+                            </div>
+                        </div><span class="amount">Ksh 11,200</span>
+                    </div>
+                    <div class="hbar"><span class="day" style="color:var(--primary);font-weight:700">Today</span>
+                        <div class="track">
+                            <div class="fill" style="width:100%;background:linear-gradient(90deg,#2e9e6e,#34d399)">28.5K
+                            </div>
+                        </div><span class="amount" style="font-weight:700;color:var(--success)">Ksh 28,450</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CIRCULAR PROGRESS PAYMENTS -->
+            <div class="c-card">
+                <div class="c-header">
+                    <div class="c-icon" style="background:#f3e8ff">💳</div>
+                    <div class="c-title">Payment Methods</div>
+                </div>
+                <div class="pay-circles">
+                    <div class="pay-circle-item">
+                        <div class="ring-wrap">
+                            <svg viewBox="0 0 56 56" width="56" height="56" class="ring-svg">
+                                <circle cx="28" cy="28" r="22" class="ring-track" />
+                                <circle cx="28" cy="28" r="22" class="ring-fill" stroke="#2e9e6e"
+                                    stroke-dasharray="76 138" stroke-dashoffset="0" />
+                            </svg>
+                            <div class="ring-pct" style="color:#2e9e6e">55%</div>
+                        </div>
+                        <div class="pay-details">
+                            <div class="pay-method">💵 Cash</div>
+                            <div class="pay-amt">Ksh 15,650</div>
+                            <div class="pay-count">26 orders</div>
+                        </div>
+                    </div>
+                    <div class="pay-circle-item">
+                        <div class="ring-wrap">
+                            <svg viewBox="0 0 56 56" width="56" height="56" class="ring-svg">
+                                <circle cx="28" cy="28" r="22" class="ring-track" />
+                                <circle cx="28" cy="28" r="22" class="ring-fill" stroke="#5b5fc7"
+                                    stroke-dasharray="48 138" stroke-dashoffset="0" />
+                            </svg>
+                            <div class="ring-pct" style="color:#5b5fc7">35%</div>
+                        </div>
+                        <div class="pay-details">
+                            <div class="pay-method">📱 M-Pesa</div>
+                            <div class="pay-amt">Ksh 9,960</div>
+                            <div class="pay-count">16 orders</div>
+                        </div>
+                    </div>
+                    <div class="pay-circle-item">
+                        <div class="ring-wrap">
+                            <svg viewBox="0 0 56 56" width="56" height="56" class="ring-svg">
+                                <circle cx="28" cy="28" r="22" class="ring-track" />
+                                <circle cx="28" cy="28" r="22" class="ring-fill" stroke="#a78bfa"
+                                    stroke-dasharray="14 138" stroke-dashoffset="0" />
+                            </svg>
+                            <div class="ring-pct" style="color:#a78bfa">10%</div>
+                        </div>
+                        <div class="pay-details">
+                            <div class="pay-method">💳 Card</div>
+                            <div class="pay-amt">Ksh 2,840</div>
+                            <div class="pay-count">5 orders</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bottom Row -->
+        <div class="bottom-row an a6">
+            <!-- Top Selling -->
+            <div class="b-card">
+                <div class="b-header">
+                    <div class="b-icon" style="background:#fff3ed">🔥</div>
+                    <div class="b-title">Top Selling Items</div>
+                </div>
+                <div class="p-item">
+                    <div class="p-num">1</div>
+                    <div class="p-info">
+                        <div class="p-name">WHITE TEA CUP</div>
+                        <div class="p-track">
+                            <div class="p-fill" style="width:100%"></div>
+                        </div>
+                        <div class="p-qty">93 sold</div>
+                    </div>
+                    <div class="p-rev">Ksh 2,790</div>
+                </div>
+                <div class="p-item">
+                    <div class="p-num">2</div>
+                    <div class="p-info">
+                        <div class="p-name">CHAPATI</div>
+                        <div class="p-track">
+                            <div class="p-fill" style="width:78%"></div>
+                        </div>
+                        <div class="p-qty">73 sold</div>
+                    </div>
+                    <div class="p-rev">Ksh 2,190</div>
+                </div>
+                <div class="p-item">
+                    <div class="p-num">3</div>
+                    <div class="p-info">
+                        <div class="p-name">MANDAZI</div>
+                        <div class="p-track">
+                            <div class="p-fill" style="width:48%"></div>
+                        </div>
+                        <div class="p-qty">45 sold</div>
+                    </div>
+                    <div class="p-rev">Ksh 1,350</div>
+                </div>
+                <div class="p-item">
+                    <div class="p-num">4</div>
+                    <div class="p-info">
+                        <div class="p-name">NDAZI</div>
+                        <div class="p-track">
+                            <div class="p-fill" style="width:26%"></div>
+                        </div>
+                        <div class="p-qty">24 sold</div>
+                    </div>
+                    <div class="p-rev">Ksh 480</div>
+                </div>
+                <div class="p-item">
+                    <div class="p-num">5</div>
+                    <div class="p-info">
+                        <div class="p-name">DOUGHNUT</div>
+                        <div class="p-track">
+                            <div class="p-fill" style="width:14%"></div>
+                        </div>
+                        <div class="p-qty">13 sold</div>
+                    </div>
+                    <div class="p-rev">Ksh 390</div>
+                </div>
+                <div class="p-item">
+                    <div class="p-num">6</div>
+                    <div class="p-info">
+                        <div class="p-name">SAMOSA</div>
+                        <div class="p-track">
+                            <div class="p-fill" style="width:14%"></div>
+                        </div>
+                        <div class="p-qty">13 sold</div>
+                    </div>
+                    <div class="p-rev">Ksh 520</div>
+                </div>
+            </div>
+
+            <!-- Waiters -->
+            <div class="b-card">
+                <div class="b-header">
+                    <div class="b-icon" style="background:#eef0ff">👨‍🍳</div>
+                    <div class="b-title">Waiter Performance</div>
+                </div>
+                <div class="w-item">
+                    <div class="w-medal" style="background:linear-gradient(135deg,#f59e0b,#d97706)">🥇</div>
+                    <div class="w-info">
+                        <div class="w-name">James Kiprop</div>
+                        <div class="w-ord">18 orders</div>
+                    </div>
+                    <div class="w-sales">Ksh 12,400</div>
+                </div>
+                <div class="w-item">
+                    <div class="w-medal" style="background:linear-gradient(135deg,#94a3b8,#64748b)">🥈</div>
+                    <div class="w-info">
+                        <div class="w-name">Mary Chebet</div>
+                        <div class="w-ord">15 orders</div>
+                    </div>
+                    <div class="w-sales">Ksh 9,800</div>
+                </div>
+                <div class="w-item">
+                    <div class="w-medal" style="background:linear-gradient(135deg,#b45309,#92400e)">🥉</div>
+                    <div class="w-info">
+                        <div class="w-name">Peter Maina</div>
+                        <div class="w-ord">14 orders</div>
+                    </div>
+                    <div class="w-sales">Ksh 6,250</div>
+                </div>
+            </div>
+
+            <!-- Stock -->
+            <div class="b-card">
+                <div class="b-header">
+                    <div class="b-icon" style="background:#fef2f2">🚨</div>
+                    <div class="b-title">Low Stock Alerts</div>
+                </div>
+                <div class="s-lbl">🥬 Ingredients</div>
+                <div class="s-item cr"><span class="s-name">SALIT COOKING OIL 20L</span><span class="s-badge s-bd-cr">0
+                        / 10</span></div>
+                <div class="s-item wr"><span class="s-name">PRESTIGE COOKING FAT 5KG</span><span
+                        class="s-badge s-bd-wr">5 / 10</span></div>
+                <div class="s-item wr"><span class="s-name">SALT 1 KG</span><span class="s-badge s-bd-wr">5 / 10</span>
+                </div>
+                <div class="s-item go"><span class="s-name">SUGAR 10 KG</span><span class="s-badge s-bd-go">10 /
+                        10</span></div>
+                <div class="s-item go"><span class="s-name">BAKING POWDER 90GM</span><span class="s-badge s-bd-go">10 /
+                        10</span></div>
+                <div class="s-item go"><span class="s-name">TEA LEAVES 1 KG</span><span class="s-badge s-bd-go">10 /
+                        10</span></div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="qa-section an a7">
+            <div class="qa-head">⚡ Quick Actions</div>
+            <div class="qa-grid">
+                <a href="#" class="qa-btn"><span class="qe">🛒</span><span class="qt">POS</span></a>
+                <a href="#" class="qa-btn"><span class="qe">📋</span><span class="qt">Reports</span></a>
+                <a href="#" class="qa-btn"><span class="qe">📥</span><span class="qt">Purchase</span></a>
+                <a href="#" class="qa-btn"><span class="qe">🍳</span><span class="qt">Recipe</span></a>
+                <a href="#" class="qa-btn"><span class="qe">📦</span><span class="qt">Batches</span></a>
+                <a href="#" class="qa-btn"><span class="qe">💸</span><span class="qt">Expenses</span></a>
+                <a href="#" class="qa-btn"><span class="qe">👥</span><span class="qt">Payroll</span></a>
+                <a href="#" class="qa-btn"><span class="qe">⏰</span><span class="qt">Shifts</span></a>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

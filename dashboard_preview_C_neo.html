@@ -1,0 +1,1727 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept C — Neo Minimal Dashboard (Enhanced)</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f0f5f4;
+            --card: #fff;
+            --text: #1a2332;
+            --muted: #7b8794;
+            --teal: #0d9488;
+            --teal2: #14b8a6;
+            --coral: #f06050;
+            --indigo: #4f46e5;
+            --amber: #e5a100;
+            --r: 16px;
+            --shadow: 0 1px 4px rgba(0, 0, 0, .03), 0 4px 20px rgba(13, 148, 136, .05);
+            --sw: 240px
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit
+        }
+
+        .page {
+            display: flex;
+            min-height: 100vh
+        }
+
+        /* SIDEBAR */
+        .sidebar {
+            width: var(--sw);
+            background: #fff;
+            border-right: 1px solid rgba(13, 148, 136, .06);
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 50;
+            display: flex;
+            flex-direction: column;
+            transition: width .3s;
+            overflow-y: auto;
+            overflow-x: hidden
+        }
+
+        .sidebar.collapsed {
+            width: 68px
+        }
+
+        .sidebar.collapsed .brand-name,
+        .sidebar.collapsed .nav-text,
+        .sidebar.collapsed .chev,
+        .sidebar.collapsed .sub-menu,
+        .sidebar.collapsed .user-info,
+        .sidebar.collapsed .nav-section {
+            display: none
+        }
+
+        .sidebar.collapsed .brand {
+            justify-content: center;
+            padding: 16px 0
+        }
+
+        .sidebar.collapsed .nav-link {
+            justify-content: center;
+            padding: 10px 0
+        }
+
+        .sidebar.collapsed .nav-link .ni {
+            margin: 0
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 16px;
+            border-bottom: 1px solid #f0f5f4
+        }
+
+        .brand .logo {
+            width: 38px;
+            height: 38px;
+            background: linear-gradient(135deg, #0d9488, #14b8a6);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            box-shadow: 0 3px 12px rgba(13, 148, 136, .2);
+            flex-shrink: 0
+        }
+
+        .brand-name .bn {
+            font-size: 13px;
+            font-weight: 800
+        }
+
+        .brand-name .bv {
+            font-size: 9px;
+            color: var(--muted)
+        }
+
+        .brand .live {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #22c55e;
+            flex-shrink: 0
+        }
+
+        .toggle-btn {
+            position: absolute;
+            top: 18px;
+            right: -14px;
+            width: 28px;
+            height: 28px;
+            background: #fff;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+            z-index: 60;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, .08);
+            transition: transform .3s
+        }
+
+        .sidebar.collapsed .toggle-btn {
+            transform: rotate(180deg)
+        }
+
+        .nav-section {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            padding: 14px 16px 6px
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #555;
+            cursor: pointer;
+            transition: all .2s;
+            position: relative;
+            white-space: nowrap
+        }
+
+        .nav-link:hover {
+            background: #f0f9f8;
+            color: var(--teal)
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #e6f7f5, #d5f5f0);
+            color: var(--teal);
+            font-weight: 700;
+            border-left: 3px solid var(--teal)
+        }
+
+        .nav-link .ni {
+            font-size: 16px;
+            width: 22px;
+            text-align: center;
+            flex-shrink: 0
+        }
+
+        .nav-link .chev {
+            margin-left: auto;
+            font-size: 10px;
+            color: #bbb;
+            transition: transform .25s
+        }
+
+        .nav-link.open .chev {
+            transform: rotate(90deg);
+            color: var(--teal)
+        }
+
+        .sub-menu {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height .3s;
+            background: #fafcfb
+        }
+
+        .sub-menu.open {
+            max-height: 300px
+        }
+
+        .sub-menu a {
+            display: block;
+            padding: 7px 16px 7px 48px;
+            font-size: 11px;
+            color: #777;
+            transition: all .2s
+        }
+
+        .sub-menu a:hover {
+            color: var(--teal);
+            background: #f0f9f8
+        }
+
+        .nav-spacer {
+            flex: 1
+        }
+
+        .nav-user {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            margin: 8px;
+            background: #f8faf9;
+            border-radius: 12px
+        }
+
+        .nav-user .uavt {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0d9488, #14b8a6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 800;
+            font-size: 11px;
+            flex-shrink: 0
+        }
+
+        .user-info .un {
+            font-size: 11px;
+            font-weight: 700
+        }
+
+        .user-info .ur {
+            font-size: 9px;
+            color: var(--muted)
+        }
+
+        /* MAIN */
+        .main {
+            margin-left: var(--sw);
+            flex: 1;
+            padding: 20px 28px 40px;
+            transition: margin-left .3s
+        }
+
+        .main.expanded {
+            margin-left: 68px
+        }
+
+        /* TOP BAR */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 18px
+        }
+
+        .tb-left h1 {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -.4px
+        }
+
+        .tb-left h1 span {
+            color: var(--teal)
+        }
+
+        .tb-sub {
+            font-size: 11px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-top: 1px
+        }
+
+        .live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: blink 2s infinite
+        }
+
+        @keyframes blink {
+
+            0%,
+            100% {
+                opacity: 1
+            }
+
+            50% {
+                opacity: .3
+            }
+        }
+
+        .tb-right {
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .tb-chip {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: #fff;
+            border: 1.5px solid rgba(13, 148, 136, .1);
+            border-radius: 10px;
+            padding: 7px 12px;
+            font-size: 11px
+        }
+
+        .tb-chip input {
+            border: none;
+            background: transparent;
+            font-family: 'DM Sans';
+            font-size: 11px;
+            color: var(--text);
+            outline: none;
+            font-weight: 500
+        }
+
+        .btn-teal {
+            padding: 8px 18px;
+            background: linear-gradient(135deg, #0d9488, #14b8a6);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-family: 'DM Sans';
+            font-weight: 700;
+            font-size: 11px;
+            cursor: pointer;
+            box-shadow: 0 3px 12px rgba(13, 148, 136, .2);
+            transition: all .25s;
+            display: flex;
+            align-items: center;
+            gap: 5px
+        }
+
+        .btn-teal:hover {
+            transform: translateY(-1px)
+        }
+
+        /* AI + ALERT (compact) */
+        .ai-strip {
+            background: linear-gradient(135deg, #e6f7f5, #fef3ed);
+            border: 1px solid rgba(13, 148, 136, .08);
+            border-radius: var(--r);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 14px
+        }
+
+        .ai-badge {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #0d9488, #06b6d4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            flex-shrink: 0
+        }
+
+        .ai-h {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--teal)
+        }
+
+        .ai-p {
+            font-size: 11px;
+            color: #666;
+            line-height: 1.5
+        }
+
+        .ai-p b {
+            color: var(--teal)
+        }
+
+        .ai-p .r {
+            color: var(--coral);
+            font-weight: 600
+        }
+
+        .alert-row {
+            background: linear-gradient(135deg, #fef3ed, #fff8f5);
+            border: 1px solid rgba(240, 96, 80, .08);
+            border-radius: var(--r);
+            padding: 10px 18px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px
+        }
+
+        .al-left {
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .al-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #c2410c
+        }
+
+        .al-sub {
+            font-size: 10px;
+            color: #d97706
+        }
+
+        .al-btn {
+            padding: 5px 14px;
+            background: #fff;
+            border: 1px solid rgba(240, 96, 80, .12);
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #c2410c;
+            transition: all .2s
+        }
+
+        /* STAT CARDS */
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            margin-bottom: 14px
+        }
+
+        .stat-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 14px 16px;
+            border-left: 4px solid transparent;
+            box-shadow: var(--shadow);
+            transition: all .3s
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 24px rgba(13, 148, 136, .08)
+        }
+
+        .sc-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px
+        }
+
+        .sc-emoji {
+            font-size: 24px
+        }
+
+        .sc-trend {
+            padding: 2px 8px;
+            border-radius: 16px;
+            font-size: 9px;
+            font-weight: 700
+        }
+
+        .sc-label {
+            font-size: 9px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .6px;
+            font-weight: 600
+        }
+
+        .sc-value {
+            font-size: 22px;
+            font-weight: 900;
+            margin-top: 1px;
+            letter-spacing: -.4px
+        }
+
+        .sc-foot {
+            font-size: 9px;
+            color: var(--muted);
+            margin-top: 2px
+        }
+
+        .sparkline svg {
+            width: 100%;
+            height: 24px;
+            margin-top: 4px
+        }
+
+        .sc-teal {
+            border-left-color: var(--teal)
+        }
+
+        .sc-indigo {
+            border-left-color: var(--indigo)
+        }
+
+        .sc-cyan {
+            border-left-color: #06b6d4
+        }
+
+        .sc-amber {
+            border-left-color: var(--amber)
+        }
+
+        .sc-coral {
+            border-left-color: var(--coral)
+        }
+
+        /* FINANCE ROW */
+        .fin-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            margin-bottom: 14px
+        }
+
+        .fin-item {
+            background: #fff;
+            border-radius: 12px;
+            padding: 12px 14px;
+            border-top: 3px solid transparent;
+            box-shadow: var(--shadow);
+            transition: all .3s
+        }
+
+        .fin-item:hover {
+            transform: translateY(-2px)
+        }
+
+        .fi-icon {
+            font-size: 20px;
+            margin-bottom: 3px;
+            display: block
+        }
+
+        .fi-label {
+            font-size: 8px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: .5px;
+            font-weight: 600
+        }
+
+        .fi-value {
+            font-size: 16px;
+            font-weight: 800;
+            margin-top: 1px
+        }
+
+        .fi-link {
+            font-size: 9px;
+            color: var(--teal);
+            margin-top: 3px;
+            display: inline-block;
+            font-weight: 500
+        }
+
+        .ft-1 {
+            border-top-color: #e11d48
+        }
+
+        .ft-2 {
+            border-top-color: #7c3aed
+        }
+
+        .ft-3 {
+            border-top-color: #ea580c
+        }
+
+        .ft-4 {
+            border-top-color: var(--teal)
+        }
+
+        .ft-5 {
+            border-top-color: #2563eb
+        }
+
+        .sh-flex {
+            display: flex;
+            gap: 10px;
+            margin-top: 4px
+        }
+
+        .sh-v {
+            font-size: 14px;
+            font-weight: 800
+        }
+
+        .sh-l {
+            font-size: 8px;
+            color: var(--muted)
+        }
+
+        .sh-d {
+            width: 1px;
+            height: 20px;
+            background: #e5e7eb
+        }
+
+        /* CHARTS */
+        .chart-duo {
+            display: grid;
+            grid-template-columns: 3fr 2fr;
+            gap: 12px;
+            margin-bottom: 14px
+        }
+
+        .ch-card {
+            background: #fff;
+            border-radius: var(--r);
+            padding: 18px;
+            box-shadow: var(--shadow)
+        }
+
+        .ch-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px
+        }
+
+        .ch-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px
+        }
+
+        .ch-title {
+            font-size: 13px;
+            font-weight: 700
+        }
+
+        .ch-sub {
+            margin-left: auto;
+            font-size: 10px;
+            color: var(--muted)
+        }
+
+        /* STACKED BAR */
+        .sb-row {
+            display: flex;
+            height: 28px;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 10px
+        }
+
+        .sb-seg {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+            font-weight: 700;
+            color: #fff
+        }
+
+        .sb-details {
+            display: flex;
+            flex-direction: column;
+            gap: 8px
+        }
+
+        .sb-detail {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 10px;
+            background: #f8faf9;
+            border-radius: 10px
+        }
+
+        .sb-d-icon {
+            font-size: 18px
+        }
+
+        .sb-d-name {
+            font-size: 11px;
+            font-weight: 600
+        }
+
+        .sb-d-amt {
+            font-size: 10px;
+            color: var(--muted)
+        }
+
+        .sb-d-pct {
+            font-size: 13px;
+            font-weight: 800;
+            color: var(--teal);
+            margin-left: auto
+        }
+
+        /* BOTTOM 3-COL */
+        .tri-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 14px
+        }
+
+        .tri-card {
+            background: #fff;
+            border-radius: var(--r);
+            padding: 18px;
+            box-shadow: var(--shadow)
+        }
+
+        .tri-head {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 10px
+        }
+
+        .tri-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px
+        }
+
+        .tri-title {
+            font-size: 13px;
+            font-weight: 700
+        }
+
+        /* Products */
+        .pi {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px solid #f3f5f4
+        }
+
+        .pi:last-child {
+            border-bottom: 0
+        }
+
+        .pi .rk {
+            width: 22px;
+            height: 22px;
+            border-radius: 6px;
+            background: linear-gradient(135deg, var(--coral), #ff7a6b);
+            color: #fff;
+            font-weight: 800;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0
+        }
+
+        .pi .nm {
+            font-size: 11px;
+            font-weight: 600;
+            flex: 1
+        }
+
+        .pi .qt {
+            font-size: 9px;
+            color: var(--muted);
+            width: 40px;
+            text-align: right
+        }
+
+        .pi .rv {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--teal);
+            width: 65px;
+            text-align: right
+        }
+
+        /* Waiters */
+        .wi {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            background: #f8faf9;
+            border-radius: 10px;
+            margin-bottom: 5px
+        }
+
+        .wi .wm {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #fff;
+            flex-shrink: 0
+        }
+
+        .wi .wn {
+            font-size: 11px;
+            font-weight: 600
+        }
+
+        .wi .wo {
+            font-size: 9px;
+            color: var(--muted)
+        }
+
+        .wi .ws {
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--teal);
+            margin-left: auto
+        }
+
+        /* Stock */
+        .si {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 10px;
+            border-radius: 8px;
+            margin-bottom: 3px
+        }
+
+        .si.cr {
+            background: #fef2f2
+        }
+
+        .si.wr {
+            background: #fffbeb
+        }
+
+        .si.ok {
+            background: #f0fdf4
+        }
+
+        .sn {
+            font-size: 10px;
+            font-weight: 500
+        }
+
+        .sb2 {
+            padding: 2px 8px;
+            border-radius: 16px;
+            font-size: 9px;
+            font-weight: 700
+        }
+
+        .bc {
+            background: rgba(240, 96, 80, .1);
+            color: var(--coral)
+        }
+
+        .bw {
+            background: rgba(229, 161, 0, .1);
+            color: var(--amber)
+        }
+
+        .bo {
+            background: rgba(13, 148, 136, .1);
+            color: var(--teal)
+        }
+
+        /* QUICK ACTIONS */
+        .qa-wrap {
+            background: #fff;
+            border-radius: var(--r);
+            padding: 16px 18px;
+            box-shadow: var(--shadow);
+            margin-bottom: 14px
+        }
+
+        .qa-h {
+            font-size: 13px;
+            font-weight: 700;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .qa-g {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 8px
+        }
+
+        .qa-b {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            padding: 12px 4px;
+            background: linear-gradient(135deg, #f0f9f7, #e6f7f5);
+            border: 1px solid rgba(13, 148, 136, .06);
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all .3s
+        }
+
+        .qa-b:hover {
+            background: linear-gradient(135deg, #d5f5f0, #ccf0ea);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 14px rgba(13, 148, 136, .08)
+        }
+
+        .qa-b .qe {
+            font-size: 22px
+        }
+
+        .qa-b .qlabel {
+            font-size: 9px;
+            font-weight: 600;
+            color: #4a6b65
+        }
+
+        /* ═══ BOTTOM SECTIONS (NEW) ═══ */
+        .section-card {
+            background: #fff;
+            border-radius: var(--r);
+            padding: 18px;
+            box-shadow: var(--shadow);
+            margin-bottom: 14px
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 12px
+        }
+
+        .section-header .sh-icon {
+            font-size: 20px
+        }
+
+        .section-header .sh-title {
+            font-size: 14px;
+            font-weight: 700
+        }
+
+        .section-header .sh-badge {
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 9px;
+            font-weight: 700;
+            background: rgba(13, 148, 136, .1);
+            color: var(--teal);
+            cursor: pointer
+        }
+
+        /* Export Buttons */
+        .export-bar {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 10px;
+            flex-wrap: wrap
+        }
+
+        .export-btn {
+            padding: 5px 12px;
+            border: 1.5px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            color: #555;
+            background: #fff;
+            cursor: pointer;
+            transition: all .2s;
+            display: flex;
+            align-items: center;
+            gap: 4px
+        }
+
+        .export-btn:hover {
+            border-color: var(--teal);
+            color: var(--teal)
+        }
+
+        /* Data Table */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px
+        }
+
+        .data-table th {
+            background: #f8faf9;
+            padding: 8px 12px;
+            text-align: left;
+            font-weight: 700;
+            color: var(--text);
+            border-bottom: 2px solid #e5e7eb;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: .5px
+        }
+
+        .data-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #f3f5f4;
+            color: #555
+        }
+
+        .data-table tr:hover td {
+            background: #f8fffe
+        }
+
+        .table-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 10px;
+            color: var(--muted)
+        }
+
+        .pag-btns {
+            display: flex;
+            gap: 4px
+        }
+
+        .pag-btn {
+            padding: 4px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 10px;
+            color: #555;
+            cursor: pointer;
+            background: #fff;
+            transition: all .2s
+        }
+
+        .pag-btn:hover {
+            border-color: var(--teal);
+            color: var(--teal)
+        }
+
+        /* Two-col layout */
+        .duo-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 14px
+        }
+
+        /* Footer */
+        .dash-footer {
+            text-align: center;
+            padding: 16px;
+            font-size: 10px;
+            color: var(--muted);
+            border-top: 1px solid #e5e7eb;
+            margin-top: 10px
+        }
+
+        @keyframes riseIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .an {
+            animation: riseIn .35s ease-out both
+        }
+
+        .a1 {
+            animation-delay: .03s
+        }
+
+        .a2 {
+            animation-delay: .06s
+        }
+
+        .a3 {
+            animation-delay: .09s
+        }
+
+        .a4 {
+            animation-delay: .12s
+        }
+
+        .a5 {
+            animation-delay: .15s
+        }
+
+        .a6 {
+            animation-delay: .18s
+        }
+
+        .a7 {
+            animation-delay: .21s
+        }
+
+        .a8 {
+            animation-delay: .24s
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <!-- SIDEBAR -->
+        <nav class="sidebar" id="sidebar">
+            <div class="toggle-btn" onclick="toggleSidebar()">◀</div>
+            <div class="brand">
+                <div class="logo">🏨</div>
+                <div class="brand-name">
+                    <div class="bn">KILIMANJARO</div>
+                    <div class="bv">Hotel v3.5</div>
+                </div>
+                <div class="live"></div>
+            </div>
+            <div class="nav-section">MAIN</div>
+            <a class="nav-link active"><span class="ni">🏠</span><span class="nav-text">Home</span></a>
+            <a class="nav-link" onclick="toggleSub(this)"><span class="ni">👥</span><span class="nav-text">User
+                    Management</span><span class="chev">‹</span></a>
+            <div class="sub-menu"><a href="#">Roles</a><a href="#">Users</a></div>
+            <a class="nav-link" onclick="toggleSub(this)"><span class="ni">📇</span><span
+                    class="nav-text">Contacts</span><span class="chev">‹</span></a>
+            <div class="sub-menu"><a href="#">Suppliers</a><a href="#">Customers</a></div>
+            <a class="nav-link" onclick="toggleSub(this)"><span class="ni">📦</span><span
+                    class="nav-text">Products</span><span class="chev">‹</span></a>
+            <div class="sub-menu"><a href="#">List Products</a><a href="#">Add Product</a><a href="#">Categories</a><a
+                    href="#">Brands</a></div>
+            <a class="nav-link" onclick="toggleSub(this)"><span class="ni">📥</span><span
+                    class="nav-text">Purchases</span><span class="chev">‹</span></a>
+            <div class="sub-menu"><a href="#">All Purchases</a><a href="#">Add Purchase</a></div>
+            <div class="nav-section">SALES</div>
+            <a class="nav-link" onclick="toggleSub(this)"><span class="ni">🛒</span><span
+                    class="nav-text">Sell</span><span class="chev">‹</span></a>
+            <div class="sub-menu"><a href="#">All Sales</a><a href="#">POS</a><a href="#">Drafts</a></div>
+            <a class="nav-link"><span class="ni">🔄</span><span class="nav-text">Stock Transfers</span></a>
+            <a class="nav-link"><span class="ni">📋</span><span class="nav-text">Stock Adjustment</span></a>
+            <div class="nav-section">FINANCE</div>
+            <a class="nav-link"><span class="ni">💸</span><span class="nav-text">Expenses</span></a>
+            <a class="nav-link"><span class="ni">💳</span><span class="nav-text">Payment Accounts</span></a>
+            <a class="nav-link" onclick="toggleSub(this)"><span class="ni">📊</span><span
+                    class="nav-text">Reports</span><span class="chev">‹</span></a>
+            <div class="sub-menu"><a href="#">Profit/Loss</a><a href="#">Sales Report</a><a href="#">Stock Report</a>
+            </div>
+            <a class="nav-link"><span class="ni">🔔</span><span class="nav-text">Notifications</span></a>
+            <a class="nav-link"><span class="ni">⚙️</span><span class="nav-text">Settings</span></a>
+            <div class="nav-spacer"></div>
+            <div class="nav-user">
+                <div class="uavt">SA</div>
+                <div class="user-info">
+                    <div class="un">Super Admin</div>
+                    <div class="ur">Administrator</div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- MAIN CONTENT -->
+        <div class="main" id="mainContent">
+            <div class="topbar an a1">
+                <div class="tb-left">
+                    <h1>Dashboard <span>Overview</span></h1>
+                    <div class="tb-sub"><span class="live-dot"></span> Live • 11 Feb 2026, 3:30 PM</div>
+                </div>
+                <div class="tb-right">
+                    <div class="tb-chip">📅 <input type="date" value="2026-02-11"></div>
+                    <div class="tb-chip">📅 <input type="date" value="2026-02-11"></div>
+                    <button class="btn-teal">🔄 Refresh</button>
+                </div>
+            </div>
+
+            <div class="ai-strip an a2">
+                <div class="ai-badge">🧠</div>
+                <div>
+                    <div class="ai-h">✨ AI Smart Insights</div>
+                    <div class="ai-p"><b>White Tea Cup</b> leads with <b>93 units</b> (Ksh 2,790). Revenue <b>↑ 12%</b>
+                        vs yesterday. <span class="r">⚠ SALIT COOKING OIL at 0 stock</span> — reorder now.</div>
+                </div>
+            </div>
+
+            <div class="alert-row an a2">
+                <div class="al-left"><span style="font-size:20px">🚨</span>
+                    <div>
+                        <div class="al-title">Action Needed</div>
+                        <div class="al-sub">6 low ingredients • 37 pending bills</div>
+                    </div>
+                </div>
+                <div style="display:flex;gap:6px"><a href="#" class="al-btn">Low Stock</a><a href="#"
+                        class="al-btn">Pending Bills</a></div>
+            </div>
+
+            <!-- KPI -->
+            <div class="stat-grid an a3">
+                <div class="stat-card sc-teal">
+                    <div class="sc-top"><span class="sc-emoji">💰</span><span class="sc-trend"
+                            style="background:#ecfdf5;color:#059669">↑ 12%</span></div>
+                    <div class="sc-label">Today's Sales</div>
+                    <div class="sc-value" style="color:var(--teal)">Ksh 28,450</div>
+                    <div class="sc-foot">Yesterday: Ksh 25,400</div>
+                    <div class="sparkline"><svg viewBox="0 0 120 24">
+                            <polyline points="0,18 20,14 40,20 60,10 80,14 100,16 120,3" fill="none"
+                                stroke="var(--teal)" stroke-width="2" stroke-linecap="round" />
+                            <circle cx="120" cy="3" r="2.5" fill="var(--teal)" />
+                        </svg></div>
+                </div>
+                <div class="stat-card sc-indigo">
+                    <div class="sc-top"><span class="sc-emoji">🧾</span><span class="sc-trend"
+                            style="background:#eef0ff;color:#4f46e5">↑ 8%</span></div>
+                    <div class="sc-label">Orders</div>
+                    <div class="sc-value" style="color:var(--indigo)">47</div>
+                    <div class="sc-foot">Yesterday: 43</div>
+                    <div class="sparkline"><svg viewBox="0 0 120 24">
+                            <polyline points="0,16 20,12 40,18 60,8 80,12 100,15 120,5" fill="none"
+                                stroke="var(--indigo)" stroke-width="2" stroke-linecap="round" />
+                            <circle cx="120" cy="5" r="2.5" fill="var(--indigo)" />
+                        </svg></div>
+                </div>
+                <div class="stat-card sc-cyan">
+                    <div class="sc-top"><span class="sc-emoji">📱</span><span class="sc-trend"
+                            style="background:#ecfeff;color:#0891b2">↑ 15%</span></div>
+                    <div class="sc-label">M-Pesa</div>
+                    <div class="sc-value" style="color:#0891b2">Ksh 14,200</div>
+                    <div class="sc-foot">Yesterday: Ksh 12,350</div>
+                    <div class="sparkline"><svg viewBox="0 0 120 24">
+                            <polyline points="0,14 20,18 40,10 60,14 80,8 100,12 120,2" fill="none" stroke="#06b6d4"
+                                stroke-width="2" stroke-linecap="round" />
+                            <circle cx="120" cy="2" r="2.5" fill="#06b6d4" />
+                        </svg></div>
+                </div>
+                <div class="stat-card sc-amber">
+                    <div class="sc-top"><span class="sc-emoji">⏳</span></div>
+                    <div class="sc-label">Pending Bills</div>
+                    <div class="sc-value" style="color:var(--amber)">37</div>
+                    <div class="sc-foot"><a href="#" style="color:var(--teal);font-size:9px">View all →</a></div>
+                </div>
+                <div class="stat-card sc-coral">
+                    <div class="sc-top"><span class="sc-emoji">🚨</span></div>
+                    <div class="sc-label">Low Stock</div>
+                    <div class="sc-value" style="color:var(--coral)">6</div>
+                    <div class="sc-foot"><a href="#" style="color:var(--teal);font-size:9px">Check now →</a></div>
+                </div>
+            </div>
+
+            <!-- Finance -->
+            <div class="fin-grid an a4">
+                <div class="fin-item ft-1"><span class="fi-icon">💸</span>
+                    <div class="fi-label">Expenses</div>
+                    <div class="fi-value">Ksh 4,200</div><a href="#" class="fi-link">View →</a>
+                </div>
+                <div class="fin-item ft-2"><span class="fi-icon">💵</span>
+                    <div class="fi-label">Advances</div>
+                    <div class="fi-value">Ksh 2,000</div><a href="#" class="fi-link">View →</a>
+                </div>
+                <div class="fin-item ft-3"><span class="fi-icon">🎟️</span>
+                    <div class="fi-label">Vouchers</div>
+                    <div class="fi-value">Ksh 800</div><a href="#" class="fi-link">View →</a>
+                </div>
+                <div class="fin-item ft-4"><span class="fi-icon">📊</span>
+                    <div class="fi-label">Net Sales</div>
+                    <div class="fi-value">Ksh 23,450</div>
+                    <div style="font-size:8px;color:var(--muted)">After deductions</div>
+                </div>
+                <div class="fin-item ft-5"><span class="fi-icon">⏰</span>
+                    <div class="fi-label">Shifts</div>
+                    <div class="sh-flex">
+                        <div>
+                            <div class="sh-v">2</div>
+                            <div class="sh-l">Active</div>
+                        </div>
+                        <div class="sh-d"></div>
+                        <div>
+                            <div class="sh-v">1</div>
+                            <div class="sh-l">Closed</div>
+                        </div>
+                    </div><a href="#" class="fi-link">Manage →</a>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="chart-duo an a5">
+                <div class="ch-card">
+                    <div class="ch-head">
+                        <div class="ch-icon" style="background:#e6f7f5">📈</div>
+                        <div class="ch-title">Revenue & Orders (7 Days)</div>
+                    </div>
+                    <svg viewBox="0 0 600 180" style="width:100%;height:180px">
+                        <defs>
+                            <linearGradient id="g1" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stop-color="#0d9488" stop-opacity=".18" />
+                                <stop offset="100%" stop-color="#0d9488" stop-opacity=".01" />
+                            </linearGradient>
+                        </defs>
+                        <line x1="0" y1="36" x2="600" y2="36" stroke="#f0f5f4" stroke-width="1" />
+                        <line x1="0" y1="72" x2="600" y2="72" stroke="#f0f5f4" stroke-width="1" />
+                        <line x1="0" y1="108" x2="600" y2="108" stroke="#f0f5f4" stroke-width="1" />
+                        <line x1="0" y1="144" x2="600" y2="144" stroke="#f0f5f4" stroke-width="1" />
+                        <path d="M0,100 L100,65 L200,120 L300,30 L400,70 L500,108 L600,12 L600,165 L0,165 Z"
+                            fill="url(#g1)" />
+                        <path d="M0,100 L100,65 L200,120 L300,30 L400,70 L500,108 L600,12" fill="none" stroke="#0d9488"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+                        <circle cx="0" cy="100" r="4" fill="#0d9488" stroke="#fff" stroke-width="2" />
+                        <circle cx="100" cy="65" r="4" fill="#0d9488" stroke="#fff" stroke-width="2" />
+                        <circle cx="200" cy="120" r="4" fill="#0d9488" stroke="#fff" stroke-width="2" />
+                        <circle cx="300" cy="30" r="4" fill="#0d9488" stroke="#fff" stroke-width="2" />
+                        <circle cx="400" cy="70" r="4" fill="#0d9488" stroke="#fff" stroke-width="2" />
+                        <circle cx="500" cy="108" r="4" fill="#0d9488" stroke="#fff" stroke-width="2" />
+                        <circle cx="600" cy="12" r="5" fill="#14b8a6" stroke="#fff" stroke-width="2" />
+                        <text x="0" y="178" fill="#aaa" font-size="9" font-family="DM Sans">05 Feb</text><text x="100"
+                            y="178" fill="#aaa" font-size="9" font-family="DM Sans" text-anchor="middle">06</text><text
+                            x="200" y="178" fill="#aaa" font-size="9" font-family="DM Sans"
+                            text-anchor="middle">07</text><text x="300" y="178" fill="#aaa" font-size="9"
+                            font-family="DM Sans" text-anchor="middle">08</text><text x="400" y="178" fill="#aaa"
+                            font-size="9" font-family="DM Sans" text-anchor="middle">09</text><text x="500" y="178"
+                            fill="#aaa" font-size="9" font-family="DM Sans" text-anchor="middle">10</text><text x="595"
+                            y="178" fill="var(--teal)" font-size="9" font-family="DM Sans" text-anchor="end"
+                            font-weight="700">Today</text>
+                    </svg>
+                </div>
+                <div class="ch-card">
+                    <div class="ch-head">
+                        <div class="ch-icon" style="background:#f3e8ff">💳</div>
+                        <div class="ch-title">Payment Split</div>
+                    </div>
+                    <div class="sb-row">
+                        <div class="sb-seg" style="width:55%;background:var(--teal)">55%</div>
+                        <div class="sb-seg" style="width:35%;background:var(--indigo)">35%</div>
+                        <div class="sb-seg" style="width:10%;background:#a78bfa">10%</div>
+                    </div>
+                    <div class="sb-details">
+                        <div class="sb-detail"><span class="sb-d-icon">💵</span>
+                            <div>
+                                <div class="sb-d-name">Cash</div>
+                                <div class="sb-d-amt">Ksh 15,650 • 26 orders</div>
+                            </div>
+                            <div class="sb-d-pct">55%</div>
+                        </div>
+                        <div class="sb-detail"><span class="sb-d-icon">📱</span>
+                            <div>
+                                <div class="sb-d-name">M-Pesa</div>
+                                <div class="sb-d-amt">Ksh 9,960 • 16 orders</div>
+                            </div>
+                            <div class="sb-d-pct" style="color:var(--indigo)">35%</div>
+                        </div>
+                        <div class="sb-detail"><span class="sb-d-icon">💳</span>
+                            <div>
+                                <div class="sb-d-name">Card</div>
+                                <div class="sb-d-amt">Ksh 2,840 • 5 orders</div>
+                            </div>
+                            <div class="sb-d-pct" style="color:#a78bfa">10%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bottom 3-col -->
+            <div class="tri-grid an a6">
+                <div class="tri-card">
+                    <div class="tri-head">
+                        <div class="tri-icon" style="background:#fef3ed">🔥</div>
+                        <div class="tri-title">Top Sellers</div>
+                    </div>
+                    <div class="pi">
+                        <div class="rk">1</div>
+                        <div class="nm">WHITE TEA CUP</div>
+                        <div class="qt">93</div>
+                        <div class="rv">Ksh 2,790</div>
+                    </div>
+                    <div class="pi">
+                        <div class="rk">2</div>
+                        <div class="nm">CHAPATI</div>
+                        <div class="qt">73</div>
+                        <div class="rv">Ksh 2,190</div>
+                    </div>
+                    <div class="pi">
+                        <div class="rk">3</div>
+                        <div class="nm">MANDAZI</div>
+                        <div class="qt">45</div>
+                        <div class="rv">Ksh 1,350</div>
+                    </div>
+                    <div class="pi">
+                        <div class="rk">4</div>
+                        <div class="nm">NDAZI</div>
+                        <div class="qt">24</div>
+                        <div class="rv">Ksh 480</div>
+                    </div>
+                    <div class="pi">
+                        <div class="rk">5</div>
+                        <div class="nm">DOUGHNUT</div>
+                        <div class="qt">13</div>
+                        <div class="rv">Ksh 390</div>
+                    </div>
+                    <div class="pi">
+                        <div class="rk">6</div>
+                        <div class="nm">SAMOSA</div>
+                        <div class="qt">13</div>
+                        <div class="rv">Ksh 520</div>
+                    </div>
+                </div>
+                <div class="tri-card">
+                    <div class="tri-head">
+                        <div class="tri-icon" style="background:#eef0ff">👨‍🍳</div>
+                        <div class="tri-title">Waiter Leaderboard</div>
+                    </div>
+                    <div class="wi">
+                        <div class="wm" style="background:linear-gradient(135deg,#f59e0b,#d97706)">🥇</div>
+                        <div>
+                            <div class="wn">James Kiprop</div>
+                            <div class="wo">18 orders</div>
+                        </div>
+                        <div class="ws">Ksh 12,400</div>
+                    </div>
+                    <div class="wi">
+                        <div class="wm" style="background:linear-gradient(135deg,#94a3b8,#64748b)">🥈</div>
+                        <div>
+                            <div class="wn">Mary Chebet</div>
+                            <div class="wo">15 orders</div>
+                        </div>
+                        <div class="ws">Ksh 9,800</div>
+                    </div>
+                    <div class="wi">
+                        <div class="wm" style="background:linear-gradient(135deg,#b45309,#92400e)">🥉</div>
+                        <div>
+                            <div class="wn">Peter Maina</div>
+                            <div class="wo">14 orders</div>
+                        </div>
+                        <div class="ws">Ksh 6,250</div>
+                    </div>
+                </div>
+                <div class="tri-card">
+                    <div class="tri-head">
+                        <div class="tri-icon" style="background:#fef2f2">🚨</div>
+                        <div class="tri-title">Stock Alerts</div>
+                    </div>
+                    <div
+                        style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:6px">
+                        🥬 Ingredients</div>
+                    <div class="si cr"><span class="sn">SALIT COOKING OIL 20L</span><span class="sb2 bc">0 / 10</span>
+                    </div>
+                    <div class="si wr"><span class="sn">PRESTIGE COOKING FAT</span><span class="sb2 bw">5 / 10</span>
+                    </div>
+                    <div class="si wr"><span class="sn">SALT 1 KG</span><span class="sb2 bw">5 / 10</span></div>
+                    <div class="si ok"><span class="sn">SUGAR 10 KG</span><span class="sb2 bo">10 / 10</span></div>
+                    <div class="si ok"><span class="sn">BAKING POWDER</span><span class="sb2 bo">10 / 10</span></div>
+                    <div class="si ok"><span class="sn">TEA LEAVES 1 KG</span><span class="sb2 bo">10 / 10</span></div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="qa-wrap an a7">
+                <div class="qa-h">⚡ Quick Actions</div>
+                <div class="qa-g">
+                    <a href="#" class="qa-b"><span class="qe">🛒</span><span class="qlabel">POS</span></a>
+                    <a href="#" class="qa-b"><span class="qe">📋</span><span class="qlabel">Reports</span></a>
+                    <a href="#" class="qa-b"><span class="qe">📥</span><span class="qlabel">Purchase</span></a>
+                    <a href="#" class="qa-b"><span class="qe">🍳</span><span class="qlabel">Recipe</span></a>
+                    <a href="#" class="qa-b"><span class="qe">📦</span><span class="qlabel">Batches</span></a>
+                    <a href="#" class="qa-b"><span class="qe">💸</span><span class="qlabel">Expenses</span></a>
+                    <a href="#" class="qa-b"><span class="qe">👥</span><span class="qlabel">Payroll</span></a>
+                    <a href="#" class="qa-b"><span class="qe">⏰</span><span class="qlabel">Shifts</span></a>
+                </div>
+            </div>
+
+            <!-- ═══ SALES CURRENT FINANCIAL YEAR ═══ -->
+            <div class="section-card an a7">
+                <div class="section-header"><span class="sh-icon">🛒</span><span class="sh-title">Sales Current
+                        Financial Year</span></div>
+                <svg viewBox="0 0 700 160" style="width:100%;height:160px">
+                    <line x1="40" y1="20" x2="700" y2="20" stroke="#f0f5f4" stroke-width="1" />
+                    <line x1="40" y1="50" x2="700" y2="50" stroke="#f0f5f4" stroke-width="1" />
+                    <line x1="40" y1="80" x2="700" y2="80" stroke="#f0f5f4" stroke-width="1" />
+                    <line x1="40" y1="110" x2="700" y2="110" stroke="#f0f5f4" stroke-width="1" />
+                    <line x1="40" y1="140" x2="700" y2="140" stroke="#f0f5f4" stroke-width="1" />
+                    <text x="4" y="24" fill="#bbb" font-size="8" font-family="DM Sans">30K</text><text x="4" y="54"
+                        fill="#bbb" font-size="8" font-family="DM Sans">20K</text><text x="4" y="84" fill="#bbb"
+                        font-size="8" font-family="DM Sans">10K</text><text x="4" y="114" fill="#bbb" font-size="8"
+                        font-family="DM Sans">5K</text><text x="4" y="140" fill="#bbb" font-size="8"
+                        font-family="DM Sans">0</text>
+                    <defs>
+                        <linearGradient id="fy" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stop-color="#4f46e5" stop-opacity=".15" />
+                            <stop offset="100%" stop-color="#4f46e5" stop-opacity=".01" />
+                        </linearGradient>
+                    </defs>
+                    <path
+                        d="M55,140 L110,135 L165,22 L220,135 L275,138 L330,140 L385,140 L440,140 L495,140 L550,140 L605,140 L660,140 L660,140 L55,140 Z"
+                        fill="url(#fy)" />
+                    <path
+                        d="M55,140 L110,135 L165,22 L220,135 L275,138 L330,140 L385,140 L440,140 L495,140 L550,140 L605,140 L660,140"
+                        fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    <circle cx="55" cy="140" r="3" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <circle cx="110" cy="135" r="3" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <circle cx="165" cy="22" r="4" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <circle cx="220" cy="135" r="3" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <circle cx="275" cy="138" r="3" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <circle cx="330" cy="140" r="3" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <circle cx="385" cy="140" r="3" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <circle cx="440" cy="140" r="3" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <circle cx="495" cy="140" r="3" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <circle cx="550" cy="140" r="3" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <circle cx="605" cy="140" r="3" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <circle cx="660" cy="140" r="3" fill="#4f46e5" stroke="#fff" stroke-width="2" />
+                    <text x="55" y="155" fill="#aaa" font-size="8" font-family="DM Sans"
+                        text-anchor="middle">Jan</text><text x="110" y="155" fill="#aaa" font-size="8"
+                        font-family="DM Sans" text-anchor="middle">Feb</text><text x="165" y="155" fill="#aaa"
+                        font-size="8" font-family="DM Sans" text-anchor="middle">Mar</text><text x="220" y="155"
+                        fill="#aaa" font-size="8" font-family="DM Sans" text-anchor="middle">Apr</text><text x="275"
+                        y="155" fill="#aaa" font-size="8" font-family="DM Sans" text-anchor="middle">May</text><text
+                        x="330" y="155" fill="#aaa" font-size="8" font-family="DM Sans"
+                        text-anchor="middle">Jun</text><text x="385" y="155" fill="#aaa" font-size="8"
+                        font-family="DM Sans" text-anchor="middle">Jul</text><text x="440" y="155" fill="#aaa"
+                        font-size="8" font-family="DM Sans" text-anchor="middle">Aug</text><text x="495" y="155"
+                        fill="#aaa" font-size="8" font-family="DM Sans" text-anchor="middle">Sep</text><text x="550"
+                        y="155" fill="#aaa" font-size="8" font-family="DM Sans" text-anchor="middle">Oct</text><text
+                        x="605" y="155" fill="#aaa" font-size="8" font-family="DM Sans"
+                        text-anchor="middle">Nov</text><text x="660" y="155" fill="#aaa" font-size="8"
+                        font-family="DM Sans" text-anchor="middle">Dec</text>
+                </svg>
+                <div style="display:flex;align-items:center;gap:8px;margin-top:4px"><span
+                        style="width:14px;height:3px;background:#4f46e5;border-radius:4px;display:inline-block"></span><span
+                        style="font-size:10px;color:var(--muted)">Kilimanjaro Hotel — Total Sales (Ksh)</span></div>
+            </div>
+
+            <!-- SALES & PURCHASE DUE -->
+            <div class="duo-grid an a8">
+                <div class="section-card">
+                    <div class="section-header"><span class="sh-icon">⚠️</span><span class="sh-title">Sales Payment
+                            Due</span><span class="sh-badge">ℹ</span></div>
+                    <div class="export-bar"><button class="export-btn">📄 CSV</button><button class="export-btn">📊
+                            Excel</button><button class="export-btn">🖨️ Print</button><button class="export-btn">📑
+                            PDF</button></div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Customer</th>
+                                <th>Invoice No.</th>
+                                <th>Due Amount</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Walk-In Customer</td>
+                                <td>INV-0042</td>
+                                <td style="color:var(--coral);font-weight:600">Ksh 2,400</td>
+                                <td><a href="#" style="color:var(--teal);font-weight:600;font-size:10px">Pay →</a></td>
+                            </tr>
+                            <tr>
+                                <td>Jane Wanjiku</td>
+                                <td>INV-0038</td>
+                                <td style="color:var(--coral);font-weight:600">Ksh 1,800</td>
+                                <td><a href="#" style="color:var(--teal);font-weight:600;font-size:10px">Pay →</a></td>
+                            </tr>
+                            <tr>
+                                <td>Peter Otieno</td>
+                                <td>INV-0035</td>
+                                <td style="color:var(--coral);font-weight:600">Ksh 3,200</td>
+                                <td><a href="#" style="color:var(--teal);font-weight:600;font-size:10px">Pay →</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="table-footer"><span>Showing 1 to 3 of 37 entries</span>
+                        <div class="pag-btns"><button class="pag-btn">Previous</button><button
+                                class="pag-btn">Next</button></div>
+                    </div>
+                </div>
+                <div class="section-card">
+                    <div class="section-header"><span class="sh-icon">⚠️</span><span class="sh-title">Purchase Payment
+                            Due</span><span class="sh-badge">ℹ</span></div>
+                    <div class="export-bar"><button class="export-btn">📄 CSV</button><button class="export-btn">📊
+                            Excel</button><button class="export-btn">🖨️ Print</button><button class="export-btn">📑
+                            PDF</button></div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Supplier</th>
+                                <th>Reference No</th>
+                                <th>Due Amount</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Kapa Oil Refinery</td>
+                                <td>PO-0018</td>
+                                <td style="color:var(--coral);font-weight:600">Ksh 12,500</td>
+                                <td><a href="#" style="color:var(--teal);font-weight:600;font-size:10px">Pay →</a></td>
+                            </tr>
+                            <tr>
+                                <td>Nairobi Flour Mills</td>
+                                <td>PO-0015</td>
+                                <td style="color:var(--coral);font-weight:600">Ksh 8,400</td>
+                                <td><a href="#" style="color:var(--teal);font-weight:600;font-size:10px">Pay →</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <div class="table-footer"><span>Showing 1 to 2 of 2 entries</span>
+                        <div class="pag-btns"><button class="pag-btn">Previous</button><button
+                                class="pag-btn">Next</button></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PRODUCT STOCK ALERT TABLE -->
+            <div class="section-card an a8">
+                <div class="section-header"><span class="sh-icon">⏰</span><span class="sh-title">Product Stock
+                        Alert</span><span class="sh-badge">ℹ</span></div>
+                <div class="export-bar"><button class="export-btn">📄 CSV</button><button class="export-btn">📊
+                        Excel</button><button class="export-btn">🖨️ Print</button><button class="export-btn">📋
+                        Columns</button><button class="export-btn">📑 PDF</button></div>
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Location</th>
+                            <th>Current Stock</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>SALIT COOKING OIL 20L</td>
+                            <td>Kilimanjaro Hotel</td>
+                            <td style="color:var(--coral);font-weight:700">0 Pc(s)</td>
+                        </tr>
+                        <tr>
+                            <td>PRESTIGE COOKING FAT 5KG</td>
+                            <td>Kilimanjaro Hotel</td>
+                            <td style="color:var(--amber);font-weight:600">5 Pc(s)</td>
+                        </tr>
+                        <tr>
+                            <td>SALT 1 KG</td>
+                            <td>Kilimanjaro Hotel</td>
+                            <td style="color:var(--amber);font-weight:600">5 Pc(s)</td>
+                        </tr>
+                        <tr>
+                            <td>SUGAR 10 KG</td>
+                            <td>Kilimanjaro Hotel</td>
+                            <td style="color:var(--teal);font-weight:600">10 Pc(s)</td>
+                        </tr>
+                        <tr>
+                            <td>BAKING POWDER 90GM</td>
+                            <td>Kilimanjaro Hotel</td>
+                            <td style="color:var(--teal);font-weight:600">10 Pc(s)</td>
+                        </tr>
+                        <tr>
+                            <td>TEA LEAVES 1 KG</td>
+                            <td>Kilimanjaro Hotel</td>
+                            <td style="color:var(--teal);font-weight:600">10 Pc(s)</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="table-footer"><span>Showing 1 to 6 of 6 entries</span>
+                    <div class="pag-btns"><button class="pag-btn">Previous</button><button class="pag-btn">Next</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="dash-footer">© 2026 Kilimanjaro Hotel — AlphaPlus POS v3.5 • Powered by AlphaPlus Technologies
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleSidebar() {
+            const s = document.getElementById('sidebar');
+            const m = document.getElementById('mainContent');
+            s.classList.toggle('collapsed');
+            m.classList.toggle('expanded');
+        }
+        function toggleSub(el) {
+            el.classList.toggle('open');
+            const sub = el.nextElementSibling;
+            if (sub && sub.classList.contains('sub-menu')) sub.classList.toggle('open');
+        }
+    </script>
+</body>
+
+</html>

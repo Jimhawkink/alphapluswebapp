@@ -1,0 +1,1461 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Concept A — Crystal Luxe Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f4f6fb;
+            --card: #ffffff;
+            --text: #1b1d2a;
+            --muted: #8b8fa3;
+            --accent: #5b5fc7;
+            --accent2: #22c993;
+            --accent3: #f5725a;
+            --accent4: #ffb344;
+            --border: rgba(91, 95, 199, .08);
+            --shadow: 0 2px 16px rgba(91, 95, 199, .07);
+            --r: 22px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit
+        }
+
+        /* ═══ LAYOUT ═══ */
+        .page {
+            display: flex;
+            min-height: 100vh
+        }
+
+        /* ─── Mini Sidebar ─── */
+        .sidebar {
+            width: 78px;
+            background: #fff;
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            gap: 6px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            z-index: 50;
+        }
+
+        .sidebar .logo {
+            width: 46px;
+            height: 46px;
+            background: linear-gradient(135deg, #5b5fc7, #8b5cf6);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: #fff;
+            margin-bottom: 16px;
+            box-shadow: 0 4px 18px rgba(91, 95, 199, .25);
+        }
+
+        .sidebar .nav-item {
+            width: 50px;
+            height: 50px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            cursor: pointer;
+            transition: all .25s;
+            position: relative;
+        }
+
+        .sidebar .nav-item:hover {
+            background: #f0f0ff
+        }
+
+        .sidebar .nav-item.active {
+            background: linear-gradient(135deg, #eef0ff, #e8e0ff);
+            box-shadow: inset 3px 0 0 var(--accent)
+        }
+
+        .sidebar .nav-item .tip {
+            position: absolute;
+            left: 62px;
+            background: #1b1d2a;
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity .2s;
+            z-index: 10;
+        }
+
+        .sidebar .nav-item:hover .tip {
+            opacity: 1
+        }
+
+        .sidebar .spacer {
+            flex: 1
+        }
+
+        .sidebar .user-avatar {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #5b5fc7, #22c993);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 800;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        /* ─── Main Content ─── */
+        .main {
+            margin-left: 78px;
+            flex: 1;
+            padding: 26px 32px 40px
+        }
+
+        /* ─── Top Bar ─── */
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 26px
+        }
+
+        .topbar-left h1 {
+            font-size: 28px;
+            font-weight: 800;
+            letter-spacing: -.5px
+        }
+
+        .topbar-left h1 span {
+            color: var(--accent)
+        }
+
+        .topbar-left p {
+            font-size: 13px;
+            color: var(--muted);
+            margin-top: 2px
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .filter-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #fff;
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 10px 18px;
+            font-size: 13px;
+            box-shadow: var(--shadow);
+        }
+
+        .filter-chip select,
+        .filter-chip input {
+            border: none;
+            background: transparent;
+            font-family: 'Outfit';
+            font-size: 13px;
+            color: var(--text);
+            outline: none;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            padding: 11px 28px;
+            background: linear-gradient(135deg, #5b5fc7, #8b5cf6);
+            color: #fff;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Outfit';
+            font-weight: 700;
+            font-size: 13px;
+            cursor: pointer;
+            box-shadow: 0 4px 18px rgba(91, 95, 199, .25);
+            transition: all .25s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 28px rgba(91, 95, 199, .35)
+        }
+
+        .notif-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            background: #fff;
+            border: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            cursor: pointer;
+            position: relative;
+            box-shadow: var(--shadow);
+            transition: all .25s;
+        }
+
+        .notif-btn:hover {
+            background: #f8f8ff
+        }
+
+        .notif-btn .dot {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 9px;
+            height: 9px;
+            background: #f5725a;
+            border-radius: 50%;
+            border: 2px solid #fff;
+        }
+
+        /* ─── AI Insight Banner ─── */
+        .ai-banner {
+            background: linear-gradient(135deg, #eef1ff 0%, #e6f9f1 50%, #fef5e7 100%);
+            border: 1px solid rgba(91, 95, 199, .1);
+            border-radius: var(--r);
+            padding: 20px 26px;
+            display: flex;
+            align-items: center;
+            gap: 18px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .ai-banner::after {
+            content: '';
+            position: absolute;
+            right: -40px;
+            top: -40px;
+            width: 180px;
+            height: 180px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(34, 201, 147, .12), transparent);
+        }
+
+        .ai-icon {
+            width: 52px;
+            height: 52px;
+            background: linear-gradient(135deg, #5b5fc7, #22c993);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            box-shadow: 0 4px 18px rgba(91, 95, 199, .2);
+            flex-shrink: 0;
+        }
+
+        .ai-body {
+            flex: 1;
+            position: relative;
+            z-index: 1
+        }
+
+        .ai-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 3px;
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .ai-desc {
+            font-size: 12px;
+            color: #555;
+            line-height: 1.65
+        }
+
+        .ai-desc b {
+            color: var(--accent);
+            font-weight: 700
+        }
+
+        .ai-desc .green {
+            color: var(--accent2);
+            font-weight: 700
+        }
+
+        .ai-desc .red {
+            color: var(--accent3);
+            font-weight: 700
+        }
+
+        /* ─── Alert Strip ─── */
+        .alert-strip {
+            background: linear-gradient(135deg, #fff8ed, #fff3f3);
+            border: 1px solid rgba(245, 114, 90, .1);
+            border-radius: var(--r);
+            padding: 14px 22px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .alert-strip .left {
+            display: flex;
+            align-items: center;
+            gap: 12px
+        }
+
+        .alert-strip .badge-icon {
+            font-size: 26px
+        }
+
+        .alert-strip .title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #c2410c
+        }
+
+        .alert-strip .sub {
+            font-size: 11px;
+            color: #b45309
+        }
+
+        .alert-strip .right {
+            display: flex;
+            gap: 8px
+        }
+
+        .alert-strip .right a {
+            padding: 8px 18px;
+            background: #fff;
+            border: 1px solid rgba(245, 114, 90, .15);
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #c2410c;
+            transition: all .25s;
+        }
+
+        .alert-strip .right a:hover {
+            background: #fff8ed
+        }
+
+        /* ═══ BENTO GRID ═══ */
+        .bento {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            grid-auto-rows: auto;
+            gap: 16px;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--r);
+            box-shadow: var(--shadow);
+            transition: all .35s cubic-bezier(.4, 0, .2, 1);
+            overflow: hidden;
+        }
+
+        .card:hover {
+            box-shadow: 0 8px 40px rgba(91, 95, 199, .1);
+            transform: translateY(-3px)
+        }
+
+        /* ─── KPI SUPER CARDS ─── */
+        .kpi-strip {
+            grid-column: span 12;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px
+        }
+
+        .kpi {
+            padding: 22px;
+            border-radius: var(--r);
+            color: #fff;
+            position: relative;
+            overflow: hidden;
+            transition: all .35s cubic-bezier(.4, 0, .2, 1);
+        }
+
+        .kpi:hover {
+            transform: translateY(-4px) scale(1.02)
+        }
+
+        .kpi .orb {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, .12);
+            filter: blur(20px);
+            pointer-events: none;
+        }
+
+        .kpi .icon-circle {
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, .18);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            margin-bottom: 14px;
+        }
+
+        .kpi .lbl {
+            font-size: 11px;
+            opacity: .85;
+            text-transform: uppercase;
+            letter-spacing: .8px;
+            font-weight: 500
+        }
+
+        .kpi .val {
+            font-size: 30px;
+            font-weight: 900;
+            letter-spacing: -1px;
+            margin-top: 2px
+        }
+
+        .kpi .change {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 8px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, .18);
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .kpi .foot {
+            font-size: 10px;
+            opacity: .55;
+            margin-top: 6px
+        }
+
+        .kpi-a {
+            background: linear-gradient(135deg, #22c993, #0ea5e9)
+        }
+
+        .kpi-a .orb {
+            top: -30px;
+            right: -20px;
+            background: #34d399
+        }
+
+        .kpi-b {
+            background: linear-gradient(135deg, #5b5fc7, #8b5cf6)
+        }
+
+        .kpi-b .orb {
+            bottom: -20px;
+            left: -20px;
+            background: #818cf8
+        }
+
+        .kpi-c {
+            background: linear-gradient(135deg, #0ea5e9, #06b6d4)
+        }
+
+        .kpi-c .orb {
+            top: -20px;
+            left: -30px;
+            background: #22d3ee
+        }
+
+        .kpi-d {
+            background: linear-gradient(135deg, #f59e0b, #f97316)
+        }
+
+        .kpi-d .orb {
+            bottom: -20px;
+            right: -20px;
+            background: #fbbf24
+        }
+
+        .kpi-e {
+            background: linear-gradient(135deg, #f5725a, #ef4444)
+        }
+
+        .kpi-e .orb {
+            top: -15px;
+            right: -15px;
+            background: #fca5a5
+        }
+
+        /* ─── Finance Mini Cards ─── */
+        .fin-strip {
+            grid-column: span 12;
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 16px
+        }
+
+        .fin {
+            padding: 18px;
+            border-radius: 18px;
+            color: #fff;
+            position: relative;
+            overflow: hidden
+        }
+
+        .fin:hover {
+            transform: translateY(-3px)
+        }
+
+        .fin .ic {
+            font-size: 24px;
+            margin-bottom: 6px;
+            display: block
+        }
+
+        .fin .lb {
+            font-size: 10px;
+            opacity: .75;
+            text-transform: uppercase;
+            letter-spacing: .6px
+        }
+
+        .fin .vl {
+            font-size: 20px;
+            font-weight: 800;
+            margin-top: 3px;
+            letter-spacing: -.4px
+        }
+
+        .fin .lk {
+            font-size: 10px;
+            opacity: .55;
+            margin-top: 6px;
+            text-decoration: underline;
+            color: #fff;
+            display: inline-block
+        }
+
+        .fin-1 {
+            background: linear-gradient(135deg, #e11d48, #f43f5e)
+        }
+
+        .fin-2 {
+            background: linear-gradient(135deg, #7c3aed, #a78bfa)
+        }
+
+        .fin-3 {
+            background: linear-gradient(135deg, #ea580c, #fb923c)
+        }
+
+        .fin-4 {
+            background: linear-gradient(135deg, #0891b2, #22d3ee)
+        }
+
+        .fin-5 {
+            background: linear-gradient(135deg, #2563eb, #60a5fa)
+        }
+
+        .shift-row {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-top: 10px
+        }
+
+        .shift-n {
+            text-align: center
+        }
+
+        .shift-n .v {
+            font-size: 18px;
+            font-weight: 800
+        }
+
+        .shift-n .l {
+            font-size: 9px;
+            opacity: .6
+        }
+
+        .shift-div {
+            width: 1px;
+            height: 24px;
+            background: rgba(255, 255, 255, .2)
+        }
+
+        /* ─── LINE CHART (SVG) ─── */
+        .chart-area {
+            grid-column: span 8
+        }
+
+        .chart-area .inner {
+            padding: 24px
+        }
+
+        .sec-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .sec-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .sec-title {
+            font-size: 16px;
+            font-weight: 700
+        }
+
+        .sec-sub {
+            font-size: 12px;
+            color: var(--muted);
+            margin-left: auto
+        }
+
+        .line-chart-wrap {
+            position: relative;
+            height: 230px
+        }
+
+        .line-chart-svg {
+            width: 100%;
+            height: 100%
+        }
+
+        /* ─── DONUT CHART ─── */
+        .chart-side {
+            grid-column: span 4
+        }
+
+        .chart-side .inner {
+            padding: 24px
+        }
+
+        .donut-wrap {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 18px
+        }
+
+        .donut-ring {
+            transform: rotate(-90deg)
+        }
+
+        .donut-center {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .donut-center .val {
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--text)
+        }
+
+        .donut-center .lbl {
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 10px
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px
+        }
+
+        .legend-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 4px;
+            flex-shrink: 0
+        }
+
+        .legend-name {
+            font-size: 13px;
+            font-weight: 600;
+            flex: 1
+        }
+
+        .legend-val {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent)
+        }
+
+        .legend-pct {
+            font-size: 11px;
+            color: var(--muted);
+            width: 36px;
+            text-align: right
+        }
+
+        /* ─── BOTTOM 3-COL ─── */
+        .col-4 {
+            grid-column: span 4
+        }
+
+        .col-4 .inner {
+            padding: 24px
+        }
+
+        /* Products */
+        .prod {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid #f3f4f6
+        }
+
+        .prod:last-child {
+            border-bottom: 0
+        }
+
+        .prod .rank {
+            width: 30px;
+            height: 30px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, var(--accent3), #ff8a65);
+            color: #fff;
+            font-weight: 800;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .prod .info {
+            flex: 1
+        }
+
+        .prod .name {
+            font-size: 13px;
+            font-weight: 600
+        }
+
+        .prod .bar-bg {
+            height: 5px;
+            background: #f0f0f5;
+            border-radius: 8px;
+            margin-top: 5px;
+            overflow: hidden
+        }
+
+        .prod .bar-fg {
+            height: 100%;
+            border-radius: 8px;
+            background: linear-gradient(90deg, #f5725a, #ff8a65)
+        }
+
+        .prod .sold {
+            font-size: 10px;
+            color: var(--muted);
+            margin-top: 3px
+        }
+
+        .prod .rev {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--accent2);
+            white-space: nowrap
+        }
+
+        /* Waiters */
+        .waiter {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: #f8f8ff;
+            border-radius: 14px;
+            margin-bottom: 8px;
+            border: 1px solid transparent;
+            transition: all .3s;
+        }
+
+        .waiter:hover {
+            border-color: var(--border);
+            transform: translateX(4px)
+        }
+
+        .waiter .medal {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .waiter .winfo {
+            flex: 1
+        }
+
+        .waiter .wname {
+            font-size: 13px;
+            font-weight: 600
+        }
+
+        .waiter .words {
+            font-size: 11px;
+            color: var(--muted)
+        }
+
+        .waiter .wsales {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--accent)
+        }
+
+        /* Stock */
+        .stock-group-lbl {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 6px
+        }
+
+        .st-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 9px 14px;
+            border-radius: 12px;
+            margin-bottom: 5px;
+        }
+
+        .st-item.crit {
+            background: #fef2f2;
+            border: 1px solid rgba(239, 68, 68, .06)
+        }
+
+        .st-item.warn {
+            background: #fffbeb;
+            border: 1px solid rgba(245, 158, 11, .06)
+        }
+
+        .st-item.ok {
+            background: #f0fdf4;
+            border: 1px solid rgba(34, 197, 94, .06)
+        }
+
+        .st-name {
+            font-size: 12px;
+            font-weight: 500
+        }
+
+        .st-badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 700
+        }
+
+        .st-badge.bd-crit {
+            background: rgba(239, 68, 68, .1);
+            color: #dc2626
+        }
+
+        .st-badge.bd-warn {
+            background: rgba(245, 158, 11, .1);
+            color: #d97706
+        }
+
+        .st-badge.bd-ok {
+            background: rgba(34, 197, 94, .1);
+            color: #16a34a
+        }
+
+        /* ─── QUICK ACTIONS ─── */
+        .qa-row {
+            grid-column: span 12
+        }
+
+        .qa-inner {
+            padding: 22px 24px
+        }
+
+        .qa-title {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px
+        }
+
+        .qa-grid {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 12px
+        }
+
+        .qa-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            padding: 18px 8px;
+            background: linear-gradient(135deg, #f4f6fb, #eef0ff);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all .35s;
+            text-decoration: none;
+        }
+
+        .qa-btn:hover {
+            background: linear-gradient(135deg, #eef0ff, #e0e4ff);
+            border-color: rgba(91, 95, 199, .2);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(91, 95, 199, .1);
+        }
+
+        .qa-btn .qi {
+            font-size: 28px
+        }
+
+        .qa-btn .ql {
+            font-size: 11px;
+            font-weight: 600;
+            color: #555
+        }
+
+        /* Animations */
+        @keyframes fadeUp {
+            from {
+                opacity: 0;
+                transform: translateY(18px)
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0)
+            }
+        }
+
+        .anim {
+            animation: fadeUp .5s ease-out both
+        }
+
+        .d1 {
+            animation-delay: .04s
+        }
+
+        .d2 {
+            animation-delay: .08s
+        }
+
+        .d3 {
+            animation-delay: .12s
+        }
+
+        .d4 {
+            animation-delay: .16s
+        }
+
+        .d5 {
+            animation-delay: .2s
+        }
+
+        .d6 {
+            animation-delay: .24s
+        }
+
+        .d7 {
+            animation-delay: .28s
+        }
+
+        .d8 {
+            animation-delay: .32s
+        }
+    </style>
+</head>
+
+<body>
+    <div class="page">
+        <!-- ═══ MINI SIDEBAR ═══ -->
+        <aside class="sidebar">
+            <div class="logo">🏨</div>
+            <div class="nav-item active">📊<span class="tip">Dashboard</span></div>
+            <div class="nav-item">🛒<span class="tip">POS</span></div>
+            <div class="nav-item">🛏️<span class="tip">Rooms</span></div>
+            <div class="nav-item">🍳<span class="tip">Recipe</span></div>
+            <div class="nav-item">📦<span class="tip">Stock</span></div>
+            <div class="nav-item">📋<span class="tip">Reports</span></div>
+            <div class="nav-item">⚙️<span class="tip">Settings</span></div>
+            <div class="spacer"></div>
+            <div class="user-avatar">SA</div>
+        </aside>
+
+        <!-- ═══ MAIN ═══ -->
+        <div class="main">
+            <!-- Top Bar -->
+            <div class="topbar anim d1">
+                <div class="topbar-left">
+                    <h1>Good Afternoon, <span>Admin</span> 👋</h1>
+                    <p>Kilimanjaro Hotel — Bomet • 11 Feb 2026</p>
+                </div>
+                <div class="topbar-right">
+                    <div class="filter-chip">
+                        📅 <input type="date" value="2026-02-11">
+                    </div>
+                    <div class="filter-chip">
+                        📅 <input type="date" value="2026-02-11">
+                    </div>
+                    <button class="btn-primary">🔄 Refresh</button>
+                    <div class="notif-btn">🔔<span class="dot"></span></div>
+                </div>
+            </div>
+
+            <!-- AI Banner -->
+            <div class="ai-banner anim d2">
+                <div class="ai-icon">🧠</div>
+                <div class="ai-body">
+                    <div class="ai-title">✨ Smart Insights — AI Analysis</div>
+                    <div class="ai-desc">
+                        <b>White Tea Cup</b> leads sales with <b>93 units</b> today (Ksh 2,790).
+                        Overall revenue is <span class="green">↑ 12% higher</span> than yesterday.
+                        <span class="red">⚠ SALIT COOKING OIL</span> is at zero stock — reorder urgently before evening
+                        rush.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Alert -->
+            <div class="alert-strip anim d2">
+                <div class="left">
+                    <span class="badge-icon">🚨</span>
+                    <div>
+                        <div class="title">Attention Required!</div>
+                        <div class="sub">6 ingredients need reorder • 37 pending bills</div>
+                    </div>
+                </div>
+                <div class="right">
+                    <a href="#">View Low Stock</a>
+                    <a href="#">View Bills</a>
+                </div>
+            </div>
+
+            <!-- ═══ BENTO GRID ═══ -->
+            <div class="bento">
+                <!-- KPI CARDS -->
+                <div class="kpi-strip anim d3">
+                    <div class="kpi kpi-a">
+                        <div class="orb"></div>
+                        <div class="icon-circle">💰</div>
+                        <div class="lbl">Today's Sales</div>
+                        <div class="val">Ksh 28,450</div>
+                        <div class="change">↑ 12%</div>
+                        <div class="foot">Yesterday: Ksh 25,400</div>
+                    </div>
+                    <div class="kpi kpi-b">
+                        <div class="orb"></div>
+                        <div class="icon-circle">🧾</div>
+                        <div class="lbl">Orders Today</div>
+                        <div class="val">47</div>
+                        <div class="change">↑ 8%</div>
+                        <div class="foot">Yesterday: 43</div>
+                    </div>
+                    <div class="kpi kpi-c">
+                        <div class="orb"></div>
+                        <div class="icon-circle">📱</div>
+                        <div class="lbl">M-Pesa Today</div>
+                        <div class="val">Ksh 14,200</div>
+                        <div class="change">↑ 15%</div>
+                        <div class="foot">Yesterday: Ksh 12,350</div>
+                    </div>
+                    <div class="kpi kpi-d">
+                        <div class="orb"></div>
+                        <div class="icon-circle">⏳</div>
+                        <div class="lbl">Pending Bills</div>
+                        <div class="val">37</div>
+                        <div class="foot"><a href="#" style="color:#fff;opacity:.7;font-size:10px">View all →</a></div>
+                    </div>
+                    <div class="kpi kpi-e">
+                        <div class="orb"></div>
+                        <div class="icon-circle">🚨</div>
+                        <div class="lbl">Low Stock Items</div>
+                        <div class="val">6</div>
+                        <div class="foot"><a href="#" style="color:#fff;opacity:.7;font-size:10px">Check now →</a></div>
+                    </div>
+                </div>
+
+                <!-- FINANCIAL ROW -->
+                <div class="fin-strip anim d4">
+                    <div class="fin fin-1"><span class="ic">💸</span>
+                        <div class="lb">Total Expenses</div>
+                        <div class="vl">Ksh 4,200</div><a href="#" class="lk">View →</a>
+                    </div>
+                    <div class="fin fin-2"><span class="ic">💵</span>
+                        <div class="lb">Salary Advances</div>
+                        <div class="vl">Ksh 2,000</div><a href="#" class="lk">View →</a>
+                    </div>
+                    <div class="fin fin-3"><span class="ic">🎟️</span>
+                        <div class="lb">Total Vouchers</div>
+                        <div class="vl">Ksh 800</div><a href="#" class="lk">View →</a>
+                    </div>
+                    <div class="fin fin-4"><span class="ic">📊</span>
+                        <div class="lb">Net Sales</div>
+                        <div class="vl">Ksh 23,450</div>
+                        <div style="font-size:9px;opacity:.45;margin-top:4px">After deductions</div>
+                    </div>
+                    <div class="fin fin-5">
+                        <span class="ic">⏰</span>
+                        <div class="lb">Shifts</div>
+                        <div class="shift-row">
+                            <div class="shift-n">
+                                <div class="v">2</div>
+                                <div class="l">Active</div>
+                            </div>
+                            <div class="shift-div"></div>
+                            <div class="shift-n">
+                                <div class="v">1</div>
+                                <div class="l">Closed</div>
+                            </div>
+                        </div>
+                        <a href="#" class="lk">Manage →</a>
+                    </div>
+                </div>
+
+                <!-- LINE CHART -->
+                <div class="chart-area card anim d5">
+                    <div class="inner">
+                        <div class="sec-header">
+                            <div class="sec-icon" style="background:#eef0ff">📈</div>
+                            <div class="sec-title">Revenue Trend — Last 7 Days</div>
+                            <div class="sec-sub">Tap a point to view details</div>
+                        </div>
+                        <div class="line-chart-wrap">
+                            <svg class="line-chart-svg" viewBox="0 0 700 220" preserveAspectRatio="none">
+                                <!-- Grid lines -->
+                                <line x1="0" y1="44" x2="700" y2="44" stroke="#f0f0f5" stroke-width="1" />
+                                <line x1="0" y1="88" x2="700" y2="88" stroke="#f0f0f5" stroke-width="1" />
+                                <line x1="0" y1="132" x2="700" y2="132" stroke="#f0f0f5" stroke-width="1" />
+                                <line x1="0" y1="176" x2="700" y2="176" stroke="#f0f0f5" stroke-width="1" />
+                                <!-- Y labels -->
+                                <text x="4" y="42" fill="#bbb" font-size="10" font-family="Outfit">30K</text>
+                                <text x="4" y="86" fill="#bbb" font-size="10" font-family="Outfit">20K</text>
+                                <text x="4" y="130" fill="#bbb" font-size="10" font-family="Outfit">10K</text>
+                                <text x="4" y="174" fill="#bbb" font-size="10" font-family="Outfit">0</text>
+                                <!-- Area fill -->
+                                <defs>
+                                    <linearGradient id="areaGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stop-color="#5b5fc7" stop-opacity="0.25" />
+                                        <stop offset="100%" stop-color="#5b5fc7" stop-opacity="0.02" />
+                                    </linearGradient>
+                                </defs>
+                                <path d="M50,126 L160,82 L270,150 L380,50 L490,98 L600,136 L700,20 L700,200 L50,200 Z"
+                                    fill="url(#areaGrad)" />
+                                <!-- Line -->
+                                <path d="M50,126 L160,82 L270,150 L380,50 L490,98 L600,136 L700,20" fill="none"
+                                    stroke="#5b5fc7" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+                                <!-- Dots -->
+                                <circle cx="50" cy="126" r="6" fill="#5b5fc7" stroke="#fff" stroke-width="3" />
+                                <circle cx="160" cy="82" r="6" fill="#5b5fc7" stroke="#fff" stroke-width="3" />
+                                <circle cx="270" cy="150" r="6" fill="#5b5fc7" stroke="#fff" stroke-width="3" />
+                                <circle cx="380" cy="50" r="6" fill="#5b5fc7" stroke="#fff" stroke-width="3" />
+                                <circle cx="490" cy="98" r="6" fill="#5b5fc7" stroke="#fff" stroke-width="3" />
+                                <circle cx="600" cy="136" r="6" fill="#5b5fc7" stroke="#fff" stroke-width="3" />
+                                <circle cx="700" cy="20" r="7" fill="#22c993" stroke="#fff" stroke-width="3" />
+                                <!-- X labels -->
+                                <text x="50" y="216" fill="#aaa" font-size="11" font-family="Outfit"
+                                    text-anchor="middle">05 Feb</text>
+                                <text x="160" y="216" fill="#aaa" font-size="11" font-family="Outfit"
+                                    text-anchor="middle">06 Feb</text>
+                                <text x="270" y="216" fill="#aaa" font-size="11" font-family="Outfit"
+                                    text-anchor="middle">07 Feb</text>
+                                <text x="380" y="216" fill="#aaa" font-size="11" font-family="Outfit"
+                                    text-anchor="middle">08 Feb</text>
+                                <text x="490" y="216" fill="#aaa" font-size="11" font-family="Outfit"
+                                    text-anchor="middle">09 Feb</text>
+                                <text x="600" y="216" fill="#aaa" font-size="11" font-family="Outfit"
+                                    text-anchor="middle">10 Feb</text>
+                                <text x="700" y="216" fill="#5b5fc7" font-size="11" font-family="Outfit"
+                                    text-anchor="middle" font-weight="700">Today</text>
+                                <!-- Value labels -->
+                                <text x="50" y="118" fill="#5b5fc7" font-size="10" font-family="Outfit"
+                                    text-anchor="middle" font-weight="600">12.3K</text>
+                                <text x="160" y="74" fill="#5b5fc7" font-size="10" font-family="Outfit"
+                                    text-anchor="middle" font-weight="600">18.7K</text>
+                                <text x="270" y="142" fill="#5b5fc7" font-size="10" font-family="Outfit"
+                                    text-anchor="middle" font-weight="600">9.5K</text>
+                                <text x="380" y="42" fill="#5b5fc7" font-size="10" font-family="Outfit"
+                                    text-anchor="middle" font-weight="600">22.1K</text>
+                                <text x="490" y="90" fill="#5b5fc7" font-size="10" font-family="Outfit"
+                                    text-anchor="middle" font-weight="600">15.8K</text>
+                                <text x="600" y="128" fill="#5b5fc7" font-size="10" font-family="Outfit"
+                                    text-anchor="middle" font-weight="600">11.2K</text>
+                                <text x="700" y="14" fill="#22c993" font-size="11" font-family="Outfit"
+                                    text-anchor="middle" font-weight="700">28.5K</text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- DONUT CHART (Payment Methods) -->
+                <div class="chart-side card anim d5">
+                    <div class="inner">
+                        <div class="sec-header">
+                            <div class="sec-icon" style="background:#f3e8ff">💳</div>
+                            <div class="sec-title">Payment Split</div>
+                        </div>
+                        <div class="donut-wrap" style="position:relative;width:160px;height:160px;margin:0 auto 20px">
+                            <svg viewBox="0 0 160 160" class="donut-ring" width="160" height="160">
+                                <circle cx="80" cy="80" r="64" fill="none" stroke="#f0f0f5" stroke-width="18" />
+                                <circle cx="80" cy="80" r="64" fill="none" stroke="#22c993" stroke-width="18"
+                                    stroke-dasharray="221 402" stroke-dashoffset="0" stroke-linecap="round" />
+                                <circle cx="80" cy="80" r="64" fill="none" stroke="#5b5fc7" stroke-width="18"
+                                    stroke-dasharray="140 402" stroke-dashoffset="-221" stroke-linecap="round" />
+                                <circle cx="80" cy="80" r="64" fill="none" stroke="#a78bfa" stroke-width="18"
+                                    stroke-dasharray="41 402" stroke-dashoffset="-361" stroke-linecap="round" />
+                            </svg>
+                            <div class="donut-center">
+                                <div class="val">47</div>
+                                <div class="lbl">Orders</div>
+                            </div>
+                        </div>
+                        <div class="legend">
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#22c993"></div>
+                                <div class="legend-name">Cash</div>
+                                <div class="legend-val">Ksh 15,650</div>
+                                <div class="legend-pct">55%</div>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#5b5fc7"></div>
+                                <div class="legend-name">M-Pesa</div>
+                                <div class="legend-val">Ksh 9,960</div>
+                                <div class="legend-pct">35%</div>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-dot" style="background:#a78bfa"></div>
+                                <div class="legend-name">Card</div>
+                                <div class="legend-val">Ksh 2,840</div>
+                                <div class="legend-pct">10%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TOP SELLING -->
+                <div class="col-4 card anim d6">
+                    <div class="inner">
+                        <div class="sec-header">
+                            <div class="sec-icon" style="background:#fff3ed">🔥</div>
+                            <div class="sec-title">Top Selling Items</div>
+                        </div>
+                        <div class="prod">
+                            <div class="rank">1</div>
+                            <div class="info">
+                                <div class="name">WHITE TEA CUP</div>
+                                <div class="bar-bg">
+                                    <div class="bar-fg" style="width:100%"></div>
+                                </div>
+                                <div class="sold">93 sold</div>
+                            </div>
+                            <div class="rev">Ksh 2,790</div>
+                        </div>
+                        <div class="prod">
+                            <div class="rank">2</div>
+                            <div class="info">
+                                <div class="name">CHAPATI</div>
+                                <div class="bar-bg">
+                                    <div class="bar-fg" style="width:78%"></div>
+                                </div>
+                                <div class="sold">73 sold</div>
+                            </div>
+                            <div class="rev">Ksh 2,190</div>
+                        </div>
+                        <div class="prod">
+                            <div class="rank">3</div>
+                            <div class="info">
+                                <div class="name">MANDAZI</div>
+                                <div class="bar-bg">
+                                    <div class="bar-fg" style="width:48%"></div>
+                                </div>
+                                <div class="sold">45 sold</div>
+                            </div>
+                            <div class="rev">Ksh 1,350</div>
+                        </div>
+                        <div class="prod">
+                            <div class="rank">4</div>
+                            <div class="info">
+                                <div class="name">NDAZI</div>
+                                <div class="bar-bg">
+                                    <div class="bar-fg" style="width:26%"></div>
+                                </div>
+                                <div class="sold">24 sold</div>
+                            </div>
+                            <div class="rev">Ksh 480</div>
+                        </div>
+                        <div class="prod">
+                            <div class="rank">5</div>
+                            <div class="info">
+                                <div class="name">DOUGHNUT</div>
+                                <div class="bar-bg">
+                                    <div class="bar-fg" style="width:14%"></div>
+                                </div>
+                                <div class="sold">13 sold</div>
+                            </div>
+                            <div class="rev">Ksh 390</div>
+                        </div>
+                        <div class="prod">
+                            <div class="rank">6</div>
+                            <div class="info">
+                                <div class="name">SAMOSA</div>
+                                <div class="bar-bg">
+                                    <div class="bar-fg" style="width:14%"></div>
+                                </div>
+                                <div class="sold">13 sold</div>
+                            </div>
+                            <div class="rev">Ksh 520</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- WAITER PERFORMANCE -->
+                <div class="col-4 card anim d6">
+                    <div class="inner">
+                        <div class="sec-header">
+                            <div class="sec-icon" style="background:#eef0ff">👨‍🍳</div>
+                            <div class="sec-title">Waiter Performance</div>
+                        </div>
+                        <div class="waiter">
+                            <div class="medal" style="background:linear-gradient(135deg,#f59e0b,#d97706)">🥇</div>
+                            <div class="winfo">
+                                <div class="wname">James Kiprop</div>
+                                <div class="words">18 orders</div>
+                            </div>
+                            <div class="wsales">Ksh 12,400</div>
+                        </div>
+                        <div class="waiter">
+                            <div class="medal" style="background:linear-gradient(135deg,#94a3b8,#64748b)">🥈</div>
+                            <div class="winfo">
+                                <div class="wname">Mary Chebet</div>
+                                <div class="words">15 orders</div>
+                            </div>
+                            <div class="wsales">Ksh 9,800</div>
+                        </div>
+                        <div class="waiter">
+                            <div class="medal" style="background:linear-gradient(135deg,#b45309,#92400e)">🥉</div>
+                            <div class="winfo">
+                                <div class="wname">Peter Maina</div>
+                                <div class="words">14 orders</div>
+                            </div>
+                            <div class="wsales">Ksh 6,250</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LOW STOCK -->
+                <div class="col-4 card anim d6">
+                    <div class="inner">
+                        <div class="sec-header">
+                            <div class="sec-icon" style="background:#fef2f2">🚨</div>
+                            <div class="sec-title">Low Stock Alerts</div>
+                        </div>
+                        <div class="stock-group-lbl">🥬 Ingredients</div>
+                        <div class="st-item crit"><span class="st-name">SALIT COOKING OIL 20L</span><span
+                                class="st-badge bd-crit">0 / 10</span></div>
+                        <div class="st-item warn"><span class="st-name">PRESTIGE COOKING FAT 5KG</span><span
+                                class="st-badge bd-warn">5 / 10</span></div>
+                        <div class="st-item warn"><span class="st-name">SALT 1 KG</span><span class="st-badge bd-warn">5
+                                / 10</span></div>
+                        <div class="st-item ok"><span class="st-name">SUGAR 10 KG</span><span class="st-badge bd-ok">10
+                                / 10</span></div>
+                        <div class="st-item ok"><span class="st-name">BAKING POWDER 90GM</span><span
+                                class="st-badge bd-ok">10 / 10</span></div>
+                        <div class="st-item ok"><span class="st-name">TEA LEAVES 1 KG</span><span
+                                class="st-badge bd-ok">10 / 10</span></div>
+                    </div>
+                </div>
+
+                <!-- QUICK ACTIONS -->
+                <div class="qa-row card anim d7">
+                    <div class="qa-inner">
+                        <div class="qa-title">⚡ Quick Actions</div>
+                        <div class="qa-grid">
+                            <a href="#" class="qa-btn"><span class="qi">🛒</span><span class="ql">POS</span></a>
+                            <a href="#" class="qa-btn"><span class="qi">📋</span><span class="ql">Reports</span></a>
+                            <a href="#" class="qa-btn"><span class="qi">📥</span><span class="ql">Purchase</span></a>
+                            <a href="#" class="qa-btn"><span class="qi">🍳</span><span class="ql">Recipe</span></a>
+                            <a href="#" class="qa-btn"><span class="qi">📦</span><span class="ql">Batches</span></a>
+                            <a href="#" class="qa-btn"><span class="qi">💸</span><span class="ql">Expenses</span></a>
+                            <a href="#" class="qa-btn"><span class="qi">👥</span><span class="ql">Payroll</span></a>
+                            <a href="#" class="qa-btn"><span class="qi">⏰</span><span class="ql">Shifts</span></a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

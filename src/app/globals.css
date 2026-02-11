@@ -286,3 +286,163 @@ td {
 [class*="bg-slate"] input {
   color: #1e293b !important;
 }
+
+/* ============================================
+   NEO DASHBOARD STYLES (Concept C)
+   ============================================ */
+:root {
+  --neo-bg: #f0f5f4;
+  --neo-card: #ffffff;
+  --neo-text: #1a2332;
+  --neo-muted: #7b8794;
+  --neo-teal: #0d9488;
+  --neo-teal2: #14b8a6;
+  --neo-coral: #f06050;
+  --neo-indigo: #4f46e5;
+  --neo-amber: #e5a100;
+  --neo-r: 16px;
+  --neo-shadow: 0 1px 4px rgba(0, 0, 0, .03), 0 4px 20px rgba(13, 148, 136, .05);
+  --neo-sw: 240px;
+}
+
+/* Sidebar Styles */
+.neo-sidebar {
+  width: var(--neo-sw);
+  background: #fff;
+  border-right: 1px solid rgba(13, 148, 136, .06);
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  transition: width .3s;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.neo-sidebar.collapsed {
+  width: 68px;
+}
+
+/* Helper to hide elements when collapsed */
+.neo-sidebar.collapsed .hide-collapsed {
+  display: none !important;
+}
+
+.neo-sidebar.collapsed .center-collapsed {
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.neo-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 16px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #555;
+  cursor: pointer;
+  transition: all .2s;
+  position: relative;
+  white-space: nowrap;
+  text-decoration: none;
+}
+
+.neo-nav-link:hover {
+  background: #f0f9f8;
+  color: var(--neo-teal);
+}
+
+.neo-nav-link.active {
+  background: linear-gradient(135deg, #e6f7f5, #d5f5f0);
+  color: var(--neo-teal);
+  font-weight: 700;
+  border-left: 3px solid var(--neo-teal);
+}
+
+.neo-sub-menu {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height .3s;
+  background: #fafcfb;
+}
+
+.neo-sub-menu.open {
+  max-height: 500px;
+  /* Arbitrary large height for transition */
+}
+
+/* Main Content Area */
+.neo-main {
+  margin-left: var(--neo-sw);
+  flex: 1;
+  padding: 20px 28px 40px;
+  transition: margin-left .3s;
+  background: var(--neo-bg);
+  min-height: 100vh;
+}
+
+.neo-main.expanded {
+  margin-left: 68px;
+}
+
+/* Cards */
+.neo-card {
+  background: #fff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  box-shadow: var(--neo-shadow);
+  transition: all .3s;
+}
+
+.neo-card.compact {
+  padding: 10px 14px;
+  /* Reduced padding */
+}
+
+.neo-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 24px rgba(13, 148, 136, .08);
+}
+
+/* Buttons */
+.btn-neo-teal {
+  padding: 8px 18px;
+  background: linear-gradient(135deg, #0d9488, #14b8a6);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+  box-shadow: 0 3px 12px rgba(13, 148, 136, .2);
+  transition: all .25s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.btn-neo-teal:hover {
+  transform: translateY(-1px);
+}
+
+/* Animations */
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-rise {
+  animation: riseIn .35s ease-out both;
+}
