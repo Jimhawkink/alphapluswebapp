@@ -1110,7 +1110,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     licenseDot: {
         width: '7px',
         height: '7px',
-        background: #22c55e',
+        background: '#22c55e',
         borderRadius: '50%',
         display: 'inline-block',
     },
@@ -1180,7 +1180,7 @@ const styles: { [key: string]: React.CSSProperties } = {
         fontWeight: 700,
         color: '#2d1810',
         cursor: 'pointer',
-        fontFamily: "'Inter', sans-serif',",
+        fontFamily: "'Inter', sans-serif",
         transition: 'all 0.2s ease',
     },
 
