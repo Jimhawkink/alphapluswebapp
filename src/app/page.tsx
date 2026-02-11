@@ -30,6 +30,7 @@ export default function LoginPage() {
     const [currentTime, setCurrentTime] = useState('');
     const [currentDate, setCurrentDate] = useState('');
     const [licensedTo, setLicensedTo] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
     // License state
     const [licenseStatus, setLicenseStatus] = useState<LicenseStatus>({ valid: true });
     const [checkingLicense, setCheckingLicense] = useState(true);
@@ -362,87 +363,105 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="min-h-screen flex flex-col lg:flex-row overflow-hidden bg-gray-50 font-sans">
-
+        <div className="login-page-root">
             {/* LEFT SIDE: BRANDING & ATMOSPHERE */}
-            <div className="hidden lg:flex w-1/2 bg-[#1e293b] relative items-center justify-center text-white p-12 overflow-hidden">
-                {/* Abstract Background - Lighter Gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-600/80 to-indigo-900/80 z-10"></div>
-                {/* Hotel Interior Image - Bright & Visible */}
-                <div
-                    className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
-                    style={{ backgroundImage: "url('https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80')" }}
-                ></div>
+            <div className="login-left-panel">
+                {/* Luxury Hotel Lobby Background */}
+                <div className="login-bg-image"></div>
+                {/* Warm overlay */}
+                <div className="login-bg-overlay"></div>
+                {/* Floating golden particles */}
+                <div className="login-particles">
+                    {[...Array(20)].map((_, i) => (
+                        <div key={i} className="login-particle" style={{
+                            left: `${Math.random() * 100}%`,
+                            top: `${Math.random() * 100}%`,
+                            animationDelay: `${Math.random() * 5}s`,
+                            animationDuration: `${3 + Math.random() * 4}s`,
+                        }}></div>
+                    ))}
+                </div>
 
-                <div className="relative z-20 max-w-lg text-center animate-fade-in-up">
-                    <div className="mb-6 inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl shadow-2xl shadow-blue-900/50 transform hover:scale-105 transition-transform duration-300">
-                        <span className="text-5xl text-white drop-shadow-md">💎</span>
-                    </div>
-                    <h1 className="text-6xl font-extrabold mb-4 tracking-tight drop-shadow-lg bg-clip-text text-transparent bg-gradient-to-r from-white via-blue-100 to-white">Alpha Plus</h1>
-                    <p className="text-2xl text-blue-100 font-light mb-8 tracking-wide">Premium Hotel Management System</p>
-
-                    <div className="grid grid-cols-2 gap-6 text-left mt-12">
-                        <div className="bg-white/10 p-5 rounded-2xl backdrop-blur-md border border-white/10 hover:bg-white/20 transition-colors duration-300">
-                            <div className="text-3xl mb-3">🚀</div>
-                            <div className="font-bold text-lg">Fast & Reliable</div>
-                            <div className="text-sm text-blue-200 mt-1">Optimized for speed</div>
+                {/* Branding Content */}
+                <div className="login-brand-content">
+                    {/* Diamond Logo */}
+                    <div className="login-logo-wrapper">
+                        <div className="login-logo-icon">
+                            <span>💎</span>
                         </div>
-                        <div className="bg-white/10 p-5 rounded-2xl backdrop-blur-md border border-white/10 hover:bg-white/20 transition-colors duration-300">
-                            <div className="text-3xl mb-3">🔒</div>
-                            <div className="font-bold text-lg">Secure</div>
-                            <div className="text-sm text-blue-200 mt-1">Enterprise encryption</div>
+                    </div>
+
+                    <h1 className="login-brand-title">Alpha Plus Hotel</h1>
+                    <p className="login-brand-subtitle">Premium Hotel Management</p>
+
+                    {/* Feature Cards */}
+                    <div className="login-features">
+                        <div className="login-feature-card">
+                            <div className="login-feature-icon">⚡</div>
+                            <div className="login-feature-text">
+                                <span className="login-feature-title">Lightning Fast</span>
+                            </div>
+                        </div>
+                        <div className="login-feature-card">
+                            <div className="login-feature-icon">🛡️</div>
+                            <div className="login-feature-text">
+                                <span className="login-feature-title">Enterprise Security</span>
+                            </div>
+                        </div>
+                        <div className="login-feature-card">
+                            <div className="login-feature-icon">📊</div>
+                            <div className="login-feature-text">
+                                <span className="login-feature-title">Smart Analytics</span>
+                            </div>
                         </div>
                     </div>
 
                     {licensedTo && (
-                        <div className="mt-8 pt-6 border-t border-white/10">
-                            <p className="text-xs uppercase tracking-widest text-blue-300 mb-2">Licensed To</p>
-                            <p className="text-xl font-bold">{licensedTo}</p>
+                        <div className="login-licensed-to">
+                            <p className="login-licensed-label">Licensed To</p>
+                            <p className="login-licensed-name">{licensedTo}</p>
                         </div>
                     )}
                 </div>
 
-                <div className="absolute bottom-8 text-xs text-slate-400 font-medium tracking-wide">
+                <div className="login-left-footer">
                     &copy; 2026 Alpha Solutions. All rights reserved.
                 </div>
             </div>
 
             {/* RIGHT SIDE: LOGIN FORM */}
-            <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-6 lg:p-12 relative bg-gradient-to-br from-white via-indigo-50 to-blue-50">
+            <div className="login-right-panel">
+                {/* Decorative dotted pattern */}
+                <div className="login-dots-pattern"></div>
 
-                {/* Header for Mobile (visible only on small screens) */}
-                <div className="lg:hidden text-center mb-8 pt-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-2xl mb-4 shadow-lg">
-                        <span className="text-3xl text-white">💎</span>
+                {/* Mobile Header */}
+                <div className="login-mobile-header">
+                    <div className="login-mobile-logo">
+                        <span>💎</span>
                     </div>
-                    <h2 className="text-3xl font-bold text-slate-900 tracking-tight">Alpha Plus</h2>
-                    <p className="text-slate-500 text-sm mt-1">Premium Hotel Management</p>
+                    <h2 className="login-mobile-title">Alpha Plus Hotel</h2>
+                    <p className="login-mobile-subtitle">Premium Hotel Management</p>
                 </div>
 
-                <div className="w-full max-w-md bg-white/60 backdrop-blur-xl p-8 rounded-3xl shadow-xl border border-white/50 relative overflow-hidden">
-
-                    {/* Decorative Blob */}
-                    <div className="absolute -top-20 -right-20 w-40 h-40 bg-purple-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob"></div>
-                    <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-blob animation-delay-2000"></div>
-
-                    {/* License Warning Logic */}
+                <div className="login-form-container">
+                    {/* License Warning */}
                     {!checkingLicense && !licenseStatus.valid && (
-                        <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl animate-pulse">
-                            <p className="text-sm text-amber-800 font-bold mb-2 flex items-center gap-2">
+                        <div className="login-license-warning">
+                            <p className="login-license-warning-text">
                                 <span>⚠️</span> {licenseStatus.error || 'Activation Required'}
                             </p>
-                            <div className="flex gap-2">
+                            <div className="login-license-input-row">
                                 <input
                                     type="text"
                                     value={licenseKey}
                                     onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
                                     placeholder="Enter Key: APS-XXXX..."
-                                    className="flex-1 px-3 py-2 text-sm border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none uppercase font-mono"
+                                    className="login-license-input"
                                 />
                                 <button
                                     onClick={activateLicense}
                                     disabled={activatingLicense}
-                                    className="px-4 py-2 bg-amber-600 text-white rounded-lg font-bold text-sm hover:bg-amber-700 transition-colors disabled:opacity-50"
+                                    className="login-license-btn"
                                 >
                                     {activatingLicense ? '...' : 'Activate'}
                                 </button>
@@ -451,71 +470,76 @@ export default function LoginPage() {
                     )}
 
                     {/* TABS */}
-                    <div className="flex p-1.5 bg-gray-100/80 rounded-xl mb-8 relative border border-gray-200/50">
+                    <div className="login-tabs">
                         <button
                             onClick={() => { setLoginMode('admin'); setError(''); setPin(''); }}
-                            className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ${loginMode === 'admin'
-                                ? 'bg-white text-indigo-600 shadow-md ring-1 ring-black/5 transform scale-[1.02]'
-                                : 'text-slate-500 hover:text-slate-700 hover:bg-gray-200/50'}`}
+                            className={`login-tab ${loginMode === 'admin' ? 'login-tab-active' : ''}`}
                         >
-                            <span>👨‍💼</span> Admin Portal
+                            <span className="login-tab-emoji">👨‍💼</span> Admin
                         </button>
                         <button
                             onClick={() => { setLoginMode('waiter'); setError(''); setUsername(''); setPassword(''); }}
-                            className={`flex-1 py-3 text-sm font-bold rounded-lg transition-all duration-300 flex items-center justify-center gap-2 ${loginMode === 'waiter'
-                                ? 'bg-white text-emerald-600 shadow-md ring-1 ring-black/5 transform scale-[1.02]'
-                                : 'text-slate-500 hover:text-slate-700 hover:bg-gray-200/50'}`}
+                            className={`login-tab ${loginMode === 'waiter' ? 'login-tab-active' : ''}`}
                         >
-                            <span>🧑‍🍳</span> Waiter Station
+                            <span className="login-tab-emoji">🧑‍🍳</span> Waiter
                         </button>
                     </div>
 
                     {/* ADMIN FORM */}
                     {loginMode === 'admin' && (
-                        <div className="space-y-6 animate-fade-in relative z-10">
-                            <div className="text-center mb-6">
-                                <h2 className="text-2xl font-bold text-slate-800">Welcome Back</h2>
-                                <p className="text-slate-500 text-sm mt-2">Please sign in to your dashboard.</p>
+                        <div className="login-form-inner">
+                            <div className="login-welcome">
+                                <h2>Welcome Back! <span>👋</span><span className="login-sparkle">✨</span></h2>
                             </div>
 
-                            <form onSubmit={handleAdminLogin} className="space-y-4">
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Username</label>
-                                    <div className="relative group">
-                                        <span className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors text-lg">👤</span>
+                            <form onSubmit={handleAdminLogin} className="login-form-fields">
+                                <div className="login-field-group">
+                                    <label className="login-field-label">Username</label>
+                                    <div className="login-input-wrapper">
+                                        <span className="login-input-icon">👤</span>
                                         <input
                                             type="text"
                                             value={username}
                                             onChange={(e) => setUsername(e.target.value)}
-                                            className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium text-slate-700 placeholder-gray-400"
-                                            placeholder="Enter username"
+                                            className="login-input"
+                                            placeholder="e.g., john.doe"
                                         />
                                     </div>
                                 </div>
 
-                                <div>
-                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 ml-1">Password</label>
-                                    <div className="relative group">
-                                        <span className="absolute left-4 top-3.5 text-slate-400 group-focus-within:text-indigo-500 transition-colors text-lg">🔒</span>
+                                <div className="login-field-group">
+                                    <label className="login-field-label">Password</label>
+                                    <div className="login-input-wrapper">
+                                        <span className="login-input-icon">🔒</span>
                                         <input
                                             type={showPassword ? 'text' : 'password'}
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
-                                            className="w-full pl-12 pr-12 py-3.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all font-medium text-slate-700 placeholder-gray-400"
-                                            placeholder="Enter password"
+                                            className="login-input"
+                                            placeholder="••••••••"
                                         />
                                         <button
                                             type="button"
                                             onClick={() => setShowPassword(!showPassword)}
-                                            className="absolute right-4 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
+                                            className="login-eye-btn"
                                         >
                                             {showPassword ? '🙈' : '👁️'}
                                         </button>
                                     </div>
                                 </div>
 
+                                {/* Remember Me */}
+                                <div className="login-remember-row">
+                                    <label className="login-toggle-label" onClick={() => setRememberMe(!rememberMe)}>
+                                        <div className={`login-toggle ${rememberMe ? 'login-toggle-on' : ''}`}>
+                                            <div className="login-toggle-knob"></div>
+                                        </div>
+                                        <span>Remember me</span>
+                                    </label>
+                                </div>
+
                                 {error && (
-                                    <div className="text-red-500 text-sm font-medium bg-red-50 p-3 rounded-lg border border-red-100 flex items-center gap-2 animate-pulse">
+                                    <div className="login-error">
                                         <span>⚠️</span> {error}
                                     </div>
                                 )}
@@ -523,65 +547,70 @@ export default function LoginPage() {
                                 <button
                                     type="submit"
                                     disabled={isLoading}
-                                    className="w-full py-4 bg-gradient-to-r from-slate-900 to-slate-800 hover:from-slate-800 hover:to-slate-700 text-white font-bold text-lg rounded-xl shadow-xl shadow-slate-900/20 transform hover:-translate-y-1 active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
+                                    className="login-submit-btn"
                                 >
                                     {isLoading ? (
-                                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                        <div className="login-spinner"></div>
                                     ) : (
                                         <>
                                             <span>Sign In</span>
-                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                                            <span className="login-sparkle-btn">✨</span>
                                         </>
                                     )}
                                 </button>
                             </form>
+
+                            {/* Security badge */}
+                            <div className="login-security-badge">
+                                <span>🔒</span> Protected by 256-bit encryption
+                            </div>
                         </div>
                     )}
 
                     {/* WAITER FORM */}
                     {loginMode === 'waiter' && (
-                        <div className="space-y-6 animate-fade-in relative z-10">
-                            <div className="text-center">
-                                <h2 className="text-2xl font-bold text-slate-800">Waiter Access</h2>
-                                <p className="text-slate-500 text-sm mt-1">Enter your 6-digit PIN.</p>
+                        <div className="login-form-inner">
+                            <div className="login-welcome">
+                                <h2>Waiter Access <span>🧑‍🍳</span></h2>
+                                <p className="login-welcome-sub">Enter your 6-digit PIN.</p>
                             </div>
 
                             {/* PIN Display */}
-                            <div className="flex justify-center gap-2 mb-2">
+                            <div className="login-pin-display">
                                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                                    <div key={i} className={`w-10 h-12 lg:w-12 lg:h-14 rounded-xl border-2 flex items-center justify-center text-xl font-bold transition-all duration-300 ${pin[i] ? 'bg-emerald-50 border-emerald-500 text-emerald-600 shadow-sm transform -translate-y-1' : 'bg-gray-50 border-gray-200 text-gray-300'}`}>
+                                    <div key={i} className={`login-pin-dot ${pin[i] ? 'login-pin-dot-active' : ''}`}>
                                         {pin[i] ? (showPin ? pin[i] : '●') : '○'}
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="flex justify-center mb-4">
-                                <button onClick={togglePinVisibility} className="text-xs text-slate-400 hover:text-slate-600 font-medium">
+                            <div className="login-pin-toggle-row">
+                                <button onClick={togglePinVisibility} className="login-pin-toggle-btn">
                                     {showPin ? 'Hide PIN' : 'Show PIN'}
                                 </button>
                             </div>
 
                             {error && (
-                                <div className="text-red-500 text-sm font-medium text-center bg-red-50 p-2 rounded-lg border border-red-100 animate-pulse">
-                                    {error}
+                                <div className="login-error">
+                                    <span>⚠️</span> {error}
                                 </div>
                             )}
 
                             {/* PIN Pad */}
-                            <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto">
+                            <div className="login-pin-pad">
                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
                                     <button
                                         key={num}
                                         onClick={() => handlePinInput(num.toString())}
-                                        className="h-16 rounded-2xl bg-white border border-gray-200 text-2xl font-bold text-slate-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 active:scale-95 transition-all duration-200"
+                                        className="login-pin-key"
                                     >
                                         {num}
                                     </button>
                                 ))}
-                                <button onClick={handlePinClear} className="h-16 rounded-2xl bg-rose-50 border border-rose-100 text-xl font-bold text-rose-500 shadow-sm hover:bg-rose-100 active:scale-95 transition-all duration-200">⌫</button>
-                                <button onClick={() => handlePinInput('0')} className="h-16 rounded-2xl bg-white border border-gray-200 text-2xl font-bold text-slate-700 shadow-sm hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 active:scale-95 transition-all duration-200">0</button>
-                                <button onClick={handleWaiterLogin} disabled={isLoading || pin.length !== 6} className="h-16 rounded-2xl bg-gradient-to-br from-emerald-500 to-green-600 text-2xl font-bold text-white shadow-lg shadow-emerald-500/30 hover:from-emerald-600 hover:to-green-700 active:scale-95 transition-all duration-200 flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed">
-                                    {isLoading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin"></div> : '✓'}
+                                <button onClick={handlePinClear} className="login-pin-key login-pin-key-clear">⌫</button>
+                                <button onClick={() => handlePinInput('0')} className="login-pin-key">0</button>
+                                <button onClick={handleWaiterLogin} disabled={isLoading || pin.length !== 6} className="login-pin-key login-pin-key-submit">
+                                    {isLoading ? <div className="login-spinner-sm"></div> : '✓'}
                                 </button>
                             </div>
                         </div>
@@ -589,53 +618,898 @@ export default function LoginPage() {
 
                     {/* License Badge */}
                     {licenseStatus.valid && loginMode !== 'waiter' && (
-                        <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-center gap-2">
-                            <div className="px-3 py-1 bg-emerald-50 border border-emerald-100 rounded-full flex items-center gap-2 text-[10px] lg:text-xs text-emerald-700 font-bold uppercase tracking-wide">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                {licenseStatus.client || 'System Active'}
-                                {licenseStatus.daysRemaining && ` (${licenseStatus.daysRemaining} days left)`}
-                            </div>
+                        <div className="login-license-badge">
+                            <div className="login-license-dot"></div>
+                            {licenseStatus.client || 'System Active'}
+                            {licenseStatus.daysRemaining && ` (${licenseStatus.daysRemaining} days left)`}
                         </div>
                     )}
-
                 </div>
 
                 {/* Footer Credits */}
-                <div className="mt-12 text-center relative z-10">
-                    <div className="inline-block px-6 py-3 bg-white/40 backdrop-blur-sm rounded-2xl border border-white/40 shadow-sm">
-                        <p className="text-xs text-slate-500 font-medium">
-                            System developed & maintained by <span className="font-bold text-indigo-600">Jimhawkins Korir</span>
+                <div className="login-footer">
+                    <div className="login-footer-inner">
+                        <p className="login-footer-text">
+                            System developed & maintained by <span className="login-footer-name">Jimhawkins Korir</span>
                         </p>
-                        <div className="flex items-center justify-center gap-4 mt-2 text-[11px] text-slate-400 font-medium">
-                            <span className="flex items-center gap-1 hover:text-indigo-500 transition-colors">📞 0720316175</span>
-                            <span className="w-1 h-1 rounded-full bg-slate-300"></span>
-                            <span className="flex items-center gap-1 hover:text-indigo-500 transition-colors">✉️ jimhaowkins@gmail.com</span>
+                        <div className="login-footer-contacts">
+                            <span>📞 0720316175</span>
+                            <span className="login-footer-dot"></span>
+                            <span>✉️ jimhaowkins@gmail.com</span>
                         </div>
-                        <p className="text-[10px] text-slate-300 mt-2 font-mono">v3.2 • Secure Enterprise Connection</p>
+                        <p className="login-footer-version">v3.2 • Secure Enterprise Connection</p>
                     </div>
                 </div>
-
             </div>
 
             <style jsx>{`
-                @keyframes blob {
-                    0% { transform: translate(0px, 0px) scale(1); }
-                    33% { transform: translate(30px, -50px) scale(1.1); }
-                    66% { transform: translate(-20px, 20px) scale(0.9); }
-                    100% { transform: translate(0px, 0px) scale(1); }
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@400;500;600;700&display=swap');
+
+                /* ====== ROOT CONTAINER ====== */
+                .login-page-root {
+                    display: flex;
+                    min-height: 100vh;
+                    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+                    overflow: hidden;
                 }
-                .animate-blob {
-                    animation: blob 7s infinite;
+
+                /* ====== LEFT PANEL ====== */
+                .login-left-panel {
+                    display: none;
+                    width: 50%;
+                    position: relative;
+                    overflow: hidden;
+                    align-items: center;
+                    justify-content: center;
                 }
-                .animation-delay-2000 {
-                    animation-delay: 2s;
+
+                @media (min-width: 1024px) {
+                    .login-left-panel {
+                        display: flex;
+                    }
                 }
-                 .animate-fade-in-up {
-                    animation: fadeInUp 0.8s ease-out;
+
+                .login-bg-image {
+                    position: absolute;
+                    inset: 0;
+                    background-image: url('https://images.unsplash.com/photo-1618773928121-c32242e63f39?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80');
+                    background-size: cover;
+                    background-position: center;
+                    transform: scale(1.05);
+                    animation: loginBgZoom 25s ease-in-out infinite alternate;
                 }
-                @keyframes fadeInUp {
-                    from { opacity: 0; transform: translateY(20px); }
+
+                @keyframes loginBgZoom {
+                    0% { transform: scale(1.05); }
+                    100% { transform: scale(1.12); }
+                }
+
+                .login-bg-overlay {
+                    position: absolute;
+                    inset: 0;
+                    background: linear-gradient(
+                        135deg,
+                        rgba(180, 140, 60, 0.55) 0%,
+                        rgba(120, 80, 30, 0.45) 30%,
+                        rgba(80, 50, 20, 0.50) 60%,
+                        rgba(40, 25, 10, 0.65) 100%
+                    );
+                    z-index: 1;
+                }
+
+                /* Floating golden particles */
+                .login-particles {
+                    position: absolute;
+                    inset: 0;
+                    z-index: 2;
+                    pointer-events: none;
+                }
+
+                .login-particle {
+                    position: absolute;
+                    width: 4px;
+                    height: 4px;
+                    background: radial-gradient(circle, rgba(255, 215, 100, 0.9), rgba(255, 180, 50, 0));
+                    border-radius: 50%;
+                    animation: loginParticleFloat 5s ease-in-out infinite;
+                }
+
+                @keyframes loginParticleFloat {
+                    0%, 100% { transform: translateY(0) scale(1); opacity: 0; }
+                    25% { opacity: 1; }
+                    50% { transform: translateY(-40px) scale(1.5); opacity: 0.8; }
+                    75% { opacity: 0.4; }
+                }
+
+                /* Brand Content */
+                .login-brand-content {
+                    position: relative;
+                    z-index: 10;
+                    text-align: center;
+                    padding: 2rem;
+                    max-width: 420px;
+                }
+
+                .login-logo-wrapper {
+                    margin-bottom: 1.5rem;
+                    display: flex;
+                    justify-content: center;
+                }
+
+                .login-logo-icon {
+                    width: 80px;
+                    height: 80px;
+                    background: linear-gradient(135deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.08) 100%);
+                    backdrop-filter: blur(20px);
+                    border: 1px solid rgba(255,255,255,0.25);
+                    border-radius: 22px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 2.5rem;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.3);
+                    animation: loginLogoFloat 4s ease-in-out infinite;
+                }
+
+                @keyframes loginLogoFloat {
+                    0%, 100% { transform: translateY(0); }
+                    50% { transform: translateY(-8px); }
+                }
+
+                .login-brand-title {
+                    font-family: 'Playfair Display', serif;
+                    font-size: 2.8rem;
+                    font-weight: 700;
+                    color: white;
+                    text-shadow: 0 2px 20px rgba(0,0,0,0.3);
+                    margin-bottom: 0.5rem;
+                    letter-spacing: -0.02em;
+                }
+
+                .login-brand-subtitle {
+                    font-size: 1.1rem;
+                    color: rgba(255, 220, 160, 0.9);
+                    font-weight: 300;
+                    letter-spacing: 0.1em;
+                    text-transform: uppercase;
+                    margin-bottom: 2.5rem;
+                }
+
+                /* Feature Cards */
+                .login-features {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.8rem;
+                }
+
+                .login-feature-card {
+                    display: flex;
+                    align-items: center;
+                    gap: 1rem;
+                    padding: 1rem 1.5rem;
+                    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%);
+                    backdrop-filter: blur(12px);
+                    border: 1px solid rgba(255,255,255,0.15);
+                    border-radius: 16px;
+                    transition: all 0.3s ease;
+                    cursor: default;
+                }
+
+                .login-feature-card:hover {
+                    background: rgba(255,255,255,0.22);
+                    transform: translateX(6px);
+                    border-color: rgba(255,215,100,0.4);
+                }
+
+                .login-feature-icon {
+                    width: 44px;
+                    height: 44px;
+                    background: linear-gradient(135deg, rgba(255,215,100,0.3), rgba(255,180,50,0.15));
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.3rem;
+                    border: 1px solid rgba(255,215,100,0.25);
+                    flex-shrink: 0;
+                }
+
+                .login-feature-title {
+                    color: white;
+                    font-weight: 600;
+                    font-size: 0.95rem;
+                    letter-spacing: 0.01em;
+                }
+
+                .login-licensed-to {
+                    margin-top: 2rem;
+                    padding-top: 1.5rem;
+                    border-top: 1px solid rgba(255,255,255,0.15);
+                }
+
+                .login-licensed-label {
+                    font-size: 0.7rem;
+                    text-transform: uppercase;
+                    letter-spacing: 0.15em;
+                    color: rgba(255,200,120,0.8);
+                    margin-bottom: 0.3rem;
+                }
+
+                .login-licensed-name {
+                    font-size: 1.2rem;
+                    font-weight: 700;
+                    color: white;
+                }
+
+                .login-left-footer {
+                    position: absolute;
+                    bottom: 2rem;
+                    left: 0;
+                    right: 0;
+                    text-align: center;
+                    font-size: 0.7rem;
+                    color: rgba(255,255,255,0.4);
+                    z-index: 10;
+                    letter-spacing: 0.05em;
+                }
+
+                /* ====== RIGHT PANEL ====== */
+                .login-right-panel {
+                    width: 100%;
+                    display: flex;
+                    flex-direction: column;
+                    justify-content: center;
+                    align-items: center;
+                    padding: 2rem;
+                    position: relative;
+                    background: linear-gradient(155deg, #fefefe 0%, #fef7ed 30%, #fdf4e8 60%, #fef9f2 100%);
+                    overflow: hidden;
+                }
+
+                @media (min-width: 1024px) {
+                    .login-right-panel {
+                        width: 50%;
+                        padding: 3rem;
+                    }
+                }
+
+                /* Dotted Pattern */
+                .login-dots-pattern {
+                    position: absolute;
+                    top: 2rem;
+                    right: 2rem;
+                    width: 80px;
+                    height: 80px;
+                    background-image: radial-gradient(circle, rgba(200, 160, 80, 0.25) 1.5px, transparent 1.5px);
+                    background-size: 10px 10px;
+                    z-index: 1;
+                }
+
+                /* Mobile Header */
+                .login-mobile-header {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    margin-bottom: 2rem;
+                    padding-top: 1rem;
+                }
+
+                @media (min-width: 1024px) {
+                    .login-mobile-header {
+                        display: none;
+                    }
+                }
+
+                .login-mobile-logo {
+                    width: 56px;
+                    height: 56px;
+                    background: linear-gradient(135deg, #d4a052, #c08a3e);
+                    border-radius: 16px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.8rem;
+                    box-shadow: 0 6px 24px rgba(180,130,50,0.3);
+                    margin-bottom: 0.8rem;
+                }
+
+                .login-mobile-title {
+                    font-family: 'Playfair Display', serif;
+                    font-size: 1.6rem;
+                    font-weight: 700;
+                    color: #2d1810;
+                }
+
+                .login-mobile-subtitle {
+                    font-size: 0.8rem;
+                    color: #9a7b4f;
+                    letter-spacing: 0.05em;
+                }
+
+                /* ====== FORM CONTAINER ====== */
+                .login-form-container {
+                    width: 100%;
+                    max-width: 420px;
+                    position: relative;
+                    z-index: 10;
+                }
+
+                /* License Warning */
+                .login-license-warning {
+                    margin-bottom: 1.2rem;
+                    padding: 1rem;
+                    background: #fef3c7;
+                    border: 1px solid #fbbf24;
+                    border-radius: 14px;
+                    animation: loginPulse 2s ease-in-out infinite;
+                }
+
+                @keyframes loginPulse {
+                    0%, 100% { box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.2); }
+                    50% { box-shadow: 0 0 0 6px rgba(251, 191, 36, 0); }
+                }
+
+                .login-license-warning-text {
+                    font-size: 0.85rem;
+                    color: #92400e;
+                    font-weight: 700;
+                    margin-bottom: 0.6rem;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                }
+
+                .login-license-input-row {
+                    display: flex;
+                    gap: 0.5rem;
+                }
+
+                .login-license-input {
+                    flex: 1;
+                    padding: 0.6rem 0.8rem;
+                    font-size: 0.85rem;
+                    border: 1px solid #fbbf24;
+                    border-radius: 10px;
+                    outline: none;
+                    font-family: monospace;
+                    text-transform: uppercase;
+                    background: white;
+                    color: #1e293b !important;
+                }
+
+                .login-license-input:focus {
+                    border-color: #f59e0b;
+                    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+                }
+
+                .login-license-btn {
+                    padding: 0.6rem 1.2rem;
+                    background: linear-gradient(135deg, #ef4444, #dc2626);
+                    color: white;
+                    border: none;
+                    border-radius: 10px;
+                    font-weight: 700;
+                    font-size: 0.85rem;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+
+                .login-license-btn:hover {
+                    background: linear-gradient(135deg, #dc2626, #b91c1c);
+                    transform: translateY(-1px);
+                }
+
+                .login-license-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+
+                /* ====== TABS ====== */
+                .login-tabs {
+                    display: flex;
+                    background: #f5f0e8;
+                    border-radius: 14px;
+                    padding: 4px;
+                    margin-bottom: 1.8rem;
+                    border: 1px solid rgba(200,170,110,0.2);
+                }
+
+                .login-tab {
+                    flex: 1;
+                    padding: 0.75rem 1rem;
+                    border: none;
+                    border-radius: 11px;
+                    font-size: 0.9rem;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.4rem;
+                    color: #8b7355;
+                    background: transparent;
+                    font-family: 'Inter', sans-serif;
+                }
+
+                .login-tab:hover:not(.login-tab-active) {
+                    background: rgba(255,255,255,0.5);
+                    color: #5a4632;
+                }
+
+                .login-tab-active {
+                    background: white;
+                    color: #2d1810;
+                    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+                    transform: scale(1.02);
+                }
+
+                .login-tab-emoji {
+                    font-size: 1.1rem;
+                }
+
+                /* ====== FORM INNER ====== */
+                .login-form-inner {
+                    animation: loginFadeIn 0.4s ease-out;
+                }
+
+                @keyframes loginFadeIn {
+                    from { opacity: 0; transform: translateY(12px); }
                     to { opacity: 1; transform: translateY(0); }
+                }
+
+                .login-welcome {
+                    text-align: center;
+                    margin-bottom: 1.8rem;
+                }
+
+                .login-welcome h2 {
+                    font-size: 1.7rem;
+                    font-weight: 800;
+                    color: #1a1108;
+                    letter-spacing: -0.02em;
+                }
+
+                .login-welcome-sub {
+                    font-size: 0.9rem;
+                    color: #8b7355;
+                    margin-top: 0.25rem;
+                }
+
+                .login-sparkle {
+                    display: inline-block;
+                    animation: loginSparkle 1.5s ease-in-out infinite;
+                }
+
+                @keyframes loginSparkle {
+                    0%, 100% { transform: scale(1) rotate(0deg); }
+                    50% { transform: scale(1.2) rotate(15deg); }
+                }
+
+                /* ====== FORM FIELDS ====== */
+                .login-form-fields {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 1.2rem;
+                }
+
+                .login-field-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 0.4rem;
+                }
+
+                .login-field-label {
+                    font-size: 0.8rem;
+                    font-weight: 600;
+                    color: #5a4632;
+                    letter-spacing: 0.03em;
+                    margin-left: 0.2rem;
+                }
+
+                .login-input-wrapper {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                }
+
+                .login-input-icon {
+                    position: absolute;
+                    left: 1rem;
+                    font-size: 1.1rem;
+                    z-index: 2;
+                    pointer-events: none;
+                }
+
+                .login-input {
+                    width: 100%;
+                    padding: 0.9rem 1rem 0.9rem 3rem;
+                    background: #faf7f2;
+                    border: 1.5px solid #e8dcc8;
+                    border-radius: 14px;
+                    font-size: 0.95rem;
+                    font-family: 'Inter', sans-serif;
+                    color: #1e293b !important;
+                    outline: none;
+                    transition: all 0.3s ease;
+                }
+
+                .login-input:focus {
+                    border-color: #c9a96e;
+                    background: #fffdf8;
+                    box-shadow: 0 0 0 4px rgba(201, 169, 110, 0.12);
+                }
+
+                .login-input::placeholder {
+                    color: #b5a48a !important;
+                    font-weight: 400;
+                }
+
+                .login-eye-btn {
+                    position: absolute;
+                    right: 0.8rem;
+                    background: none;
+                    border: none;
+                    cursor: pointer;
+                    font-size: 1.1rem;
+                    padding: 0.3rem;
+                    transition: transform 0.2s;
+                    z-index: 2;
+                }
+
+                .login-eye-btn:hover {
+                    transform: scale(1.15);
+                }
+
+                /* ====== REMEMBER ME ====== */
+                .login-remember-row {
+                    display: flex;
+                    align-items: center;
+                }
+
+                .login-toggle-label {
+                    display: flex;
+                    align-items: center;
+                    gap: 0.6rem;
+                    cursor: pointer;
+                    font-size: 0.85rem;
+                    color: #5a4632;
+                    font-weight: 500;
+                    user-select: none;
+                }
+
+                .login-toggle {
+                    width: 42px;
+                    height: 24px;
+                    background: #d9cdb8;
+                    border-radius: 12px;
+                    position: relative;
+                    transition: all 0.3s ease;
+                }
+
+                .login-toggle-on {
+                    background: linear-gradient(135deg, #f0c27f, #d4a052);
+                }
+
+                .login-toggle-knob {
+                    position: absolute;
+                    top: 3px;
+                    left: 3px;
+                    width: 18px;
+                    height: 18px;
+                    background: white;
+                    border-radius: 50%;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 1px 4px rgba(0,0,0,0.15);
+                }
+
+                .login-toggle-on .login-toggle-knob {
+                    left: 21px;
+                }
+
+                /* ====== ERROR ====== */
+                .login-error {
+                    padding: 0.7rem 1rem;
+                    background: #fef2f2;
+                    border: 1px solid #fecaca;
+                    border-radius: 12px;
+                    font-size: 0.85rem;
+                    color: #dc2626;
+                    font-weight: 500;
+                    display: flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                    animation: loginShake 0.4s ease;
+                }
+
+                @keyframes loginShake {
+                    0%, 100% { transform: translateX(0); }
+                    25% { transform: translateX(-6px); }
+                    75% { transform: translateX(6px); }
+                }
+
+                /* ====== SUBMIT BUTTON ====== */
+                .login-submit-btn {
+                    width: 100%;
+                    padding: 1rem;
+                    background: linear-gradient(135deg, #f0c27f 0%, #e8a849 30%, #d4943e 60%, #c77d35 100%);
+                    color: white;
+                    border: none;
+                    border-radius: 14px;
+                    font-size: 1.05rem;
+                    font-weight: 700;
+                    font-family: 'Inter', sans-serif;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                    box-shadow: 0 6px 24px rgba(212, 148, 62, 0.35);
+                    margin-top: 0.5rem;
+                    letter-spacing: 0.02em;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .login-submit-btn::before {
+                    content: '';
+                    position: absolute;
+                    top: 0;
+                    left: -100%;
+                    width: 100%;
+                    height: 100%;
+                    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+                    transition: left 0.5s ease;
+                }
+
+                .login-submit-btn:hover::before {
+                    left: 100%;
+                }
+
+                .login-submit-btn:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 10px 32px rgba(212, 148, 62, 0.45);
+                }
+
+                .login-submit-btn:active {
+                    transform: translateY(0);
+                }
+
+                .login-submit-btn:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                    transform: none;
+                }
+
+                .login-sparkle-btn {
+                    animation: loginSparkle 1.5s ease-in-out infinite;
+                }
+
+                .login-spinner {
+                    width: 22px;
+                    height: 22px;
+                    border: 3px solid rgba(255,255,255,0.3);
+                    border-top-color: white;
+                    border-radius: 50%;
+                    animation: loginSpin 0.7s linear infinite;
+                }
+
+                .login-spinner-sm {
+                    width: 18px;
+                    height: 18px;
+                    border: 2px solid rgba(255,255,255,0.3);
+                    border-top-color: white;
+                    border-radius: 50%;
+                    animation: loginSpin 0.7s linear infinite;
+                }
+
+                @keyframes loginSpin {
+                    to { transform: rotate(360deg); }
+                }
+
+                /* ====== SECURITY BADGE ====== */
+                .login-security-badge {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.4rem;
+                    margin-top: 1.5rem;
+                    font-size: 0.75rem;
+                    color: #8b7355;
+                    font-weight: 500;
+                    letter-spacing: 0.02em;
+                }
+
+                /* ====== LICENSE BADGE ====== */
+                .login-license-badge {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.5rem;
+                    margin-top: 1.5rem;
+                    padding: 0.6rem 1.2rem;
+                    background: #f0fdf4;
+                    border: 1px solid #bbf7d0;
+                    border-radius: 999px;
+                    font-size: 0.75rem;
+                    color: #15803d;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+
+                .login-license-dot {
+                    width: 8px;
+                    height: 8px;
+                    background: #22c55e;
+                    border-radius: 50%;
+                    animation: loginPulse 2s infinite;
+                }
+
+                /* ====== PIN DISPLAY ====== */
+                .login-pin-display {
+                    display: flex;
+                    justify-content: center;
+                    gap: 0.5rem;
+                    margin-bottom: 0.5rem;
+                }
+
+                .login-pin-dot {
+                    width: 42px;
+                    height: 52px;
+                    border: 2px solid #e8dcc8;
+                    border-radius: 12px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 1.2rem;
+                    font-weight: 700;
+                    color: #b5a48a;
+                    background: #faf7f2;
+                    transition: all 0.3s ease;
+                }
+
+                .login-pin-dot-active {
+                    background: #fef7ed;
+                    border-color: #d4a052;
+                    color: #8b5e1c;
+                    box-shadow: 0 2px 8px rgba(212,160,82,0.15);
+                    transform: translateY(-3px);
+                }
+
+                .login-pin-toggle-row {
+                    text-align: center;
+                    margin-bottom: 1rem;
+                }
+
+                .login-pin-toggle-btn {
+                    background: none;
+                    border: none;
+                    font-size: 0.75rem;
+                    color: #8b7355;
+                    cursor: pointer;
+                    font-weight: 500;
+                    font-family: 'Inter', sans-serif;
+                }
+
+                .login-pin-toggle-btn:hover {
+                    color: #5a4632;
+                }
+
+                /* ====== PIN PAD ====== */
+                .login-pin-pad {
+                    display: grid;
+                    grid-template-columns: repeat(3, 1fr);
+                    gap: 0.6rem;
+                    max-width: 280px;
+                    margin: 0 auto;
+                }
+
+                .login-pin-key {
+                    height: 56px;
+                    border: 1.5px solid #e8dcc8;
+                    border-radius: 14px;
+                    background: white;
+                    font-size: 1.4rem;
+                    font-weight: 700;
+                    color: #2d1810;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                    font-family: 'Inter', sans-serif;
+                }
+
+                .login-pin-key:hover {
+                    background: #fef7ed;
+                    border-color: #d4a052;
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+                }
+
+                .login-pin-key:active {
+                    transform: scale(0.95);
+                }
+
+                .login-pin-key-clear {
+                    background: #fef2f2;
+                    border-color: #fecaca;
+                    color: #ef4444;
+                }
+
+                .login-pin-key-clear:hover {
+                    background: #fee2e2;
+                    border-color: #ef4444;
+                }
+
+                .login-pin-key-submit {
+                    background: linear-gradient(135deg, #f0c27f, #d4a052);
+                    border: none;
+                    color: white;
+                    box-shadow: 0 4px 16px rgba(212,160,82,0.35);
+                }
+
+                .login-pin-key-submit:hover {
+                    box-shadow: 0 6px 24px rgba(212,160,82,0.5);
+                    background: linear-gradient(135deg, #e8a849, #c77d35);
+                }
+
+                .login-pin-key-submit:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                    transform: none;
+                }
+
+                /* ====== FOOTER ====== */
+                .login-footer {
+                    margin-top: 2.5rem;
+                    text-align: center;
+                    position: relative;
+                    z-index: 10;
+                }
+
+                .login-footer-inner {
+                    display: inline-block;
+                    padding: 1rem 2rem;
+                    background: rgba(255,255,255,0.5);
+                    backdrop-filter: blur(8px);
+                    border-radius: 18px;
+                    border: 1px solid rgba(200,170,110,0.15);
+                }
+
+                .login-footer-text {
+                    font-size: 0.75rem;
+                    color: #8b7355;
+                    font-weight: 500;
+                }
+
+                .login-footer-name {
+                    font-weight: 700;
+                    color: #b8860b;
+                }
+
+                .login-footer-contacts {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 0.8rem;
+                    margin-top: 0.4rem;
+                    font-size: 0.7rem;
+                    color: #a08c6e;
+                    font-weight: 500;
+                }
+
+                .login-footer-dot {
+                    width: 3px;
+                    height: 3px;
+                    background: #c9a96e;
+                    border-radius: 50%;
+                }
+
+                .login-footer-version {
+                    font-size: 0.65rem;
+                    color: #c9bba0;
+                    margin-top: 0.4rem;
+                    font-family: monospace;
                 }
             `}</style>
         </div>
