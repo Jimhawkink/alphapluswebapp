@@ -27,13 +27,14 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showPin, setShowPin] = useState(false);
-    const [currentTime, setCurrentTime] = useState('');
-    const [currentDate, setCurrentDate] = useState('');
     const [licensedTo, setLicensedTo] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
+
     // License state
     const [licenseStatus, setLicenseStatus] = useState<LicenseStatus>({ valid: true });
     const [checkingLicense, setCheckingLicense] = useState(true);
+    const [licenseKey, setLicenseKey] = useState('');
+    const [activatingLicense, setActivatingLicense] = useState(false);
 
     // Generate a simple machine ID for license binding
     const getMachineId = (): string => {
@@ -131,14 +132,6 @@ export default function LoginPage() {
     };
 
     useEffect(() => {
-        const updateDateTime = () => {
-            const now = new Date();
-            setCurrentTime(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }));
-            setCurrentDate(now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
-        };
-        updateDateTime();
-        const interval = setInterval(updateDateTime, 1000);
-
         const loadCompanyName = async () => {
             try {
                 const { data } = await supabase
@@ -158,13 +151,9 @@ export default function LoginPage() {
         const cleanupSession = setupSessionTimeout();
 
         return () => {
-            clearInterval(interval);
             cleanupSession();
         };
     }, []);
-
-    const [licenseKey, setLicenseKey] = useState('');
-    const [activatingLicense, setActivatingLicense] = useState(false);
 
     const activateLicense = async () => {
         if (!licenseKey.trim()) {
@@ -340,7 +329,7 @@ export default function LoginPage() {
         <div style={styles.root}>
             {/* ===== LEFT SIDE: BRANDING ===== */}
             <div style={styles.leftPanel}>
-                {/* Background Image - Luxury hotel lobby (Image 3 style) */}
+                {/* Background Image - Luxury hotel lobby */}
                 <div style={styles.bgImage}></div>
                 <div style={styles.bgOverlay}></div>
 
@@ -445,7 +434,7 @@ export default function LoginPage() {
 
                     {/* ADMIN LOGIN */}
                     {loginMode === 'admin' && (
-                        <div>
+                        <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
                             <h2 style={styles.welcomeTitle}>Welcome Back! 👋✨</h2>
 
                             <form onSubmit={handleAdminLogin}>
@@ -520,7 +509,7 @@ export default function LoginPage() {
 
                     {/* WAITER LOGIN */}
                     {loginMode === 'waiter' && (
-                        <div>
+                        <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
                             <h2 style={styles.welcomeTitle}>Waiter Access 🧑‍🍳</h2>
                             <p style={{ textAlign: 'center' as const, color: '#8b7355', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Enter your 6-digit PIN</p>
 
@@ -593,6 +582,11 @@ export default function LoginPage() {
                 .login-root-styles * {
                     box-sizing: border-box;
                 }
+                
+                body {
+                    margin: 0;
+                    padding: 0;
+                }
 
                 @media (max-width: 1023px) {
                     .login-left-hide {
@@ -620,12 +614,17 @@ export default function LoginPage() {
                     25% { transform: translateX(-5px); }
                     75% { transform: translateX(5px); }
                 }
+                
+                @keyframes fadeInUp {
+                    from { opacity: 0; transform: translateY(15px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
             `}</style>
         </div>
     );
 }
 
-// ===== INLINE STYLES (matching Image 2 exactly) =====
+// ===== INLINE STYLES (GOLDEN PREMIUM THEME) =====
 const styles: { [key: string]: React.CSSProperties } = {
     root: {
         display: 'flex',
@@ -1111,7 +1110,7 @@ const styles: { [key: string]: React.CSSProperties } = {
     licenseDot: {
         width: '7px',
         height: '7px',
-        background: '#22c55e',
+        background: #22c55e',
         borderRadius: '50%',
         display: 'inline-block',
     },
@@ -1181,7 +1180,7 @@ const styles: { [key: string]: React.CSSProperties } = {
         fontWeight: 700,
         color: '#2d1810',
         cursor: 'pointer',
-        fontFamily: "'Inter', sans-serif",
+        fontFamily: "'Inter', sans-serif',",
         transition: 'all 0.2s ease',
     },
 
