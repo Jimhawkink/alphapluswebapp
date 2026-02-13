@@ -38,6 +38,7 @@ const menuItems: MenuSection[] = [
                 subItems: [
                     { name: 'Rooms Overview', icon: '🛏️', href: '/dashboard/hotel/rooms' },
                     { name: 'Reservations', icon: '📅', href: '/dashboard/hotel/reservations', badge: 'New' },
+                    { name: 'Calendar Booking', icon: '📆', href: '/dashboard/hotel/calendar-booking', badge: 'Hot' },
                     { name: 'Check-In', icon: '🔑', href: '/dashboard/hotel/checkin' },
                     { name: 'Check-Out', icon: '🚪', href: '/dashboard/hotel/checkout' },
                     { name: 'Guests', icon: '👥', href: '/dashboard/hotel/guests' },
