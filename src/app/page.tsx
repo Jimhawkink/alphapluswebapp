@@ -3,11 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
+import { loginThemes, LoginTheme } from './loginThemes';
 
-// Session timeout (30 minutes in ms)
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
-// License status interface
 interface LicenseStatus {
     valid: boolean;
     type?: string;
@@ -29,44 +28,30 @@ export default function LoginPage() {
     const [showPin, setShowPin] = useState(false);
     const [licensedTo, setLicensedTo] = useState('');
     const [rememberMe, setRememberMe] = useState(false);
-
-    // License state
+    const [themeIndex, setThemeIndex] = useState(0);
     const [licenseStatus, setLicenseStatus] = useState<LicenseStatus>({ valid: true });
     const [checkingLicense, setCheckingLicense] = useState(true);
     const [licenseKey, setLicenseKey] = useState('');
     const [activatingLicense, setActivatingLicense] = useState(false);
 
-    // Generate a simple machine ID for license binding
+    const theme = loginThemes[themeIndex];
+
     const getMachineId = (): string => {
         let machineId = localStorage.getItem('machine_id');
         if (!machineId) {
-            machineId = 'WEB-' + Math.random().toString(36).substring(2, 15) +
-                '-' + Date.now().toString(36);
+            machineId = 'WEB-' + Math.random().toString(36).substring(2, 15) + '-' + Date.now().toString(36);
             localStorage.setItem('machine_id', machineId);
         }
         return machineId;
     };
 
-    // Check license status
     const checkLicense = async () => {
         setCheckingLicense(true);
         try {
             const machineId = getMachineId();
-            const { data, error } = await supabase
-                .from('licenses')
-                .select('*')
-                .eq('machine_id', machineId)
-                .eq('is_active', true)
-                .single();
-
+            const { data, error } = await supabase.from('licenses').select('*').eq('machine_id', machineId).eq('is_active', true).single();
             if (error || !data) {
-                const { data: anyLicense } = await supabase
-                    .from('licenses')
-                    .select('*')
-                    .is('machine_id', null)
-                    .eq('is_active', true)
-                    .limit(1);
-
+                const { data: anyLicense } = await supabase.from('licenses').select('*').is('machine_id', null).eq('is_active', true).limit(1);
                 if (anyLicense && anyLicense.length > 0) {
                     setLicenseStatus({ valid: false, error: 'License not activated. Please enter your license key.' });
                 } else {
@@ -76,16 +61,10 @@ export default function LoginPage() {
                 const now = new Date();
                 const expiryDate = new Date(data.expiry_date);
                 const daysRemaining = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-
                 if (now > expiryDate) {
                     setLicenseStatus({ valid: false, expired: true, error: 'License has expired.' });
                 } else {
-                    setLicenseStatus({
-                        valid: true,
-                        type: data.license_type,
-                        client: data.client_name,
-                        daysRemaining: daysRemaining
-                    });
+                    setLicenseStatus({ valid: true, type: data.license_type, client: data.client_name, daysRemaining });
                 }
             }
         } catch (err) {
@@ -96,10 +75,8 @@ export default function LoginPage() {
         }
     };
 
-    // Session timeout management
     const setupSessionTimeout = () => {
         let timeoutId: NodeJS.Timeout;
-
         const resetTimeout = () => {
             clearTimeout(timeoutId);
             const user = localStorage.getItem('user');
@@ -112,7 +89,6 @@ export default function LoginPage() {
                 }, SESSION_TIMEOUT);
             }
         };
-
         const lastActivity = localStorage.getItem('last_activity');
         if (lastActivity) {
             const elapsed = Date.now() - parseInt(lastActivity);
@@ -121,1132 +97,296 @@ export default function LoginPage() {
                 localStorage.removeItem('last_activity');
             }
         }
-
         const events = ['mousedown', 'keydown', 'scroll', 'touchstart'];
         events.forEach(event => window.addEventListener(event, resetTimeout));
-
-        return () => {
-            clearTimeout(timeoutId);
-            events.forEach(event => window.removeEventListener(event, resetTimeout));
-        };
+        return () => { clearTimeout(timeoutId); events.forEach(event => window.removeEventListener(event, resetTimeout)); };
     };
 
     useEffect(() => {
         const loadCompanyName = async () => {
             try {
-                const { data } = await supabase
-                    .from('organisation_settings')
-                    .select('setting_value')
-                    .eq('setting_key', 'company_name')
-                    .single();
-                if (data?.setting_value) {
-                    setLicensedTo(data.setting_value);
-                }
-            } catch (err) {
-                console.log('Could not load company name');
-            }
+                const { data } = await supabase.from('organisation_settings').select('setting_value').eq('setting_key', 'company_name').single();
+                if (data?.setting_value) setLicensedTo(data.setting_value);
+            } catch (err) { console.log('Could not load company name'); }
         };
         loadCompanyName();
         checkLicense();
+        const saved = localStorage.getItem('login_theme');
+        if (saved) { const idx = parseInt(saved); if (idx >= 0 && idx < loginThemes.length) setThemeIndex(idx); }
         const cleanupSession = setupSessionTimeout();
-
-        return () => {
-            cleanupSession();
-        };
+        return () => { cleanupSession(); };
     }, []);
 
+    const switchTheme = (idx: number) => {
+        setThemeIndex(idx);
+        localStorage.setItem('login_theme', idx.toString());
+    };
+
     const activateLicense = async () => {
-        if (!licenseKey.trim()) {
-            setError('Please enter a license key');
-            return;
-        }
-
-        setActivatingLicense(true);
-        setError('');
-
+        if (!licenseKey.trim()) { setError('Please enter a license key'); return; }
+        setActivatingLicense(true); setError('');
         try {
             const machineId = getMachineId();
-            const { data: license, error: findError } = await supabase
-                .from('licenses')
-                .select('*')
-                .eq('license_key', licenseKey.trim().toUpperCase())
-                .single();
-
-            if (findError || !license) {
-                setError('Invalid license key. Please check and try again.');
-                setActivatingLicense(false);
-                return;
-            }
-
-            if (license.machine_id && license.machine_id !== machineId) {
-                setError('This license is already activated on another device.');
-                setActivatingLicense(false);
-                return;
-            }
-
-            const now = new Date();
-            const expiryDate = new Date(license.expiry_date);
-            if (now > expiryDate) {
-                setError('This license has expired.');
-                setActivatingLicense(false);
-                return;
-            }
-
-            const { error: updateError } = await supabase
-                .from('licenses')
-                .update({
-                    machine_id: machineId,
-                    activation_date: new Date().toISOString()
-                })
-                .eq('license_id', license.license_id);
-
-            if (updateError) {
-                setError('Failed to activate license. Please try again.');
-                setActivatingLicense(false);
-                return;
-            }
-
-            await supabase.from('license_activations').insert({
-                license_id: license.license_id,
-                machine_id: machineId,
-                activation_type: 'activate',
-                success: true
-            });
-
-            await checkLicense();
-            setLicenseKey('');
-        } catch (err) {
-            console.error('License activation error:', err);
-            setError('Activation failed. Please try again.');
-        } finally {
-            setActivatingLicense(false);
-        }
+            const { data: license, error: findError } = await supabase.from('licenses').select('*').eq('license_key', licenseKey.trim().toUpperCase()).single();
+            if (findError || !license) { setError('Invalid license key.'); setActivatingLicense(false); return; }
+            if (license.machine_id && license.machine_id !== machineId) { setError('License already activated on another device.'); setActivatingLicense(false); return; }
+            const now = new Date(); const expiryDate = new Date(license.expiry_date);
+            if (now > expiryDate) { setError('This license has expired.'); setActivatingLicense(false); return; }
+            const { error: updateError } = await supabase.from('licenses').update({ machine_id: machineId, activation_date: new Date().toISOString() }).eq('license_id', license.license_id);
+            if (updateError) { setError('Failed to activate license.'); setActivatingLicense(false); return; }
+            await supabase.from('license_activations').insert({ license_id: license.license_id, machine_id: machineId, activation_type: 'activate', success: true });
+            await checkLicense(); setLicenseKey('');
+        } catch (err) { console.error('License activation error:', err); setError('Activation failed.'); } finally { setActivatingLicense(false); }
     };
 
     const handleAdminLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setIsLoading(true);
-        setError('');
-
-        if (!username || !password) {
-            setError('Please enter username and password');
-            setIsLoading(false);
-            return;
-        }
-
+        e.preventDefault(); setIsLoading(true); setError('');
+        if (!username || !password) { setError('Please enter username and password'); setIsLoading(false); return; }
         try {
-            const { data, error: dbError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('user_name', username)
-                .eq('active', true)
-                .single();
-
-            if (dbError || !data) {
-                setError('Invalid username or password');
-                setIsLoading(false);
-                return;
-            }
-
+            const { data, error: dbError } = await supabase.from('users').select('*').eq('user_name', username).eq('active', true).single();
+            if (dbError || !data) { setError('Invalid username or password'); setIsLoading(false); return; }
             if (data.password_hash === password || data.pin === password) {
-                localStorage.setItem('user', JSON.stringify({
-                    userId: data.user_id,
-                    userName: data.user_name,
-                    name: data.name,
-                    userType: data.user_type,
-                    email: data.email,
-                    isWaiter: false
-                }));
+                localStorage.setItem('user', JSON.stringify({ userId: data.user_id, userName: data.user_name, name: data.name, userType: data.user_type, email: data.email, isWaiter: false }));
                 router.push('/dashboard');
-            } else {
-                setError('Invalid username or password');
-            }
-        } catch (err) {
-            console.error('Login error:', err);
-            setError('Connection error. Please try again.');
-        }
-
+            } else { setError('Invalid username or password'); }
+        } catch (err) { console.error('Login error:', err); setError('Connection error. Please try again.'); }
         setIsLoading(false);
     };
 
     const handleWaiterLogin = async () => {
-        if (pin.length !== 6) {
-            setError('Please enter 6-digit PIN');
-            return;
-        }
-
-        setIsLoading(true);
-        setError('');
-
+        if (pin.length !== 6) { setError('Please enter 6-digit PIN'); return; }
+        setIsLoading(true); setError('');
         try {
-            const { data, error: dbError } = await supabase
-                .from('users')
-                .select('*')
-                .eq('pin', pin)
-                .eq('active', true)
-                .eq('user_type', 'Waiter')
-                .maybeSingle();
-
-            if (dbError || !data) {
-                setError(`Invalid PIN`);
-                setIsLoading(false);
-                setPin('');
-                setShowPin(false);
-                return;
-            }
-
-            localStorage.setItem('user', JSON.stringify({
-                userId: data.user_id,
-                userName: data.user_name,
-                name: data.name,
-                userType: data.user_type,
-                email: data.email,
-                isWaiter: true
-            }));
+            const { data, error: dbError } = await supabase.from('users').select('*').eq('pin', pin).eq('active', true).eq('user_type', 'Waiter').maybeSingle();
+            if (dbError || !data) { setError('Invalid PIN'); setIsLoading(false); setPin(''); setShowPin(false); return; }
+            localStorage.setItem('user', JSON.stringify({ userId: data.user_id, userName: data.user_name, name: data.name, userType: data.user_type, email: data.email, isWaiter: true }));
             router.push('/dashboard/pos');
-        } catch (err) {
-            console.error('Login error:', err);
-            setError('Connection error. Please try again.');
-        }
-
+        } catch (err) { console.error('Login error:', err); setError('Connection error. Please try again.'); }
         setIsLoading(false);
     };
 
-    const handlePinInput = (digit: string) => {
-        if (pin.length < 6) {
-            setPin(pin + digit);
-            setError('');
-        }
-    };
+    const handlePinInput = (digit: string) => { if (pin.length < 6) { setPin(pin + digit); setError(''); } };
+    const handlePinClear = () => { setPin(''); setError(''); setShowPin(false); };
 
-    const handlePinClear = () => {
-        setPin('');
-        setError('');
-        setShowPin(false);
-    };
+    // SVG Icons
+    const UserIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.inputIconColor} strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>);
+    const LockIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.inputIconColor} strokeWidth="1.8"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>);
+    const EyeOffIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.inputIconColor} strokeWidth="1.8"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>);
+    const EyeIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.inputIconColor} strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>);
+    const CheckIcon = () => (<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>);
 
     return (
-        <div style={styles.root}>
-            {/* ===== LEFT SIDE: BRANDING ===== */}
-            <div style={styles.leftPanel}>
-                {/* Background Image - Luxury hotel lobby */}
-                <div style={styles.bgImage}></div>
-                <div style={styles.bgOverlay}></div>
+        <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", overflow: 'hidden' }}>
+            {/* ===== LEFT PANEL ===== */}
+            <div className="login-left-hide" style={{ width: '50%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', inset: 0, backgroundImage: `url('${theme.bgImage}')`, backgroundSize: 'cover', backgroundPosition: 'center', transform: 'scale(1.05)', animation: 'loginBgPan 25s ease-in-out infinite alternate' }}></div>
+                <div style={{ position: 'absolute', inset: 0, background: theme.overlayGradient, zIndex: 1 }}></div>
 
-                {/* Branding Content */}
-                <div style={styles.brandContent}>
-                    <div style={styles.logoBox}>
+                <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', padding: '2rem', maxWidth: '380px' }}>
+                    {/* Diamond logo */}
+                    <div style={{ width: '72px', height: '72px', background: 'linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08))', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.2rem auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
                         <span style={{ fontSize: '2.2rem' }}>💎</span>
                     </div>
 
-                    <h1 style={styles.brandTitle}>Alpha Plus Hotel</h1>
-                    <p style={styles.brandSubtitle}>Premium Hotel Management</p>
+                    <h1 style={{ fontFamily: theme.brandTitleFont, fontSize: '2.4rem', fontWeight: 700, color: 'white', textShadow: '0 2px 16px rgba(0,0,0,0.25)', marginBottom: '0.3rem', letterSpacing: '-0.01em' }}>Alpha Plus{theme.id === 'pool-paradise' ? '' : ' Hotel'}</h1>
+                    {theme.brandSubtitle && <p style={{ fontSize: '0.95rem', color: 'rgba(255,220,160,0.9)', fontWeight: 300, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '2rem', whiteSpace: 'pre-line' }}>{theme.brandSubtitle}</p>}
 
-                    {/* Feature Cards */}
-                    <div style={styles.featuresContainer}>
-                        <div style={styles.featureCard}>
-                            <div style={{ ...styles.featureIconBox, background: 'linear-gradient(135deg, rgba(255,193,68,0.35), rgba(255,160,40,0.2))' }}>
-                                <span style={{ fontSize: '1.2rem' }}>⚡</span>
-                            </div>
-                            <span style={styles.featureLabel}>Lightning Fast</span>
+                    {/* Feature cards */}
+                    {theme.features.length > 0 && (
+                        <div style={{ display: 'flex', flexDirection: theme.features.length <= 2 ? 'row' : 'column', gap: '0.7rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                            {theme.features.map((f, i) => (
+                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.8rem 1.1rem', background: theme.featureCardBg, backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: `1px solid ${theme.featureCardBorder}`, borderRadius: '14px', cursor: 'default' }}>
+                                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: f.iconBg, border: '1px solid rgba(255,255,255,0.15)', flexShrink: 0 }}>
+                                        <span style={{ fontSize: '1.1rem' }}>{f.icon}</span>
+                                    </div>
+                                    <span style={{ color: 'white', fontWeight: 600, fontSize: '0.88rem' }}>{f.label}</span>
+                                </div>
+                            ))}
                         </div>
-                        <div style={styles.featureCard}>
-                            <div style={{ ...styles.featureIconBox, background: 'linear-gradient(135deg, rgba(100,180,255,0.35), rgba(60,130,240,0.2))' }}>
-                                <span style={{ fontSize: '1.2rem' }}>🛡️</span>
-                            </div>
-                            <span style={styles.featureLabel}>Enterprise Security</span>
-                        </div>
-                        <div style={styles.featureCard}>
-                            <div style={{ ...styles.featureIconBox, background: 'linear-gradient(135deg, rgba(255,130,150,0.35), rgba(240,90,120,0.2))' }}>
-                                <span style={{ fontSize: '1.2rem' }}>📊</span>
-                            </div>
-                            <span style={styles.featureLabel}>Smart Analytics</span>
-                        </div>
-                    </div>
+                    )}
 
                     {licensedTo && (
-                        <div style={styles.licensedToBox}>
-                            <p style={styles.licensedToLabel}>LICENSED TO</p>
-                            <p style={styles.licensedToName}>{licensedTo}</p>
+                        <div style={{ marginTop: '1.8rem', paddingTop: '1.2rem', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
+                            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'rgba(255,200,120,0.8)', marginBottom: '0.2rem' }}>LICENSED TO</p>
+                            <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white' }}>{licensedTo}</p>
                         </div>
                     )}
                 </div>
 
-                <div style={styles.leftFooter}>
-                    &copy; 2026 Alpha Solutions. All rights reserved.
-                </div>
+                <div style={{ position: 'absolute', bottom: '1.5rem', left: 0, right: 0, textAlign: 'center', fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', zIndex: 10 }}>&copy; 2026 Alpha Solutions. All rights reserved.</div>
             </div>
 
-            {/* ===== RIGHT SIDE: LOGIN FORM ===== */}
-            <div style={styles.rightPanel}>
-                {/* Dotted decoration */}
-                <div style={styles.dotsPattern}></div>
-
-                {/* Mobile Header */}
-                <div style={styles.mobileHeader}>
-                    <div style={styles.mobileLogoBox}>
-                        <span style={{ fontSize: '1.6rem' }}>💎</span>
-                    </div>
-                    <h2 style={styles.mobileTitle}>Alpha Plus Hotel</h2>
+            {/* ===== RIGHT PANEL ===== */}
+            <div className="login-right-full" style={{ width: '50%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '2rem 3rem', position: 'relative', background: theme.rightBg, overflow: 'hidden' }}>
+                {/* Theme Switcher */}
+                <div style={{ position: 'absolute', top: '1rem', right: '1rem', display: 'flex', gap: '0.4rem', zIndex: 20, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', padding: '0.35rem', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
+                    {loginThemes.map((t, i) => (
+                        <button key={t.id} onClick={() => switchTheme(i)} title={t.name} style={{ width: '32px', height: '32px', borderRadius: '8px', border: themeIndex === i ? `2px solid ${t.accentColor}` : '2px solid transparent', background: themeIndex === i ? 'white' : 'transparent', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', boxShadow: themeIndex === i ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}>
+                            {t.name.split(' ')[0]}
+                        </button>
+                    ))}
                 </div>
 
-                <div style={styles.formContainer}>
+                {/* Mobile header */}
+                <div className="login-mobile-show" style={{ display: 'none', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <div style={{ width: '50px', height: '50px', background: theme.signInGradient, borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.6rem', boxShadow: `0 4px 16px ${theme.signInShadow}` }}>
+                        <span style={{ fontSize: '1.6rem' }}>💎</span>
+                    </div>
+                    <h2 style={{ fontFamily: theme.brandTitleFont, fontSize: '1.4rem', fontWeight: 700, color: theme.titleColor }}>Alpha Plus Hotel</h2>
+                </div>
+
+                <div style={{ width: '100%', maxWidth: '400px', position: 'relative', zIndex: 10 }}>
                     {/* License Warning */}
                     {!checkingLicense && !licenseStatus.valid && (
-                        <div style={styles.licenseWarning}>
-                            <p style={styles.licenseWarningText}>
-                                ⚠️ {licenseStatus.error || 'Activation Required'}
-                            </p>
+                        <div style={{ marginBottom: '1rem', padding: '0.9rem', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '12px' }}>
+                            <p style={{ fontSize: '0.8rem', color: '#92400e', fontWeight: 700, marginBottom: '0.5rem' }}>⚠️ {licenseStatus.error || 'Activation Required'}</p>
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <input
-                                    type="text"
-                                    value={licenseKey}
-                                    onChange={(e) => setLicenseKey(e.target.value.toUpperCase())}
-                                    placeholder="Enter Key: APS-XXXX..."
-                                    style={styles.licenseInput}
-                                />
-                                <button
-                                    onClick={activateLicense}
-                                    disabled={activatingLicense}
-                                    style={styles.licenseBtn}
-                                >
-                                    {activatingLicense ? '...' : 'Activate'}
-                                </button>
+                                <input type="text" value={licenseKey} onChange={(e) => setLicenseKey(e.target.value.toUpperCase())} placeholder="Enter Key: APS-XXXX..." style={{ flex: 1, padding: '0.5rem 0.7rem', fontSize: '0.8rem', border: '1px solid #fbbf24', borderRadius: '8px', outline: 'none', fontFamily: 'monospace', textTransform: 'uppercase', background: 'white', color: '#1e293b' }} />
+                                <button onClick={activateLicense} disabled={activatingLicense} style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>{activatingLicense ? '...' : 'Activate'}</button>
                             </div>
                         </div>
                     )}
 
-                    {/* Tabs: Admin | Waiter */}
-                    <div style={styles.tabsContainer}>
-                        <button
-                            onClick={() => { setLoginMode('admin'); setError(''); setPin(''); }}
-                            style={loginMode === 'admin' ? styles.tabActive : styles.tab}
-                        >
-                            <span>👨‍💼</span> Admin
+                    {/* Logo for theme 1 (luxury-lobby) */}
+                    {theme.id === 'luxury-lobby' && (
+                        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+                            <div style={{ fontSize: '1.8rem', marginBottom: '0.2rem', display: 'inline-block', animation: 'loginFloat 3s ease-in-out infinite' }}>💎</div>
+                            <div style={{ fontSize: '1rem', fontWeight: 600, color: '#4a5568', letterSpacing: '0.02em' }}>Alpha Plus Hotel</div>
+                        </div>
+                    )}
+
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', background: theme.tabBg, borderRadius: '14px', padding: '4px', marginBottom: '1.5rem', border: `1px solid ${theme.tabBorder}` }}>
+                        <button onClick={() => { setLoginMode('admin'); setError(''); setPin(''); }} style={{ flex: 1, padding: '0.7rem 0.8rem', border: 'none', borderRadius: '10px', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: loginMode === 'admin' ? theme.tabActiveColor : theme.tabInactiveColor, background: loginMode === 'admin' ? theme.tabActiveBg : 'transparent', fontFamily: "'Inter', sans-serif", transition: 'all 0.25s ease', boxShadow: loginMode === 'admin' ? '0 2px 10px rgba(0,0,0,0.08)' : 'none' }}>
+                            <span>{theme.id === 'golden-premium' ? '👨‍💼' : '🏢'}</span> {theme.adminLabel}
                         </button>
-                        <button
-                            onClick={() => { setLoginMode('waiter'); setError(''); setUsername(''); setPassword(''); }}
-                            style={loginMode === 'waiter' ? styles.tabActive : styles.tab}
-                        >
-                            <span>🧑‍🍳</span> Waiter
+                        <button onClick={() => { setLoginMode('waiter'); setError(''); setUsername(''); setPassword(''); }} style={{ flex: 1, padding: '0.7rem 0.8rem', border: 'none', borderRadius: '10px', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: loginMode === 'waiter' ? theme.tabActiveColor : theme.tabInactiveColor, background: loginMode === 'waiter' ? theme.tabActiveBg : 'transparent', fontFamily: "'Inter', sans-serif", transition: 'all 0.25s ease', boxShadow: loginMode === 'waiter' ? '0 2px 10px rgba(0,0,0,0.08)' : 'none' }}>
+                            <span>{theme.id === 'golden-premium' ? '🧑‍🍳' : '🍽️'}</span> {theme.waiterLabel}
                         </button>
                     </div>
 
                     {/* ADMIN LOGIN */}
                     {loginMode === 'admin' && (
                         <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
-                            <h2 style={styles.welcomeTitle}>Welcome Back! 👋✨</h2>
+                            <h2 style={{ textAlign: 'center', fontSize: '1.5rem', fontWeight: 800, color: theme.titleColor, marginBottom: '0.3rem' }}>Welcome Back! {theme.welcomeEmoji}</h2>
+                            {theme.welcomeSubtext && <p style={{ textAlign: 'center', fontSize: '0.88rem', color: theme.subtitleColor, marginBottom: '1.8rem' }}>{theme.welcomeSubtext}</p>}
+                            {!theme.welcomeSubtext && <div style={{ marginBottom: '1.5rem' }} />}
 
                             <form onSubmit={handleAdminLogin}>
-                                {/* Username */}
-                                <div style={styles.fieldGroup}>
-                                    <label style={styles.fieldLabel}>Username</label>
-                                    <div style={styles.inputWrapper}>
-                                        <span style={styles.inputIcon}>👤</span>
-                                        <input
-                                            type="text"
-                                            value={username}
-                                            onChange={(e) => setUsername(e.target.value)}
-                                            placeholder="e.g., john.doe"
-                                            style={styles.textInput}
-                                        />
+                                <div style={{ marginBottom: '1.1rem' }}>
+                                    {theme.showLabels && <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: theme.labelColor, marginBottom: '0.35rem', marginLeft: '0.15rem' }}>Username</label>}
+                                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                        <span style={{ position: 'absolute', left: '0.9rem', zIndex: 2, pointerEvents: 'none', display: 'flex' }}><UserIcon /></span>
+                                        <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder={theme.showLabels ? "e.g., john.doe" : "Username or Email Address"} style={{ width: '100%', padding: '0.85rem 0.9rem 0.85rem 2.8rem', background: theme.inputBg, border: `1.5px solid ${theme.inputBorder}`, borderRadius: '12px', fontSize: '0.9rem', fontFamily: "'Inter', sans-serif", color: '#1e293b', outline: 'none', transition: 'all 0.25s ease' }} onFocus={(e) => { e.target.style.borderColor = theme.inputFocusBorder; e.target.style.boxShadow = `0 0 0 3px ${theme.inputFocusShadow}`; }} onBlur={(e) => { e.target.style.borderColor = theme.inputBorder; e.target.style.boxShadow = 'none'; }} />
                                     </div>
                                 </div>
 
-                                {/* Password */}
-                                <div style={styles.fieldGroup}>
-                                    <label style={styles.fieldLabel}>Password</label>
-                                    <div style={styles.inputWrapper}>
-                                        <span style={styles.inputIcon}>🔒</span>
-                                        <input
-                                            type={showPassword ? 'text' : 'password'}
-                                            value={password}
-                                            onChange={(e) => setPassword(e.target.value)}
-                                            placeholder="••••••••"
-                                            style={styles.textInput}
-                                        />
-                                        <button
-                                            type="button"
-                                            onClick={() => setShowPassword(!showPassword)}
-                                            style={styles.eyeBtn}
-                                        >
-                                            {showPassword ? '🙈' : '👁️'}
-                                        </button>
+                                <div style={{ marginBottom: '1.1rem' }}>
+                                    {theme.showLabels && <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: theme.labelColor, marginBottom: '0.35rem', marginLeft: '0.15rem' }}>Password</label>}
+                                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                                        <span style={{ position: 'absolute', left: '0.9rem', zIndex: 2, pointerEvents: 'none', display: 'flex' }}><LockIcon /></span>
+                                        <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" style={{ width: '100%', padding: '0.85rem 2.8rem 0.85rem 2.8rem', background: theme.inputBg, border: `1.5px solid ${theme.inputBorder}`, borderRadius: '12px', fontSize: '0.9rem', fontFamily: "'Inter', sans-serif", color: '#1e293b', outline: 'none', transition: 'all 0.25s ease' }} onFocus={(e) => { e.target.style.borderColor = theme.inputFocusBorder; e.target.style.boxShadow = `0 0 0 3px ${theme.inputFocusShadow}`; }} onBlur={(e) => { e.target.style.borderColor = theme.inputBorder; e.target.style.boxShadow = 'none'; }} />
+                                        <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '0.7rem', background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', zIndex: 2, display: 'flex' }}>{showPassword ? <EyeIcon /> : <EyeOffIcon />}</button>
                                     </div>
                                 </div>
 
-                                {/* Remember Me Toggle */}
-                                <div style={styles.rememberRow} onClick={() => setRememberMe(!rememberMe)}>
-                                    <div style={rememberMe ? styles.toggleOn : styles.toggleOff}>
-                                        <div style={rememberMe ? styles.toggleKnobOn : styles.toggleKnobOff}></div>
+                                {/* Remember me + Forgot password */}
+                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.3rem' }}>
+                                    <div onClick={() => setRememberMe(!rememberMe)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
+                                        {theme.rememberStyle === 'checkbox' ? (
+                                            <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: rememberMe ? theme.rememberColor : 'transparent', border: rememberMe ? 'none' : `2px solid ${theme.inputBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
+                                                {rememberMe && <CheckIcon />}
+                                            </div>
+                                        ) : (
+                                            <div style={{ width: '38px', height: '22px', background: rememberMe ? `linear-gradient(135deg, ${theme.rememberColor}, ${theme.rememberColor})` : '#d1d5db', borderRadius: '11px', position: 'relative', transition: 'all 0.3s ease' }}>
+                                                <div style={{ position: 'absolute', top: '3px', left: rememberMe ? '19px' : '3px', width: '16px', height: '16px', background: 'white', borderRadius: '50%', boxShadow: '0 1px 3px rgba(0,0,0,0.15)', transition: 'all 0.3s ease' }}></div>
+                                            </div>
+                                        )}
+                                        <span style={{ fontSize: '0.82rem', color: theme.labelColor, fontWeight: 500 }}>Remember me</span>
                                     </div>
-                                    <span style={styles.rememberText}>Remember me</span>
+                                    {theme.showForgotPassword && <a style={{ fontSize: '0.82rem', color: theme.accentColor, fontWeight: 500, textDecoration: 'none', cursor: 'pointer' }}>Forgot password?</a>}
                                 </div>
 
-                                {error && (
-                                    <div style={styles.errorBox}>
-                                        ⚠️ {error}
-                                    </div>
-                                )}
+                                {error && <div style={{ padding: '0.6rem 0.9rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', fontSize: '0.82rem', color: '#dc2626', fontWeight: 500, marginBottom: '0.8rem', animation: 'loginShake 0.4s ease' }}>⚠️ {error}</div>}
 
-                                {/* Sign In Button */}
-                                <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    style={styles.signInBtn}
-                                >
-                                    {isLoading ? (
-                                        <div style={styles.spinner}></div>
-                                    ) : (
-                                        <span>Sign In ✨</span>
-                                    )}
+                                <button type="submit" disabled={isLoading} style={{ width: '100%', padding: '0.9rem', background: theme.signInGradient, color: 'white', border: 'none', borderRadius: '14px', fontSize: '1rem', fontWeight: 700, fontFamily: "'Inter', sans-serif", cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', boxShadow: `0 4px 20px ${theme.signInShadow}`, letterSpacing: '0.02em', transition: 'all 0.25s ease' }}>
+                                    {isLoading ? <div style={{ width: '20px', height: '20px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'loginSpinAnim 0.7s linear infinite' }}></div> : <span>Sign In →</span>}
                                 </button>
                             </form>
 
-                            <p style={styles.securityBadge}>🔒 Protected by 256-bit encryption</p>
+                            <p style={{ textAlign: 'center', marginTop: '1.2rem', fontSize: '0.72rem', color: theme.subtitleColor, fontWeight: 500 }}>{theme.securityText}</p>
                         </div>
                     )}
 
                     {/* WAITER LOGIN */}
                     {loginMode === 'waiter' && (
                         <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
-                            <h2 style={styles.welcomeTitle}>Waiter Access 🧑‍🍳</h2>
-                            <p style={{ textAlign: 'center' as const, color: '#8b7355', fontSize: '0.9rem', marginBottom: '1.5rem' }}>Enter your 6-digit PIN</p>
+                            <h2 style={{ textAlign: 'center', fontSize: '1.5rem', fontWeight: 800, color: theme.titleColor, marginBottom: '0.3rem' }}>Waiter Access 🧑‍🍳</h2>
+                            <p style={{ textAlign: 'center', color: theme.subtitleColor, fontSize: '0.9rem', marginBottom: '1.5rem' }}>Enter your 6-digit PIN</p>
 
-                            {/* PIN Display */}
-                            <div style={styles.pinDisplay}>
+                            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
                                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                                    <div key={i} style={pin[i] ? styles.pinDotActive : styles.pinDot}>
+                                    <div key={i} style={{ width: '40px', height: '48px', border: `2px solid ${pin[i] ? theme.accentColor : theme.inputBorder}`, borderRadius: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, color: pin[i] ? theme.titleColor : theme.inputIconColor, background: pin[i] ? `${theme.inputBg}` : theme.inputBg, boxShadow: pin[i] ? `0 2px 8px ${theme.inputFocusShadow}` : 'none', transform: pin[i] ? 'translateY(-2px)' : 'none', transition: 'all 0.2s' }}>
                                         {pin[i] ? (showPin ? pin[i] : '●') : '○'}
                                     </div>
                                 ))}
                             </div>
 
-                            <div style={{ textAlign: 'center' as const, marginBottom: '1rem' }}>
-                                <button onClick={() => setShowPin(!showPin)} style={styles.pinToggle}>
-                                    {showPin ? 'Hide PIN' : 'Show PIN'}
-                                </button>
+                            <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
+                                <button onClick={() => setShowPin(!showPin)} style={{ background: 'none', border: 'none', fontSize: '0.72rem', color: theme.subtitleColor, cursor: 'pointer', fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>{showPin ? 'Hide PIN' : 'Show PIN'}</button>
                             </div>
 
-                            {error && (
-                                <div style={styles.errorBox}>
-                                    ⚠️ {error}
-                                </div>
-                            )}
+                            {error && <div style={{ padding: '0.6rem 0.9rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', fontSize: '0.82rem', color: '#dc2626', fontWeight: 500, marginBottom: '0.8rem', animation: 'loginShake 0.4s ease' }}>⚠️ {error}</div>}
 
-                            {/* PIN Pad */}
-                            <div style={styles.pinPad}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', maxWidth: '260px', margin: '0 auto' }}>
                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                                    <button key={num} onClick={() => handlePinInput(num.toString())} style={styles.pinKey}>
-                                        {num}
-                                    </button>
+                                    <button key={num} onClick={() => handlePinInput(num.toString())} style={{ height: '52px', border: `1.5px solid ${theme.inputBorder}`, borderRadius: '12px', background: 'white', fontSize: '1.3rem', fontWeight: 700, color: theme.titleColor, cursor: 'pointer', fontFamily: "'Inter', sans-serif", transition: 'all 0.2s ease' }}>{num}</button>
                                 ))}
-                                <button onClick={handlePinClear} style={styles.pinKeyClear}>⌫</button>
-                                <button onClick={() => handlePinInput('0')} style={styles.pinKey}>0</button>
-                                <button onClick={handleWaiterLogin} disabled={isLoading || pin.length !== 6} style={styles.pinKeySubmit}>
-                                    {isLoading ? '...' : '✓'}
-                                </button>
+                                <button onClick={handlePinClear} style={{ height: '52px', border: '1.5px solid #fecaca', borderRadius: '12px', background: '#fef2f2', fontSize: '1.3rem', fontWeight: 700, color: '#ef4444', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>⌫</button>
+                                <button onClick={() => handlePinInput('0')} style={{ height: '52px', border: `1.5px solid ${theme.inputBorder}`, borderRadius: '12px', background: 'white', fontSize: '1.3rem', fontWeight: 700, color: theme.titleColor, cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>0</button>
+                                <button onClick={handleWaiterLogin} disabled={isLoading || pin.length !== 6} style={{ height: '52px', border: 'none', borderRadius: '12px', background: theme.signInGradient, fontSize: '1.3rem', fontWeight: 700, color: 'white', cursor: 'pointer', fontFamily: "'Inter', sans-serif", boxShadow: `0 4px 14px ${theme.signInShadow}` }}>{isLoading ? '...' : '✓'}</button>
                             </div>
                         </div>
                     )}
 
                     {/* License Badge */}
                     {licenseStatus.valid && loginMode !== 'waiter' && (
-                        <div style={styles.licenseBadge}>
-                            <span style={styles.licenseDot}></span>
-                            {licenseStatus.client || 'System Active'}
-                            {licenseStatus.daysRemaining && ` (${licenseStatus.daysRemaining} days left)`}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginTop: '1.2rem', padding: '0.5rem 1rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '999px', fontSize: '0.7rem', color: '#15803d', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                            <span style={{ width: '7px', height: '7px', background: '#22c55e', borderRadius: '50%', display: 'inline-block' }}></span>
+                            {licenseStatus.client || 'System Active'}{licenseStatus.daysRemaining && ` (${licenseStatus.daysRemaining} days left)`}
                         </div>
                     )}
                 </div>
 
                 {/* Footer */}
-                <div style={styles.footer}>
-                    <div style={styles.footerInner}>
-                        <p style={styles.footerText}>
-                            System developed & maintained by <strong style={{ color: '#b8860b' }}>Jimhawkins Korir</strong>
-                        </p>
-                        <div style={styles.footerContacts}>
+                <div style={{ marginTop: '2rem', textAlign: 'center', position: 'relative', zIndex: 10 }}>
+                    <div style={{ display: 'inline-block', padding: '0.7rem 1.4rem', background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(6px)', borderRadius: '14px', border: '1px solid rgba(0,0,0,0.04)' }}>
+                        <p style={{ fontSize: '0.7rem', color: '#718096', fontWeight: 500 }}>System developed & maintained by <strong style={{ color: theme.footerAccentColor }}>Jimhawkins Korir</strong></p>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', marginTop: '0.3rem', fontSize: '0.65rem', color: '#a0aec0', fontWeight: 500 }}>
                             <span>📞 0720316175</span>
-                            <span style={{ width: 3, height: 3, background: '#c9a96e', borderRadius: '50%', display: 'inline-block' }}></span>
+                            <span style={{ width: 3, height: 3, background: '#a0aec0', borderRadius: '50%', display: 'inline-block' }}></span>
                             <span>✉️ jimhaowkins@gmail.com</span>
                         </div>
-                        <p style={styles.footerVersion}>v3.2 • Secure Enterprise Connection</p>
+                        <p style={{ fontSize: '0.6rem', color: '#c4cdd8', marginTop: '0.3rem', fontFamily: 'monospace' }}>v3.2 • Secure Enterprise Connection</p>
                     </div>
                 </div>
             </div>
 
             <style jsx global>{`
                 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
-
-                .login-root-styles * {
-                    box-sizing: border-box;
-                }
-                
-                body {
-                    margin: 0;
-                    padding: 0;
-                }
-
+                .login-root-styles * { box-sizing: border-box; }
+                body { margin: 0; padding: 0; }
                 @media (max-width: 1023px) {
-                    .login-left-hide {
-                        display: none !important;
-                    }
-                    .login-right-full {
-                        width: 100% !important;
-                    }
-                    .login-mobile-show {
-                        display: flex !important;
-                    }
+                    .login-left-hide { display: none !important; }
+                    .login-right-full { width: 100% !important; }
+                    .login-mobile-show { display: flex !important; }
                 }
-
-                @keyframes loginBgPan {
-                    0% { transform: scale(1.05); }
-                    100% { transform: scale(1.12); }
-                }
-
-                @keyframes loginSpinAnim {
-                    to { transform: rotate(360deg); }
-                }
-
-                @keyframes loginShake {
-                    0%, 100% { transform: translateX(0); }
-                    25% { transform: translateX(-5px); }
-                    75% { transform: translateX(5px); }
-                }
-                
-                @keyframes fadeInUp {
-                    from { opacity: 0; transform: translateY(15px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
+                @keyframes loginBgPan { 0% { transform: scale(1.05); } 100% { transform: scale(1.12); } }
+                @keyframes loginSpinAnim { to { transform: rotate(360deg); } }
+                @keyframes loginShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+                @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+                @keyframes loginFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
             `}</style>
         </div>
     );
 }
-
-// ===== INLINE STYLES (GOLDEN PREMIUM THEME) =====
-const styles: { [key: string]: React.CSSProperties } = {
-    root: {
-        display: 'flex',
-        minHeight: '100vh',
-        fontFamily: "'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif",
-        overflow: 'hidden',
-    },
-
-    // LEFT PANEL
-    leftPanel: {
-        width: '50%',
-        position: 'relative',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        overflow: 'hidden',
-    },
-
-    bgImage: {
-        position: 'absolute',
-        inset: 0,
-        backgroundImage: "url('https://images.unsplash.com/photo-1551882547-ff40c63fe5fa?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&q=80')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        transform: 'scale(1.05)',
-        animation: 'loginBgPan 25s ease-in-out infinite alternate',
-    },
-
-    bgOverlay: {
-        position: 'absolute',
-        inset: 0,
-        background: 'linear-gradient(135deg, rgba(180,140,50,0.40) 0%, rgba(140,100,30,0.35) 40%, rgba(100,70,20,0.45) 70%, rgba(60,40,15,0.55) 100%)',
-        zIndex: 1,
-    },
-
-    brandContent: {
-        position: 'relative',
-        zIndex: 10,
-        textAlign: 'center',
-        padding: '2rem',
-        maxWidth: '380px',
-    },
-
-    logoBox: {
-        width: '72px',
-        height: '72px',
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08))',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255,255,255,0.2)',
-        borderRadius: '20px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        margin: '0 auto 1.2rem auto',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.15)',
-    },
-
-    brandTitle: {
-        fontFamily: "'Playfair Display', Georgia, serif",
-        fontSize: '2.4rem',
-        fontWeight: 700,
-        color: 'white',
-        textShadow: '0 2px 16px rgba(0,0,0,0.25)',
-        marginBottom: '0.3rem',
-        letterSpacing: '-0.01em',
-    },
-
-    brandSubtitle: {
-        fontSize: '0.95rem',
-        color: 'rgba(255,220,160,0.9)',
-        fontWeight: 300,
-        letterSpacing: '0.08em',
-        textTransform: 'uppercase' as const,
-        marginBottom: '2rem',
-    },
-
-    featuresContainer: {
-        display: 'flex',
-        flexDirection: 'column' as const,
-        gap: '0.7rem',
-    },
-
-    featureCard: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.9rem',
-        padding: '0.85rem 1.2rem',
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06))',
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255,255,255,0.15)',
-        borderRadius: '14px',
-        cursor: 'default',
-        transition: 'all 0.3s ease',
-    },
-
-    featureIconBox: {
-        width: '40px',
-        height: '40px',
-        borderRadius: '11px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        border: '1px solid rgba(255,255,255,0.15)',
-        flexShrink: 0,
-    },
-
-    featureLabel: {
-        color: 'white',
-        fontWeight: 600,
-        fontSize: '0.9rem',
-        letterSpacing: '0.01em',
-    },
-
-    licensedToBox: {
-        marginTop: '1.8rem',
-        paddingTop: '1.2rem',
-        borderTop: '1px solid rgba(255,255,255,0.15)',
-    },
-
-    licensedToLabel: {
-        fontSize: '0.65rem',
-        textTransform: 'uppercase' as const,
-        letterSpacing: '0.15em',
-        color: 'rgba(255,200,120,0.8)',
-        marginBottom: '0.2rem',
-    },
-
-    licensedToName: {
-        fontSize: '1.1rem',
-        fontWeight: 700,
-        color: 'white',
-    },
-
-    leftFooter: {
-        position: 'absolute' as const,
-        bottom: '1.5rem',
-        left: 0,
-        right: 0,
-        textAlign: 'center' as const,
-        fontSize: '0.65rem',
-        color: 'rgba(255,255,255,0.35)',
-        zIndex: 10,
-        letterSpacing: '0.04em',
-    },
-
-    // RIGHT PANEL
-    rightPanel: {
-        width: '50%',
-        display: 'flex',
-        flexDirection: 'column' as const,
-        justifyContent: 'center',
-        alignItems: 'center',
-        padding: '2rem 3rem',
-        position: 'relative' as const,
-        background: 'linear-gradient(155deg, #fefefe 0%, #fef8f0 30%, #fdf5ea 60%, #fffaf4 100%)',
-        overflow: 'hidden',
-    },
-
-    dotsPattern: {
-        position: 'absolute' as const,
-        top: '1.5rem',
-        right: '1.5rem',
-        width: '70px',
-        height: '70px',
-        backgroundImage: 'radial-gradient(circle, rgba(200,165,80,0.3) 1.5px, transparent 1.5px)',
-        backgroundSize: '9px 9px',
-        zIndex: 1,
-    },
-
-    mobileHeader: {
-        display: 'none',
-        flexDirection: 'column' as const,
-        alignItems: 'center',
-        marginBottom: '1.5rem',
-    },
-
-    mobileLogoBox: {
-        width: '50px',
-        height: '50px',
-        background: 'linear-gradient(135deg, #d4a052, #c08a3e)',
-        borderRadius: '14px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: '0.6rem',
-        boxShadow: '0 4px 16px rgba(180,130,50,0.25)',
-    },
-
-    mobileTitle: {
-        fontFamily: "'Playfair Display', Georgia, serif",
-        fontSize: '1.4rem',
-        fontWeight: 700,
-        color: '#2d1810',
-    },
-
-    // FORM
-    formContainer: {
-        width: '100%',
-        maxWidth: '400px',
-        position: 'relative' as const,
-        zIndex: 10,
-    },
-
-    licenseWarning: {
-        marginBottom: '1rem',
-        padding: '0.9rem',
-        background: '#fef3c7',
-        border: '1px solid #fbbf24',
-        borderRadius: '12px',
-    },
-
-    licenseWarningText: {
-        fontSize: '0.8rem',
-        color: '#92400e',
-        fontWeight: 700,
-        marginBottom: '0.5rem',
-    },
-
-    licenseInput: {
-        flex: 1,
-        padding: '0.5rem 0.7rem',
-        fontSize: '0.8rem',
-        border: '1px solid #fbbf24',
-        borderRadius: '8px',
-        outline: 'none',
-        fontFamily: 'monospace',
-        textTransform: 'uppercase' as const,
-        background: 'white',
-        color: '#1e293b',
-    },
-
-    licenseBtn: {
-        padding: '0.5rem 1rem',
-        background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-        color: 'white',
-        border: 'none',
-        borderRadius: '8px',
-        fontWeight: 700,
-        fontSize: '0.8rem',
-        cursor: 'pointer',
-    },
-
-    // TABS
-    tabsContainer: {
-        display: 'flex',
-        background: '#f5f0e6',
-        borderRadius: '12px',
-        padding: '3px',
-        marginBottom: '1.5rem',
-        border: '1px solid rgba(210,180,120,0.2)',
-    },
-
-    tab: {
-        flex: 1,
-        padding: '0.65rem 0.8rem',
-        border: 'none',
-        borderRadius: '10px',
-        fontSize: '0.88rem',
-        fontWeight: 600,
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '0.35rem',
-        color: '#9a8265',
-        background: 'transparent',
-        fontFamily: "'Inter', sans-serif",
-        transition: 'all 0.25s ease',
-    },
-
-    tabActive: {
-        flex: 1,
-        padding: '0.65rem 0.8rem',
-        border: 'none',
-        borderRadius: '10px',
-        fontSize: '0.88rem',
-        fontWeight: 600,
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '0.35rem',
-        color: '#2d1810',
-        background: 'white',
-        fontFamily: "'Inter', sans-serif",
-        boxShadow: '0 2px 10px rgba(0,0,0,0.07)',
-    },
-
-    // WELCOME
-    welcomeTitle: {
-        textAlign: 'center' as const,
-        fontSize: '1.5rem',
-        fontWeight: 800,
-        color: '#1a1108',
-        marginBottom: '1.5rem',
-        letterSpacing: '-0.01em',
-    },
-
-    // FIELDS
-    fieldGroup: {
-        marginBottom: '1.1rem',
-    },
-
-    fieldLabel: {
-        display: 'block',
-        fontSize: '0.78rem',
-        fontWeight: 600,
-        color: '#5a4632',
-        marginBottom: '0.35rem',
-        marginLeft: '0.15rem',
-        letterSpacing: '0.02em',
-    },
-
-    inputWrapper: {
-        position: 'relative' as const,
-        display: 'flex',
-        alignItems: 'center',
-    },
-
-    inputIcon: {
-        position: 'absolute' as const,
-        left: '0.9rem',
-        fontSize: '1rem',
-        zIndex: 2,
-        pointerEvents: 'none' as const,
-    },
-
-    textInput: {
-        width: '100%',
-        padding: '0.8rem 0.9rem 0.8rem 2.7rem',
-        background: '#faf7f2',
-        border: '1.5px solid #e8dcc8',
-        borderRadius: '12px',
-        fontSize: '0.9rem',
-        fontFamily: "'Inter', sans-serif",
-        color: '#1e293b',
-        outline: 'none',
-        transition: 'all 0.25s ease',
-    },
-
-    eyeBtn: {
-        position: 'absolute' as const,
-        right: '0.7rem',
-        background: 'none',
-        border: 'none',
-        cursor: 'pointer',
-        fontSize: '1rem',
-        padding: '0.2rem',
-        zIndex: 2,
-    },
-
-    // REMEMBER ME
-    rememberRow: {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '0.5rem',
-        marginBottom: '1.1rem',
-        cursor: 'pointer',
-        userSelect: 'none' as const,
-    },
-
-    toggleOff: {
-        width: '38px',
-        height: '22px',
-        background: '#d9cdb8',
-        borderRadius: '11px',
-        position: 'relative' as const,
-        transition: 'all 0.3s ease',
-    },
-
-    toggleOn: {
-        width: '38px',
-        height: '22px',
-        background: 'linear-gradient(135deg, #f0c27f, #d4a052)',
-        borderRadius: '11px',
-        position: 'relative' as const,
-        transition: 'all 0.3s ease',
-    },
-
-    toggleKnobOff: {
-        position: 'absolute' as const,
-        top: '3px',
-        left: '3px',
-        width: '16px',
-        height: '16px',
-        background: 'white',
-        borderRadius: '50%',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-        transition: 'all 0.3s ease',
-    },
-
-    toggleKnobOn: {
-        position: 'absolute' as const,
-        top: '3px',
-        left: '19px',
-        width: '16px',
-        height: '16px',
-        background: 'white',
-        borderRadius: '50%',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
-        transition: 'all 0.3s ease',
-    },
-
-    rememberText: {
-        fontSize: '0.82rem',
-        color: '#5a4632',
-        fontWeight: 500,
-    },
-
-    // ERROR
-    errorBox: {
-        padding: '0.6rem 0.9rem',
-        background: '#fef2f2',
-        border: '1px solid #fecaca',
-        borderRadius: '10px',
-        fontSize: '0.82rem',
-        color: '#dc2626',
-        fontWeight: 500,
-        marginBottom: '0.8rem',
-        animation: 'loginShake 0.4s ease',
-    },
-
-    // SIGN IN BUTTON
-    signInBtn: {
-        width: '100%',
-        padding: '0.85rem',
-        background: 'linear-gradient(135deg, #f0c27f 0%, #e8a849 35%, #d4943e 70%, #c77d35 100%)',
-        color: 'white',
-        border: 'none',
-        borderRadius: '12px',
-        fontSize: '1rem',
-        fontWeight: 700,
-        fontFamily: "'Inter', sans-serif",
-        cursor: 'pointer',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '0.4rem',
-        boxShadow: '0 4px 20px rgba(212,148,62,0.3)',
-        letterSpacing: '0.01em',
-        transition: 'all 0.25s ease',
-    },
-
-    spinner: {
-        width: '20px',
-        height: '20px',
-        border: '3px solid rgba(255,255,255,0.3)',
-        borderTopColor: 'white',
-        borderRadius: '50%',
-        animation: 'loginSpinAnim 0.7s linear infinite',
-    },
-
-    // SECURITY BADGE
-    securityBadge: {
-        textAlign: 'center' as const,
-        marginTop: '1.2rem',
-        fontSize: '0.72rem',
-        color: '#8b7355',
-        fontWeight: 500,
-        letterSpacing: '0.01em',
-    },
-
-    // LICENSE BADGE
-    licenseBadge: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '0.4rem',
-        marginTop: '1.2rem',
-        padding: '0.5rem 1rem',
-        background: '#f0fdf4',
-        border: '1px solid #bbf7d0',
-        borderRadius: '999px',
-        fontSize: '0.7rem',
-        color: '#15803d',
-        fontWeight: 700,
-        textTransform: 'uppercase' as const,
-        letterSpacing: '0.04em',
-    },
-
-    licenseDot: {
-        width: '7px',
-        height: '7px',
-        background: '#22c55e',
-        borderRadius: '50%',
-        display: 'inline-block',
-    },
-
-    // PIN
-    pinDisplay: {
-        display: 'flex',
-        justifyContent: 'center',
-        gap: '0.4rem',
-        marginBottom: '0.5rem',
-    },
-
-    pinDot: {
-        width: '40px',
-        height: '48px',
-        border: '2px solid #e8dcc8',
-        borderRadius: '11px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '1.1rem',
-        fontWeight: 700,
-        color: '#b5a48a',
-        background: '#faf7f2',
-    },
-
-    pinDotActive: {
-        width: '40px',
-        height: '48px',
-        border: '2px solid #d4a052',
-        borderRadius: '11px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '1.1rem',
-        fontWeight: 700,
-        color: '#8b5e1c',
-        background: '#fef7ed',
-        boxShadow: '0 2px 8px rgba(212,160,82,0.15)',
-        transform: 'translateY(-2px)',
-    },
-
-    pinToggle: {
-        background: 'none',
-        border: 'none',
-        fontSize: '0.72rem',
-        color: '#8b7355',
-        cursor: 'pointer',
-        fontWeight: 500,
-        fontFamily: "'Inter', sans-serif",
-    },
-
-    pinPad: {
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: '0.5rem',
-        maxWidth: '260px',
-        margin: '0 auto',
-    },
-
-    pinKey: {
-        height: '52px',
-        border: '1.5px solid #e8dcc8',
-        borderRadius: '12px',
-        background: 'white',
-        fontSize: '1.3rem',
-        fontWeight: 700,
-        color: '#2d1810',
-        cursor: 'pointer',
-        fontFamily: "'Inter', sans-serif",
-        transition: 'all 0.2s ease',
-    },
-
-    pinKeyClear: {
-        height: '52px',
-        border: '1.5px solid #fecaca',
-        borderRadius: '12px',
-        background: '#fef2f2',
-        fontSize: '1.3rem',
-        fontWeight: 700,
-        color: '#ef4444',
-        cursor: 'pointer',
-        fontFamily: "'Inter', sans-serif",
-    },
-
-    pinKeySubmit: {
-        height: '52px',
-        border: 'none',
-        borderRadius: '12px',
-        background: 'linear-gradient(135deg, #f0c27f, #d4a052)',
-        fontSize: '1.3rem',
-        fontWeight: 700,
-        color: 'white',
-        cursor: 'pointer',
-        fontFamily: "'Inter', sans-serif",
-        boxShadow: '0 4px 14px rgba(212,160,82,0.3)',
-    },
-
-    // FOOTER
-    footer: {
-        marginTop: '2rem',
-        textAlign: 'center' as const,
-        position: 'relative' as const,
-        zIndex: 10,
-    },
-
-    footerInner: {
-        display: 'inline-block',
-        padding: '0.8rem 1.6rem',
-        background: 'rgba(255,255,255,0.5)',
-        backdropFilter: 'blur(6px)',
-        borderRadius: '14px',
-        border: '1px solid rgba(200,170,110,0.12)',
-    },
-
-    footerText: {
-        fontSize: '0.7rem',
-        color: '#8b7355',
-        fontWeight: 500,
-    },
-
-    footerContacts: {
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: '0.6rem',
-        marginTop: '0.3rem',
-        fontSize: '0.65rem',
-        color: '#a08c6e',
-        fontWeight: 500,
-    },
-
-    footerVersion: {
-        fontSize: '0.6rem',
-        color: '#c9bba0',
-        marginTop: '0.3rem',
-        fontFamily: 'monospace',
-    },
-};
