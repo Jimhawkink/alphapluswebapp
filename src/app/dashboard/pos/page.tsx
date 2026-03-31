@@ -2063,72 +2063,54 @@ export default function POSPage() {
                 {/* Left Side - Products */}
                 <div className="flex-1 flex flex-col bg-white">
                     {/* Header */}
-                    <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-4">
-                                {/* System & Hotel Branding */}
-                                <div className="flex items-center gap-3 pr-4 border-r border-gray-200">
-                                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg">
-                                        🏨
-                                    </div>
-                                    <div className="max-w-[150px]">
-                                        <p className="text-xs font-medium text-indigo-500">Alpha Plus Hotel System</p>
-                                        <h1 className="text-sm font-bold text-gray-800 leading-tight break-words">{hotelName}</h1>
-                                    </div>
+                    <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                {/* POS Title Only */}
+                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-base shadow-md">
+                                    🛒
                                 </div>
-                                {/* POS Title */}
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-xl shadow-md">
-                                        🛒
-                                    </div>
-                                    <div>
-                                        <h2 className="text-lg font-bold text-gray-800">Point of Sale</h2>
-                                        <p className="text-xs text-gray-500">Select products to add to cart</p>
-                                    </div>
+                                <div>
+                                    <h2 className="text-sm font-bold text-gray-800 leading-tight">Point of Sale</h2>
+                                    <p className="text-[10px] text-gray-500">Select products to add to cart</p>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2">
                                 {/* Fullscreen Button */}
                                 <button
                                     onClick={toggleFullscreen}
-                                    className="p-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition-colors border border-gray-200"
+                                    className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors border border-gray-200 text-sm"
                                     title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
                                 >
                                     {isFullscreen ? '⛶' : '⛶'}
                                 </button>
                                 {/* Quick Action Buttons */}
-                                <a href="/dashboard" className="p-3 bg-gray-100 hover:bg-indigo-100 rounded-xl text-gray-600 hover:text-indigo-600 transition-colors border border-gray-200" title="Dashboard">📊</a>
-                                <a href="/dashboard/products" className="p-3 bg-gray-100 hover:bg-orange-100 rounded-xl text-gray-600 hover:text-orange-600 transition-colors border border-gray-200" title="Dish Products">🍽️</a>
-                                <a href="/dashboard/recipe" className="p-3 bg-gray-100 hover:bg-amber-100 rounded-xl text-gray-600 hover:text-amber-600 transition-colors border border-gray-200" title="Recipe">📝</a>
-                                <a href="/dashboard/sales" className="p-3 bg-gray-100 hover:bg-green-100 rounded-xl text-gray-600 hover:text-green-600 transition-colors border border-gray-200" title="Today's Sales">💰</a>
-                                <a href="/dashboard/shift-reports" className="p-3 bg-gray-100 hover:bg-blue-100 rounded-xl text-gray-600 hover:text-blue-600 transition-colors border border-gray-200" title="Register Reports">🧾</a>
-                                <a href="/dashboard/dish-stock" className="p-3 bg-gray-100 hover:bg-teal-100 rounded-xl text-gray-600 hover:text-teal-600 transition-colors border border-gray-200" title="Available Stock">📦</a>
-                                {/* Invoice */}
-                                <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl border border-blue-200">
-                                    <span className="text-2xl">🧾</span>
-                                    <div>
-                                        <p className="text-xs text-blue-600">Invoice</p>
-                                        <p className="font-bold text-blue-700">{invoiceNo}</p>
-                                    </div>
+                                <a href="/dashboard" className="p-2 bg-gray-100 hover:bg-indigo-100 rounded-lg text-sm transition-colors border border-gray-200" title="Dashboard">📊</a>
+                                <a href="/dashboard/products" className="p-2 bg-gray-100 hover:bg-orange-100 rounded-lg text-sm transition-colors border border-gray-200" title="Dish Products">🍽️</a>
+                                <a href="/dashboard/recipe" className="p-2 bg-gray-100 hover:bg-amber-100 rounded-lg text-sm transition-colors border border-gray-200" title="Recipe">📝</a>
+                                <a href="/dashboard/sales" className="p-2 bg-gray-100 hover:bg-green-100 rounded-lg text-sm transition-colors border border-gray-200" title="Today's Sales">💰</a>
+                                <a href="/dashboard/shift-reports" className="p-2 bg-gray-100 hover:bg-blue-100 rounded-lg text-sm transition-colors border border-gray-200" title="Register Reports">🧾</a>
+                                <a href="/dashboard/dish-stock" className="p-2 bg-gray-100 hover:bg-teal-100 rounded-lg text-sm transition-colors border border-gray-200" title="Available Stock">📦</a>
+                                {/* Invoice - Compact */}
+                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
+                                    <span className="text-xs text-blue-600">🧾</span>
+                                    <span className="text-xs font-bold text-blue-700">{invoiceNo}</span>
                                 </div>
-                                {/* Shift Info */}
+                                {/* Shift Info - Compact */}
                                 {hasActiveShift && shift && (
-                                    <div className="flex items-center gap-2 px-4 py-2 bg-green-50 rounded-xl border border-green-200">
-                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                                        <div>
-                                            <p className="text-xs text-green-600">Active Shift</p>
-                                            <p className="font-semibold text-green-700">{shift.name}</p>
-                                        </div>
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 rounded-lg border border-green-200">
+                                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                                        <span className="text-xs font-semibold text-green-700">{shift.name}</span>
                                     </div>
                                 )}
-                                {/* Close Register Button */}
+                                {/* Close Register - Compact */}
                                 {hasActiveShift && (
                                     <button
                                         onClick={handleCloseRegister}
                                         disabled={isLoadingRegister}
-                                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                                        className="px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
                                     >
-                                        🔴 Close Register
+                                        🔴 Close
                                     </button>
                                 )}
                             </div>
