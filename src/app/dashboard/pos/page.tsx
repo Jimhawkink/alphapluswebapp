@@ -943,6 +943,11 @@ export default function POSPage() {
     const [tableNo, setTableNo] = useState('');
     const [isFullscreen, setIsFullscreen] = useState(false);
 
+    // ─── USER ROLE ACCESS CONTROL ───
+    const [isWaiterUser, setIsWaiterUser] = useState(false);
+    const [userRole, setUserRole] = useState<string>('Admin');
+    const [loggedInUserName, setLoggedInUserName] = useState<string>('');
+
     // Batch Selection State
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
@@ -1465,6 +1470,32 @@ export default function POSPage() {
         };
         document.addEventListener('fullscreenchange', handleFullscreenChange);
         return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+    }, []);
+
+    // ─── LOAD USER ROLE & AUTO-FULLSCREEN ───
+    useEffect(() => {
+        try {
+            const userData = localStorage.getItem('user');
+            if (userData) {
+                const parsed = JSON.parse(userData);
+                const waiter = parsed.isWaiter === true || (parsed.userType || '').toLowerCase() === 'waiter';
+                setIsWaiterUser(waiter);
+                setUserRole(parsed.userType || 'Admin');
+                setLoggedInUserName(parsed.name || '');
+                // Auto-set waiter name for bill tracking
+                if (waiter && parsed.name) {
+                    setSelectedWaiterName(parsed.name);
+                    localStorage.setItem('alpha_hotel_selected_waiter', parsed.name);
+                }
+            }
+        } catch (_) {}
+        // Auto-fullscreen on POS page load for ALL users
+        setTimeout(() => {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+                setIsFullscreen(true);
+            }
+        }, 500);
     }, []);
 
     // Filter products
@@ -2137,13 +2168,14 @@ export default function POSPage() {
                                 >
                                     {isFullscreen ? '⛶' : '⛶'}
                                 </button>
-                                {/* Quick Action Buttons */}
-                                <a href="/dashboard" className="p-2 bg-gray-100 hover:bg-indigo-100 rounded-lg text-sm transition-colors border border-gray-200" title="Dashboard">📊</a>
-                                <a href="/dashboard/products" className="p-2 bg-gray-100 hover:bg-orange-100 rounded-lg text-sm transition-colors border border-gray-200" title="Dish Products">🍽️</a>
-                                <a href="/dashboard/recipe" className="p-2 bg-gray-100 hover:bg-amber-100 rounded-lg text-sm transition-colors border border-gray-200" title="Recipe">📝</a>
-                                <a href="/dashboard/sales" className="p-2 bg-gray-100 hover:bg-green-100 rounded-lg text-sm transition-colors border border-gray-200" title="Today's Sales">💰</a>
-                                <a href="/dashboard/shift-reports" className="p-2 bg-gray-100 hover:bg-blue-100 rounded-lg text-sm transition-colors border border-gray-200" title="Register Reports">🧾</a>
-                                <a href="/dashboard/dish-stock" className="p-2 bg-gray-100 hover:bg-teal-100 rounded-lg text-sm transition-colors border border-gray-200" title="Available Stock">📦</a>
+                                {/* Quick Action Buttons — Admin/Cashier only */}
+                                {!isWaiterUser && <a href="/dashboard" className="p-2 bg-gray-100 hover:bg-indigo-100 rounded-lg text-sm transition-colors border border-gray-200" title="Dashboard">📊</a>}
+                                {!isWaiterUser && <a href="/dashboard/products" className="p-2 bg-gray-100 hover:bg-orange-100 rounded-lg text-sm transition-colors border border-gray-200" title="Dish Products">🍽️</a>}
+                                {!isWaiterUser && <a href="/dashboard/recipe" className="p-2 bg-gray-100 hover:bg-amber-100 rounded-lg text-sm transition-colors border border-gray-200" title="Recipe">📝</a>}
+                                {!isWaiterUser && <a href="/dashboard/sales" className="p-2 bg-gray-100 hover:bg-green-100 rounded-lg text-sm transition-colors border border-gray-200" title="Today's Sales">💰</a>}
+                                {!isWaiterUser && <a href="/dashboard/shift-reports" className="p-2 bg-gray-100 hover:bg-blue-100 rounded-lg text-sm transition-colors border border-gray-200" title="Register Reports">🧾</a>}
+                                {!isWaiterUser && <a href="/dashboard/dish-stock" className="p-2 bg-gray-100 hover:bg-teal-100 rounded-lg text-sm transition-colors border border-gray-200" title="Available Stock">📦</a>}
+                                {/* My Bills — Available to ALL users */}
                                 <a href="/dashboard/my-bills" className="p-2 bg-gray-100 hover:bg-purple-100 rounded-lg text-sm transition-colors border border-gray-200" title="My Bills">🧑‍💼</a>
                                 {/* Low Stock Notification Bell */}
                                 <div className="relative">
@@ -2203,15 +2235,15 @@ export default function POSPage() {
                                     <span className="text-xs text-blue-600">🧾</span>
                                     <span className="text-xs font-bold text-blue-700">{invoiceNo}</span>
                                 </div>
-                                {/* Shift Info - Compact */}
-                                {hasActiveShift && shift && (
+                                {/* Shift Info - Compact (Admin/Cashier only) */}
+                                {!isWaiterUser && hasActiveShift && shift && (
                                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 rounded-lg border border-green-200">
                                         <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
                                         <span className="text-xs font-semibold text-green-700">{shift.name}</span>
                                     </div>
                                 )}
-                                {/* Close Register - Compact */}
-                                {hasActiveShift && (
+                                {/* Close Register - Admin/Cashier only */}
+                                {!isWaiterUser && hasActiveShift && (
                                     <button
                                         onClick={handleCloseRegister}
                                         disabled={isLoadingRegister}
@@ -2219,6 +2251,13 @@ export default function POSPage() {
                                     >
                                         🔴 Close
                                     </button>
+                                )}
+                                {/* Waiter Indicator */}
+                                {isWaiterUser && (
+                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 rounded-lg border border-purple-200">
+                                        <span className="text-xs">👤</span>
+                                        <span className="text-xs font-semibold text-purple-700">{loggedInUserName}</span>
+                                    </div>
                                 )}
                             </div>
                         </div>
@@ -2299,41 +2338,47 @@ export default function POSPage() {
                         </div>
                     </div>
 
-                    {/* Original Quick Action Buttons */}
+                    {/* Quick Action Buttons — Role-Based */}
                     <div className="px-3 pb-3 pt-1 bg-gradient-to-r from-gray-100 via-white to-gray-100">
-                        <div className="grid grid-cols-8 gap-2">
-                            <a href="/dashboard/bill-payment" className="group p-3 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-orange-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">💰</span>
-                                <span className="text-[10px] font-bold">Receive Payment</span>
-                            </a>
-                            <a href="/dashboard/bills" className="group p-3 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">📋</span>
+                        <div className={`grid gap-2 ${isWaiterUser ? 'grid-cols-3' : 'grid-cols-8'}`}>
+                            {/* Waiter: My Bills, Clear, Running Orders */}
+                            <a href="/dashboard/my-bills" className="group p-3 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105 cursor-pointer">
+                                <span className="text-lg block group-hover:animate-bounce">🧑‍💼</span>
                                 <span className="text-[10px] font-bold">My Bills</span>
-                            </a>
-                            <a href="/dashboard/sales" className="group p-3 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-green-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">📊</span>
-                                <span className="text-[10px] font-bold">Day Sales</span>
-                            </a>
-                            <button className="group p-3 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-purple-500/40 transition-all hover:scale-105">
-                                <span className="text-lg block group-hover:animate-bounce">🔄</span>
-                                <span className="text-[10px] font-bold">Merge Bill</span>
-                            </button>
-                            <button className="group p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-teal-500/40 transition-all hover:scale-105">
-                                <span className="text-lg block group-hover:animate-bounce">📈</span>
-                                <span className="text-[10px] font-bold">Sales Summary</span>
-                            </button>
-                            <a href="/dashboard/bills?status=Pending" className="group p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-amber-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">⏳</span>
-                                <span className="text-[10px] font-bold">Pending Bills</span>
                             </a>
                             <button onClick={clearCart} className="group p-3 bg-gradient-to-br from-gray-500 via-gray-600 to-slate-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-gray-500/40 transition-all hover:scale-105">
                                 <span className="text-lg block group-hover:animate-bounce">🗑️</span>
                                 <span className="text-[10px] font-bold">Clear</span>
                             </button>
-                            <button className="group p-3 bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-rose-500/40 transition-all hover:scale-105">
-                                <span className="text-lg block group-hover:animate-bounce">🏁</span>
-                                <span className="text-[10px] font-bold">Closing Stock</span>
+                            <button onClick={() => setShowRunningOrders(true)} className="group p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-amber-500/40 transition-all hover:scale-105">
+                                <span className="text-lg block group-hover:animate-bounce">⏳</span>
+                                <span className="text-[10px] font-bold">Running Orders</span>
                             </button>
+                            {/* Admin/Cashier only buttons */}
+                            {!isWaiterUser && (
+                                <>
+                                    <a href="/dashboard/bill-payment" className="group p-3 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-orange-500/40 transition-all hover:scale-105 cursor-pointer">
+                                        <span className="text-lg block group-hover:animate-bounce">💰</span>
+                                        <span className="text-[10px] font-bold">Receive Payment</span>
+                                    </a>
+                                    <a href="/dashboard/sales" className="group p-3 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-green-500/40 transition-all hover:scale-105 cursor-pointer">
+                                        <span className="text-lg block group-hover:animate-bounce">📊</span>
+                                        <span className="text-[10px] font-bold">Day Sales</span>
+                                    </a>
+                                    <button className="group p-3 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-purple-500/40 transition-all hover:scale-105">
+                                        <span className="text-lg block group-hover:animate-bounce">🔄</span>
+                                        <span className="text-[10px] font-bold">Merge Bill</span>
+                                    </button>
+                                    <button className="group p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-teal-500/40 transition-all hover:scale-105">
+                                        <span className="text-lg block group-hover:animate-bounce">📈</span>
+                                        <span className="text-[10px] font-bold">Sales Summary</span>
+                                    </button>
+                                    <button className="group p-3 bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-rose-500/40 transition-all hover:scale-105">
+                                        <span className="text-lg block group-hover:animate-bounce">🏁</span>
+                                        <span className="text-[10px] font-bold">Closing Stock</span>
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
