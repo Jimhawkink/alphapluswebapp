@@ -47,7 +47,7 @@ export default function DishStockPage() {
     const [search, setSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('All');
     const [categories, setCategories] = useState<string[]>([]);
-    const [expandedDish, setExpandedDish] = useState<number | null>(null);
+    const [expandedDish, setExpandedDish] = useState<DishStock | null>(null);
     const [historyDish, setHistoryDish] = useState<DishStock | null>(null);
     const [history, setHistory] = useState<HistoryRow[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
@@ -248,7 +248,7 @@ export default function DishStockPage() {
                 </div>
             </div>
 
-            {/* Data Grid with Expandable Batches */}
+            {/* Data Grid */}
             <div className="neo-card overflow-hidden">
                 {loading ? (
                     <div className="flex items-center justify-center py-20"><div className="spinner" /><span className="ml-3 text-sm text-gray-500">Loading dish stock...</span></div>
@@ -257,7 +257,6 @@ export default function DishStockPage() {
                         <table className="w-full">
                             <thead>
                                 <tr className="bg-gradient-to-r from-orange-500 to-amber-500">
-                                    <th className="px-4 py-3.5 text-left text-xs font-bold uppercase w-10"></th>
                                     <th className="px-4 py-3.5 text-left text-xs font-bold uppercase">#</th>
                                     <th className="px-4 py-3.5 text-left text-xs font-bold uppercase">Dish Name</th>
                                     <th className="px-4 py-3.5 text-left text-xs font-bold uppercase">Category</th>
@@ -271,94 +270,119 @@ export default function DishStockPage() {
                             </thead>
                             <tbody>
                                 {filtered.length === 0 ? (
-                                    <tr><td colSpan={10} className="text-center py-16 text-gray-400 text-sm">No dishes found</td></tr>
+                                    <tr><td colSpan={9} className="text-center py-16 text-gray-400 text-sm">No dishes found</td></tr>
                                 ) : filtered.map((d, i) => (
-                                    <>
-                                        {/* Main dish row */}
-                                        <tr key={d.pid} className={`border-b border-gray-100 hover:bg-orange-50/30 transition-colors cursor-pointer ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}
-                                            onClick={() => setExpandedDish(expandedDish === d.pid ? null : d.pid)}>
-                                            <td className="px-4 py-3.5 text-center">
-                                                <span className={`inline-block transition-transform duration-200 text-gray-400 ${expandedDish === d.pid ? 'rotate-90' : ''}`}>
-                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18L15 12L9 6" /></svg>
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3.5 text-sm text-gray-400">{i + 1}</td>
-                                            <td className="px-4 py-3.5 text-sm font-bold text-gray-800">🍽️ {d.product_name}</td>
-                                            <td className="px-4 py-3.5"><span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">{d.category}</span></td>
-                                            <td className="px-4 py-3.5 text-right">
-                                                <span className={`px-3 py-1.5 rounded-lg text-sm font-black ${d.total_available > 10 ? 'bg-emerald-100 text-emerald-700' : d.total_available > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
-                                                    {d.total_available}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3.5 text-right text-sm text-emerald-600 font-bold">{d.total_produced || '-'}</td>
-                                            <td className="px-4 py-3.5 text-right text-sm text-orange-600 font-bold">{d.total_sold || '-'}</td>
-                                            <td className="px-4 py-3.5 text-right text-sm text-red-500 font-bold">{d.total_damaged || '-'}</td>
-                                            <td className="px-4 py-3.5 text-right text-sm font-medium text-gray-700">{fmt(d.sales_cost)}</td>
-                                            <td className="px-4 py-3.5 text-center" onClick={e => e.stopPropagation()}>
-                                                <div className="flex items-center justify-center gap-1.5">
-                                                    <button onClick={() => openHistory(d)} className="p-2 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 transition-colors text-sm" title="View History">📜</button>
-                                                    <button onClick={() => setExpandedDish(expandedDish === d.pid ? null : d.pid)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm" title="View Batches">📦</button>
-                                                </div>
-                                            </td>
-                                        </tr>
-
-                                        {/* Expanded batch details */}
-                                        {expandedDish === d.pid && (
-                                            <tr key={`batch-${d.pid}`}>
-                                                <td colSpan={10} className="p-0">
-                                                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-orange-400 px-6 py-4">
-                                                        <h4 className="text-sm font-bold text-orange-700 mb-3 flex items-center gap-2">📦 Production Batches — {d.product_name}
-                                                            <span className="text-xs font-medium text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full">{d.batches.length} batch{d.batches.length !== 1 ? 'es' : ''}</span>
-                                                        </h4>
-                                                        {d.batches.length === 0 ? (
-                                                            <p className="text-sm text-gray-400 italic">No production batches found for this dish</p>
-                                                        ) : (
-                                                            <table className="w-full bg-white rounded-xl overflow-hidden shadow-sm">
-                                                                <thead>
-                                                                    <tr className="bg-gray-100">
-                                                                        <th className="px-3 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase">Batch #</th>
-                                                                        <th className="px-3 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase">Date</th>
-                                                                        <th className="px-3 py-2.5 text-right text-[11px] font-bold text-gray-500 uppercase">Produced</th>
-                                                                        <th className="px-3 py-2.5 text-right text-[11px] font-bold text-gray-500 uppercase">Remaining</th>
-                                                                        <th className="px-3 py-2.5 text-right text-[11px] font-bold text-gray-500 uppercase">Sold</th>
-                                                                        <th className="px-3 py-2.5 text-right text-[11px] font-bold text-gray-500 uppercase">Cost/Unit</th>
-                                                                        <th className="px-3 py-2.5 text-right text-[11px] font-bold text-gray-500 uppercase">Sell Price</th>
-                                                                        <th className="px-3 py-2.5 text-center text-[11px] font-bold text-gray-500 uppercase">Status</th>
-                                                                        <th className="px-3 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase">By</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {d.batches.map(b => (
-                                                                        <tr key={b.batch_id} className="border-b border-gray-50 hover:bg-gray-50/50">
-                                                                            <td className="px-3 py-2.5 text-sm font-mono text-orange-600 font-bold">{b.batch_number}</td>
-                                                                            <td className="px-3 py-2.5 text-sm text-gray-600">{b.production_date ? new Date(b.production_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</td>
-                                                                            <td className="px-3 py-2.5 text-sm text-right font-bold text-emerald-600">{b.qty_produced}</td>
-                                                                            <td className="px-3 py-2.5 text-right">
-                                                                                <span className={`px-2 py-0.5 rounded-lg text-sm font-black ${b.qty_remaining > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-500'}`}>{b.qty_remaining}</span>
-                                                                            </td>
-                                                                            <td className="px-3 py-2.5 text-sm text-right text-orange-600 font-bold">{b.qty_sold}</td>
-                                                                            <td className="px-3 py-2.5 text-sm text-right text-gray-600">{fmt(b.cost_per_unit)}</td>
-                                                                            <td className="px-3 py-2.5 text-sm text-right text-blue-600 font-bold">{fmt(b.selling_price || d.sales_cost)}</td>
-                                                                            <td className="px-3 py-2.5 text-center">
-                                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${b.status === 'In Stock' ? 'bg-emerald-100 text-emerald-700' : b.status === 'Active' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{b.status}</span>
-                                                                            </td>
-                                                                            <td className="px-3 py-2.5 text-sm text-gray-500">{b.created_by}</td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </table>
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </>
+                                    <tr key={d.pid} className={`border-b border-gray-100 hover:bg-orange-50/30 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
+                                        <td className="px-4 py-3.5 text-sm text-gray-400">{i + 1}</td>
+                                        <td className="px-4 py-3.5 text-sm font-bold text-gray-800">🍽️ {d.product_name}</td>
+                                        <td className="px-4 py-3.5"><span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">{d.category}</span></td>
+                                        <td className="px-4 py-3.5 text-right">
+                                            <span className={`px-3 py-1.5 rounded-lg text-sm font-black ${d.total_available > 10 ? 'bg-emerald-100 text-emerald-700' : d.total_available > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                                                {d.total_available}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3.5 text-right text-sm text-emerald-600 font-bold">{d.total_produced || '-'}</td>
+                                        <td className="px-4 py-3.5 text-right text-sm text-orange-600 font-bold">{d.total_sold || '-'}</td>
+                                        <td className="px-4 py-3.5 text-right text-sm text-red-500 font-bold">{d.total_damaged || '-'}</td>
+                                        <td className="px-4 py-3.5 text-right text-sm font-medium text-gray-700">{fmt(d.sales_cost)}</td>
+                                        <td className="px-4 py-3.5 text-center">
+                                            <div className="flex items-center justify-center gap-1.5">
+                                                <button onClick={() => openHistory(d)} className="p-2 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 transition-colors text-sm" title="View History">📜</button>
+                                                <button onClick={() => setExpandedDish(d)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm" title="View Batches">📦</button>
+                                            </div>
+                                        </td>
+                                    </tr>
                                 ))}
                             </tbody>
                         </table>
                     </div>
                 )}
             </div>
+
+            {/* Glassmorphism Batch Selection Modal — like POS */}
+            {expandedDish && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50" onClick={() => setExpandedDish(null)}>
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-2xl shadow-2xl max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                        {/* Header */}
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
+                                    <span>📦</span> Production Batches
+                                </h2>
+                                <p className="text-sm text-orange-600 font-medium mt-1">🍽️ {expandedDish.product_name}</p>
+                            </div>
+                            <button onClick={() => setExpandedDish(null)} className="text-2xl text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+
+                        {/* Total Available */}
+                        <div className="flex items-center justify-between p-3 bg-gray-50 rounded-xl mb-4">
+                            <span className="text-sm text-gray-600">Total Available from {expandedDish.batches.length} batch(es):</span>
+                            <span className="text-xl font-bold text-green-600">{expandedDish.total_available} units</span>
+                        </div>
+
+                        {/* Batch Cards - Glassmorphism */}
+                        <div className="flex-1 overflow-auto mb-4 space-y-3">
+                            {expandedDish.batches.length === 0 ? (
+                                <div className="text-center py-10 text-gray-400">
+                                    <span className="text-4xl block mb-2">📦</span>
+                                    <p className="text-sm">No production batches found for this dish</p>
+                                </div>
+                            ) : expandedDish.batches.map(b => {
+                                const daysOld = b.production_date ? Math.floor((Date.now() - new Date(b.production_date).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                                const ageBg = daysOld <= 1 ? 'border-green-300 bg-green-50/80' : daysOld <= 7 ? 'border-blue-300 bg-blue-50/80' : daysOld <= 30 ? 'border-amber-300 bg-amber-50/80' : 'border-red-300 bg-red-50/80';
+                                const ageLabel = daysOld === 0 ? 'Today' : daysOld === 1 ? '1 day' : `${daysOld} days`;
+                                return (
+                                    <div key={b.batch_id} className={`rounded-2xl border-2 p-4 backdrop-blur-sm transition-all hover:shadow-lg ${ageBg}`}>
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-lg">📦</span>
+                                                <span className="font-mono text-sm font-bold text-gray-800">{b.batch_number}</span>
+                                            </div>
+                                            <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${b.status === 'In Stock' ? 'bg-emerald-100 text-emerald-700' : b.status === 'Active' ? 'bg-blue-100 text-blue-700' : 'bg-gray-200 text-gray-600'}`}>{b.status}</span>
+                                        </div>
+
+                                        <div className="grid grid-cols-4 gap-3">
+                                            <div className="bg-white/70 rounded-xl p-2.5 text-center backdrop-blur-sm">
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase">Produced</p>
+                                                <p className="text-lg font-black text-emerald-600">{b.qty_produced}</p>
+                                            </div>
+                                            <div className="bg-white/70 rounded-xl p-2.5 text-center backdrop-blur-sm">
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase">Available</p>
+                                                <p className={`text-lg font-black ${b.qty_remaining > 0 ? 'text-green-600' : 'text-red-500'}`}>{b.qty_remaining}</p>
+                                            </div>
+                                            <div className="bg-white/70 rounded-xl p-2.5 text-center backdrop-blur-sm">
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase">Sold</p>
+                                                <p className="text-lg font-black text-orange-600">{b.qty_sold}</p>
+                                            </div>
+                                            <div className="bg-white/70 rounded-xl p-2.5 text-center backdrop-blur-sm">
+                                                <p className="text-[10px] text-gray-500 font-bold uppercase">Age</p>
+                                                <p className={`text-sm font-black ${daysOld <= 1 ? 'text-green-600' : daysOld <= 7 ? 'text-blue-600' : daysOld <= 30 ? 'text-amber-600' : 'text-red-600'}`}>{ageLabel}</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-200/50 text-xs text-gray-500">
+                                            <span>💰 Cost: <strong className="text-gray-700">{fmt(b.cost_per_unit)}</strong>/unit</span>
+                                            <span>🏷️ Sell: <strong className="text-blue-600">{fmt(b.selling_price || expandedDish.sales_cost)}</strong></span>
+                                            <span>📅 {b.production_date ? new Date(b.production_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</span>
+                                            <span>👤 {b.created_by || 'Unknown'}</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Legend */}
+                        <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-green-100 border border-green-300"></div><span>Fresh (0-1 days)</span></div>
+                            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-blue-100 border border-blue-300"></div><span>Recent (2-7 days)</span></div>
+                            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-amber-100 border border-amber-300"></div><span>Moderate (8-30)</span></div>
+                            <div className="flex items-center gap-1"><div className="w-3 h-3 rounded bg-red-100 border border-red-300"></div><span>Old (30+)</span></div>
+                        </div>
+
+                        <button onClick={() => setExpandedDish(null)} className="w-full py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 transition-colors">Close</button>
+                    </div>
+                </div>
+            )}
 
             {/* History Modal */}
             {historyDish && (
