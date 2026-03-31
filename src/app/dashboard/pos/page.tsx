@@ -2096,6 +2096,13 @@ export default function POSPage() {
                                 >
                                     {isFullscreen ? '⛶' : '⛶'}
                                 </button>
+                                {/* Quick Action Buttons */}
+                                <a href="/dashboard" className="p-3 bg-gray-100 hover:bg-indigo-100 rounded-xl text-gray-600 hover:text-indigo-600 transition-colors border border-gray-200" title="Dashboard">📊</a>
+                                <a href="/dashboard/products" className="p-3 bg-gray-100 hover:bg-orange-100 rounded-xl text-gray-600 hover:text-orange-600 transition-colors border border-gray-200" title="Dish Products">🍽️</a>
+                                <a href="/dashboard/recipe" className="p-3 bg-gray-100 hover:bg-amber-100 rounded-xl text-gray-600 hover:text-amber-600 transition-colors border border-gray-200" title="Recipe">📝</a>
+                                <a href="/dashboard/sales" className="p-3 bg-gray-100 hover:bg-green-100 rounded-xl text-gray-600 hover:text-green-600 transition-colors border border-gray-200" title="Today's Sales">💰</a>
+                                <a href="/dashboard/shift-reports" className="p-3 bg-gray-100 hover:bg-blue-100 rounded-xl text-gray-600 hover:text-blue-600 transition-colors border border-gray-200" title="Register Reports">🧾</a>
+                                <a href="/dashboard/dish-stock" className="p-3 bg-gray-100 hover:bg-teal-100 rounded-xl text-gray-600 hover:text-teal-600 transition-colors border border-gray-200" title="Available Stock">📦</a>
                                 {/* Invoice */}
                                 <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 rounded-xl border border-blue-200">
                                     <span className="text-2xl">🧾</span>
@@ -2203,35 +2210,6 @@ export default function POSPage() {
                         </div>
                     </div>
 
-                    {/* NEW Quick Action Buttons Row */}
-                    <div className="px-3 pt-3 pb-1 bg-gradient-to-r from-indigo-50 via-white to-indigo-50 border-t border-gray-200">
-                        <div className="grid grid-cols-6 gap-2">
-                            <a href="/dashboard" className="group p-2.5 bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-indigo-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">📊</span>
-                                <span className="text-[10px] font-bold">Dashboard</span>
-                            </a>
-                            <a href="/dashboard/products" className="group p-2.5 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-orange-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">🍽️</span>
-                                <span className="text-[10px] font-bold">Dish Products</span>
-                            </a>
-                            <a href="/dashboard/recipe" className="group p-2.5 bg-gradient-to-br from-amber-500 via-yellow-500 to-orange-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-amber-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">📝</span>
-                                <span className="text-[10px] font-bold">Recipe</span>
-                            </a>
-                            <a href="/dashboard/sales" className="group p-2.5 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-green-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">💰</span>
-                                <span className="text-[10px] font-bold">Today Sales</span>
-                            </a>
-                            <a href="/dashboard/shift-reports" className="group p-2.5 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">🧾</span>
-                                <span className="text-[10px] font-bold">Register Reports</span>
-                            </a>
-                            <a href="/dashboard/dish-stock" className="group p-2.5 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-teal-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">📦</span>
-                                <span className="text-[10px] font-bold">Available Stock</span>
-                            </a>
-                        </div>
-                    </div>
                     {/* Original Quick Action Buttons */}
                     <div className="px-3 pb-3 pt-1 bg-gradient-to-r from-gray-100 via-white to-gray-100">
                         <div className="grid grid-cols-8 gap-2">
