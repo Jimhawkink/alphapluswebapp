@@ -162,7 +162,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         }
         const parsedUser = JSON.parse(userData);
         setUser(parsedUser);
-        setIsWaiter(parsedUser.isWaiter || false);
+        setIsWaiter(parsedUser.isWaiter === true || (parsedUser.userType || '').toLowerCase() === 'waiter');
 
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);

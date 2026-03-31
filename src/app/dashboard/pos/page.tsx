@@ -2168,13 +2168,13 @@ export default function POSPage() {
                                 >
                                     {isFullscreen ? '⛶' : '⛶'}
                                 </button>
-                                {/* Quick Action Buttons — Admin/Cashier only */}
-                                {!isWaiterUser && <a href="/dashboard" className="p-2 bg-gray-100 hover:bg-indigo-100 rounded-lg text-sm transition-colors border border-gray-200" title="Dashboard">📊</a>}
-                                {!isWaiterUser && <a href="/dashboard/products" className="p-2 bg-gray-100 hover:bg-orange-100 rounded-lg text-sm transition-colors border border-gray-200" title="Dish Products">🍽️</a>}
-                                {!isWaiterUser && <a href="/dashboard/recipe" className="p-2 bg-gray-100 hover:bg-amber-100 rounded-lg text-sm transition-colors border border-gray-200" title="Recipe">📝</a>}
-                                {!isWaiterUser && <a href="/dashboard/sales" className="p-2 bg-gray-100 hover:bg-green-100 rounded-lg text-sm transition-colors border border-gray-200" title="Today's Sales">💰</a>}
-                                {!isWaiterUser && <a href="/dashboard/shift-reports" className="p-2 bg-gray-100 hover:bg-blue-100 rounded-lg text-sm transition-colors border border-gray-200" title="Register Reports">🧾</a>}
-                                {!isWaiterUser && <a href="/dashboard/dish-stock" className="p-2 bg-gray-100 hover:bg-teal-100 rounded-lg text-sm transition-colors border border-gray-200" title="Available Stock">📦</a>}
+                                {/* Quick Action Buttons — greyed out for waiters */}
+                                <a href={isWaiterUser ? '#' : '/dashboard'} className={`p-2 bg-gray-100 hover:bg-indigo-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Dashboard">📊</a>
+                                <a href={isWaiterUser ? '#' : '/dashboard/products'} className={`p-2 bg-gray-100 hover:bg-orange-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Dish Products">🍽️</a>
+                                <a href={isWaiterUser ? '#' : '/dashboard/recipe'} className={`p-2 bg-gray-100 hover:bg-amber-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Recipe">📝</a>
+                                <a href={isWaiterUser ? '#' : '/dashboard/sales'} className={`p-2 bg-gray-100 hover:bg-green-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Today's Sales">💰</a>
+                                <a href={isWaiterUser ? '#' : '/dashboard/shift-reports'} className={`p-2 bg-gray-100 hover:bg-blue-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Register Reports">🧾</a>
+                                <a href={isWaiterUser ? '#' : '/dashboard/dish-stock'} className={`p-2 bg-gray-100 hover:bg-teal-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Available Stock">📦</a>
                                 {/* My Bills — Available to ALL users */}
                                 <a href="/dashboard/my-bills" className="p-2 bg-gray-100 hover:bg-purple-100 rounded-lg text-sm transition-colors border border-gray-200" title="My Bills">🧑‍💼</a>
                                 {/* Low Stock Notification Bell */}
@@ -2338,47 +2338,41 @@ export default function POSPage() {
                         </div>
                     </div>
 
-                    {/* Quick Action Buttons — Role-Based */}
+                    {/* Original Quick Action Buttons — same order, greyed out for waiters */}
                     <div className="px-3 pb-3 pt-1 bg-gradient-to-r from-gray-100 via-white to-gray-100">
-                        <div className={`grid gap-2 ${isWaiterUser ? 'grid-cols-3' : 'grid-cols-8'}`}>
-                            {/* Waiter: My Bills, Clear, Running Orders */}
+                        <div className="grid grid-cols-8 gap-2">
+                            <a href={isWaiterUser ? '#' : '/dashboard/bill-payment'} className={`group p-3 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center transition-all cursor-pointer ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:shadow-lg hover:shadow-orange-500/40 hover:scale-105'}`}>
+                                <span className="text-lg block">💰</span>
+                                <span className="text-[10px] font-bold">Receive Payment</span>
+                            </a>
                             <a href="/dashboard/my-bills" className="group p-3 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">🧑‍💼</span>
+                                <span className="text-lg block group-hover:animate-bounce">📋</span>
                                 <span className="text-[10px] font-bold">My Bills</span>
+                            </a>
+                            <a href={isWaiterUser ? '#' : '/dashboard/sales'} className={`group p-3 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center transition-all cursor-pointer ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:shadow-lg hover:shadow-green-500/40 hover:scale-105'}`}>
+                                <span className="text-lg block">📊</span>
+                                <span className="text-[10px] font-bold">Day Sales</span>
+                            </a>
+                            <button disabled={isWaiterUser} className={`group p-3 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-xl text-white text-center transition-all ${isWaiterUser ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-lg hover:shadow-purple-500/40 hover:scale-105'}`}>
+                                <span className="text-lg block">🔄</span>
+                                <span className="text-[10px] font-bold">Merge Bill</span>
+                            </button>
+                            <button disabled={isWaiterUser} className={`group p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center transition-all ${isWaiterUser ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-lg hover:shadow-teal-500/40 hover:scale-105'}`}>
+                                <span className="text-lg block">📈</span>
+                                <span className="text-[10px] font-bold">Sales Summary</span>
+                            </button>
+                            <a href={isWaiterUser ? '#' : '/dashboard/bills?status=Pending'} className={`group p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 rounded-xl text-white text-center transition-all cursor-pointer ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:shadow-lg hover:shadow-amber-500/40 hover:scale-105'}`}>
+                                <span className="text-lg block">⏳</span>
+                                <span className="text-[10px] font-bold">Pending Bills</span>
                             </a>
                             <button onClick={clearCart} className="group p-3 bg-gradient-to-br from-gray-500 via-gray-600 to-slate-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-gray-500/40 transition-all hover:scale-105">
                                 <span className="text-lg block group-hover:animate-bounce">🗑️</span>
                                 <span className="text-[10px] font-bold">Clear</span>
                             </button>
-                            <button onClick={() => setShowRunningOrders(true)} className="group p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-amber-500/40 transition-all hover:scale-105">
-                                <span className="text-lg block group-hover:animate-bounce">⏳</span>
-                                <span className="text-[10px] font-bold">Running Orders</span>
+                            <button disabled={isWaiterUser} className={`group p-3 bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 rounded-xl text-white text-center transition-all ${isWaiterUser ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-lg hover:shadow-rose-500/40 hover:scale-105'}`}>
+                                <span className="text-lg block">🏁</span>
+                                <span className="text-[10px] font-bold">Closing Stock</span>
                             </button>
-                            {/* Admin/Cashier only buttons */}
-                            {!isWaiterUser && (
-                                <>
-                                    <a href="/dashboard/bill-payment" className="group p-3 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-orange-500/40 transition-all hover:scale-105 cursor-pointer">
-                                        <span className="text-lg block group-hover:animate-bounce">💰</span>
-                                        <span className="text-[10px] font-bold">Receive Payment</span>
-                                    </a>
-                                    <a href="/dashboard/sales" className="group p-3 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-green-500/40 transition-all hover:scale-105 cursor-pointer">
-                                        <span className="text-lg block group-hover:animate-bounce">📊</span>
-                                        <span className="text-[10px] font-bold">Day Sales</span>
-                                    </a>
-                                    <button className="group p-3 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-purple-500/40 transition-all hover:scale-105">
-                                        <span className="text-lg block group-hover:animate-bounce">🔄</span>
-                                        <span className="text-[10px] font-bold">Merge Bill</span>
-                                    </button>
-                                    <button className="group p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-teal-500/40 transition-all hover:scale-105">
-                                        <span className="text-lg block group-hover:animate-bounce">📈</span>
-                                        <span className="text-[10px] font-bold">Sales Summary</span>
-                                    </button>
-                                    <button className="group p-3 bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-rose-500/40 transition-all hover:scale-105">
-                                        <span className="text-lg block group-hover:animate-bounce">🏁</span>
-                                        <span className="text-[10px] font-bold">Closing Stock</span>
-                                    </button>
-                                </>
-                            )}
                         </div>
                     </div>
                 </div>
