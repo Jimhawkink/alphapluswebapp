@@ -2144,7 +2144,7 @@ export default function POSPage() {
                                 <a href="/dashboard/sales" className="p-2 bg-gray-100 hover:bg-green-100 rounded-lg text-sm transition-colors border border-gray-200" title="Today's Sales">💰</a>
                                 <a href="/dashboard/shift-reports" className="p-2 bg-gray-100 hover:bg-blue-100 rounded-lg text-sm transition-colors border border-gray-200" title="Register Reports">🧾</a>
                                 <a href="/dashboard/dish-stock" className="p-2 bg-gray-100 hover:bg-teal-100 rounded-lg text-sm transition-colors border border-gray-200" title="Available Stock">📦</a>
-                                <a href="/dashboard/bills" className="p-2 bg-gray-100 hover:bg-purple-100 rounded-lg text-sm transition-colors border border-gray-200" title="My Bills">🧑‍💼</a>
+                                <a href="/dashboard/my-bills" className="p-2 bg-gray-100 hover:bg-purple-100 rounded-lg text-sm transition-colors border border-gray-200" title="My Bills">🧑‍💼</a>
                                 {/* Low Stock Notification Bell */}
                                 <div className="relative">
                                     <button
@@ -2190,11 +2190,11 @@ export default function POSPage() {
                                     )}
                                 </div>
                                 {/* Waiter Bill Stats */}
-                                <a href="/dashboard/bills" className="flex items-center gap-1.5 px-2 py-1.5 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors" title="Paid Bills">
+                                <a href="/dashboard/my-bills" className="flex items-center gap-1.5 px-2 py-1.5 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors" title="Paid Bills">
                                     <span className="text-[10px]">✅</span>
                                     <span className="text-[10px] font-bold text-green-700">{waiterPaidCount}</span>
                                 </a>
-                                <a href="/dashboard/bills?status=Pending" className="flex items-center gap-1.5 px-2 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-colors" title="Unpaid Bills">
+                                <a href="/dashboard/my-bills" className="flex items-center gap-1.5 px-2 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-colors" title="Unpaid Bills">
                                     <span className="text-[10px]">⏳</span>
                                     <span className="text-[10px] font-bold text-orange-700">{waiterUnpaidCount}</span>
                                 </a>
