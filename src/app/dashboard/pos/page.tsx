@@ -996,6 +996,16 @@ export default function POSPage() {
     const [heldSales, setHeldSales] = useState<HeldSale[]>([]);
     const [showHeldSalesModal, setShowHeldSalesModal] = useState(false);
 
+    // ─── LOW STOCK NOTIFICATION ───
+    const [lowStockProducts, setLowStockProducts] = useState<{name: string; stock: number; id: number}[]>([]);
+    const [showLowStockDropdown, setShowLowStockDropdown] = useState(false);
+
+    // ─── WAITER BILL STATS ───
+    const [waiterPaidCount, setWaiterPaidCount] = useState(0);
+    const [waiterUnpaidCount, setWaiterUnpaidCount] = useState(0);
+    const [waiterPaidTotal, setWaiterPaidTotal] = useState(0);
+    const [waiterUnpaidTotal, setWaiterUnpaidTotal] = useState(0);
+
     // Load hotel name from database
     const loadHotelName = useCallback(async () => {
         try {
@@ -1393,6 +1403,49 @@ export default function POSPage() {
 
         loadInitialData();
     }, [loadActiveShift, loadHotelName, loadUnpaidOrders]);
+
+    // ─── LOAD LOW STOCK NOTIFICATION (products with stock < 10) ───
+    useEffect(() => {
+        if (products.length > 0) {
+            const low = products.filter(p => p.stock < 10 && p.stock >= 0).map(p => ({ name: p.name, stock: p.stock, id: p.id }));
+            setLowStockProducts(low);
+        }
+    }, [products]);
+
+    // ─── LOAD WAITER BILL STATS (logged-in waiter) ───
+    useEffect(() => {
+        const loadWaiterBills = async () => {
+            if (!selectedWaiterName && !selectedWaiterId) return;
+            const waiterName = selectedWaiterName || 'Cashier';
+            const today = new Date().toISOString().split('T')[0];
+            try {
+                // Paid bills
+                const { data: paid } = await supabase
+                    .from('sales')
+                    .select('sale_id, total_amount')
+                    .eq('sale_date', today)
+                    .ilike('waiter_name', `%${waiterName}%`)
+                    .eq('status', 'Completed');
+                setWaiterPaidCount((paid || []).length);
+                setWaiterPaidTotal((paid || []).reduce((s, r) => s + (r.total_amount || 0), 0));
+
+                // Unpaid bills
+                const { data: unpaid } = await supabase
+                    .from('sales')
+                    .select('sale_id, total_amount')
+                    .eq('sale_date', today)
+                    .ilike('waiter_name', `%${waiterName}%`)
+                    .eq('status', 'Pending');
+                setWaiterUnpaidCount((unpaid || []).length);
+                setWaiterUnpaidTotal((unpaid || []).reduce((s, r) => s + (r.total_amount || 0), 0));
+            } catch (err) {
+                console.log('Error loading waiter bills:', err);
+            }
+        };
+        loadWaiterBills();
+        const interval = setInterval(loadWaiterBills, 30000); // refresh every 30s
+        return () => clearInterval(interval);
+    }, [selectedWaiterName, selectedWaiterId]);
 
     // Toggle Fullscreen
     const toggleFullscreen = () => {
@@ -2091,6 +2144,60 @@ export default function POSPage() {
                                 <a href="/dashboard/sales" className="p-2 bg-gray-100 hover:bg-green-100 rounded-lg text-sm transition-colors border border-gray-200" title="Today's Sales">💰</a>
                                 <a href="/dashboard/shift-reports" className="p-2 bg-gray-100 hover:bg-blue-100 rounded-lg text-sm transition-colors border border-gray-200" title="Register Reports">🧾</a>
                                 <a href="/dashboard/dish-stock" className="p-2 bg-gray-100 hover:bg-teal-100 rounded-lg text-sm transition-colors border border-gray-200" title="Available Stock">📦</a>
+                                <a href="/dashboard/bills" className="p-2 bg-gray-100 hover:bg-purple-100 rounded-lg text-sm transition-colors border border-gray-200" title="My Bills">🧑‍💼</a>
+                                {/* Low Stock Notification Bell */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowLowStockDropdown(!showLowStockDropdown)}
+                                        className="p-2 bg-gray-100 hover:bg-red-100 rounded-lg text-sm transition-colors border border-gray-200 relative"
+                                        title={`${lowStockProducts.length} products low on stock`}
+                                    >
+                                        🔔
+                                        {lowStockProducts.length > 0 && (
+                                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center animate-pulse">
+                                                {lowStockProducts.length > 99 ? '99+' : lowStockProducts.length}
+                                            </span>
+                                        )}
+                                    </button>
+                                    {/* Low Stock Dropdown */}
+                                    {showLowStockDropdown && (
+                                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 max-h-[400px] overflow-hidden flex flex-col">
+                                            <div className="p-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-t-xl">
+                                                <h3 className="text-sm font-bold">⚠️ Low Stock Alert</h3>
+                                                <p className="text-[10px] opacity-80">{lowStockProducts.length} product{lowStockProducts.length !== 1 ? 's' : ''} below 10 units</p>
+                                            </div>
+                                            <div className="flex-1 overflow-y-auto max-h-[300px]">
+                                                {lowStockProducts.length === 0 ? (
+                                                    <div className="p-6 text-center text-gray-400">
+                                                        <span className="text-3xl block mb-2">✅</span>
+                                                        <p className="text-sm">All products well stocked!</p>
+                                                    </div>
+                                                ) : (
+                                                    lowStockProducts.map(p => (
+                                                        <div key={p.id} className="flex items-center justify-between p-2.5 border-b border-gray-100 hover:bg-gray-50">
+                                                            <span className="text-xs text-gray-700 font-medium truncate flex-1">{p.name}</span>
+                                                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${p.stock === 0 ? 'bg-red-100 text-red-600' : p.stock < 5 ? 'bg-orange-100 text-orange-600' : 'bg-yellow-100 text-yellow-700'}`}>
+                                                                {p.stock === 0 ? 'OUT' : `${p.stock} left`}
+                                                            </span>
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                            <div className="p-2 border-t border-gray-200">
+                                                <a href="/dashboard/dish-stock" className="block w-full py-2 text-center text-xs font-bold text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">View Full Stock →</a>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                                {/* Waiter Bill Stats */}
+                                <a href="/dashboard/bills" className="flex items-center gap-1.5 px-2 py-1.5 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors" title="Paid Bills">
+                                    <span className="text-[10px]">✅</span>
+                                    <span className="text-[10px] font-bold text-green-700">{waiterPaidCount}</span>
+                                </a>
+                                <a href="/dashboard/bills?status=Pending" className="flex items-center gap-1.5 px-2 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-colors" title="Unpaid Bills">
+                                    <span className="text-[10px]">⏳</span>
+                                    <span className="text-[10px] font-bold text-orange-700">{waiterUnpaidCount}</span>
+                                </a>
                                 {/* Invoice - Compact */}
                                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
                                     <span className="text-xs text-blue-600">🧾</span>
