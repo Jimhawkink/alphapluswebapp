@@ -2252,12 +2252,21 @@ export default function POSPage() {
                                         🔴 Close
                                     </button>
                                 )}
-                                {/* Waiter Indicator */}
+                                {/* Waiter Indicator + Logout */}
                                 {isWaiterUser && (
-                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 rounded-lg border border-purple-200">
-                                        <span className="text-xs">👤</span>
-                                        <span className="text-xs font-semibold text-purple-700">{loggedInUserName}</span>
-                                    </div>
+                                    <>
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 rounded-lg border border-purple-200">
+                                            <span className="text-xs">👤</span>
+                                            <span className="text-xs font-semibold text-purple-700">{loggedInUserName}</span>
+                                        </div>
+                                        <button
+                                            onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }}
+                                            className="px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                                            title="Logout"
+                                        >
+                                            🚪 Logout
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>
