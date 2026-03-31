@@ -71,6 +71,8 @@ const menuItems: MenuSection[] = [
             {
                 name: 'Inventory', icon: '📊', id: 'inventory',
                 subItems: [
+                    { name: 'Dish Stock', icon: '🍽️', href: '/dashboard/dish-stock' },
+                    { name: 'Ingredient Stock', icon: '🧂', href: '/dashboard/ingredient-stock' },
                     { name: 'Stock Transfer', icon: '🔄', href: '/dashboard/stock-transfer' },
                     { name: 'Stock Adjustment', icon: '⚖️', href: '/dashboard/stock-adjustment' },
                     { name: 'Low Stock', icon: '⚠️', href: '/dashboard/low-stock', badge: '5' },
@@ -86,6 +88,7 @@ const menuItems: MenuSection[] = [
                 name: 'Sales', icon: '💰', id: 'sales',
                 subItems: [
                     { name: 'Sales Records', icon: '📋', href: '/dashboard/sales' },
+                    { name: 'Dish Report', icon: '🧾', href: '/dashboard/reports/dish-report' },
                     { name: 'POS Reports', icon: '🧾', href: '/dashboard/reports/pos' },
                     { name: 'Sales Return', icon: '↩️', href: '/dashboard/sales-return' },
                 ]
@@ -318,7 +321,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 )}
 
                 {/* Main Content */}
-                <main className={`neo-main ${sidebarOpen ? 'ml-[240px]' : 'ml-[68px]'} ${isWaiter ? '!ml-0' : ''}`}>
+                <main className={`neo-main ${!sidebarOpen ? 'expanded' : ''} ${isWaiter ? '!ml-0' : ''}`}>
                     {/* Top Header - Recreating the simple cleaner look */}
                     <header className="mb-6 flex items-center justify-between">
                         <div>
