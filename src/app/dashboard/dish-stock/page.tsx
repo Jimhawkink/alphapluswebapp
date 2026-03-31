@@ -3,16 +3,31 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 
+interface BatchRow {
+    batch_id: number;
+    batch_number: string;
+    qty_produced: number;
+    qty_remaining: number;
+    qty_sold: number;
+    cost_per_unit: number;
+    selling_price: number;
+    production_date: string;
+    expiry_date: string;
+    status: string;
+    created_by: string;
+}
+
 interface DishStock {
     pid: number;
     product_name: string;
     category: string;
     sales_cost: number;
     purchase_cost: number;
+    total_available: number;
     total_produced: number;
     total_sold: number;
     total_damaged: number;
-    available_qty: number;
+    batches: BatchRow[];
 }
 
 interface HistoryRow {
@@ -32,6 +47,7 @@ export default function DishStockPage() {
     const [search, setSearch] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('All');
     const [categories, setCategories] = useState<string[]>([]);
+    const [expandedDish, setExpandedDish] = useState<number | null>(null);
     const [historyDish, setHistoryDish] = useState<DishStock | null>(null);
     const [history, setHistory] = useState<HistoryRow[]>([]);
     const [historyLoading, setHistoryLoading] = useState(false);
@@ -39,36 +55,56 @@ export default function DishStockPage() {
     const loadDishes = useCallback(async () => {
         setLoading(true);
         try {
-            // 1. Get all products (dishes)
-            const { data: products } = await supabase.from('products').select('pid, product_name, category, sales_cost, purchase_cost').eq('active', true).order('product_name');
+            // 1. Get all active products (dishes)
+            const { data: products } = await supabase
+                .from('products')
+                .select('pid, product_name, category, sales_cost, purchase_cost')
+                .eq('active', true)
+                .order('product_name');
 
-            // 2. Get production batches summary
-            const { data: batches } = await supabase.from('production_batches').select('product_id, qty_produced, qty_remaining, qty_sold').eq('status', 'Active');
+            // 2. Get ALL production batches (including all statuses for history)
+            const { data: allBatches } = await supabase
+                .from('production_batches')
+                .select('batch_id, batch_number, product_id, qty_produced, qty_remaining, qty_sold, cost_per_unit, selling_price, production_date, expiry_date, status, created_by')
+                .order('production_date', { ascending: false });
 
             // 3. Get dish spoilage summary
             const { data: spoilage } = await supabase.from('dish_spoilage').select('product_id, quantity');
 
-            // 4. Get stock summary
-            const { data: stockRows } = await supabase.from('stock').select('pid, qty');
-
-            // Build maps
-            const batchMap = new Map<number, { produced: number; remaining: number; sold: number }>();
-            (batches || []).forEach((b: any) => {
-                const cur = batchMap.get(b.product_id) || { produced: 0, remaining: 0, sold: 0 };
-                cur.produced += b.qty_produced || 0;
-                cur.remaining += b.qty_remaining || 0;
-                cur.sold += b.qty_sold || 0;
-                batchMap.set(b.product_id, cur);
-            });
-
+            // Build spoilage map
             const spoilMap = new Map<number, number>();
             (spoilage || []).forEach((s: any) => {
                 spoilMap.set(s.product_id, (spoilMap.get(s.product_id) || 0) + (s.quantity || 0));
             });
 
-            const stockMap = new Map<number, number>();
-            (stockRows || []).forEach((s: any) => {
-                stockMap.set(s.pid, (stockMap.get(s.pid) || 0) + (s.qty || 0));
+            // Build batch map grouped by product
+            const batchMap = new Map<number, BatchRow[]>();
+            const stockMap = new Map<number, { available: number; produced: number; sold: number }>();
+            (allBatches || []).forEach((b: any) => {
+                const pid = b.product_id;
+                // Group batches
+                if (!batchMap.has(pid)) batchMap.set(pid, []);
+                batchMap.get(pid)!.push({
+                    batch_id: b.batch_id,
+                    batch_number: b.batch_number || `B-${b.batch_id}`,
+                    qty_produced: b.qty_produced || 0,
+                    qty_remaining: b.qty_remaining || 0,
+                    qty_sold: b.qty_sold || 0,
+                    cost_per_unit: b.cost_per_unit || 0,
+                    selling_price: b.selling_price || 0,
+                    production_date: b.production_date || '',
+                    expiry_date: b.expiry_date || '',
+                    status: b.status || 'Active',
+                    created_by: b.created_by || '',
+                });
+                // Totals (only count "In Stock" for available)
+                const cur = stockMap.get(pid) || { available: 0, produced: 0, sold: 0 };
+                cur.produced += b.qty_produced || 0;
+                cur.sold += b.qty_sold || 0;
+                if (b.status === 'In Stock' || b.status === 'Active') {
+                    cur.available += b.qty_remaining || 0;
+                }
+                stockMap.set(pid, cur);
             });
 
             // Get categories
@@ -77,19 +113,19 @@ export default function DishStockPage() {
 
             // Build dish stock list
             const dishList: DishStock[] = (products || []).map((p: any) => {
-                const bat = batchMap.get(p.pid) || { produced: 0, remaining: 0, sold: 0 };
+                const st = stockMap.get(p.pid) || { available: 0, produced: 0, sold: 0 };
                 const damaged = spoilMap.get(p.pid) || 0;
-                const stock = stockMap.get(p.pid) || 0;
                 return {
                     pid: p.pid,
                     product_name: p.product_name,
                     category: p.category || 'Uncategorized',
                     sales_cost: p.sales_cost || 0,
                     purchase_cost: p.purchase_cost || 0,
-                    total_produced: bat.produced,
-                    total_sold: bat.sold,
+                    total_available: st.available,
+                    total_produced: st.produced,
+                    total_sold: st.sold,
                     total_damaged: damaged,
-                    available_qty: stock > 0 ? stock : bat.remaining,
+                    batches: batchMap.get(p.pid) || [],
                 };
             });
 
@@ -104,17 +140,15 @@ export default function DishStockPage() {
         setHistoryDish(dish);
         setHistoryLoading(true);
         setHistory([]);
-
         try {
             const rows: HistoryRow[] = [];
 
-            // 1. Production batches
-            const { data: batches } = await supabase.from('production_batches').select('batch_id, batch_number, qty_produced, production_date, created_by').eq('product_id', dish.pid).order('production_date', { ascending: false });
-            (batches || []).forEach((b: any, i: number) => {
-                rows.push({ id: 1000 + i, date: b.production_date, type: 'Produced', typeIcon: '🏭', typeBg: 'bg-emerald-100 text-emerald-700', quantity: b.qty_produced, reference: b.batch_number || '', note: `By ${b.created_by || 'System'}` });
+            // Production batches
+            (dish.batches || []).forEach((b, i) => {
+                rows.push({ id: 1000 + i, date: b.production_date, type: 'Produced', typeIcon: '🏭', typeBg: 'bg-emerald-100 text-emerald-700', quantity: b.qty_produced, reference: b.batch_number, note: `By ${b.created_by || 'System'}` });
             });
 
-            // 2. Dish movements
+            // Dish movements
             const { data: moves } = await supabase.from('dish_movements').select('movement_id, movement_date, movement_type, quantity, reference_no, reason').eq('product_id', dish.pid).order('movement_date', { ascending: false });
             (moves || []).forEach((m: any) => {
                 let icon = '📦'; let bg = 'bg-blue-100 text-blue-700';
@@ -125,13 +159,12 @@ export default function DishStockPage() {
                 rows.push({ id: m.movement_id, date: m.movement_date, type: m.movement_type, typeIcon: icon, typeBg: bg, quantity: m.quantity, reference: m.reference_no || '', note: m.reason || '' });
             });
 
-            // 3. Spoilage
+            // Spoilage
             const { data: spoils } = await supabase.from('dish_spoilage').select('spoilage_id, spoilage_date, quantity, spoilage_type, reason, recorded_by').eq('product_id', dish.pid).order('spoilage_date', { ascending: false });
             (spoils || []).forEach((s: any) => {
                 rows.push({ id: 5000 + s.spoilage_id, date: s.spoilage_date, type: s.spoilage_type || 'Damaged', typeIcon: '❌', typeBg: 'bg-red-100 text-red-700', quantity: s.quantity, reference: '', note: `${s.reason || 'Spoilage'} — ${s.recorded_by || ''}` });
             });
 
-            // Sort by date desc
             rows.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
             setHistory(rows);
         } catch (err) { console.error(err); }
@@ -144,28 +177,70 @@ export default function DishStockPage() {
         return true;
     });
 
+    const totals = {
+        available: filtered.reduce((s, d) => s + d.total_available, 0),
+        produced: filtered.reduce((s, d) => s + d.total_produced, 0),
+        sold: filtered.reduce((s, d) => s + d.total_sold, 0),
+        damaged: filtered.reduce((s, d) => s + d.total_damaged, 0),
+        value: filtered.reduce((s, d) => s + (d.total_available * d.sales_cost), 0),
+    };
+
+    const fmt = (n: number) => `Ksh ${n.toLocaleString('en-KE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+
     return (
         <div className="space-y-6 animate-rise">
+            {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
-                    <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">🍽️ Dish Stock</h1>
-                    <p className="text-xs text-gray-500 mt-0.5">Available dish inventory with production & spoilage history</p>
+                    <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">🍽️ Dish Stock</h1>
+                    <p className="text-sm text-gray-500 mt-1">Available dish inventory with production batches & history</p>
                 </div>
-                <button onClick={loadDishes} className="btn-neo-teal">🔄 Refresh</button>
+                <div className="flex items-center gap-2">
+                    <button onClick={loadDishes} className="px-4 py-2.5 bg-gradient-to-r from-teal-500 to-emerald-500 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all flex items-center gap-2">🔄 Refresh</button>
+                </div>
+            </div>
+
+            {/* Gradient KPI Cards — like Alpha Retail */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                <div className="bg-gradient-to-br from-emerald-400 to-green-500 rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+                    <p className="text-xs font-semibold opacity-90">🏭 Total Produced</p>
+                    <p className="text-2xl font-black mt-2">{totals.produced.toLocaleString()}</p>
+                    <p className="text-[11px] opacity-75 mt-1">All time production</p>
+                </div>
+                <div className="bg-gradient-to-br from-blue-400 to-indigo-500 rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+                    <p className="text-xs font-semibold opacity-90">📦 Available Stock</p>
+                    <p className="text-2xl font-black mt-2">{totals.available.toLocaleString()}</p>
+                    <p className="text-[11px] opacity-75 mt-1">Ready for sale</p>
+                </div>
+                <div className="bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+                    <p className="text-xs font-semibold opacity-90">💰 Total Sold</p>
+                    <p className="text-2xl font-black mt-2">{totals.sold.toLocaleString()}</p>
+                    <p className="text-[11px] opacity-75 mt-1">Units sold</p>
+                </div>
+                <div className="bg-gradient-to-br from-red-400 to-pink-500 rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+                    <p className="text-xs font-semibold opacity-90">❌ Damaged</p>
+                    <p className="text-2xl font-black mt-2">{totals.damaged.toLocaleString()}</p>
+                    <p className="text-[11px] opacity-75 mt-1">Spoilage / waste</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-400 to-violet-600 rounded-2xl p-5 text-white shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+                    <p className="text-xs font-semibold opacity-90">💎 Stock Value</p>
+                    <p className="text-2xl font-black mt-2">{fmt(totals.value)}</p>
+                    <p className="text-[11px] opacity-75 mt-1">At selling price</p>
+                </div>
             </div>
 
             {/* Filters */}
-            <div className="neo-card p-4">
-                <div className="grid grid-cols-2 gap-3">
+            <div className="neo-card p-5">
+                <div className="grid grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Search Dish</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Search Dish</label>
                         <input type="text" value={search} onChange={e => setSearch(e.target.value)} placeholder="e.g. Ugali, Chapati..."
-                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-teal-500 outline-none" />
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-teal-500 outline-none transition-colors" />
                     </div>
                     <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Category</label>
+                        <label className="block text-xs font-bold text-gray-500 uppercase mb-1.5">Category</label>
                         <select value={categoryFilter} onChange={e => setCategoryFilter(e.target.value)}
-                            className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-teal-500 outline-none">
+                            className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-teal-500 outline-none transition-colors">
                             <option value="All">All Categories</option>
                             {categories.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
@@ -173,7 +248,7 @@ export default function DishStockPage() {
                 </div>
             </div>
 
-            {/* Data Grid */}
+            {/* Data Grid with Expandable Batches */}
             <div className="neo-card overflow-hidden">
                 {loading ? (
                     <div className="flex items-center justify-center py-20"><div className="spinner" /><span className="ml-3 text-sm text-gray-500">Loading dish stock...</span></div>
@@ -182,40 +257,102 @@ export default function DishStockPage() {
                         <table className="w-full">
                             <thead>
                                 <tr className="bg-gradient-to-r from-orange-500 to-amber-500">
-                                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase">#</th>
-                                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase">Dish Name</th>
-                                    <th className="px-4 py-3 text-left text-[10px] font-bold uppercase">Category</th>
-                                    <th className="px-4 py-3 text-right text-[10px] font-bold uppercase">Available</th>
-                                    <th className="px-4 py-3 text-right text-[10px] font-bold uppercase">Produced</th>
-                                    <th className="px-4 py-3 text-right text-[10px] font-bold uppercase">Sold</th>
-                                    <th className="px-4 py-3 text-right text-[10px] font-bold uppercase">Damaged</th>
-                                    <th className="px-4 py-3 text-right text-[10px] font-bold uppercase">Price</th>
-                                    <th className="px-4 py-3 text-center text-[10px] font-bold uppercase">Actions</th>
+                                    <th className="px-4 py-3.5 text-left text-xs font-bold uppercase w-10"></th>
+                                    <th className="px-4 py-3.5 text-left text-xs font-bold uppercase">#</th>
+                                    <th className="px-4 py-3.5 text-left text-xs font-bold uppercase">Dish Name</th>
+                                    <th className="px-4 py-3.5 text-left text-xs font-bold uppercase">Category</th>
+                                    <th className="px-4 py-3.5 text-right text-xs font-bold uppercase">Available</th>
+                                    <th className="px-4 py-3.5 text-right text-xs font-bold uppercase">Produced</th>
+                                    <th className="px-4 py-3.5 text-right text-xs font-bold uppercase">Sold</th>
+                                    <th className="px-4 py-3.5 text-right text-xs font-bold uppercase">Damaged</th>
+                                    <th className="px-4 py-3.5 text-right text-xs font-bold uppercase">Price</th>
+                                    <th className="px-4 py-3.5 text-center text-xs font-bold uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filtered.length === 0 ? (
-                                    <tr><td colSpan={9} className="text-center py-12 text-gray-400 text-sm">No dishes found</td></tr>
+                                    <tr><td colSpan={10} className="text-center py-16 text-gray-400 text-sm">No dishes found</td></tr>
                                 ) : filtered.map((d, i) => (
-                                    <tr key={d.pid} className={`border-b border-gray-100 hover:bg-orange-50/30 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-                                        <td className="px-4 py-3 text-xs text-gray-400">{i + 1}</td>
-                                        <td className="px-4 py-3 text-sm font-bold text-gray-800">🍽️ {d.product_name}</td>
-                                        <td className="px-4 py-3"><span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">{d.category}</span></td>
-                                        <td className="px-4 py-3 text-right">
-                                            <span className={`px-2 py-1 rounded-lg text-xs font-black ${d.available_qty > 10 ? 'bg-emerald-100 text-emerald-700' : d.available_qty > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
-                                                {d.available_qty}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-right text-xs text-emerald-600 font-bold">{d.total_produced || '-'}</td>
-                                        <td className="px-4 py-3 text-right text-xs text-orange-600 font-bold">{d.total_sold || '-'}</td>
-                                        <td className="px-4 py-3 text-right text-xs text-red-500 font-bold">{d.total_damaged || '-'}</td>
-                                        <td className="px-4 py-3 text-right text-xs font-medium text-gray-600">Ksh {d.sales_cost}</td>
-                                        <td className="px-4 py-3 text-center">
-                                            <button onClick={() => openHistory(d)} className="p-1.5 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 transition-colors" title="View History">
-                                                📜
-                                            </button>
-                                        </td>
-                                    </tr>
+                                    <>
+                                        {/* Main dish row */}
+                                        <tr key={d.pid} className={`border-b border-gray-100 hover:bg-orange-50/30 transition-colors cursor-pointer ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}
+                                            onClick={() => setExpandedDish(expandedDish === d.pid ? null : d.pid)}>
+                                            <td className="px-4 py-3.5 text-center">
+                                                <span className={`inline-block transition-transform duration-200 text-gray-400 ${expandedDish === d.pid ? 'rotate-90' : ''}`}>
+                                                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18L15 12L9 6" /></svg>
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3.5 text-sm text-gray-400">{i + 1}</td>
+                                            <td className="px-4 py-3.5 text-sm font-bold text-gray-800">🍽️ {d.product_name}</td>
+                                            <td className="px-4 py-3.5"><span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700">{d.category}</span></td>
+                                            <td className="px-4 py-3.5 text-right">
+                                                <span className={`px-3 py-1.5 rounded-lg text-sm font-black ${d.total_available > 10 ? 'bg-emerald-100 text-emerald-700' : d.total_available > 0 ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>
+                                                    {d.total_available}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3.5 text-right text-sm text-emerald-600 font-bold">{d.total_produced || '-'}</td>
+                                            <td className="px-4 py-3.5 text-right text-sm text-orange-600 font-bold">{d.total_sold || '-'}</td>
+                                            <td className="px-4 py-3.5 text-right text-sm text-red-500 font-bold">{d.total_damaged || '-'}</td>
+                                            <td className="px-4 py-3.5 text-right text-sm font-medium text-gray-700">{fmt(d.sales_cost)}</td>
+                                            <td className="px-4 py-3.5 text-center" onClick={e => e.stopPropagation()}>
+                                                <div className="flex items-center justify-center gap-1.5">
+                                                    <button onClick={() => openHistory(d)} className="p-2 bg-teal-50 text-teal-600 rounded-lg hover:bg-teal-100 transition-colors text-sm" title="View History">📜</button>
+                                                    <button onClick={() => setExpandedDish(expandedDish === d.pid ? null : d.pid)} className="p-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors text-sm" title="View Batches">📦</button>
+                                                </div>
+                                            </td>
+                                        </tr>
+
+                                        {/* Expanded batch details */}
+                                        {expandedDish === d.pid && (
+                                            <tr key={`batch-${d.pid}`}>
+                                                <td colSpan={10} className="p-0">
+                                                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-orange-400 px-6 py-4">
+                                                        <h4 className="text-sm font-bold text-orange-700 mb-3 flex items-center gap-2">📦 Production Batches — {d.product_name}
+                                                            <span className="text-xs font-medium text-orange-500 bg-orange-100 px-2 py-0.5 rounded-full">{d.batches.length} batch{d.batches.length !== 1 ? 'es' : ''}</span>
+                                                        </h4>
+                                                        {d.batches.length === 0 ? (
+                                                            <p className="text-sm text-gray-400 italic">No production batches found for this dish</p>
+                                                        ) : (
+                                                            <table className="w-full bg-white rounded-xl overflow-hidden shadow-sm">
+                                                                <thead>
+                                                                    <tr className="bg-gray-100">
+                                                                        <th className="px-3 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase">Batch #</th>
+                                                                        <th className="px-3 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase">Date</th>
+                                                                        <th className="px-3 py-2.5 text-right text-[11px] font-bold text-gray-500 uppercase">Produced</th>
+                                                                        <th className="px-3 py-2.5 text-right text-[11px] font-bold text-gray-500 uppercase">Remaining</th>
+                                                                        <th className="px-3 py-2.5 text-right text-[11px] font-bold text-gray-500 uppercase">Sold</th>
+                                                                        <th className="px-3 py-2.5 text-right text-[11px] font-bold text-gray-500 uppercase">Cost/Unit</th>
+                                                                        <th className="px-3 py-2.5 text-right text-[11px] font-bold text-gray-500 uppercase">Sell Price</th>
+                                                                        <th className="px-3 py-2.5 text-center text-[11px] font-bold text-gray-500 uppercase">Status</th>
+                                                                        <th className="px-3 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase">By</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {d.batches.map(b => (
+                                                                        <tr key={b.batch_id} className="border-b border-gray-50 hover:bg-gray-50/50">
+                                                                            <td className="px-3 py-2.5 text-sm font-mono text-orange-600 font-bold">{b.batch_number}</td>
+                                                                            <td className="px-3 py-2.5 text-sm text-gray-600">{b.production_date ? new Date(b.production_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</td>
+                                                                            <td className="px-3 py-2.5 text-sm text-right font-bold text-emerald-600">{b.qty_produced}</td>
+                                                                            <td className="px-3 py-2.5 text-right">
+                                                                                <span className={`px-2 py-0.5 rounded-lg text-sm font-black ${b.qty_remaining > 0 ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-500'}`}>{b.qty_remaining}</span>
+                                                                            </td>
+                                                                            <td className="px-3 py-2.5 text-sm text-right text-orange-600 font-bold">{b.qty_sold}</td>
+                                                                            <td className="px-3 py-2.5 text-sm text-right text-gray-600">{fmt(b.cost_per_unit)}</td>
+                                                                            <td className="px-3 py-2.5 text-sm text-right text-blue-600 font-bold">{fmt(b.selling_price || d.sales_cost)}</td>
+                                                                            <td className="px-3 py-2.5 text-center">
+                                                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${b.status === 'In Stock' ? 'bg-emerald-100 text-emerald-700' : b.status === 'Active' ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>{b.status}</span>
+                                                                            </td>
+                                                                            <td className="px-3 py-2.5 text-sm text-gray-500">{b.created_by}</td>
+                                                                        </tr>
+                                                                    ))}
+                                                                </tbody>
+                                                            </table>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </>
                                 ))}
                             </tbody>
                         </table>
@@ -227,35 +364,34 @@ export default function DishStockPage() {
             {historyDish && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 z-50" onClick={() => setHistoryDish(null)}>
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[85vh] overflow-hidden" onClick={e => e.stopPropagation()}>
-                        <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-4 text-white flex items-center justify-between">
+                        <div className="bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-5 text-white flex items-center justify-between">
                             <div>
-                                <h2 className="text-lg font-bold flex items-center gap-2">📜 Dish History</h2>
-                                <p className="text-orange-100 text-xs mt-0.5">🍽️ {historyDish.product_name}</p>
+                                <h2 className="text-lg font-bold flex items-center gap-2">📜 Full Dish History</h2>
+                                <p className="text-orange-100 text-sm mt-0.5">🍽️ {historyDish.product_name}</p>
                             </div>
-                            <button onClick={() => setHistoryDish(null)} className="p-2 hover:bg-white/20 rounded-xl text-white">✕</button>
+                            <button onClick={() => setHistoryDish(null)} className="p-2 hover:bg-white/20 rounded-xl text-white text-lg">✕</button>
                         </div>
 
-                        {/* Quick stats */}
-                        <div className="grid grid-cols-4 gap-2 p-4">
+                        <div className="grid grid-cols-4 gap-3 p-5">
                             <div className="p-3 bg-emerald-50 rounded-xl text-center">
-                                <p className="text-[9px] text-emerald-600 font-bold uppercase">Produced</p>
-                                <p className="text-lg font-black text-emerald-700">🏭 {historyDish.total_produced}</p>
+                                <p className="text-[10px] text-emerald-600 font-bold uppercase">Produced</p>
+                                <p className="text-xl font-black text-emerald-700">🏭 {historyDish.total_produced}</p>
                             </div>
                             <div className="p-3 bg-orange-50 rounded-xl text-center">
-                                <p className="text-[9px] text-orange-600 font-bold uppercase">Sold</p>
-                                <p className="text-lg font-black text-orange-700">💰 {historyDish.total_sold}</p>
+                                <p className="text-[10px] text-orange-600 font-bold uppercase">Sold</p>
+                                <p className="text-xl font-black text-orange-700">💰 {historyDish.total_sold}</p>
                             </div>
                             <div className="p-3 bg-red-50 rounded-xl text-center">
-                                <p className="text-[9px] text-red-600 font-bold uppercase">Damaged</p>
-                                <p className="text-lg font-black text-red-700">❌ {historyDish.total_damaged}</p>
+                                <p className="text-[10px] text-red-600 font-bold uppercase">Damaged</p>
+                                <p className="text-xl font-black text-red-700">❌ {historyDish.total_damaged}</p>
                             </div>
                             <div className="p-3 bg-blue-50 rounded-xl text-center">
-                                <p className="text-[9px] text-blue-600 font-bold uppercase">Available</p>
-                                <p className="text-lg font-black text-blue-700">📦 {historyDish.available_qty}</p>
+                                <p className="text-[10px] text-blue-600 font-bold uppercase">Available</p>
+                                <p className="text-xl font-black text-blue-700">📦 {historyDish.total_available}</p>
                             </div>
                         </div>
 
-                        <div className="overflow-y-auto max-h-[50vh] px-4 pb-4">
+                        <div className="overflow-y-auto max-h-[50vh] px-5 pb-5">
                             {historyLoading ? (
                                 <div className="flex items-center justify-center py-10"><div className="spinner" /></div>
                             ) : history.length === 0 ? (
@@ -264,17 +400,17 @@ export default function DishStockPage() {
                                 <div className="space-y-2">
                                     {history.map(h => (
                                         <div key={h.id} className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 transition-colors">
-                                            <span className="text-xl">{h.typeIcon}</span>
+                                            <span className="text-2xl">{h.typeIcon}</span>
                                             <div className="flex-1 min-w-0">
                                                 <div className="flex items-center gap-2">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold ${h.typeBg}`}>{h.type}</span>
-                                                    {h.reference && <span className="text-[10px] text-gray-400 font-mono">{h.reference}</span>}
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${h.typeBg}`}>{h.type}</span>
+                                                    {h.reference && <span className="text-xs text-gray-400 font-mono">{h.reference}</span>}
                                                 </div>
-                                                {h.note && <p className="text-[10px] text-gray-500 mt-0.5 truncate">{h.note}</p>}
+                                                {h.note && <p className="text-xs text-gray-500 mt-0.5 truncate">{h.note}</p>}
                                             </div>
                                             <div className="text-right">
                                                 <p className="text-sm font-black text-gray-800">{h.quantity}</p>
-                                                <p className="text-[10px] text-gray-400">{h.date ? new Date(h.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</p>
+                                                <p className="text-xs text-gray-400">{h.date ? new Date(h.date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''}</p>
                                             </div>
                                         </div>
                                     ))}

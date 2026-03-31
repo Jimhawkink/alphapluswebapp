@@ -29,6 +29,7 @@
 html,
 body {
   font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
   background: var(--bg-primary);
   color: var(--text-primary);
   overflow-x: hidden;
@@ -341,8 +342,8 @@ td {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 16px;
-  font-size: 12px;
+  padding: 10px 16px;
+  font-size: 13px;
   font-weight: 500;
   color: #555;
   cursor: pointer;
@@ -380,7 +381,7 @@ td {
 .neo-main {
   margin-left: var(--neo-sw);
   flex: 1;
-  padding: 20px 28px 40px;
+  padding: 24px 32px 40px;
   transition: margin-left .3s;
   background: var(--neo-bg);
   min-height: 100vh;

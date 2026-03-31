@@ -89,6 +89,7 @@ const menuItems: MenuSection[] = [
                 subItems: [
                     { name: 'Sales Records', icon: '📋', href: '/dashboard/sales' },
                     { name: 'Dish Report', icon: '🧾', href: '/dashboard/reports/dish-report' },
+                    { name: 'Recipe Report', icon: '🍳', href: '/dashboard/reports/recipe-report' },
                     { name: 'POS Reports', icon: '🧾', href: '/dashboard/reports/pos' },
                     { name: 'Sales Return', icon: '↩️', href: '/dashboard/sales-return' },
                 ]
