@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import {
     savePendingSale,
@@ -970,6 +970,32 @@ export default function POSPage() {
     // Hotel/Company Name from database
     const [hotelName, setHotelName] = useState<string>('Your Hotel');
 
+    // ─── OPEN / CLOSE REGISTER ───
+    const [showOpeningDrop, setShowOpeningDrop] = useState(false);
+    const [openingDropAmount, setOpeningDropAmount] = useState('');
+    const [registerOpen, setRegisterOpen] = useState(false);
+    const [showCloseRegister, setShowCloseRegister] = useState(false);
+    const [closeRegisterData, setCloseRegisterData] = useState<{
+        totalSales: number; totalCash: number; totalMpesa: number;
+        totalCredit: number; totalExpenses: number; openingCash: number;
+        netSales: number; orderCount: number; profit: number;
+    } | null>(null);
+    const [isLoadingRegister, setIsLoadingRegister] = useState(false);
+
+    // ─── HOLD / RECALL SALE ───
+    interface HeldSale {
+        id: string;
+        cart: CartItem[];
+        invoiceNo: string;
+        heldAt: string;
+        total: number;
+        itemCount: number;
+        customerName?: string;
+        tableNo?: string;
+    }
+    const [heldSales, setHeldSales] = useState<HeldSale[]>([]);
+    const [showHeldSalesModal, setShowHeldSalesModal] = useState(false);
+
     // Load hotel name from database
     const loadHotelName = useCallback(async () => {
         try {
@@ -1020,6 +1046,201 @@ export default function POSPage() {
         }
         setIsLoadingShift(false);
     }, []);
+
+    // Load held sales from localStorage on mount
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem('alpha_hotel_held_sales');
+            if (saved) setHeldSales(JSON.parse(saved));
+        } catch (_) {}
+    }, []);
+
+    // Persist held sales to localStorage whenever they change
+    useEffect(() => {
+        try {
+            localStorage.setItem('alpha_hotel_held_sales', JSON.stringify(heldSales));
+        } catch (_) {}
+    }, [heldSales]);
+
+    // Hold current sale
+    const holdCurrentSale = () => {
+        if (cart.length === 0) {
+            toast.error('Cart is empty — nothing to hold');
+            return;
+        }
+        const held: HeldSale = {
+            id: `HOLD-${Date.now()}`,
+            cart: [...cart],
+            invoiceNo,
+            heldAt: new Date().toISOString(),
+            total,
+            itemCount: cart.length,
+            tableNo: tableNo || undefined,
+        };
+        setHeldSales(prev => [...prev, held]);
+        clearCart();
+        toast.success(`Sale held (${held.itemCount} items — Ksh ${held.total.toLocaleString()})`);
+    };
+
+    // Recall a held sale
+    const recallHeldSale = (heldId: string) => {
+        const sale = heldSales.find(h => h.id === heldId);
+        if (!sale) return;
+        if (cart.length > 0) {
+            holdCurrentSale();
+        }
+        setCart(sale.cart);
+        setInvoiceNo(sale.invoiceNo);
+        if (sale.tableNo) setTableNo(sale.tableNo);
+        setHeldSales(prev => prev.filter(h => h.id !== heldId));
+        setShowHeldSalesModal(false);
+        toast.success('Sale recalled — continue where you left off');
+    };
+
+    // Delete a held sale
+    const deleteHeldSale = (heldId: string) => {
+        setHeldSales(prev => prev.filter(h => h.id !== heldId));
+        toast.success('Held sale removed');
+    };
+
+    // ─── OPEN REGISTER ───
+    const handleOpenRegister = async () => {
+        const amount = Number(openingDropAmount) || 0;
+        try {
+            const { data: newShift, error } = await supabase.from('shifts').insert({
+                shift_date: new Date().toISOString().split('T')[0],
+                shift_type: 'Day',
+                start_time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                opening_cash: amount,
+                status: 'Open',
+                opened_by: 'Cashier'
+            }).select('shift_id').single();
+
+            if (error) throw error;
+            setShift({
+                id: newShift.shift_id,
+                name: 'Day Shift',
+                code: `SH-${newShift.shift_id}`,
+                startTime: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                openingCash: amount
+            });
+            setHasActiveShift(true);
+            setRegisterOpen(true);
+            setShowOpeningDrop(false);
+            setOpeningDropAmount('');
+            toast.success(`Register opened with Ksh ${amount.toLocaleString()} opening cash`);
+        } catch (err: any) {
+            console.error('Open register error:', err);
+            toast.error('Failed to open register: ' + err.message);
+        }
+    };
+
+    // ─── CLOSE REGISTER ───
+    const handleCloseRegister = async () => {
+        setIsLoadingRegister(true);
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const { data: salesData } = await supabase
+                .from('sales')
+                .select('sale_id, total_amount, payment_method, total_cost')
+                .eq('sale_date', today);
+
+            const sales = salesData || [];
+            const totalSales = sales.reduce((s, r) => s + (r.total_amount || 0), 0);
+            const totalCash = sales.filter(r => (r.payment_method || '').toLowerCase().includes('cash')).reduce((s, r) => s + (r.total_amount || 0), 0);
+            const totalMpesa = sales.filter(r => (r.payment_method || '').toLowerCase().includes('mpesa')).reduce((s, r) => s + (r.total_amount || 0), 0);
+            const totalCredit = sales.filter(r => (r.payment_method || '').toLowerCase().includes('credit')).reduce((s, r) => s + (r.total_amount || 0), 0);
+
+            let totalExpenses = 0;
+            try {
+                const { data: expData } = await supabase.from('expenses').select('amount').eq('expense_date', today);
+                totalExpenses = (expData || []).reduce((s, e) => s + (e.amount || 0), 0);
+            } catch (_) {}
+
+            const openingCash = shift?.openingCash || 0;
+            const netSales = totalSales - totalExpenses - totalCredit;
+            const totalCostPrice = sales.reduce((sum, s) => sum + (s.total_cost || 0), 0);
+            const profit = totalSales - totalCostPrice;
+
+            setCloseRegisterData({
+                totalSales, totalCash, totalMpesa, totalCredit,
+                totalExpenses, openingCash, netSales, orderCount: sales.length, profit
+            });
+            setShowCloseRegister(true);
+        } catch (err: any) {
+            toast.error('Failed to load register data: ' + err.message);
+        }
+        setIsLoadingRegister(false);
+    };
+
+    // Finalize close register
+    const finalizeCloseRegister = async () => {
+        if (shift && closeRegisterData) {
+            await supabase.from('shifts').update({
+                end_time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                closing_cash: closeRegisterData.totalCash,
+                total_sales: closeRegisterData.totalSales,
+                total_expenses: closeRegisterData.totalExpenses,
+                net_sales: closeRegisterData.netSales,
+                status: 'Closed',
+                closed_by: 'Cashier'
+            }).eq('shift_id', shift.id);
+        }
+        setRegisterOpen(false);
+        setHasActiveShift(false);
+        setShift(null);
+        setShowCloseRegister(false);
+        setCloseRegisterData(null);
+        toast.success('Register closed successfully');
+    };
+
+    // Print Close Register Report
+    const printCloseRegisterReport = () => {
+        if (!closeRegisterData) return;
+        const d = closeRegisterData;
+        const now = new Date();
+        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Close Register</title>
+<style>
+  @page{margin:0;size:80mm auto;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:Arial,sans-serif;font-size:11px;font-weight:700;width:80mm;padding:4mm;background:#fff;color:#000;line-height:1.4;}
+  .c{text-align:center;} .r{display:flex;justify-content:space-between;padding:3px 0;border-bottom:0.5px dashed #ccc;}
+  .d{border:none;border-top:1px solid #000;margin:4px 0;} .dd{border:none;border-top:1px dashed #000;margin:3px 0;}
+  .big{font-size:14px;font-weight:900;} @media print{body{width:80mm;}}
+</style></head><body>
+  <div class="c"><div style="font-size:14px;font-weight:900;text-transform:uppercase;">${hotelName}</div>
+  <div style="font-size:9px;margin:2px 0;">Close Register Report</div></div><hr class="d">
+  <div class="c" style="margin:4px 0;"><div style="background:#000;color:#fff;padding:4px 12px;display:inline-block;font-size:11px;font-weight:900;">END OF DAY REPORT</div></div><hr class="dd">
+  <div class="r"><span style="font-size:9px;">Date</span><span style="font-size:10px;">${now.toLocaleDateString('en-GB')}</span></div>
+  <div class="r"><span style="font-size:9px;">Time</span><span style="font-size:10px;">${now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span></div>
+  <div class="r"><span style="font-size:9px;">Total Orders</span><span style="font-size:10px;">${d.orderCount}</span></div><hr class="d">
+  <div class="c" style="font-size:9px;font-weight:900;letter-spacing:1px;margin:3px 0;">SALES BREAKDOWN</div>
+  <div class="r"><span>💵 Cash Sales</span><span class="big">Ksh ${d.totalCash.toLocaleString()}</span></div>
+  <div class="r"><span>📱 M-Pesa Sales</span><span class="big">Ksh ${d.totalMpesa.toLocaleString()}</span></div>
+  <div class="r"><span>📋 Credit Sales</span><span class="big">Ksh ${d.totalCredit.toLocaleString()}</span></div><hr class="dd">
+  <div style="background:#000;color:#fff;padding:5px 8px;margin:4px 0;display:flex;justify-content:space-between;">
+    <span style="font-size:11px;font-weight:900;">TOTAL SALES</span><span style="font-size:14px;font-weight:900;">Ksh ${d.totalSales.toLocaleString()}</span></div><hr class="d">
+  <div class="c" style="font-size:9px;font-weight:900;letter-spacing:1px;margin:3px 0;">CASH SUMMARY</div>
+  <div class="r"><span>🟢 Opening Cash</span><span class="big">Ksh ${d.openingCash.toLocaleString()}</span></div>
+  <div class="r"><span>💵 Cash Sales</span><span class="big">Ksh ${d.totalCash.toLocaleString()}</span></div>
+  <div class="r"><span>🔴 Expenses</span><span style="color:#c00;" class="big">-Ksh ${d.totalExpenses.toLocaleString()}</span></div><hr class="dd">
+  <div style="background:#000;color:#fff;padding:6px 8px;margin:4px 0;display:flex;justify-content:space-between;">
+    <span style="font-size:12px;font-weight:900;">NET SALES</span><span style="font-size:16px;font-weight:900;">Ksh ${d.netSales.toLocaleString()}</span></div>
+  <div style="background:#000;color:#fff;padding:5px 8px;margin:2px 0;display:flex;justify-content:space-between;">
+    <span style="font-size:10px;font-weight:900;">EXPECTED IN DRAWER</span><span style="font-size:13px;font-weight:900;">Ksh ${(d.openingCash + d.totalCash - d.totalExpenses).toLocaleString()}</span></div>
+  <div style="background:#000;color:#fff;padding:6px 8px;margin:4px 0;display:flex;justify-content:space-between;">
+    <span style="font-size:12px;font-weight:900;">📈 PROFIT</span><span style="font-size:16px;font-weight:900;">Ksh ${(d.profit || 0).toLocaleString()}</span></div><hr class="d">
+  <div class="c" style="padding:4px 0;"><div style="font-size:8px;">Printed: ${now.toLocaleDateString('en-GB')} ${now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
+    <div style="font-size:7px;margin-top:2px;">Powered by Alpha Plus Hotel POS</div></div>
+</body></html>`;
+        const iframe = document.createElement('iframe');
+        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:none;visibility:hidden;';
+        document.body.appendChild(iframe);
+        const doc = iframe.contentWindow?.document;
+        if (doc) { doc.open(); doc.write(html); doc.close();
+            iframe.onload = () => { setTimeout(() => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (e) { console.error(e); } setTimeout(() => document.body.removeChild(iframe), 1000); }, 300); };
+        }
+    };
 
     // Load products from database
     const loadProducts = useCallback(async () => {
@@ -1780,29 +2001,52 @@ export default function POSPage() {
 
     return (
         <>
-            {/* No Active Shift Warning */}
+            {/* No Active Shift / Register Closed Warning */}
             {!isLoadingShift && !hasActiveShift && (
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
                     <div className="bg-white rounded-3xl p-8 w-full max-w-md text-center shadow-2xl">
-                        <div className="w-20 h-20 bg-gradient-to-br from-amber-400 to-orange-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                            <span className="text-4xl">⚠️</span>
+                        <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                            <span className="text-4xl">🟢</span>
                         </div>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">No Active Shift</h2>
+                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Register is Closed</h2>
                         <p className="text-gray-600 mb-6">
-                            You cannot make sales without an active shift. Please start a shift first to begin making transactions.
+                            Open the register with an opening cash float to start making sales.
                         </p>
+
+                        <div className="mb-4">
+                            <label className="text-sm font-medium text-gray-600 mb-2 block text-left">💰 Opening Cash Amount</label>
+                            <input
+                                type="number"
+                                value={openingDropAmount}
+                                onChange={(e) => setOpeningDropAmount(e.target.value)}
+                                placeholder="Enter amount (e.g., 5000)"
+                                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none text-xl font-bold text-center"
+                                autoFocus
+                            />
+                        </div>
+                        <div className="grid grid-cols-4 gap-2 mb-4">
+                            {[0, 1000, 2000, 5000].map(amt => (
+                                <button
+                                    key={amt}
+                                    onClick={() => setOpeningDropAmount(amt.toString())}
+                                    className="py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-medium transition-colors text-sm"
+                                >
+                                    {amt === 0 ? 'Zero' : `Ksh ${amt.toLocaleString()}`}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="p-4 bg-green-50 rounded-xl border border-green-200 mb-4 text-center">
+                            <span className="text-green-700 font-medium text-sm">Opening Cash: </span>
+                            <span className="text-2xl font-bold text-green-600">Ksh {(Number(openingDropAmount) || 0).toLocaleString()}</span>
+                        </div>
+
                         <div className="space-y-3">
-                            <a
-                                href="/dashboard/shifts"
+                            <button
+                                onClick={handleOpenRegister}
                                 className="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg hover:shadow-lg transition-all"
                             >
-                                ▶️ Start a New Shift
-                            </a>
-                            <button
-                                onClick={loadActiveShift}
-                                className="w-full py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
-                            >
-                                🔄 Check Again
+                                ✅ Open Register
                             </button>
                             <a
                                 href="/dashboard"
@@ -1869,6 +2113,16 @@ export default function POSPage() {
                                             <p className="font-semibold text-green-700">{shift.name}</p>
                                         </div>
                                     </div>
+                                )}
+                                {/* Close Register Button */}
+                                {hasActiveShift && (
+                                    <button
+                                        onClick={handleCloseRegister}
+                                        disabled={isLoadingRegister}
+                                        className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                        🔴 Close Register
+                                    </button>
                                 )}
                             </div>
                         </div>
@@ -1949,59 +2203,67 @@ export default function POSPage() {
                         </div>
                     </div>
 
-                    {/* Quick Action Buttons - Original Design */}
-                    <div className="p-3 bg-gradient-to-r from-gray-100 via-white to-gray-100 border-t border-gray-200">
+                    {/* NEW Quick Action Buttons Row */}
+                    <div className="px-3 pt-3 pb-1 bg-gradient-to-r from-indigo-50 via-white to-indigo-50 border-t border-gray-200">
+                        <div className="grid grid-cols-6 gap-2">
+                            <a href="/dashboard" className="group p-2.5 bg-gradient-to-br from-indigo-500 via-indigo-600 to-purple-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-indigo-500/40 transition-all hover:scale-105 cursor-pointer">
+                                <span className="text-lg block group-hover:animate-bounce">📊</span>
+                                <span className="text-[10px] font-bold">Dashboard</span>
+                            </a>
+                            <a href="/dashboard/products" className="group p-2.5 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-orange-500/40 transition-all hover:scale-105 cursor-pointer">
+                                <span className="text-lg block group-hover:animate-bounce">🍽️</span>
+                                <span className="text-[10px] font-bold">Dish Products</span>
+                            </a>
+                            <a href="/dashboard/recipe" className="group p-2.5 bg-gradient-to-br from-amber-500 via-yellow-500 to-orange-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-amber-500/40 transition-all hover:scale-105 cursor-pointer">
+                                <span className="text-lg block group-hover:animate-bounce">📝</span>
+                                <span className="text-[10px] font-bold">Recipe</span>
+                            </a>
+                            <a href="/dashboard/sales" className="group p-2.5 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-green-500/40 transition-all hover:scale-105 cursor-pointer">
+                                <span className="text-lg block group-hover:animate-bounce">💰</span>
+                                <span className="text-[10px] font-bold">Today Sales</span>
+                            </a>
+                            <a href="/dashboard/shift-reports" className="group p-2.5 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105 cursor-pointer">
+                                <span className="text-lg block group-hover:animate-bounce">🧾</span>
+                                <span className="text-[10px] font-bold">Register Reports</span>
+                            </a>
+                            <a href="/dashboard/dish-stock" className="group p-2.5 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-teal-500/40 transition-all hover:scale-105 cursor-pointer">
+                                <span className="text-lg block group-hover:animate-bounce">📦</span>
+                                <span className="text-[10px] font-bold">Available Stock</span>
+                            </a>
+                        </div>
+                    </div>
+                    {/* Original Quick Action Buttons */}
+                    <div className="px-3 pb-3 pt-1 bg-gradient-to-r from-gray-100 via-white to-gray-100">
                         <div className="grid grid-cols-8 gap-2">
-                            <a
-                                href="/dashboard/bill-payment"
-                                className="group p-3 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-orange-500/40 transition-all hover:scale-105 cursor-pointer"
-                            >
+                            <a href="/dashboard/bill-payment" className="group p-3 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-orange-500/40 transition-all hover:scale-105 cursor-pointer">
                                 <span className="text-lg block group-hover:animate-bounce">💰</span>
                                 <span className="text-[10px] font-bold">Receive Payment</span>
                             </a>
-                            <a
-                                href="/dashboard/bills"
-                                className="group p-3 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105 cursor-pointer"
-                            >
+                            <a href="/dashboard/bills" className="group p-3 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105 cursor-pointer">
                                 <span className="text-lg block group-hover:animate-bounce">📋</span>
                                 <span className="text-[10px] font-bold">My Bills</span>
                             </a>
-                            <a
-                                href="/dashboard/sales"
-                                className="group p-3 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-green-500/40 transition-all hover:scale-105 cursor-pointer"
-                            >
+                            <a href="/dashboard/sales" className="group p-3 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-green-500/40 transition-all hover:scale-105 cursor-pointer">
                                 <span className="text-lg block group-hover:animate-bounce">📊</span>
                                 <span className="text-[10px] font-bold">Day Sales</span>
                             </a>
-                            <button
-                                className="group p-3 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-purple-500/40 transition-all hover:scale-105"
-                            >
+                            <button className="group p-3 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-purple-500/40 transition-all hover:scale-105">
                                 <span className="text-lg block group-hover:animate-bounce">🔄</span>
                                 <span className="text-[10px] font-bold">Merge Bill</span>
                             </button>
-                            <button
-                                className="group p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-teal-500/40 transition-all hover:scale-105"
-                            >
+                            <button className="group p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-teal-500/40 transition-all hover:scale-105">
                                 <span className="text-lg block group-hover:animate-bounce">📈</span>
                                 <span className="text-[10px] font-bold">Sales Summary</span>
                             </button>
-                            <a
-                                href="/dashboard/bills?status=Pending"
-                                className="group p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-amber-500/40 transition-all hover:scale-105 cursor-pointer"
-                            >
+                            <a href="/dashboard/bills?status=Pending" className="group p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 rounded-xl text-white text-center hover:shadow-lg hover:shadow-amber-500/40 transition-all hover:scale-105 cursor-pointer">
                                 <span className="text-lg block group-hover:animate-bounce">⏳</span>
                                 <span className="text-[10px] font-bold">Pending Bills</span>
                             </a>
-                            <button
-                                onClick={clearCart}
-                                className="group p-3 bg-gradient-to-br from-gray-500 via-gray-600 to-slate-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-gray-500/40 transition-all hover:scale-105"
-                            >
+                            <button onClick={clearCart} className="group p-3 bg-gradient-to-br from-gray-500 via-gray-600 to-slate-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-gray-500/40 transition-all hover:scale-105">
                                 <span className="text-lg block group-hover:animate-bounce">🗑️</span>
                                 <span className="text-[10px] font-bold">Clear</span>
                             </button>
-                            <button
-                                className="group p-3 bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-rose-500/40 transition-all hover:scale-105"
-                            >
+                            <button className="group p-3 bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-rose-500/40 transition-all hover:scale-105">
                                 <span className="text-lg block group-hover:animate-bounce">🏁</span>
                                 <span className="text-[10px] font-bold">Closing Stock</span>
                             </button>
@@ -2022,6 +2284,29 @@ export default function POSPage() {
                                 </span>
                             </div>
                             <div className="flex gap-2">
+                                {/* Recall / Held Sales Button */}
+                                <button
+                                    onClick={() => setShowHeldSalesModal(true)}
+                                    className="relative p-2 hover:bg-amber-50 rounded-xl text-amber-500 transition-colors border border-amber-200"
+                                    title="Recall Held Sale"
+                                >
+                                    📋
+                                    {heldSales.length > 0 && (
+                                        <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center animate-pulse">
+                                            {heldSales.length}
+                                        </span>
+                                    )}
+                                </button>
+                                {/* Hold Current Sale */}
+                                {cart.length > 0 && (
+                                    <button
+                                        onClick={holdCurrentSale}
+                                        className="p-2 hover:bg-amber-50 rounded-xl text-amber-600 transition-colors border border-amber-200"
+                                        title="Hold Sale"
+                                    >
+                                        ⏸️
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => setShowRunningOrders(true)}
                                     className="relative p-2 hover:bg-orange-50 rounded-xl text-orange-500 transition-colors border border-orange-200"
@@ -2360,6 +2645,174 @@ export default function POSPage() {
                     title="✓ Tax Invoice (Paid)"
                     onPrint={printReceiptNow}
                 />
+
+            {/* Held Sales Modal */}
+            {showHeldSalesModal && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowHeldSalesModal(false)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
+                        <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 text-white flex items-center justify-between">
+                            <div>
+                                <h2 className="text-lg font-bold flex items-center gap-2">📋 Held Sales</h2>
+                                <p className="text-amber-100 text-xs mt-0.5">{heldSales.length} transaction{heldSales.length !== 1 ? 's' : ''} on hold</p>
+                            </div>
+                            <button onClick={() => setShowHeldSalesModal(false)} className="p-2 hover:bg-white/20 rounded-xl text-white text-lg">✕</button>
+                        </div>
+
+                        <div className="flex-1 overflow-auto p-4">
+                            {heldSales.length === 0 ? (
+                                <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                                    <span className="text-5xl mb-3">📋</span>
+                                    <p className="font-medium">No held sales</p>
+                                    <p className="text-sm">Hold a sale from the cart to see it here</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-3">
+                                    {heldSales.map(h => {
+                                        const heldTime = new Date(h.heldAt);
+                                        const minsAgo = Math.floor((Date.now() - heldTime.getTime()) / 60000);
+                                        const timeLabel = minsAgo < 1 ? 'Just now' : minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo / 60)}h ${minsAgo % 60}m ago`;
+                                        return (
+                                            <div key={h.id} className="bg-white rounded-2xl border-2 border-amber-200 shadow-sm hover:shadow-md transition-all p-4">
+                                                <div className="flex items-center justify-between mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-xl">🧾</span>
+                                                        <div>
+                                                            <p className="font-bold text-gray-800">{h.invoiceNo}</p>
+                                                            <p className="text-xs text-gray-500">⏱️ {timeLabel}{h.tableNo ? ` • Table ${h.tableNo}` : ''}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="text-lg font-black text-green-600">Ksh {h.total.toLocaleString()}</p>
+                                                        <p className="text-xs text-gray-500">{h.itemCount} item{h.itemCount !== 1 ? 's' : ''}</p>
+                                                    </div>
+                                                </div>
+
+                                                <div className="bg-gray-50 rounded-xl p-2.5 mb-3 max-h-[100px] overflow-y-auto">
+                                                    {h.cart.map((item, idx) => (
+                                                        <div key={idx} className="flex justify-between text-xs py-0.5">
+                                                            <span className="text-gray-600">{item.name} × {item.qty}</span>
+                                                            <span className="font-bold text-gray-800">Ksh {((item.price * item.qty) - item.discount).toLocaleString()}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+
+                                                <div className="flex gap-2">
+                                                    <button
+                                                        onClick={() => recallHeldSale(h.id)}
+                                                        className="flex-1 py-2.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all flex items-center justify-center gap-1.5"
+                                                    >
+                                                        <span>▶️</span> Recall Sale
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteHeldSale(h.id)}
+                                                        className="py-2.5 px-4 bg-red-50 text-red-500 rounded-xl font-bold text-sm hover:bg-red-100 transition-all"
+                                                    >
+                                                        🗑️
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="p-4 border-t border-gray-200">
+                            <button onClick={() => setShowHeldSalesModal(false)} className="w-full py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 transition-colors">Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Close Register Modal */}
+            {showCloseRegister && closeRegisterData && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-[480px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
+                        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            🔴 Close Register — End of Day Report
+                        </h3>
+
+                        <div className="space-y-2 mb-4">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sales Breakdown</p>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                <span className="text-gray-600">💵 Cash Sales</span>
+                                <span className="font-bold text-gray-800 text-lg">Ksh {closeRegisterData.totalCash.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                <span className="text-gray-600">📱 M-Pesa Sales</span>
+                                <span className="font-bold text-green-600 text-lg">Ksh {closeRegisterData.totalMpesa.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
+                                <span className="text-gray-600">📋 Credit Sales</span>
+                                <span className="font-bold text-orange-600 text-lg">Ksh {closeRegisterData.totalCredit.toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-4 text-white mb-4">
+                            <div className="flex justify-between items-center">
+                                <span className="font-medium">Total Sales ({closeRegisterData.orderCount} orders)</span>
+                                <span className="text-2xl font-bold">Ksh {closeRegisterData.totalSales.toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Deductions</p>
+                            <div className="flex justify-between items-center p-3 bg-red-50 rounded-xl border border-red-200">
+                                <span className="text-red-600">💰 Total Expenses</span>
+                                <span className="font-bold text-red-600 text-lg">-Ksh {closeRegisterData.totalExpenses.toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 mb-4">
+                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Cash Summary</p>
+                            <div className="flex justify-between items-center p-3 bg-green-50 rounded-xl">
+                                <span className="text-gray-600">🟢 Opening Cash</span>
+                                <span className="font-bold text-gray-800">Ksh {closeRegisterData.openingCash.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 bg-green-50 rounded-xl">
+                                <span className="text-gray-600">Expected in Drawer</span>
+                                <span className="font-bold text-gray-800">Ksh {(closeRegisterData.openingCash + closeRegisterData.totalCash - closeRegisterData.totalExpenses).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-4 text-white mb-4">
+                            <div className="flex justify-between items-center">
+                                <span className="font-bold text-lg">NET SALES</span>
+                                <span className="text-3xl font-bold">Ksh {closeRegisterData.netSales.toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className={`rounded-xl p-4 mb-6 ${(closeRegisterData?.profit || 0) >= 0 ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-gradient-to-r from-red-500 to-red-600'} text-white`}>
+                            <div className="flex justify-between items-center">
+                                <span className="font-bold text-lg">📈 PROFIT</span>
+                                <span className="text-3xl font-bold">Ksh {(closeRegisterData?.profit || 0).toLocaleString()}</span>
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => { setShowCloseRegister(false); setCloseRegisterData(null); }}
+                                className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={printCloseRegisterReport}
+                                className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                            >
+                                🖨️ Print Report
+                            </button>
+                            <button
+                                onClick={finalizeCloseRegister}
+                                className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all"
+                            >
+                                ✅ Close & Save
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             </div>
         </>
     );
