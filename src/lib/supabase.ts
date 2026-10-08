@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Main Hotel App Supabase (AlphaPlusWeb) - for all hotel data
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://enlqpifpxuecxxozyiak.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVubHFwaWZweHVlY3h4b3p5aWFrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjYwMjUzNjgsImV4cCI6MjA4MTYwMTM2OH0.-z3-2Mf3SkkZR3ZryOGyG-60jWERX9YLKIee048OziE';
+// Main Hotel App Supabase (AlphaPlusWeb) - NEW PROJECT 2026-10-08
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://zkamuhvrmazozhudbtuw.supabase.co';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InprYW11aHZybWF6b3podWRidHV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQyNDE3OTYsImV4cCI6MjA5OTgxNzc5Nn0.Y6gkKQDWuLxcmhlYTZvKase7MzDO_Ehymitef6OE5JU';
 
 // Create main Supabase client for hotel data
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
