@@ -4,6 +4,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
+// SHA-256 password hashing using Web Crypto API
+async function hashPassword(password: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 interface User {
     user_id: number;
     user_code: string;
@@ -171,7 +180,7 @@ export default function UsersPage() {
                 };
 
                 if (formData.password) {
-                    updateData.password_hash = formData.password;
+                    updateData.password_hash = await hashPassword(formData.password);
                 }
 
                 const { error } = await supabase
@@ -188,7 +197,7 @@ export default function UsersPage() {
                     .insert([{
                         user_code: null, // Let database handle or update after insert
                         user_name: formData.user_name,
-                        password_hash: formData.password || formData.pin,
+                        password_hash: formData.password ? await hashPassword(formData.password) : (formData.pin || ''),
                         name: formData.name,
                         user_type: formData.user_type,
                         email: formData.email || null,

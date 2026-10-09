@@ -7,6 +7,15 @@ import { loginThemes, LoginTheme } from './loginThemes';
 
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
+// SHA-256 password hashing using Web Crypto API
+async function hashPassword(password: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 interface LicenseStatus {
     valid: boolean;
     type?: string;
@@ -145,7 +154,8 @@ export default function LoginPage() {
         try {
             const { data, error: dbError } = await supabase.from('users').select('*').eq('user_name', username).eq('active', true).single();
             if (dbError || !data) { setError('Invalid username or password'); setIsLoading(false); return; }
-            if (data.password_hash === password || data.pin === password) {
+            const hashedPassword = await hashPassword(password);
+            if (data.password_hash === hashedPassword || data.pin === password) {
                 localStorage.setItem('user', JSON.stringify({ userId: data.user_id, userName: data.user_name, name: data.name, userType: data.user_type, email: data.email, isWaiter: false }));
                 router.push('/dashboard');
             } else { setError('Invalid username or password'); }
