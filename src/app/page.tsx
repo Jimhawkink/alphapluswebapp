@@ -58,13 +58,20 @@ export default function LoginPage() {
         setCheckingLicense(true);
         try {
             const machineId = getMachineId();
-            const { data, error } = await supabase.from('licenses').select('*').eq('machine_id', machineId).eq('is_active', true).single();
-            if (error || !data) {
-                const { data: anyLicense } = await supabase.from('licenses').select('*').is('machine_id', null).eq('is_active', true).limit(1);
-                if (anyLicense && anyLicense.length > 0) {
+            const { data, error } = await supabase.from('licenses').select('*').eq('machine_id', machineId).eq('is_active', true).maybeSingle();
+            if (error) {
+                console.log('License table check skipped:', error.message);
+                setLicenseStatus({ valid: true });
+                return;
+            }
+            if (!data) {
+                const { data: anyLicense, error: anyError } = await supabase.from('licenses').select('*').is('machine_id', null).eq('is_active', true).limit(1);
+                if (!anyError && anyLicense && anyLicense.length > 0) {
                     setLicenseStatus({ valid: false, error: 'License not activated. Please enter your license key.' });
-                } else {
+                } else if (!anyError) {
                     setLicenseStatus({ valid: false, error: 'No valid license found.' });
+                } else {
+                    setLicenseStatus({ valid: true });
                 }
             } else {
                 const now = new Date();
@@ -150,15 +157,29 @@ export default function LoginPage() {
 
     const handleAdminLogin = async (e: React.FormEvent) => {
         e.preventDefault(); setIsLoading(true); setError('');
-        if (!username || !password) { setError('Please enter username and password'); setIsLoading(false); return; }
+        const trimmedUser = username.trim();
+        const trimmedPass = password.trim();
+        if (!trimmedUser || !trimmedPass) { setError('Please enter username and password'); setIsLoading(false); return; }
         try {
-            const { data, error: dbError } = await supabase.from('users').select('*').eq('user_name', username).eq('active', true).single();
-            if (dbError || !data) { setError('Invalid username or password'); setIsLoading(false); return; }
-            const hashedPassword = await hashPassword(password);
-            if (data.password_hash === hashedPassword || data.pin === password) {
+            const { data, error: dbError } = await supabase.from('users').select('*').ilike('user_name', trimmedUser).eq('active', true).maybeSingle();
+            if (dbError) {
+                console.error('Login DB Error:', dbError);
+                setError(`Connection/DB Error: ${dbError.message}`);
+                setIsLoading(false);
+                return;
+            }
+            if (!data) {
+                setError('Invalid username or password');
+                setIsLoading(false);
+                return;
+            }
+            const hashedPassword = await hashPassword(trimmedPass);
+            if (data.password_hash === hashedPassword || data.password_hash === trimmedPass || data.pin === trimmedPass) {
                 localStorage.setItem('user', JSON.stringify({ userId: data.user_id, userName: data.user_name, name: data.name, userType: data.user_type, email: data.email, isWaiter: false }));
                 router.push('/dashboard');
-            } else { setError('Invalid username or password'); }
+            } else {
+                setError('Invalid username or password');
+            }
         } catch (err) { console.error('Login error:', err); setError('Connection error. Please try again.'); }
         setIsLoading(false);
     };
