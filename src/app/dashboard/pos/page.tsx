@@ -957,7 +957,6 @@ export default function POSPage() {
     const [shift, setShift] = useState<ShiftInfo | null>(null);
     const [hasActiveShift, setHasActiveShift] = useState(false);
     const [isLoadingShift, setIsLoadingShift] = useState(true);
-    const [showRegisterModal, setShowRegisterModal] = useState(true);
 
     // Food Order Notes state
     const [foodOrderNotes, setFoodOrderNotes] = useState<Array<{ note_id: number; note_text: string; icon: string; note_category: string }>>([]);
@@ -1038,6 +1037,8 @@ export default function POSPage() {
                 .from('shifts')
                 .select('*')
                 .eq('status', 'Open')
+                .order('shift_id', { ascending: false })
+                .limit(1)
                 .maybeSingle();
 
             if (!error && openShift) {
@@ -1050,13 +1051,12 @@ export default function POSPage() {
                 };
                 setShift(shiftObj);
                 setHasActiveShift(true);
-                setShowRegisterModal(false);
                 localStorage.setItem('alpha_hotel_active_shift', JSON.stringify(shiftObj));
                 setIsLoadingShift(false);
                 return;
             }
 
-            // 2. Try 'shift_instances' table if 'shifts' is empty or not found
+            // 2. Try 'shift_instances' table if 'shifts' is empty
             try {
                 const { data: openInstance } = await supabase
                     .from('shift_instances')
@@ -1074,31 +1074,20 @@ export default function POSPage() {
                     };
                     setShift(shiftObj);
                     setHasActiveShift(true);
-                    setShowRegisterModal(false);
                     localStorage.setItem('alpha_hotel_active_shift', JSON.stringify(shiftObj));
                     setIsLoadingShift(false);
                     return;
                 }
             } catch (_) {}
 
-            // 3. Check localStorage active shift
-            const localShift = localStorage.getItem('alpha_hotel_active_shift');
-            if (localShift) {
-                try {
-                    const parsed = JSON.parse(localShift);
-                    setShift(parsed);
-                    setHasActiveShift(true);
-                    setShowRegisterModal(false);
-                    setIsLoadingShift(false);
-                    return;
-                } catch (_) {}
-            }
-
             setShift(null);
             setHasActiveShift(false);
+            localStorage.removeItem('alpha_hotel_active_shift');
         } catch (err) {
             console.error('Error checking shift:', err);
+            setShift(null);
             setHasActiveShift(false);
+            localStorage.removeItem('alpha_hotel_active_shift');
         }
         setIsLoadingShift(false);
     }, []);
@@ -1211,11 +1200,10 @@ export default function POSPage() {
             setShift(activeShift);
             setHasActiveShift(true);
             setRegisterOpen(true);
-            setShowRegisterModal(false);
             setShowOpeningDrop(false);
             setOpeningDropAmount('');
             localStorage.setItem('alpha_hotel_active_shift', JSON.stringify(activeShift));
-            toast.success(`Register opened with Ksh ${amount.toLocaleString()} opening cash`);
+            toast.success(`Register opened with Ksh ${amount.toLocaleString()}! You can now make sales.`);
         } catch (err: any) {
             console.error('Open register error:', err);
             toast.error('Failed to open register: ' + err.message);
@@ -1497,17 +1485,6 @@ export default function POSPage() {
 
         loadInitialData();
     }, [loadActiveShift, loadHotelName, loadUnpaidOrders]);
-
-    // Close Register Modal on Escape key
-    useEffect(() => {
-        const handleKeyDown = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                setShowRegisterModal(false);
-            }
-        };
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, []);
 
     // ─── LOAD LOW STOCK NOTIFICATION (products with stock < 10) ───
     useEffect(() => {
@@ -2185,40 +2162,28 @@ export default function POSPage() {
 
     return (
         <>
-            {/* No Active Shift / Register Closed Warning */}
-            {!isLoadingShift && !hasActiveShift && showRegisterModal && (
-                <div 
-                    className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-                    onClick={(e) => {
-                        if (e.target === e.currentTarget) setShowRegisterModal(false);
-                    }}
-                >
-                    <div className="bg-white rounded-3xl p-8 w-full max-w-md text-center shadow-2xl relative">
-                        {/* Close button (Esc) */}
-                        <button
-                            type="button"
-                            onClick={() => setShowRegisterModal(false)}
-                            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 font-bold flex items-center justify-center transition-all"
-                            title="Close (Esc)"
-                        >
-                            ✕
-                        </button>
-                        <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+            {/* Register Closed Lockout Modal - Deny proceeding until register is opened */}
+            {!isLoadingShift && !hasActiveShift && (
+                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl p-8 w-full max-w-md text-center shadow-2xl relative border border-gray-100">
+                        <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/25">
                             <span className="text-4xl">🟢</span>
                         </div>
                         <h2 className="text-2xl font-bold text-gray-800 mb-2">Register is Closed</h2>
-                        <p className="text-gray-600 mb-6">
-                            Open the register with an opening cash float to start making sales.
+                        <p className="text-gray-600 mb-6 text-sm">
+                            Open the register with an opening cash float to start making sales. You must open the register to proceed.
                         </p>
 
                         <div className="mb-4">
-                            <label className="text-sm font-medium text-gray-600 mb-2 block text-left">💰 Opening Cash Amount</label>
+                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block text-left">
+                                💰 Opening Cash Float Amount
+                            </label>
                             <input
                                 type="number"
                                 value={openingDropAmount}
                                 onChange={(e) => setOpeningDropAmount(e.target.value)}
                                 placeholder="Enter amount (e.g., 5000)"
-                                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none text-xl font-bold text-center"
+                                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none text-2xl font-bold text-center text-gray-800"
                                 autoFocus
                             />
                         </div>
@@ -2228,41 +2193,32 @@ export default function POSPage() {
                                     key={amt}
                                     type="button"
                                     onClick={() => setOpeningDropAmount(amt.toString())}
-                                    className="py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-medium transition-colors text-sm"
+                                    className="py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-semibold transition-colors text-xs"
                                 >
-                                    {amt === 0 ? 'Zero' : `Ksh ${amt.toLocaleString()}`}
+                                    {amt === 0 ? 'Zero (0)' : `Ksh ${amt.toLocaleString()}`}
                                 </button>
                             ))}
                         </div>
 
-                        <div className="p-4 bg-green-50 rounded-xl border border-green-200 mb-4 text-center">
-                            <span className="text-green-700 font-medium text-sm">Opening Cash: </span>
-                            <span className="text-2xl font-bold text-green-600">Ksh {(Number(openingDropAmount) || 0).toLocaleString()}</span>
+                        <div className="p-4 bg-green-50 rounded-xl border border-green-200 mb-6 text-center">
+                            <span className="text-green-700 font-medium text-xs block mb-1">Starting Register Cash</span>
+                            <span className="text-2xl font-bold text-green-700">Ksh {(Number(openingDropAmount) || 0).toLocaleString()}</span>
                         </div>
 
                         <div className="space-y-3">
                             <button
                                 type="button"
                                 onClick={handleOpenRegister}
-                                className="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg hover:shadow-lg transition-all"
+                                className="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold text-base shadow-lg shadow-green-500/25 transition-all"
                             >
-                                ✅ Open Register
+                                ✅ Open Register to Proceed
                             </button>
-                            <div className="flex gap-2">
-                                <button
-                                    type="button"
-                                    onClick={() => setShowRegisterModal(false)}
-                                    className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-sm transition-all"
-                                >
-                                    Dismiss (Esc)
-                                </button>
-                                <a
-                                    href="/dashboard"
-                                    className="flex-1 py-3 text-gray-500 hover:text-gray-700 font-medium text-sm text-center flex items-center justify-center"
-                                >
-                                    ← Dashboard
-                                </a>
-                            </div>
+                            <a
+                                href="/dashboard"
+                                className="block w-full py-3 text-gray-400 hover:text-gray-600 font-medium text-xs text-center transition-colors"
+                            >
+                                ← Exit to Dashboard
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -2375,16 +2331,6 @@ export default function POSPage() {
                                         className="px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
                                     >
                                         🔴 Close
-                                    </button>
-                                )}
-                                {/* Open Register - Admin/Cashier only when closed */}
-                                {!isWaiterUser && !hasActiveShift && (
-                                    <button
-                                        onClick={() => setShowRegisterModal(true)}
-                                        className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 shadow-sm"
-                                        title="Open Register"
-                                    >
-                                        <span>🟢</span> Open Till
                                     </button>
                                 )}
                                 {/* Waiter Indicator + Logout */}
