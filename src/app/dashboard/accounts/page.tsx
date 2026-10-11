@@ -45,10 +45,17 @@ const TYPE_GRADIENTS: Record<string, string> = {
     Equity:    'from-purple-500 to-violet-600',
 };
 
-const emptyAccount = {
+const emptyAccount: {
+    account_code: string;
+    account_name: string;
+    account_type: 'Asset' | 'Liability' | 'Income' | 'Expense' | 'Equity';
+    balance: number;
+    description: string;
+    active: boolean;
+} = {
     account_code: '',
     account_name: '',
-    account_type: 'Asset' as const,
+    account_type: 'Asset',
     balance: 0,
     description: '',
     active: true,
