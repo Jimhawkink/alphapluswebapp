@@ -957,6 +957,7 @@ export default function POSPage() {
     const [shift, setShift] = useState<ShiftInfo | null>(null);
     const [hasActiveShift, setHasActiveShift] = useState(false);
     const [isLoadingShift, setIsLoadingShift] = useState(true);
+    const [showRegisterModal, setShowRegisterModal] = useState(true);
 
     // Food Order Notes state
     const [foodOrderNotes, setFoodOrderNotes] = useState<Array<{ note_id: number; note_text: string; icon: string; note_category: string }>>([]);
@@ -1028,33 +1029,73 @@ export default function POSPage() {
         }
     }, []);
 
-    // Load active shift from database
+    // Load active shift from database with fallbacks
     const loadActiveShift = useCallback(async () => {
         setIsLoadingShift(true);
         try {
+            // 1. Try 'shifts' table
             const { data: openShift, error } = await supabase
                 .from('shifts')
                 .select('*')
                 .eq('status', 'Open')
-                .single();
+                .maybeSingle();
 
-            if (error && error.code !== 'PGRST116') {
-                console.error('Error loading shift:', error);
-            }
-
-            if (openShift) {
-                setShift({
+            if (!error && openShift) {
+                const shiftObj: ShiftInfo = {
                     id: openShift.shift_id,
                     name: openShift.shift_type || 'Day Shift',
                     code: `SH-${openShift.shift_id}`,
                     startTime: openShift.start_time || '06:00',
                     openingCash: openShift.opening_cash || 0
-                });
+                };
+                setShift(shiftObj);
                 setHasActiveShift(true);
-            } else {
-                setShift(null);
-                setHasActiveShift(false);
+                setShowRegisterModal(false);
+                localStorage.setItem('alpha_hotel_active_shift', JSON.stringify(shiftObj));
+                setIsLoadingShift(false);
+                return;
             }
+
+            // 2. Try 'shift_instances' table if 'shifts' is empty or not found
+            try {
+                const { data: openInstance } = await supabase
+                    .from('shift_instances')
+                    .select('*')
+                    .eq('shift_status', 'Open')
+                    .maybeSingle();
+
+                if (openInstance) {
+                    const shiftObj: ShiftInfo = {
+                        id: openInstance.shift_instance_id,
+                        name: 'Day Shift',
+                        code: `SH-${openInstance.shift_instance_id}`,
+                        startTime: openInstance.start_time ? new Date(openInstance.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '06:00',
+                        openingCash: openInstance.opening_cash || 0
+                    };
+                    setShift(shiftObj);
+                    setHasActiveShift(true);
+                    setShowRegisterModal(false);
+                    localStorage.setItem('alpha_hotel_active_shift', JSON.stringify(shiftObj));
+                    setIsLoadingShift(false);
+                    return;
+                }
+            } catch (_) {}
+
+            // 3. Check localStorage active shift
+            const localShift = localStorage.getItem('alpha_hotel_active_shift');
+            if (localShift) {
+                try {
+                    const parsed = JSON.parse(localShift);
+                    setShift(parsed);
+                    setHasActiveShift(true);
+                    setShowRegisterModal(false);
+                    setIsLoadingShift(false);
+                    return;
+                } catch (_) {}
+            }
+
+            setShift(null);
+            setHasActiveShift(false);
         } catch (err) {
             console.error('Error checking shift:', err);
             setHasActiveShift(false);
@@ -1122,27 +1163,58 @@ export default function POSPage() {
     const handleOpenRegister = async () => {
         const amount = Number(openingDropAmount) || 0;
         try {
-            const { data: newShift, error } = await supabase.from('shifts').insert({
-                shift_date: new Date().toISOString().split('T')[0],
-                shift_type: 'Day',
-                start_time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                opening_cash: amount,
-                status: 'Open',
-                opened_by: 'Cashier'
-            }).select('shift_id').single();
+            let shiftId = Date.now();
+            let openedInDb = false;
 
-            if (error) throw error;
-            setShift({
-                id: newShift.shift_id,
+            // 1. Try 'shifts' table
+            try {
+                const { data: newShift, error } = await supabase.from('shifts').insert({
+                    shift_date: new Date().toISOString().split('T')[0],
+                    shift_type: 'Day',
+                    start_time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                    opening_cash: amount,
+                    status: 'Open',
+                    opened_by: loggedInUserName || 'Cashier'
+                }).select('shift_id').single();
+
+                if (!error && newShift) {
+                    shiftId = newShift.shift_id;
+                    openedInDb = true;
+                }
+            } catch (_) {}
+
+            // 2. If 'shifts' didn't work, try 'shift_instances' table
+            if (!openedInDb) {
+                try {
+                    const { data: newInstance, error: instError } = await supabase.from('shift_instances').insert({
+                        shift_date: new Date().toISOString().split('T')[0],
+                        user_id: loggedInUserName || 'Cashier',
+                        opening_cash: amount,
+                        shift_status: 'Open'
+                    }).select('shift_instance_id').single();
+
+                    if (!instError && newInstance) {
+                        shiftId = newInstance.shift_instance_id;
+                        openedInDb = true;
+                    }
+                } catch (_) {}
+            }
+
+            const activeShift: ShiftInfo = {
+                id: shiftId,
                 name: 'Day Shift',
-                code: `SH-${newShift.shift_id}`,
+                code: `SH-${shiftId}`,
                 startTime: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
                 openingCash: amount
-            });
+            };
+
+            setShift(activeShift);
             setHasActiveShift(true);
             setRegisterOpen(true);
+            setShowRegisterModal(false);
             setShowOpeningDrop(false);
             setOpeningDropAmount('');
+            localStorage.setItem('alpha_hotel_active_shift', JSON.stringify(activeShift));
             toast.success(`Register opened with Ksh ${amount.toLocaleString()} opening cash`);
         } catch (err: any) {
             console.error('Open register error:', err);
@@ -1191,21 +1263,32 @@ export default function POSPage() {
     // Finalize close register
     const finalizeCloseRegister = async () => {
         if (shift && closeRegisterData) {
-            await supabase.from('shifts').update({
-                end_time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                closing_cash: closeRegisterData.totalCash,
-                total_sales: closeRegisterData.totalSales,
-                total_expenses: closeRegisterData.totalExpenses,
-                net_sales: closeRegisterData.netSales,
-                status: 'Closed',
-                closed_by: 'Cashier'
-            }).eq('shift_id', shift.id);
+            try {
+                await supabase.from('shifts').update({
+                    end_time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                    closing_cash: closeRegisterData.totalCash,
+                    total_sales: closeRegisterData.totalSales,
+                    total_expenses: closeRegisterData.totalExpenses,
+                    net_sales: closeRegisterData.netSales,
+                    status: 'Closed',
+                    closed_by: loggedInUserName || 'Cashier'
+                }).eq('shift_id', shift.id);
+            } catch (_) {}
+
+            try {
+                await supabase.from('shift_instances').update({
+                    end_time: new Date().toISOString(),
+                    closing_cash: closeRegisterData.totalCash,
+                    shift_status: 'Closed'
+                }).eq('shift_instance_id', shift.id);
+            } catch (_) {}
         }
         setRegisterOpen(false);
         setHasActiveShift(false);
         setShift(null);
         setShowCloseRegister(false);
         setCloseRegisterData(null);
+        localStorage.removeItem('alpha_hotel_active_shift');
         toast.success('Register closed successfully');
     };
 
@@ -1261,41 +1344,47 @@ export default function POSPage() {
     const loadProducts = useCallback(async () => {
         setIsLoadingProducts(true);
         try {
-            // Load products
+            // Load products - query active products safely
             const { data, error } = await supabase
                 .from('products')
                 .select('*')
                 .eq('active', true)
-                .eq('show_ps', true) // Only show products marked to show in POS
                 .order('product_name');
 
-            if (error) throw error;
+            if (error) {
+                console.error('Error fetching products:', error);
+                throw error;
+            }
+
+            // Filter products designated for POS
+            const availableProducts = (data || []).filter(p => p.show_in_pos !== false && p.show_ps !== false);
 
             // Load batch stock for all products
-            const { data: batchData } = await supabase
-                .from('production_batches')
-                .select('product_id, qty_remaining')
-                .eq('status', 'In Stock')
-                .gt('qty_remaining', 0);
-
-            // Calculate total available stock per product from batches
             const stockByProduct: Record<number, number> = {};
-            (batchData || []).forEach((batch) => {
-                const pid = batch.product_id;
-                stockByProduct[pid] = (stockByProduct[pid] || 0) + (batch.qty_remaining || 0);
-            });
+            try {
+                const { data: batchData } = await supabase
+                    .from('production_batches')
+                    .select('product_id, qty_remaining')
+                    .eq('status', 'In Stock')
+                    .gt('qty_remaining', 0);
+
+                (batchData || []).forEach((batch) => {
+                    const pid = batch.product_id;
+                    stockByProduct[pid] = (stockByProduct[pid] || 0) + (batch.qty_remaining || 0);
+                });
+            } catch (_) {}
 
             // Transform database products to POS format
-            const posProducts: Product[] = (data || []).map(p => ({
+            const posProducts: Product[] = availableProducts.map(p => ({
                 id: p.pid,
                 name: p.product_name,
                 price: p.sales_cost || 0,
                 purchasePrice: p.purchase_cost || 0,
-                category: p.category || 'Uncategorized',
-                stock: stockByProduct[p.pid] || 0, // Stock from production batches
+                category: p.category || 'General',
+                stock: stockByProduct[p.pid] !== undefined ? stockByProduct[p.pid] : 99,
                 color: p.button_ui_color || 'from-blue-400 to-blue-600',
                 barcode: p.barcode,
-                hasBatches: (stockByProduct[p.pid] || 0) > 0, // Has batches if stock > 0
+                hasBatches: (stockByProduct[p.pid] || 0) > 0,
             }));
 
             setProducts(posProducts);
@@ -1305,9 +1394,9 @@ export default function POSPage() {
             const uniqueCategories = ['All', ...Array.from(categorySet)];
             setCategories(uniqueCategories);
 
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error loading products:', err);
-            toast.error('Failed to load products');
+            toast.error('Failed to load products: ' + (err?.message || 'Database error'));
         }
         setIsLoadingProducts(false);
     }, []);
@@ -1408,6 +1497,17 @@ export default function POSPage() {
 
         loadInitialData();
     }, [loadActiveShift, loadHotelName, loadUnpaidOrders]);
+
+    // Close Register Modal on Escape key
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                setShowRegisterModal(false);
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, []);
 
     // ─── LOAD LOW STOCK NOTIFICATION (products with stock < 10) ───
     useEffect(() => {
@@ -2086,9 +2186,23 @@ export default function POSPage() {
     return (
         <>
             {/* No Active Shift / Register Closed Warning */}
-            {!isLoadingShift && !hasActiveShift && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-                    <div className="bg-white rounded-3xl p-8 w-full max-w-md text-center shadow-2xl">
+            {!isLoadingShift && !hasActiveShift && showRegisterModal && (
+                <div 
+                    className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setShowRegisterModal(false);
+                    }}
+                >
+                    <div className="bg-white rounded-3xl p-8 w-full max-w-md text-center shadow-2xl relative">
+                        {/* Close button (Esc) */}
+                        <button
+                            type="button"
+                            onClick={() => setShowRegisterModal(false)}
+                            className="absolute top-4 right-4 w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-800 font-bold flex items-center justify-center transition-all"
+                            title="Close (Esc)"
+                        >
+                            ✕
+                        </button>
                         <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
                             <span className="text-4xl">🟢</span>
                         </div>
@@ -2112,6 +2226,7 @@ export default function POSPage() {
                             {[0, 1000, 2000, 5000].map(amt => (
                                 <button
                                     key={amt}
+                                    type="button"
                                     onClick={() => setOpeningDropAmount(amt.toString())}
                                     className="py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-medium transition-colors text-sm"
                                 >
@@ -2127,17 +2242,27 @@ export default function POSPage() {
 
                         <div className="space-y-3">
                             <button
+                                type="button"
                                 onClick={handleOpenRegister}
                                 className="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg hover:shadow-lg transition-all"
                             >
                                 ✅ Open Register
                             </button>
-                            <a
-                                href="/dashboard"
-                                className="block w-full py-3 text-gray-500 hover:text-gray-700 font-medium"
-                            >
-                                ← Back to Dashboard
-                            </a>
+                            <div className="flex gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRegisterModal(false)}
+                                    className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-sm transition-all"
+                                >
+                                    Dismiss (Esc)
+                                </button>
+                                <a
+                                    href="/dashboard"
+                                    className="flex-1 py-3 text-gray-500 hover:text-gray-700 font-medium text-sm text-center flex items-center justify-center"
+                                >
+                                    ← Dashboard
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -2250,6 +2375,16 @@ export default function POSPage() {
                                         className="px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
                                     >
                                         🔴 Close
+                                    </button>
+                                )}
+                                {/* Open Register - Admin/Cashier only when closed */}
+                                {!isWaiterUser && !hasActiveShift && (
+                                    <button
+                                        onClick={() => setShowRegisterModal(true)}
+                                        className="px-2.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-semibold transition-colors flex items-center gap-1 shadow-sm"
+                                        title="Open Register"
+                                    >
+                                        <span>🟢</span> Open Till
                                     </button>
                                 )}
                                 {/* Waiter Indicator + Logout */}
