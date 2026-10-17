@@ -287,6 +287,7 @@ const buildMenu = (): MenuSection[] => [
             {
                 name: 'Inventory', icon: Icons.inventory, id: 'inventory',
                 subItems: [
+                    { name: '🏪 Stores', icon: Icons.inventory, href: '/dashboard/stores', badge: 'NEW' },
                     { name: 'Dish Stock', icon: Icons.doc, href: '/dashboard/dish-stock' },
                     { name: 'Ingredient Stock', icon: Icons.doc, href: '/dashboard/ingredient-stock' },
                     { name: 'Stock Transfer', icon: Icons.transfer, href: '/dashboard/stock-transfer' },
