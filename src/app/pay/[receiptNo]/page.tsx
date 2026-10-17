@@ -25,6 +25,7 @@ interface Sale {
     sale_datetime: string;
     waiter_name?: string;
     table_no?: string;
+    mpesa_code?: string;
 }
 
 type PaymentState = 'idle' | 'sending' | 'waiting' | 'success' | 'insufficient' | 'cancelled' | 'failed' | 'timeout';
