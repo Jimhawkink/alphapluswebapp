@@ -52,10 +52,9 @@ export default function PurchasesPage() {
     const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
     const [isLoadingItems, setIsLoadingItems] = useState(false);
 
-    // Marking paid
+    // Marking paid / deleting
     const [markingPaid, setMarkingPaid] = useState<number | null>(null);
     const [deletingId, setDeletingId] = useState<number | null>(null);
-
     const [tableMissing, setTableMissing] = useState(false);
 
     const loadPurchases = useCallback(async () => {
@@ -203,8 +202,8 @@ export default function PurchasesPage() {
     }), [filteredSorted]);
 
     const SortIcon = ({ col }: { col: SortKey }) => (
-        <span className="ml-1 text-xs opacity-60">
-            {sortKey === col ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}
+        <span className="ml-1 text-[10px] text-slate-400">
+            {sortKey === col ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
         </span>
     );
 
@@ -215,29 +214,40 @@ export default function PurchasesPage() {
     const hasFilters = searchQuery || dateFrom || dateTo || statusFilter !== 'All' || paymentFilter !== 'All' || supplierFilter !== 'All';
 
     return (
-        <div className="flex gap-0 h-full" style={{ fontFamily: "'Inter','Segoe UI',system-ui,sans-serif" }}>
+        <div className="flex gap-4 h-full" style={{ fontFamily: "'Inter','Segoe UI',system-ui,sans-serif" }}>
             {/* Main Content */}
-            <div className={`flex-1 space-y-5 transition-all duration-300 ${selectedPurchase ? 'pr-2' : ''}`}>
+            <div className="flex-1 space-y-4 transition-all">
 
-                {/* ── HEADER ── */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 p-6 shadow-2xl">
-                    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 20% 50%, white 1px, transparent 1px), radial-gradient(circle at 80% 20%, white 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
-                    <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                        <div>
-                            <h1 className="text-3xl font-black text-white flex items-center gap-3">
-                                <span className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-2xl border border-white/30 shadow-lg">📋</span>
-                                Purchase Records
-                            </h1>
-                            <p className="text-blue-100 mt-1 font-medium">Complete purchase history • Real-time sync</p>
+                {/* ── COMPACT GLASSMORPHIIC HEADER ── */}
+                <div className="bg-white/70 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-4 shadow-sm">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500/10 via-blue-500/10 to-teal-500/10 border border-indigo-200/50 flex items-center justify-center text-indigo-600 text-lg shadow-xs">
+                                📋
+                            </div>
+                            <div>
+                                <h1 className="text-xl font-bold text-slate-800 tracking-tight">Purchase Records</h1>
+                                <p className="text-xs text-slate-500">Track and manage inventory purchase history</p>
+                            </div>
                         </div>
-                        <div className="flex flex-wrap gap-3">
-                            <button onClick={exportCSV} className="flex items-center gap-2 px-5 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-xl font-semibold hover:bg-white/30 border border-white/30 transition-all hover:scale-105 active:scale-95 shadow">
-                                📥 Export CSV
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={exportCSV}
+                                className="px-3.5 py-2 bg-white/80 hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-xs hover:border-slate-300 transition-all flex items-center gap-1.5"
+                            >
+                                <span>📥</span> Export CSV
                             </button>
-                            <a href="/dashboard/purchase" className="flex items-center gap-2 px-5 py-2.5 bg-white text-indigo-700 rounded-xl font-bold hover:shadow-xl transition-all hover:scale-105 active:scale-95 shadow-lg">
-                                ➕ New Purchase
+                            <a
+                                href="/dashboard/purchase"
+                                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+                            >
+                                <span>➕</span> New Purchase
                             </a>
-                            <button onClick={loadPurchases} className="flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-xl font-semibold hover:bg-white/30 border border-white/30 transition-all">
+                            <button
+                                onClick={loadPurchases}
+                                title="Refresh"
+                                className="p-2 bg-white/80 hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-xs shadow-xs transition-all"
+                            >
                                 🔄
                             </button>
                         </div>
@@ -246,290 +256,273 @@ export default function PurchasesPage() {
 
                 {/* ── TABLE SETUP NOTICE (IF TABLE NOT YET CREATED IN SUPABASE) ── */}
                 {tableMissing && (
-                    <div className="bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-red-500/15 border-2 border-amber-400/50 rounded-2xl p-5 shadow-lg">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                            <div className="flex items-start gap-3">
-                                <span className="text-3xl">⚠️</span>
+                    <div className="bg-amber-500/10 backdrop-blur-md border border-amber-300/60 rounded-2xl p-3.5 shadow-xs">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                            <div className="flex items-center gap-2.5">
+                                <span className="text-xl">⚠️</span>
                                 <div>
-                                    <h3 className="font-bold text-gray-800 text-base">Supabase Table Setup Required</h3>
-                                    <p className="text-sm text-gray-600 mt-0.5">
-                                        The <code className="bg-white px-2 py-0.5 rounded font-mono font-bold text-amber-800 border border-amber-200">purchases</code> and <code className="bg-white px-2 py-0.5 rounded font-mono font-bold text-amber-800 border border-amber-200">purchase_products</code> tables have not been created yet in your Supabase project.
-                                    </p>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        Open your Supabase SQL editor and run the setup script to enable storing purchase orders and items.
+                                    <h3 className="font-semibold text-slate-800 text-xs">Supabase Table Setup Required</h3>
+                                    <p className="text-[11px] text-slate-600">
+                                        The <code className="bg-white/80 px-1.5 py-0.5 rounded font-mono text-amber-800 border border-amber-200 text-[10px]">purchases</code> and <code className="bg-white/80 px-1.5 py-0.5 rounded font-mono text-amber-800 border border-amber-200 text-[10px]">purchase_products</code> tables need to be created in your Supabase database.
                                     </p>
                                 </div>
                             </div>
-                            <div className="flex gap-2 flex-shrink-0">
+                            <div className="flex items-center gap-2 flex-shrink-0">
                                 <a
                                     href="https://supabase.com/dashboard/project/ywsstybsffcipaqtkjjl/sql/new"
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="px-4 py-2.5 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-xl font-bold text-sm shadow hover:shadow-md transition-all flex items-center gap-1.5"
+                                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs transition-all shadow-xs"
                                 >
-                                    🚀 Open Supabase SQL Editor
+                                    Open SQL Editor ↗
                                 </a>
-                                <button
-                                    onClick={() => {
-                                        const sql = `-- Run this in Supabase SQL Editor:
-CREATE TABLE IF NOT EXISTS public.purchases (
-  purchase_id integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-  purchase_no character varying(50) NOT NULL UNIQUE,
-  purchase_date date NOT NULL DEFAULT CURRENT_DATE,
-  supplier_id integer,
-  supplier_name character varying(255),
-  supplier_invoice character varying(100),
-  sub_total numeric(15,2) DEFAULT 0,
-  discount numeric(15,2) DEFAULT 0,
-  vat numeric(15,2) DEFAULT 0,
-  grand_total numeric(15,2) DEFAULT 0,
-  status character varying(50) DEFAULT 'Completed',
-  payment_status character varying(50) DEFAULT 'Paid',
-  notes text,
-  created_by character varying(100),
-  created_at timestamp with time zone DEFAULT now(),
-  updated_at timestamp with time zone DEFAULT now()
-);
-CREATE TABLE IF NOT EXISTS public.purchase_products (
-  pp_id integer GENERATED BY DEFAULT AS IDENTITY PRIMARY KEY,
-  purchase_id integer NOT NULL REFERENCES public.purchases(purchase_id) ON DELETE CASCADE,
-  product_id integer,
-  product_code character varying(100),
-  product_name character varying(255) NOT NULL,
-  unit character varying(50) DEFAULT 'PCS',
-  quantity numeric(15,3) NOT NULL DEFAULT 0,
-  rate numeric(15,2) NOT NULL DEFAULT 0,
-  total_amount numeric(15,2) NOT NULL DEFAULT 0,
-  created_at timestamp with time zone DEFAULT now()
-);
-ALTER TABLE public.purchases DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.purchase_products DISABLE ROW LEVEL SECURITY;
-GRANT ALL ON public.purchases TO anon, authenticated, service_role;
-GRANT ALL ON public.purchase_products TO anon, authenticated, service_role;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, service_role;`;
-                                        navigator.clipboard.writeText(sql);
-                                        toast.success('SQL copied to clipboard!');
-                                    }}
-                                    className="px-4 py-2.5 bg-white border border-gray-200 text-gray-700 rounded-xl font-semibold text-sm hover:bg-gray-50 transition-all flex items-center gap-1"
-                                >
-                                    📋 Copy SQL
-                                </button>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* ── STATS CARDS ── */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {/* ── REFINED SLIM STATS CARDS (FAINTED COLORS & GLASSMORPHISM) ── */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                     {[
-                        { label: 'Purchases', value: stats.total, sub: 'filtered', icon: '📋', from: 'from-blue-500', to: 'to-indigo-600' },
-                        { label: 'Total Value', value: `Ksh ${stats.amount.toLocaleString()}`, sub: 'grand total', icon: '💰', from: 'from-violet-500', to: 'to-purple-600' },
-                        { label: 'Paid Orders', value: stats.paid, sub: '', icon: '✅', from: 'from-emerald-500', to: 'to-green-600' },
-                        { label: 'Paid Value', value: `Ksh ${stats.paidAmount.toLocaleString()}`, sub: 'cleared', icon: '💵', from: 'from-cyan-500', to: 'to-teal-600' },
-                        { label: 'Unpaid Orders', value: stats.unpaid, sub: '', icon: '⏳', from: 'from-orange-500', to: 'to-amber-600' },
-                        { label: 'Unpaid Value', value: `Ksh ${stats.unpaidAmount.toLocaleString()}`, sub: 'outstanding', icon: '🔴', from: 'from-red-500', to: 'to-rose-600' },
+                        { label: 'Total Purchases', value: stats.total, badge: 'orders', bg: 'bg-blue-500/5', border: 'border-blue-200/50', text: 'text-blue-700', icon: '📋' },
+                        { label: 'Total Value', value: `Ksh ${stats.amount.toLocaleString()}`, badge: 'gross', bg: 'bg-indigo-500/5', border: 'border-indigo-200/50', text: 'text-indigo-700', icon: '💰' },
+                        { label: 'Paid Orders', value: stats.paid, badge: 'cleared', bg: 'bg-emerald-500/5', border: 'border-emerald-200/50', text: 'text-emerald-700', icon: '✅' },
+                        { label: 'Paid Value', value: `Ksh ${stats.paidAmount.toLocaleString()}`, badge: 'settled', bg: 'bg-teal-500/5', border: 'border-teal-200/50', text: 'text-teal-700', icon: '💵' },
+                        { label: 'Unpaid Orders', value: stats.unpaid, badge: 'pending', bg: 'bg-amber-500/5', border: 'border-amber-200/50', text: 'text-amber-700', icon: '⏳' },
+                        { label: 'Unpaid Value', value: `Ksh ${stats.unpaidAmount.toLocaleString()}`, badge: 'due', bg: 'bg-rose-500/5', border: 'border-rose-200/50', text: 'text-rose-700', icon: '🔴' },
                     ].map((s, i) => (
-                        <div key={i} className={`bg-gradient-to-br ${s.from} ${s.to} rounded-2xl p-4 text-white shadow-lg hover:shadow-xl hover:scale-[1.02] transition-all`}>
-                            <div className="flex items-center justify-between mb-2">
-                                <span className="text-2xl">{s.icon}</span>
-                                <span className="text-xs opacity-70 font-medium">{s.sub}</span>
+                        <div
+                            key={i}
+                            className={`p-3 rounded-xl bg-white/70 backdrop-blur-md border ${s.border} shadow-xs hover:border-slate-300 transition-all`}
+                        >
+                            <div className="flex items-center justify-between">
+                                <span className="text-base">{s.icon}</span>
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${s.bg} ${s.text}`}>
+                                    {s.badge}
+                                </span>
                             </div>
-                            <p className="text-[11px] font-medium opacity-80 uppercase tracking-wide">{s.label}</p>
-                            <p className="text-lg font-black mt-0.5 leading-tight">{s.value}</p>
+                            <p className="text-[11px] font-medium text-slate-500 mt-2 truncate">{s.label}</p>
+                            <p className="text-sm font-bold text-slate-800 mt-0.5 truncate">{s.value}</p>
                         </div>
                     ))}
                 </div>
 
-                {/* ── FILTERS ── */}
-                <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-5 border border-gray-100 shadow-lg">
-                    <div className="flex items-center justify-between mb-4">
-                        <h3 className="font-bold text-gray-700 flex items-center gap-2">🔍 Filters & Search</h3>
-                        {hasFilters && (
-                            <button onClick={clearFilters} className="text-xs px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 font-medium transition-all">
-                                ✕ Clear All
-                            </button>
-                        )}
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                {/* ── SLEEK TRANSLUCENT FILTERS BAR ── */}
+                <div className="bg-white/70 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-3.5 shadow-sm space-y-2.5">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
                         <div className="col-span-2 md:col-span-1">
-                            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">🔍 Search</label>
                             <input
                                 type="text"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                placeholder="Invoice / supplier..."
-                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 transition-all"
+                                placeholder="🔍 Search invoice/supplier..."
+                                className="w-full px-3 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
                             />
                         </div>
                         <div>
-                            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">📅 From</label>
-                            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)}
-                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition-all" />
+                            <input
+                                type="date"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                                className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+                            />
                         </div>
                         <div>
-                            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">📅 To</label>
-                            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)}
-                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition-all" />
+                            <input
+                                type="date"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                                className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-all"
+                            />
                         </div>
                         <div>
-                            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">📦 Status</label>
-                            <select value={statusFilter} onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition-all cursor-pointer">
-                                <option value="All">All Status</option>
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                                className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
+                            >
+                                <option value="All">All Statuses</option>
                                 <option value="Completed">Completed</option>
                                 <option value="Pending">Pending</option>
                                 <option value="Draft">Draft</option>
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">💳 Payment</label>
-                            <select value={paymentFilter} onChange={(e) => { setPaymentFilter(e.target.value); setCurrentPage(1); }}
-                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition-all cursor-pointer">
+                            <select
+                                value={paymentFilter}
+                                onChange={(e) => { setPaymentFilter(e.target.value); setCurrentPage(1); }}
+                                className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
+                            >
                                 <option value="All">All Payments</option>
                                 <option value="Paid">Paid</option>
                                 <option value="Unpaid">Unpaid</option>
                             </select>
                         </div>
                         <div>
-                            <label className="text-xs font-semibold text-gray-500 mb-1.5 block">🏢 Supplier</label>
-                            <select value={supplierFilter} onChange={(e) => { setSupplierFilter(e.target.value); setCurrentPage(1); }}
-                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-blue-400 transition-all cursor-pointer">
+                            <select
+                                value={supplierFilter}
+                                onChange={(e) => { setSupplierFilter(e.target.value); setCurrentPage(1); }}
+                                className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer truncate"
+                            >
                                 <option value="All">All Suppliers</option>
                                 {uniqueSuppliers.map(s => <option key={s} value={s}>{s}</option>)}
                             </select>
                         </div>
                     </div>
-                    {/* Active filter pills */}
+
                     {hasFilters && (
-                        <div className="flex flex-wrap gap-2 mt-3 pt-3 border-t border-gray-100">
-                            {searchQuery && <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">Search: {searchQuery}</span>}
-                            {statusFilter !== 'All' && <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-semibold">Status: {statusFilter}</span>}
-                            {paymentFilter !== 'All' && <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">Payment: {paymentFilter}</span>}
-                            {supplierFilter !== 'All' && <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-semibold">Supplier: {supplierFilter}</span>}
-                            {(dateFrom || dateTo) && <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-semibold">Date: {dateFrom || '...'} → {dateTo || '...'}</span>}
-                            <span className="px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-semibold">{filteredSorted.length} result{filteredSorted.length !== 1 ? 's' : ''}</span>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px]">
+                            <div className="flex flex-wrap gap-1.5 text-slate-600">
+                                <span className="font-medium text-slate-500">Active filters:</span>
+                                {searchQuery && <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded-md border border-blue-200/50">Search: {searchQuery}</span>}
+                                {statusFilter !== 'All' && <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-md border border-indigo-200/50">{statusFilter}</span>}
+                                {paymentFilter !== 'All' && <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded-md border border-emerald-200/50">{paymentFilter}</span>}
+                                {supplierFilter !== 'All' && <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded-md border border-purple-200/50">{supplierFilter}</span>}
+                                <span className="text-slate-400">({filteredSorted.length} matches)</span>
+                            </div>
+                            <button
+                                onClick={clearFilters}
+                                className="text-rose-600 hover:text-rose-700 font-medium hover:underline ml-auto"
+                            >
+                                Clear all
+                            </button>
                         </div>
                     )}
                 </div>
 
-                {/* ── DATA GRID ── */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-lg overflow-hidden">
+                {/* ── GLASSMORPHIC DATA GRID ── */}
+                <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
                     {isLoading ? (
-                        <div className="p-16 flex flex-col items-center gap-4">
-                            <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-                            <p className="text-gray-500 font-medium">Loading purchases...</p>
+                        <div className="p-12 flex flex-col items-center justify-center gap-3">
+                            <div className="w-8 h-8 border-2 border-slate-200 border-t-indigo-600 rounded-full animate-spin" />
+                            <p className="text-xs text-slate-500">Loading purchase records...</p>
                         </div>
                     ) : filteredSorted.length === 0 ? (
-                        <div className="p-16 text-center">
-                            <span className="text-6xl block mb-4">📭</span>
-                            <p className="text-gray-500 text-lg font-medium">No purchases found</p>
-                            <p className="text-gray-400 text-sm mt-1">Try adjusting your filters or create a new purchase</p>
-                            <a href="/dashboard/purchase" className="mt-4 inline-block px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all">
-                                ➕ Create Purchase
+                        <div className="p-12 text-center">
+                            <span className="text-4xl block mb-2 opacity-60">📭</span>
+                            <p className="text-sm font-semibold text-slate-700">No purchases found</p>
+                            <p className="text-xs text-slate-400 mt-0.5">Try adjusting your filters or record a new purchase order</p>
+                            <a
+                                href="/dashboard/purchase"
+                                className="mt-3 inline-block px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl text-xs font-semibold shadow-xs"
+                            >
+                                ➕ Record Purchase
                             </a>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
-                            <table className="w-full">
+                            <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-gradient-to-r from-blue-600 to-indigo-700 text-white">
-                                        <th className="text-left py-4 px-4 text-xs font-bold uppercase tracking-wide cursor-pointer hover:bg-white/10 transition-colors" onClick={() => toggleSort('purchase_no')}>
-                                            Invoice # <SortIcon col="purchase_no" />
+                                    <tr className="bg-slate-50/80 backdrop-blur-sm border-b border-slate-200/70 text-slate-600 text-[11px] font-semibold uppercase tracking-wider">
+                                        <th className="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100/60 transition-colors" onClick={() => toggleSort('purchase_no')}>
+                                            Invoice <SortIcon col="purchase_no" />
                                         </th>
-                                        <th className="text-left py-4 px-4 text-xs font-bold uppercase tracking-wide cursor-pointer hover:bg-white/10 transition-colors" onClick={() => toggleSort('purchase_date')}>
+                                        <th className="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100/60 transition-colors" onClick={() => toggleSort('purchase_date')}>
                                             Date <SortIcon col="purchase_date" />
                                         </th>
-                                        <th className="text-left py-4 px-4 text-xs font-bold uppercase tracking-wide cursor-pointer hover:bg-white/10 transition-colors" onClick={() => toggleSort('supplier_name')}>
+                                        <th className="py-2.5 px-3.5 cursor-pointer hover:bg-slate-100/60 transition-colors" onClick={() => toggleSort('supplier_name')}>
                                             Supplier <SortIcon col="supplier_name" />
                                         </th>
-                                        <th className="text-left py-4 px-4 text-xs font-bold uppercase tracking-wide hidden lg:table-cell">Supp. Invoice</th>
-                                        <th className="text-right py-4 px-4 text-xs font-bold uppercase tracking-wide hidden md:table-cell">Sub Total</th>
-                                        <th className="text-right py-4 px-4 text-xs font-bold uppercase tracking-wide hidden md:table-cell">VAT</th>
-                                        <th className="text-right py-4 px-4 text-xs font-bold uppercase tracking-wide cursor-pointer hover:bg-white/10 transition-colors" onClick={() => toggleSort('grand_total')}>
-                                            Grand Total <SortIcon col="grand_total" />
+                                        <th className="py-2.5 px-3.5 hidden lg:table-cell">Supp. Ref</th>
+                                        <th className="py-2.5 px-3.5 text-right hidden md:table-cell">Sub Total</th>
+                                        <th className="py-2.5 px-3.5 text-right hidden md:table-cell">VAT</th>
+                                        <th className="py-2.5 px-3.5 text-right cursor-pointer hover:bg-slate-100/60 transition-colors" onClick={() => toggleSort('grand_total')}>
+                                            Total <SortIcon col="grand_total" />
                                         </th>
-                                        <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wide">Status</th>
-                                        <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wide">Payment</th>
-                                        <th className="text-center py-4 px-4 text-xs font-bold uppercase tracking-wide">Actions</th>
+                                        <th className="py-2.5 px-3.5 text-center">Status</th>
+                                        <th className="py-2.5 px-3.5 text-center">Payment</th>
+                                        <th className="py-2.5 px-3.5 text-center">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {paginated.map((purchase, idx) => {
+                                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                                    {paginated.map((purchase) => {
                                         const isSelected = selectedPurchase?.purchase_id === purchase.purchase_id;
                                         return (
                                             <tr
                                                 key={purchase.purchase_id}
                                                 onClick={() => viewDetails(purchase)}
-                                                className={`border-t border-gray-50 cursor-pointer transition-all duration-150 ${isSelected ? 'bg-blue-50 border-l-4 border-l-blue-500' : idx % 2 === 0 ? 'bg-white hover:bg-blue-50/40' : 'bg-gray-50/40 hover:bg-blue-50/40'}`}
+                                                className={`cursor-pointer transition-colors ${
+                                                    isSelected
+                                                        ? 'bg-indigo-50/50 border-l-2 border-indigo-500'
+                                                        : 'hover:bg-slate-50/60'
+                                                }`}
                                             >
-                                                <td className="py-3.5 px-4">
-                                                    <span className="px-3 py-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-lg font-bold text-xs shadow-sm">
+                                                <td className="py-2.5 px-3.5 font-semibold text-slate-800">
+                                                    <span className="font-mono text-indigo-700 bg-indigo-500/10 px-2 py-0.5 rounded-md border border-indigo-200/50">
                                                         {purchase.purchase_no}
                                                     </span>
                                                 </td>
-                                                <td className="py-3.5 px-4">
-                                                    <div className="text-sm font-semibold text-gray-800">
+                                                <td className="py-2.5 px-3.5">
+                                                    <div className="font-medium text-slate-800">
                                                         {new Date(purchase.purchase_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </div>
-                                                    <div className="text-xs text-gray-400">{new Date(purchase.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</div>
                                                 </td>
-                                                <td className="py-3.5 px-4">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center text-white font-bold text-xs shadow-sm flex-shrink-0">
-                                                            {(purchase.supplier_name || 'U')[0].toUpperCase()}
-                                                        </div>
-                                                        <div>
-                                                            <p className="font-semibold text-gray-800 text-sm">{purchase.supplier_name || <span className="text-gray-400 italic">No Supplier</span>}</p>
-                                                            {purchase.created_by && <p className="text-xs text-gray-400">by {purchase.created_by}</p>}
-                                                        </div>
+                                                <td className="py-2.5 px-3.5">
+                                                    <div className="font-semibold text-slate-800 truncate max-w-[160px]">
+                                                        {purchase.supplier_name || <span className="text-slate-400 italic font-normal">Direct Vendor</span>}
                                                     </div>
                                                 </td>
-                                                <td className="py-3.5 px-4 hidden lg:table-cell">
+                                                <td className="py-2.5 px-3.5 hidden lg:table-cell">
                                                     {purchase.supplier_invoice ? (
-                                                        <span className="font-mono text-xs bg-yellow-50 text-yellow-700 px-2 py-1 rounded border border-yellow-200">{purchase.supplier_invoice}</span>
-                                                    ) : <span className="text-gray-300">—</span>}
+                                                        <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">
+                                                            {purchase.supplier_invoice}
+                                                        </span>
+                                                    ) : <span className="text-slate-300">—</span>}
                                                 </td>
-                                                <td className="py-3.5 px-4 text-right hidden md:table-cell">
-                                                    <span className="text-sm text-gray-600 font-medium">Ksh {(purchase.sub_total || 0).toLocaleString()}</span>
+                                                <td className="py-2.5 px-3.5 text-right hidden md:table-cell text-slate-600 font-mono">
+                                                    Ksh {(purchase.sub_total || 0).toLocaleString()}
                                                 </td>
-                                                <td className="py-3.5 px-4 text-right hidden md:table-cell">
-                                                    <span className="text-sm text-orange-600 font-medium">Ksh {(purchase.vat || 0).toLocaleString()}</span>
+                                                <td className="py-2.5 px-3.5 text-right hidden md:table-cell text-slate-500 font-mono">
+                                                    Ksh {(purchase.vat || 0).toLocaleString()}
                                                 </td>
-                                                <td className="py-3.5 px-4 text-right">
-                                                    <span className="text-base font-black text-emerald-600">Ksh {(purchase.grand_total || 0).toLocaleString()}</span>
+                                                <td className="py-2.5 px-3.5 text-right font-bold text-slate-800 font-mono">
+                                                    Ksh {(purchase.grand_total || 0).toLocaleString()}
                                                 </td>
-                                                <td className="py-3.5 px-4 text-center">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                                                        purchase.status === 'Completed' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                                        purchase.status === 'Pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                                                        'bg-gray-50 text-gray-600 border-gray-200'
+                                                <td className="py-2.5 px-3.5 text-center">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                                        purchase.status === 'Completed'
+                                                            ? 'bg-emerald-500/10 text-emerald-700 border-emerald-300/40'
+                                                            : purchase.status === 'Pending'
+                                                            ? 'bg-amber-500/10 text-amber-700 border-amber-300/40'
+                                                            : 'bg-slate-100 text-slate-600 border-slate-200'
                                                     }`}>
-                                                        {purchase.status === 'Completed' ? '✅' : purchase.status === 'Pending' ? '⏳' : '📝'} {purchase.status || 'Pending'}
+                                                        {purchase.status || 'Pending'}
                                                     </span>
                                                 </td>
-                                                <td className="py-3.5 px-4 text-center">
-                                                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                                                        purchase.payment_status === 'Paid' ? 'bg-cyan-50 text-cyan-700 border-cyan-200' : 'bg-red-50 text-red-700 border-red-200'
+                                                <td className="py-2.5 px-3.5 text-center">
+                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                                        purchase.payment_status === 'Paid'
+                                                            ? 'bg-teal-500/10 text-teal-700 border-teal-300/40'
+                                                            : 'bg-rose-500/10 text-rose-700 border-rose-300/40'
                                                     }`}>
-                                                        {purchase.payment_status === 'Paid' ? '💳 Paid' : '❌ Unpaid'}
+                                                        {purchase.payment_status === 'Paid' ? 'Paid' : 'Unpaid'}
                                                     </span>
                                                 </td>
-                                                <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
-                                                    <div className="flex items-center justify-center gap-1.5">
-                                                        <button onClick={() => viewDetails(purchase)} title="View Details"
-                                                            className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-all hover:scale-110 font-medium text-sm">👁️</button>
+                                                <td className="py-2.5 px-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <button
+                                                            onClick={() => viewDetails(purchase)}
+                                                            title="View details"
+                                                            className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
+                                                        >
+                                                            👁️
+                                                        </button>
                                                         {purchase.payment_status !== 'Paid' && (
-                                                            <button onClick={() => markAsPaid(purchase)} title="Mark as Paid"
+                                                            <button
+                                                                onClick={() => markAsPaid(purchase)}
                                                                 disabled={markingPaid === purchase.purchase_id}
-                                                                className="p-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition-all hover:scale-110 text-sm disabled:opacity-50">
+                                                                title="Mark as paid"
+                                                                className="p-1 hover:bg-emerald-50 rounded-lg text-emerald-600 transition-colors disabled:opacity-50"
+                                                            >
                                                                 {markingPaid === purchase.purchase_id ? '⏳' : '✅'}
                                                             </button>
                                                         )}
-                                                        <a href="/dashboard/purchase" title="New Purchase"
-                                                            className="p-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 rounded-lg transition-all hover:scale-110 text-sm">✏️</a>
-                                                        <button onClick={() => deletePurchase(purchase)} title="Delete"
+                                                        <button
+                                                            onClick={() => deletePurchase(purchase)}
                                                             disabled={deletingId === purchase.purchase_id}
-                                                            className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition-all hover:scale-110 text-sm disabled:opacity-50">
+                                                            title="Delete"
+                                                            className="p-1 hover:bg-rose-50 rounded-lg text-rose-600 transition-colors disabled:opacity-50"
+                                                        >
                                                             {deletingId === purchase.purchase_id ? '⏳' : '🗑️'}
                                                         </button>
                                                     </div>
@@ -544,185 +537,145 @@ GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO anon, authenticated, se
 
                     {/* Pagination */}
                     {totalPages > 1 && (
-                        <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between bg-gray-50/50">
-                            <p className="text-sm text-gray-500">
-                                Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredSorted.length)} of <b>{filteredSorted.length}</b>
-                            </p>
-                            <div className="flex gap-1">
-                                <button onClick={() => setCurrentPage(1)} disabled={currentPage === 1} className="px-3 py-1.5 text-xs rounded-lg bg-white border border-gray-200 hover:bg-blue-50 disabled:opacity-40 transition-all">«</button>
-                                <button onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1} className="px-3 py-1.5 text-xs rounded-lg bg-white border border-gray-200 hover:bg-blue-50 disabled:opacity-40 transition-all">‹ Prev</button>
-                                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                                    const p = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-                                    return (
-                                        <button key={p} onClick={() => setCurrentPage(p)}
-                                            className={`px-3 py-1.5 text-xs rounded-lg border transition-all ${currentPage === p ? 'bg-blue-600 text-white border-blue-600 font-bold' : 'bg-white border-gray-200 hover:bg-blue-50'}`}>
-                                            {p}
-                                        </button>
-                                    );
-                                })}
-                                <button onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages} className="px-3 py-1.5 text-xs rounded-lg bg-white border border-gray-200 hover:bg-blue-50 disabled:opacity-40 transition-all">Next ›</button>
-                                <button onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages} className="px-3 py-1.5 text-xs rounded-lg bg-white border border-gray-200 hover:bg-blue-50 disabled:opacity-40 transition-all">»</button>
+                        <div className="px-3.5 py-2.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/40">
+                            <span>
+                                Showing {(currentPage - 1) * pageSize + 1}–{Math.min(currentPage * pageSize, filteredSorted.length)} of {filteredSorted.length}
+                            </span>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                    disabled={currentPage === 1}
+                                    className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50"
+                                >
+                                    ‹ Prev
+                                </button>
+                                <span className="px-2 font-medium text-slate-700">{currentPage} / {totalPages}</span>
+                                <button
+                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={currentPage === totalPages}
+                                    className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg disabled:opacity-40 hover:bg-slate-50"
+                                >
+                                    Next ›
+                                </button>
                             </div>
                         </div>
                     )}
                 </div>
             </div>
 
-            {/* ── DETAIL SIDE PANEL ── */}
+            {/* ── REFINED COMPACT SLIDE-IN DETAIL PANEL ── */}
             {selectedPurchase && (
-                <div className="w-[400px] flex-shrink-0 bg-white rounded-2xl border border-gray-100 shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-120px)] sticky top-0">
-                    {/* Panel Header */}
-                    <div className="bg-gradient-to-r from-blue-600 to-indigo-700 px-5 py-4 text-white flex-shrink-0">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <h2 className="text-lg font-black flex items-center gap-2">
-                                    📋 {selectedPurchase.purchase_no}
-                                </h2>
-                                <p className="text-blue-100 text-xs mt-0.5">{new Date(selectedPurchase.purchase_date).toLocaleDateString('en-GB', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</p>
+                <div className="w-[340px] flex-shrink-0 bg-white/80 backdrop-blur-xl border border-slate-200/70 rounded-2xl shadow-lg overflow-hidden flex flex-col max-h-[calc(100vh-100px)] sticky top-4">
+                    {/* Header */}
+                    <div className="p-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+                        <div>
+                            <div className="flex items-center gap-1.5">
+                                <span className="font-mono text-xs font-bold text-indigo-700">{selectedPurchase.purchase_no}</span>
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.2 rounded border ${
+                                    selectedPurchase.payment_status === 'Paid'
+                                        ? 'bg-teal-500/10 text-teal-700 border-teal-300/40'
+                                        : 'bg-rose-500/10 text-rose-700 border-rose-300/40'
+                                }`}>
+                                    {selectedPurchase.payment_status}
+                                </span>
                             </div>
-                            <button onClick={() => setSelectedPurchase(null)} className="p-2 hover:bg-white/20 rounded-xl transition-all">✕</button>
+                            <p className="text-[11px] text-slate-500 mt-0.5">
+                                {new Date(selectedPurchase.purchase_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </p>
                         </div>
+                        <button
+                            onClick={() => setSelectedPurchase(null)}
+                            className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 text-xs transition-colors"
+                        >
+                            ✕
+                        </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto">
-                        {/* Info Cards */}
-                        <div className="p-4 space-y-3">
-                            {/* Supplier Card */}
-                            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-100">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-black shadow">
-                                        {(selectedPurchase.supplier_name || 'U')[0]}
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-purple-500 font-semibold uppercase tracking-wide">Supplier</p>
-                                        <p className="font-bold text-gray-800">{selectedPurchase.supplier_name || 'No Supplier'}</p>
-                                        {selectedPurchase.supplier_invoice && (
-                                            <p className="text-xs text-gray-500 mt-0.5">Supp. Invoice: <span className="font-mono font-semibold text-yellow-700">{selectedPurchase.supplier_invoice}</span></p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
+                    {/* Body */}
+                    <div className="flex-1 overflow-y-auto p-3.5 space-y-3 text-xs">
+                        {/* Supplier Info */}
+                        <div className="p-2.5 rounded-xl bg-slate-50/70 border border-slate-200/50 space-y-1">
+                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Supplier</span>
+                            <p className="font-bold text-slate-800 text-sm leading-tight">{selectedPurchase.supplier_name || 'Direct / Unknown'}</p>
+                            {selectedPurchase.supplier_invoice && (
+                                <p className="text-[11px] text-slate-500">
+                                    Ref: <span className="font-mono text-slate-700">{selectedPurchase.supplier_invoice}</span>
+                                </p>
+                            )}
+                        </div>
 
-                            {/* Status badges */}
-                            <div className="grid grid-cols-2 gap-3">
-                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                                    <p className="text-xs text-gray-500 font-semibold mb-1">Order Status</p>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${selectedPurchase.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                        {selectedPurchase.status === 'Completed' ? '✅' : '⏳'} {selectedPurchase.status || 'Pending'}
-                                    </span>
-                                </div>
-                                <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                                    <p className="text-xs text-gray-500 font-semibold mb-1">Payment</p>
-                                    <span className={`px-3 py-1 rounded-full text-xs font-bold ${selectedPurchase.payment_status === 'Paid' ? 'bg-cyan-100 text-cyan-700' : 'bg-red-100 text-red-700'}`}>
-                                        {selectedPurchase.payment_status === 'Paid' ? '💳 Paid' : '❌ Unpaid'}
-                                    </span>
-                                </div>
+                        {/* Financials Breakdown */}
+                        <div className="p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-200/40 space-y-1.5">
+                            <div className="flex justify-between text-slate-600">
+                                <span>Sub Total:</span>
+                                <span className="font-mono">Ksh {(selectedPurchase.sub_total || 0).toLocaleString()}</span>
                             </div>
-
-                            {/* Financials */}
-                            <div className="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-100 space-y-2">
-                                <h4 className="font-bold text-emerald-800 text-sm flex items-center gap-1.5">💰 Financials</h4>
-                                <div className="space-y-1.5">
-                                    {[
-                                        { label: 'Sub Total', value: selectedPurchase.sub_total, color: 'text-gray-700' },
-                                        { label: 'Discount', value: selectedPurchase.discount, color: 'text-orange-600' },
-                                        { label: 'VAT', value: selectedPurchase.vat, color: 'text-blue-600' },
-                                    ].map(row => (
-                                        <div key={row.label} className="flex justify-between text-sm">
-                                            <span className="text-gray-500">{row.label}</span>
-                                            <span className={`font-semibold ${row.color}`}>Ksh {(row.value || 0).toLocaleString()}</span>
-                                        </div>
-                                    ))}
-                                    <div className="flex justify-between items-center border-t border-emerald-200 pt-2 mt-1">
-                                        <span className="font-bold text-emerald-800">Grand Total</span>
-                                        <span className="font-black text-xl text-emerald-700">Ksh {(selectedPurchase.grand_total || 0).toLocaleString()}</span>
-                                    </div>
-                                </div>
-                            </div>
-
-                            {/* Created by */}
-                            {selectedPurchase.created_by && (
-                                <div className="bg-blue-50 rounded-xl px-4 py-3 flex items-center gap-2 border border-blue-100">
-                                    <span className="text-blue-500">👤</span>
-                                    <div>
-                                        <p className="text-xs text-blue-400 font-semibold">Created by</p>
-                                        <p className="text-sm font-bold text-blue-800">{selectedPurchase.created_by}</p>
-                                    </div>
-                                    <div className="ml-auto text-right">
-                                        <p className="text-xs text-blue-400">At</p>
-                                        <p className="text-xs font-semibold text-blue-700">{new Date(selectedPurchase.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
-                                    </div>
+                            {selectedPurchase.discount > 0 && (
+                                <div className="flex justify-between text-amber-700">
+                                    <span>Discount:</span>
+                                    <span className="font-mono">- Ksh {selectedPurchase.discount.toLocaleString()}</span>
                                 </div>
                             )}
-
-                            {/* Items Table */}
-                            <div>
-                                <h4 className="font-bold text-gray-700 text-sm mb-2 flex items-center gap-2">📦 Items ({isLoadingItems ? '...' : purchaseItems.length})</h4>
-                                {isLoadingItems ? (
-                                    <div className="flex items-center justify-center py-8 gap-3">
-                                        <div className="w-6 h-6 border-3 border-blue-200 border-t-blue-500 rounded-full animate-spin" />
-                                        <span className="text-gray-400 text-sm">Loading items...</span>
-                                    </div>
-                                ) : purchaseItems.length === 0 ? (
-                                    <div className="text-center py-6 text-gray-400 text-sm">No items recorded</div>
-                                ) : (
-                                    <div className="rounded-xl border border-gray-100 overflow-hidden">
-                                        <table className="w-full text-sm">
-                                            <thead className="bg-gray-50">
-                                                <tr>
-                                                    <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">#</th>
-                                                    <th className="text-left py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Item</th>
-                                                    <th className="text-center py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Qty</th>
-                                                    <th className="text-right py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Rate</th>
-                                                    <th className="text-right py-2.5 px-3 text-xs font-bold text-gray-500 uppercase">Total</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {purchaseItems.map((item, idx) => (
-                                                    <tr key={idx} className={`border-t border-gray-50 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}>
-                                                        <td className="py-2.5 px-3 text-gray-400">{idx + 1}</td>
-                                                        <td className="py-2.5 px-3">
-                                                            <p className="font-semibold text-gray-800 text-xs leading-tight">{item.product_name}</p>
-                                                        </td>
-                                                        <td className="py-2.5 px-3 text-center">
-                                                            <span className="px-2 py-0.5 bg-blue-50 text-blue-700 rounded font-bold text-xs">{item.quantity}</span>
-                                                        </td>
-                                                        <td className="py-2.5 px-3 text-right text-gray-600 text-xs">Ksh {(item.rate || 0).toLocaleString()}</td>
-                                                        <td className="py-2.5 px-3 text-right font-bold text-emerald-600 text-xs">Ksh {(item.total_amount || 0).toLocaleString()}</td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                            <tfoot className="bg-emerald-50">
-                                                <tr>
-                                                    <td colSpan={4} className="py-2.5 px-3 text-xs font-bold text-emerald-800 text-right">TOTAL</td>
-                                                    <td className="py-2.5 px-3 text-right font-black text-emerald-700 text-sm">
-                                                        Ksh {purchaseItems.reduce((s, i) => s + (i.total_amount || 0), 0).toLocaleString()}
-                                                    </td>
-                                                </tr>
-                                            </tfoot>
-                                        </table>
-                                    </div>
-                                )}
+                            {selectedPurchase.vat > 0 && (
+                                <div className="flex justify-between text-indigo-700">
+                                    <span>VAT:</span>
+                                    <span className="font-mono">+ Ksh {selectedPurchase.vat.toLocaleString()}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between items-center pt-1.5 border-t border-emerald-200/50 font-bold text-slate-900 text-sm">
+                                <span>Grand Total:</span>
+                                <span className="text-emerald-700 font-mono">Ksh {(selectedPurchase.grand_total || 0).toLocaleString()}</span>
                             </div>
+                        </div>
+
+                        {/* Line Items */}
+                        <div className="space-y-1.5">
+                            <div className="flex items-center justify-between">
+                                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                    Items ({purchaseItems.length})
+                                </span>
+                            </div>
+                            {isLoadingItems ? (
+                                <div className="p-4 text-center text-slate-400">Loading items...</div>
+                            ) : purchaseItems.length === 0 ? (
+                                <div className="p-3 text-center text-slate-400 bg-slate-50/50 rounded-xl">No line items recorded</div>
+                            ) : (
+                                <div className="border border-slate-200/60 rounded-xl overflow-hidden divide-y divide-slate-100">
+                                    {purchaseItems.map((item, idx) => (
+                                        <div key={idx} className="p-2 flex items-center justify-between bg-white">
+                                            <div className="pr-2 truncate">
+                                                <p className="font-semibold text-slate-800 text-[11px] truncate">{item.product_name}</p>
+                                                <p className="text-[10px] text-slate-400">
+                                                    {item.quantity} × Ksh {(item.rate || 0).toLocaleString()}
+                                                </p>
+                                            </div>
+                                            <span className="font-mono font-bold text-slate-800 text-[11px] flex-shrink-0">
+                                                Ksh {(item.total_amount || 0).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                         </div>
                     </div>
 
-                    {/* Panel Footer Actions */}
-                    <div className="flex-shrink-0 p-4 border-t border-gray-100 bg-gray-50/50 flex gap-2">
+                    {/* Footer Actions */}
+                    <div className="p-3 border-t border-slate-100 bg-slate-50/60 flex items-center gap-2">
                         {selectedPurchase.payment_status !== 'Paid' && (
-                            <button onClick={() => markAsPaid(selectedPurchase)}
+                            <button
+                                onClick={() => markAsPaid(selectedPurchase)}
                                 disabled={markingPaid === selectedPurchase.purchase_id}
-                                className="flex-1 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all disabled:opacity-50 flex items-center justify-center gap-1.5">
-                                {markingPaid === selectedPurchase.purchase_id ? '⏳ Marking...' : '✅ Mark Paid'}
+                                className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50"
+                            >
+                                Mark Paid
                             </button>
                         )}
-                        <button onClick={() => deletePurchase(selectedPurchase)}
+                        <button
+                            onClick={() => deletePurchase(selectedPurchase)}
                             disabled={deletingId === selectedPurchase.purchase_id}
-                            className="py-2.5 px-4 bg-red-50 text-red-600 border border-red-200 rounded-xl font-bold text-sm hover:bg-red-100 transition-all disabled:opacity-50">
-                            {deletingId === selectedPurchase.purchase_id ? '⏳' : '🗑️'}
-                        </button>
-                        <button onClick={() => setSelectedPurchase(null)} className="py-2.5 px-4 bg-gray-100 text-gray-600 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all">
-                            ✕
+                            className="px-3 py-1.5 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 text-rose-600 rounded-xl text-xs font-semibold shadow-xs transition-all"
+                        >
+                            Delete
                         </button>
                     </div>
                 </div>
