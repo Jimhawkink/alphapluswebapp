@@ -1805,7 +1805,7 @@ export default function POSPage() {
 
             // Create Customer Bill (Unpaid) data for printing
             const billData = createUnpaidBillData();
-            const billHtmlContent = generateCustomerBillHTML(billData, companyInfo, false);
+            const billHtmlContent = await generateCustomerBillHTML(billData, companyInfo, false);
             setBillHTML(billHtmlContent);
 
             // Get current logged in user
@@ -2138,7 +2138,7 @@ export default function POSPage() {
             }
         );
 
-        const html = generateCustomerBillHTML(receiptData, companyInfo, true);
+        const html = await generateCustomerBillHTML(receiptData, companyInfo, true);
         setReceiptHTML(html);
         setShowPayment(false);
         setShowReceiptPreview(true);

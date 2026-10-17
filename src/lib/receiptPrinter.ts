@@ -1,5 +1,7 @@
 // Thermal Receipt Printing Utilities
 // Works with 58mm and 80mm thermal printers
+import QRCode from 'qrcode';
+
 
 export interface ReceiptItem {
   name: string;
@@ -161,7 +163,22 @@ export function getCompanyInfo(): CompanyInfo {
 }
 
 // Generate SUPER POWERFUL Customer Bill HTML with NOT PAID watermark
-export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo = defaultCompanyInfo, isPaid: boolean = false): string {
+export async function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo = defaultCompanyInfo, isPaid: boolean = false): Promise<string> {
+  // Generate inline QR code as base64 (no external network needed — instant render)
+  let qrDataUrl = '';
+  if (data.qrCodeData) {
+    try {
+      qrDataUrl = await QRCode.toDataURL(data.qrCodeData, {
+        errorCorrectionLevel: 'H',
+        margin: 2,
+        width: 200,
+        color: { dark: '#000000', light: '#ffffff' }
+      });
+    } catch (e) {
+      console.error('QR generation error:', e);
+    }
+  }
+
   // Generate item rows with per-item tax
   const itemRows = data.items.map(item => {
     // Calculate per-item tax (18% inclusive)
@@ -489,12 +506,13 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
   </div>
   ` : ''}
 
-  ${data.qrCodeData ? `
-  <div style="text-align:center; padding:5px; border:1px dashed #ccc; margin-top:5px;">
-    <div style="font-weight:bold; font-size:9px;">✓ Scan to Verify Receipt</div>
+  ${(data.qrCodeData && qrDataUrl) ? `
+  <div style="text-align:center; padding:8px; border:2px dashed #0066cc; margin-top:8px; border-radius:6px; background:#f0f8ff;">
+    <div style="font-weight:bold; font-size:10px; color:#0066cc; margin-bottom:4px;">📱 Scan to Pay via M-Pesa</div>
     <div style="display:flex; justify-content:center; margin:3px 0;">
-        <img src="https://api.qrserver.com/v1/create-qr-code/?size=80x80&ecc=M&data=${encodeURIComponent(data.qrCodeData)}" alt="QR" style="width:60px;height:60px;">
+        <img src="${qrDataUrl}" alt="QR Code" style="width:150px;height:150px;image-rendering:crisp-edges;image-rendering:pixelated;">
     </div>
+    <div style="font-size:8px; color:#666; margin-top:3px;">${data.invoiceNo}</div>
   </div>
   ` : ''}
 
@@ -518,7 +536,7 @@ export function generateCustomerBillHTML(data: ReceiptData, company: CompanyInfo
 }
 
 // Generate thermal receipt HTML (for paid receipts)
-export function generateReceiptHTML(data: ReceiptData, company: CompanyInfo = defaultCompanyInfo): string {
+export async function generateReceiptHTML(data: ReceiptData, company: CompanyInfo = defaultCompanyInfo): Promise<string> {
   return generateCustomerBillHTML(data, company, true);
 }
 
@@ -920,8 +938,8 @@ export function createKOTData(
 }
 
 // Print customer receipt
-export function printCustomerReceipt(data: ReceiptData, company?: CompanyInfo): void {
-  const html = generateReceiptHTML(data, company);
+export async function printCustomerReceipt(data: ReceiptData, company?: CompanyInfo): Promise<void> {
+  const html = await generateReceiptHTML(data, company);
   printReceipt(html);
 }
 
@@ -932,8 +950,8 @@ export function printKOT(data: KOTData, company?: CompanyInfo): void {
 }
 
 // Print unpaid customer bill (with NOT PAID watermark)
-export function printUnpaidBill(data: ReceiptData, company?: CompanyInfo): void {
-  const html = generateCustomerBillHTML(data, company, false);
+export async function printUnpaidBill(data: ReceiptData, company?: CompanyInfo): Promise<void> {
+  const html = await generateCustomerBillHTML(data, company, false);
   printReceipt(html);
 }
 

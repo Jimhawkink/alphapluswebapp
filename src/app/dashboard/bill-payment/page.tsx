@@ -424,7 +424,7 @@ function BillPaymentContent() {
                     );
 
                     // Generate and print PAID customer bill with QR code
-                    const receiptHTML = generateCustomerBillHTML(receiptData, company, true); // isPaid = true
+                    const receiptHTML = await generateCustomerBillHTML(receiptData, company, true); // isPaid = true
                     printReceipt(receiptHTML);
                     toast.success('🖨️ Receipt printed!');
                 } catch (printErr) {
