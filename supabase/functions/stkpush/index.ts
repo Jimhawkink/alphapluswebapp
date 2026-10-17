@@ -97,6 +97,22 @@ serve(async (req) => {
         console.log("📲 STK Push Response:", stkData);
 
         if (stkData.ResponseCode === "0") {
+            // Store in DB so callback can link back to the sale
+            const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+            const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+            if (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY) {
+                const { createClient } = await import("https://esm.sh/@supabase/supabase-js@2");
+                const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+                await supabase.from("mpesa_transactions").upsert({
+                    checkout_request_id: stkData.CheckoutRequestID,
+                    account_reference: accountReference || "Payment",
+                    amount: Math.ceil(amount),
+                    phone_number: phone,
+                    status: "pending",
+                    result_code: null,
+                    created_at: new Date().toISOString(),
+                }, { onConflict: "checkout_request_id" });
+            }
             return new Response(
                 JSON.stringify({
                     success: true,

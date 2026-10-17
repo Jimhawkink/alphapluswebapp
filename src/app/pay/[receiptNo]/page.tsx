@@ -140,24 +140,48 @@ export default function PayPage({ params }: { params: { receiptNo: string } }) {
     function startPolling(checkoutRequestId: string) {
         pollRef.current = setInterval(async () => {
             try {
+                // First: check sales table directly (updated by callback)
+                if (sale) {
+                    const { data: updatedSale } = await supabase
+                        .from('sales')
+                        .select('status, mpesa_code, amount_paid')
+                        .eq('receipt_no', receiptNo)
+                        .single();
+
+                    if (updatedSale?.status === 'Paid' && updatedSale?.mpesa_code) {
+                        if (pollRef.current) clearInterval(pollRef.current);
+                        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+                        setPaymentState('success');
+                        setMpesaReceipt(updatedSale.mpesa_code);
+                        setResultMessage('Payment successful! Thank you.');
+                        setSale(prev => prev ? { ...prev, status: 'Paid', mpesa_code: updatedSale.mpesa_code } : prev);
+                        return;
+                    }
+                }
+
+                // Second: check via API status endpoint
                 const res = await fetch(`/api/mpesa/check-status?checkoutRequestId=${checkoutRequestId}`);
                 const data = await res.json();
 
-                if (data.status === 'pending' || (!data.resultCode && data.resultCode !== 0)) return;
+                // Still pending (or 4999 = Buy Goods query not supported — keep polling)
+                if (data.status === 'pending' || data.pending) return;
+
+                const code = data.resultCode ?? data.ResultCode;
+
+                // 4999 = STK query not supported for Buy Goods — treat as pending, rely on callback
+                if (code === 4999 || code === undefined || code === null) return;
 
                 if (pollRef.current) clearInterval(pollRef.current);
                 if (timeoutRef.current) clearTimeout(timeoutRef.current);
-
-                const code = data.resultCode ?? data.ResultCode;
 
                 if (code === 0) {
                     setPaymentState('success');
                     setMpesaReceipt(data.mpesaReceipt || data.MpesaReceiptNumber || '');
                     setResultMessage('Payment successful! Thank you.');
-                    // Update sale status in DB
                     await supabase.from('sales').update({
                         status: 'Paid', payment_method: 'M-Pesa',
-                        amount_paid: sale!.total_amount, mpesa_code: data.mpesaReceipt || ''
+                        amount_paid: sale!.total_amount,
+                        mpesa_code: data.mpesaReceipt || ''
                     }).eq('receipt_no', receiptNo);
                 } else if (code === 1) {
                     setPaymentState('insufficient');
