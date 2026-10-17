@@ -4,284 +4,321 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-interface SaleItem { product_name: string; quantity: number; unit_price: number; subtotal: number; }
-interface SaleData {
-  sale_id: number; receipt_no: string; total_amount: number; status: string;
-  payment_method: string; table_no?: string; waiter_name?: string;
-  sale_datetime: string; items: SaleItem[];
+interface SaleItem {
+    product_name: string;
+    quantity: number;
+    unit_price: number;
+    subtotal: number;
 }
 
-type PayStatus = 'idle' | 'sending' | 'waiting' | 'success' | 'failed' | 'cancelled' | 'insufficient';
+interface Sale {
+    sale_id: number;
+    receipt_no: string;
+    total_amount: number;
+    amount_paid: number;
+    status: string;
+    customer_name?: string;
+    sale_datetime: string;
+    waiter_name?: string;
+    table_no?: string;
+}
 
-export default function PublicPayPage({ params }: { params: { receiptNo: string } }) {
-  const { receiptNo } = params;
-  const [sale, setSale] = useState<SaleData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [phone, setPhone] = useState('');
-  const [payStatus, setPayStatus] = useState<PayStatus>('idle');
-  const [statusMsg, setStatusMsg] = useState('');
-  const [mpesaCode, setMpesaCode] = useState('');
-  const [checkoutId, setCheckoutId] = useState('');
-  const pollRef = useRef<NodeJS.Timeout | null>(null);
-  const pollCount = useRef(0);
+type PaymentState = 'idle' | 'sending' | 'waiting' | 'success' | 'insufficient' | 'cancelled' | 'failed' | 'timeout';
 
-  // Load sale from DB by receipt_no
-  useEffect(() => {
-    const load = async () => {
-      setLoading(true);
-      const { data: salesData } = await supabase
-        .from('sales')
-        .select('sale_id, receipt_no, total_amount, status, payment_method, table_no, waiter_name, sale_datetime')
-        .eq('receipt_no', receiptNo)
-        .single();
+export default function PayPage({ params }: { params: { receiptNo: string } }) {
+    const receiptNo = decodeURIComponent(params.receiptNo);
 
-      if (!salesData) { setLoading(false); return; }
+    const [sale, setSale] = useState<Sale | null>(null);
+    const [items, setItems] = useState<SaleItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [notFound, setNotFound] = useState(false);
 
-      const { data: items } = await supabase
-        .from('sales_items')
-        .select('product_name, quantity, unit_price, subtotal')
-        .eq('sale_id', salesData.sale_id);
+    const [phone, setPhone] = useState('');
+    const [paymentState, setPaymentState] = useState<PaymentState>('idle');
+    const [mpesaReceipt, setMpesaReceipt] = useState('');
+    const [resultMessage, setResultMessage] = useState('');
 
-      setSale({ ...salesData, items: items || [] });
-      setLoading(false);
-    };
-    load();
-  }, [receiptNo]);
+    const pollRef = useRef<NodeJS.Timeout | null>(null);
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Cleanup polling on unmount
-  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+    useEffect(() => {
+        loadSale();
+        return () => {
+            if (pollRef.current) clearInterval(pollRef.current);
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        };
+    }, []);
 
-  const formatPhone = (p: string) => {
-    let c = p.replace(/\s|-|\+/g, '');
-    if (c.startsWith('0')) c = '254' + c.slice(1);
-    else if (!c.startsWith('254')) c = '254' + c;
-    return c;
-  };
+    async function loadSale() {
+        setLoading(true);
+        try {
+            const { data: saleData, error } = await supabase
+                .from('sales')
+                .select('*')
+                .eq('receipt_no', receiptNo)
+                .single();
 
-  const startPolling = (cid: string) => {
-    pollCount.current = 0;
-    pollRef.current = setInterval(async () => {
-      pollCount.current++;
-      if (pollCount.current > 30) {
-        // 2.5 min timeout
-        clearInterval(pollRef.current!);
-        setPayStatus('failed');
-        setStatusMsg('Payment timed out. Please try again.');
-        return;
-      }
-      try {
-        const r = await fetch(`/api/mpesa/check-status?checkoutRequestId=${cid}`);
-        const d = await r.json();
+            if (error || !saleData) { setNotFound(true); setLoading(false); return; }
+            setSale(saleData);
 
-        if (d.status === 'completed' || d.resultCode === 0) {
-          clearInterval(pollRef.current!);
-          setMpesaCode(d.mpesaReceipt || '');
-          setPayStatus('success');
-          setStatusMsg('Payment confirmed! ✅');
-        } else if (d.resultCode === 1 || d.resultDescription?.toLowerCase().includes('insufficient')) {
-          clearInterval(pollRef.current!);
-          setPayStatus('insufficient');
-          setStatusMsg('Insufficient M-Pesa balance. Please top up and try again.');
-        } else if (d.resultCode === 1032 || d.resultCode === 17 || d.resultDescription?.toLowerCase().includes('cancel')) {
-          clearInterval(pollRef.current!);
-          setPayStatus('cancelled');
-          setStatusMsg('Payment was cancelled. Try again if needed.');
-        } else if (d.resultCode === 2001) {
-          clearInterval(pollRef.current!);
-          setPayStatus('failed');
-          setStatusMsg('Wrong PIN entered. Transaction failed.');
-        }
-        // else still pending — keep polling
-      } catch { /* keep polling */ }
-    }, 5000);
-  };
+            const { data: itemData } = await supabase
+                .from('sales_items')
+                .select('*')
+                .eq('sale_id', saleData.sale_id);
 
-  const handlePay = async () => {
-    if (!phone.trim()) { alert('Please enter your M-Pesa phone number'); return; }
-    if (!sale) return;
-
-    setPayStatus('sending');
-    setStatusMsg('Sending STK Push to your phone...');
-
-    try {
-      const res = await fetch('/api/mpesa/stkpush', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          phone: formatPhone(phone),
-          amount: Math.ceil(sale.total_amount),
-          reference: receiptNo,
-          description: `Bill ${receiptNo}`,
-        }),
-      });
-      const data = await res.json();
-
-      if (data.success && data.CheckoutRequestID) {
-        setCheckoutId(data.CheckoutRequestID);
-        setPayStatus('waiting');
-        setStatusMsg('📲 Check your phone — enter your M-Pesa PIN to complete payment');
-        startPolling(data.CheckoutRequestID);
-      } else {
-        setPayStatus('failed');
-        setStatusMsg(data.error || 'Failed to send STK push. Please try again.');
-      }
-    } catch {
-      setPayStatus('failed');
-      setStatusMsg('Network error. Please check your connection and try again.');
+            setItems(itemData || []);
+        } catch { setNotFound(true); }
+        setLoading(false);
     }
-  };
 
-  const reset = () => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    setPayStatus('idle');
-    setStatusMsg('');
-    setMpesaCode('');
-    setCheckoutId('');
-  };
+    function formatPhone(raw: string): string {
+        let p = raw.replace(/\s|-|\+/g, '');
+        if (p.startsWith('0')) p = '254' + p.slice(1);
+        else if (!p.startsWith('254')) p = '254' + p;
+        return p;
+    }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-green-50 to-emerald-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin text-5xl mb-4">⏳</div>
-          <p className="text-gray-600 font-medium">Loading bill details...</p>
+    function isValidPhone(raw: string): boolean {
+        return /^(07\d{8}|01\d{8}|254\d{9})$/.test(raw.replace(/\s|-|\+/g, ''));
+    }
+
+    async function handlePay() {
+        if (!sale || !isValidPhone(phone)) {
+            setResultMessage('Please enter a valid Safaricom number (07xx or 01xx)');
+            return;
+        }
+
+        const outstanding = sale.total_amount - (sale.amount_paid || 0);
+        if (outstanding <= 0) {
+            setResultMessage('This bill is already fully paid!');
+            return;
+        }
+
+        setPaymentState('sending');
+        setResultMessage('');
+
+        try {
+            const res = await fetch('/api/mpesa/stkpush', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    phone: formatPhone(phone),
+                    amount: outstanding,
+                    reference: sale.receipt_no,
+                    description: `Bill Payment - ${sale.receipt_no}`,
+                }),
+            });
+
+            const data = await res.json();
+            if (!data.success || !data.checkoutRequestId) {
+                setPaymentState('failed');
+                setResultMessage(data.error || 'Failed to send STK push. Try again.');
+                return;
+            }
+
+            setPaymentState('waiting');
+            startPolling(data.checkoutRequestId);
+
+            // 2.5 min timeout
+            timeoutRef.current = setTimeout(() => {
+                if (pollRef.current) clearInterval(pollRef.current);
+                setPaymentState('timeout');
+                setResultMessage('Payment timed out. Please try again.');
+            }, 150000);
+
+        } catch {
+            setPaymentState('failed');
+            setResultMessage('Network error. Please try again.');
+        }
+    }
+
+    function startPolling(checkoutRequestId: string) {
+        pollRef.current = setInterval(async () => {
+            try {
+                const res = await fetch(`/api/mpesa/check-status?checkoutRequestId=${checkoutRequestId}`);
+                const data = await res.json();
+
+                if (data.status === 'pending' || (!data.resultCode && data.resultCode !== 0)) return;
+
+                if (pollRef.current) clearInterval(pollRef.current);
+                if (timeoutRef.current) clearTimeout(timeoutRef.current);
+
+                const code = data.resultCode ?? data.ResultCode;
+
+                if (code === 0) {
+                    setPaymentState('success');
+                    setMpesaReceipt(data.mpesaReceipt || data.MpesaReceiptNumber || '');
+                    setResultMessage('Payment successful! Thank you.');
+                    // Update sale status in DB
+                    await supabase.from('sales').update({
+                        status: 'Paid', payment_method: 'M-Pesa',
+                        amount_paid: sale!.total_amount, mpesa_code: data.mpesaReceipt || ''
+                    }).eq('receipt_no', receiptNo);
+                } else if (code === 1) {
+                    setPaymentState('insufficient');
+                    setResultMessage('Insufficient M-Pesa balance. Please top up and try again.');
+                } else if (code === 1032 || code === 17) {
+                    setPaymentState('cancelled');
+                    setResultMessage('Payment cancelled. Please try again when ready.');
+                } else if (code === 2001) {
+                    setPaymentState('failed');
+                    setResultMessage('Wrong PIN entered. Please try again.');
+                } else {
+                    setPaymentState('failed');
+                    setResultMessage(`Payment failed (Code: ${code}). Please try again.`);
+                }
+            } catch { /* keep polling */ }
+        }, 5000);
+    }
+
+    const outstanding = sale ? sale.total_amount - (sale.amount_paid || 0) : 0;
+
+    if (loading) return (
+        <div style={styles.center}>
+            <div style={styles.spinner} />
+            <p style={{ color: '#666', marginTop: 16 }}>Loading bill...</p>
         </div>
-      </div>
     );
-  }
 
-  if (!sale) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-red-50 to-rose-100 flex items-center justify-center p-4">
-        <div className="bg-white rounded-3xl shadow-xl p-8 max-w-sm w-full text-center">
-          <div className="text-6xl mb-4">🔍</div>
-          <h1 className="text-xl font-bold text-gray-800 mb-2">Bill Not Found</h1>
-          <p className="text-gray-500 text-sm">Receipt <strong>{receiptNo}</strong> could not be found.</p>
+    if (notFound) return (
+        <div style={styles.center}>
+            <div style={{ fontSize: 48 }}>🔍</div>
+            <h2 style={{ color: '#333', marginTop: 12 }}>Receipt Not Found</h2>
+            <p style={{ color: '#666' }}>Receipt <strong>{receiptNo}</strong> could not be found.</p>
         </div>
-      </div>
     );
-  }
 
-  const alreadyPaid = sale.status === 'Completed' || sale.payment_method?.toLowerCase() !== 'pending';
-
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-green-50 via-emerald-50 to-teal-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden">
-
-        {/* Header */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white text-center">
-          <div className="text-4xl mb-2">🏨</div>
-          <h1 className="text-xl font-bold">Pay Your Bill</h1>
-          <p className="text-green-100 text-sm mt-1">Receipt: {receiptNo}</p>
-          {sale.table_no && <p className="text-green-100 text-xs mt-1">🪑 Table {sale.table_no}</p>}
-        </div>
-
-        <div className="p-6">
-
-          {/* Bill Summary */}
-          <div className="bg-gray-50 rounded-2xl p-4 mb-5">
-            <h2 className="font-bold text-gray-700 text-sm mb-3">📋 Bill Summary</h2>
-            <div className="space-y-1 max-h-36 overflow-y-auto">
-              {sale.items.map((item, i) => (
-                <div key={i} className="flex justify-between text-xs text-gray-600">
-                  <span>{item.product_name} × {item.quantity}</span>
-                  <span className="font-medium">Ksh {item.subtotal.toLocaleString()}</span>
+    return (
+        <div style={styles.page}>
+            <div style={styles.card}>
+                {/* Header */}
+                <div style={styles.header}>
+                    <div style={{ fontSize: 32 }}>📱</div>
+                    <h1 style={styles.title}>Pay via M-Pesa</h1>
+                    <p style={styles.subtitle}>{receiptNo}</p>
                 </div>
-              ))}
-            </div>
-            <div className="border-t border-dashed border-gray-300 mt-3 pt-3 flex justify-between items-center">
-              <span className="font-bold text-gray-700">TOTAL DUE</span>
-              <span className="text-2xl font-black text-green-600">Ksh {sale.total_amount.toLocaleString()}</span>
-            </div>
-          </div>
 
-          {/* Already Paid */}
-          {alreadyPaid ? (
-            <div className="text-center py-6">
-              <div className="text-5xl mb-3">✅</div>
-              <h2 className="text-lg font-bold text-green-700">Already Paid</h2>
-              <p className="text-gray-500 text-sm mt-1">This bill has been settled.</p>
-            </div>
-
-          ) : payStatus === 'success' ? (
-            <div className="text-center py-4">
-              <div className="text-5xl mb-3">🎉</div>
-              <h2 className="text-lg font-bold text-green-700">Payment Successful!</h2>
-              {mpesaCode && <p className="text-sm text-gray-600 mt-2 font-mono bg-green-50 rounded-xl py-2 px-3">M-Pesa Code: <strong>{mpesaCode}</strong></p>}
-              <p className="text-xs text-gray-400 mt-3">Thank you for dining with us!</p>
-            </div>
-
-          ) : payStatus === 'insufficient' ? (
-            <div className="text-center py-4">
-              <div className="text-5xl mb-3">💸</div>
-              <h2 className="text-lg font-bold text-red-600">Insufficient Balance</h2>
-              <p className="text-sm text-gray-500 mt-1">Please top up your M-Pesa and try again.</p>
-              <button onClick={reset} className="mt-4 w-full py-3 bg-green-600 text-white rounded-xl font-semibold">Try Again</button>
-            </div>
-
-          ) : payStatus === 'cancelled' ? (
-            <div className="text-center py-4">
-              <div className="text-5xl mb-3">❌</div>
-              <h2 className="text-lg font-bold text-orange-600">Payment Cancelled</h2>
-              <p className="text-sm text-gray-500 mt-1">You cancelled the M-Pesa prompt.</p>
-              <button onClick={reset} className="mt-4 w-full py-3 bg-green-600 text-white rounded-xl font-semibold">Try Again</button>
-            </div>
-
-          ) : payStatus === 'waiting' ? (
-            <div className="text-center py-6">
-              <div className="text-5xl animate-pulse mb-3">📲</div>
-              <h2 className="text-base font-bold text-gray-800">Check Your Phone</h2>
-              <p className="text-sm text-gray-500 mt-2">An M-Pesa prompt has been sent to <strong>{phone}</strong></p>
-              <p className="text-sm text-gray-500 mt-1">Enter your PIN to pay <strong className="text-green-700">Ksh {sale.total_amount.toLocaleString()}</strong></p>
-              <div className="mt-4 flex justify-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
-              </div>
-              <p className="text-xs text-gray-400 mt-4">Waiting for confirmation...</p>
-              <button onClick={reset} className="mt-3 text-xs text-gray-400 underline">Cancel</button>
-            </div>
-
-          ) : (
-            /* Payment Form */
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">📱 M-Pesa Phone Number</label>
-              <input
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="07XXXXXXXX or 254XXXXXXXXX"
-                className="w-full p-4 border-2 border-gray-200 rounded-2xl text-lg focus:border-green-500 focus:outline-none mb-2"
-              />
-              <p className="text-xs text-gray-400 mb-5">Enter the number to receive the M-Pesa STK Push prompt</p>
-
-              {payStatus === 'failed' && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700">
-                  ⚠️ {statusMsg}
+                {/* Bill Summary */}
+                <div style={styles.section}>
+                    {items.length > 0 && (
+                        <div style={styles.itemList}>
+                            {items.map((item, i) => (
+                                <div key={i} style={styles.itemRow}>
+                                    <span>{item.quantity}x {item.product_name}</span>
+                                    <span>Ksh {item.subtotal.toFixed(2)}</span>
+                                </div>
+                            ))}
+                            <div style={styles.divider} />
+                        </div>
+                    )}
+                    <div style={styles.totalRow}>
+                        <span style={styles.totalLabel}>Total</span>
+                        <span style={styles.totalValue}>Ksh {sale!.total_amount.toFixed(2)}</span>
+                    </div>
+                    {sale!.amount_paid > 0 && (
+                        <div style={styles.totalRow}>
+                            <span style={{ color: '#16a34a' }}>Paid</span>
+                            <span style={{ color: '#16a34a' }}>Ksh {sale!.amount_paid.toFixed(2)}</span>
+                        </div>
+                    )}
+                    {outstanding > 0 && (
+                        <div style={{ ...styles.totalRow, borderTop: '2px solid #dc2626', paddingTop: 8, marginTop: 4 }}>
+                            <span style={{ color: '#dc2626', fontWeight: 700 }}>Balance Due</span>
+                            <span style={{ color: '#dc2626', fontWeight: 700, fontSize: 20 }}>Ksh {outstanding.toFixed(2)}</span>
+                        </div>
+                    )}
                 </div>
-              )}
 
-              <button
-                onClick={handlePay}
-                disabled={payStatus === 'sending' || !phone.trim()}
-                className="w-full py-4 bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-2xl font-bold text-lg shadow-lg disabled:opacity-50 active:scale-95 transition-transform"
-              >
-                {payStatus === 'sending' ? '⏳ Sending...' : `📤 Pay Ksh ${sale.total_amount.toLocaleString()} via M-Pesa`}
-              </button>
+                {/* Payment Section */}
+                {paymentState === 'success' ? (
+                    <div style={styles.successBox}>
+                        <div style={{ fontSize: 48 }}>✅</div>
+                        <h2 style={{ color: '#16a34a', margin: '8px 0' }}>Payment Received!</h2>
+                        {mpesaReceipt && <p style={{ color: '#555' }}>M-Pesa Code: <strong>{mpesaReceipt}</strong></p>}
+                        <p style={{ color: '#555' }}>Thank you for your payment.</p>
+                    </div>
+                ) : sale!.status === 'Paid' ? (
+                    <div style={styles.successBox}>
+                        <div style={{ fontSize: 48 }}>✅</div>
+                        <h2 style={{ color: '#16a34a' }}>Bill Already Paid</h2>
+                        {sale!.mpesa_code && <p>M-Pesa Code: <strong>{(sale as any).mpesa_code}</strong></p>}
+                    </div>
+                ) : (
+                    <div style={styles.section}>
+                        <label style={styles.label}>Your Safaricom Number</label>
+                        <input
+                            style={styles.input}
+                            type="tel"
+                            placeholder="07XX XXX XXX"
+                            value={phone}
+                            onChange={e => setPhone(e.target.value)}
+                            disabled={paymentState === 'waiting' || paymentState === 'sending'}
+                        />
+
+                        {resultMessage && (
+                            <div style={{
+                                ...styles.alertBox,
+                                background: paymentState === 'insufficient' ? '#fef3c7' :
+                                    paymentState === 'cancelled' ? '#f3f4f6' : '#fee2e2',
+                                borderColor: paymentState === 'insufficient' ? '#f59e0b' :
+                                    paymentState === 'cancelled' ? '#9ca3af' : '#dc2626',
+                            }}>
+                                {resultMessage}
+                            </div>
+                        )}
+
+                        {paymentState === 'waiting' ? (
+                            <div style={styles.waitingBox}>
+                                <div style={styles.spinner} />
+                                <p style={{ color: '#1d4ed8', marginLeft: 12 }}>
+                                    Check your phone and enter M-Pesa PIN...
+                                </p>
+                            </div>
+                        ) : (
+                            <button
+                                style={{
+                                    ...styles.payBtn,
+                                    opacity: paymentState === 'sending' ? 0.7 : 1,
+                                }}
+                                onClick={handlePay}
+                                disabled={paymentState === 'sending'}
+                            >
+                                {paymentState === 'sending' ? '⏳ Sending...' : `💳 Pay Ksh ${outstanding.toFixed(2)}`}
+                            </button>
+                        )}
+                    </div>
+                )}
+
+                <p style={styles.footer}>Powered by AlphaPlus Hotel POS</p>
             </div>
-          )}
         </div>
-
-        {/* Footer */}
-        <div className="text-center py-4 border-t border-gray-100">
-          <p className="text-xs text-gray-400">Powered by Alpha Plus Hotel POS</p>
-          <p className="text-xs text-gray-300">🔒 Secure M-Pesa Payment</p>
-        </div>
-      </div>
-    </div>
-  );
+    );
 }
+
+const styles: Record<string, React.CSSProperties> = {
+    page: { minHeight: '100vh', background: '#f0f4ff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16, fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" },
+    center: { minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif" },
+    card: { background: '#fff', borderRadius: 16, boxShadow: '0 4px 24px rgba(0,0,0,0.12)', width: '100%', maxWidth: 420, overflow: 'hidden' },
+    header: { background: 'linear-gradient(135deg, #1d4ed8, #4f46e5)', padding: '24px 20px', textAlign: 'center', color: '#fff' },
+    title: { margin: '8px 0 4px', fontSize: 22, fontWeight: 700 },
+    subtitle: { margin: 0, opacity: 0.85, fontSize: 14 },
+    section: { padding: '16px 20px' },
+    itemList: { marginBottom: 8 },
+    itemRow: { display: 'flex', justifyContent: 'space-between', fontSize: 14, color: '#555', padding: '3px 0' },
+    divider: { borderTop: '1px dashed #ddd', margin: '8px 0' },
+    totalRow: { display: 'flex', justifyContent: 'space-between', padding: '4px 0' },
+    totalLabel: { fontWeight: 600, fontSize: 16 },
+    totalValue: { fontWeight: 700, fontSize: 18, color: '#1d4ed8' },
+    label: { display: 'block', fontSize: 14, fontWeight: 600, color: '#374151', marginBottom: 6 },
+    input: { width: '100%', padding: '12px 14px', fontSize: 18, border: '2px solid #d1d5db', borderRadius: 10, outline: 'none', boxSizing: 'border-box', letterSpacing: 1 },
+    payBtn: { width: '100%', padding: '14px', background: 'linear-gradient(135deg, #16a34a, #15803d)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 17, fontWeight: 700, cursor: 'pointer', marginTop: 12 },
+    alertBox: { padding: 12, borderRadius: 8, border: '1px solid', fontSize: 14, margin: '10px 0' },
+    waitingBox: { display: 'flex', alignItems: 'center', padding: 14, background: '#eff6ff', borderRadius: 10, marginTop: 12 },
+    successBox: { padding: 24, textAlign: 'center', background: '#f0fdf4' },
+    spinner: { width: 24, height: 24, border: '3px solid #e5e7eb', borderTopColor: '#1d4ed8', borderRadius: '50%', animation: 'spin 0.8s linear infinite' },
+    footer: { textAlign: 'center', fontSize: 11, color: '#9ca3af', padding: '12px 0', borderTop: '1px solid #f3f4f6' },
+};
