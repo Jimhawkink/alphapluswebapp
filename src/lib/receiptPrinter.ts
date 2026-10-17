@@ -212,8 +212,6 @@ export async function generateCustomerBillHTML(data: ReceiptData, company: Compa
 <head>
   <meta charset="UTF-8">
   <title>Customer Bill - ${data.invoiceNo}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+39+Text&display=swap" rel="stylesheet">
   <style>
     @page {
       margin: 0;
@@ -225,7 +223,7 @@ export async function generateCustomerBillHTML(data: ReceiptData, company: Compa
       box-sizing: border-box;
     }
     body {
-      font-family: 'Roboto', sans-serif;
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
       font-size: 10px;
       width: 80mm;
       padding: 4mm;
@@ -561,7 +559,6 @@ export function generateKOTHTML(data: KOTData, company: CompanyInfo = defaultCom
 <head>
   <meta charset="UTF-8">
   <title>KOT - ${data.kotNo}</title>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
   <style>
     @page {
       margin: 0;
@@ -573,7 +570,7 @@ export function generateKOTHTML(data: KOTData, company: CompanyInfo = defaultCom
       box-sizing: border-box;
     }
     body {
-      font-family: 'Roboto', sans-serif;
+      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
       font-size: 12px;
       width: 80mm;
       padding: 4mm;
