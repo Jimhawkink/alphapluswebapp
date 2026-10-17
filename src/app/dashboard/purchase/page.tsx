@@ -201,7 +201,9 @@ export default function PurchaseEntryPage() {
             const purchaseItemsData = items.map(item => ({
                 purchase_id: purchaseId,
                 product_id: item.productId,
+                product_code: item.productCode || '',
                 product_name: item.productName,
+                unit: item.unit || 'PCS',
                 quantity: item.qty,
                 rate: item.price,
                 total_amount: item.total,
@@ -236,9 +238,9 @@ export default function PurchaseEntryPage() {
             setVatRate(0);
             setNotes('');
             await generateInvoiceNo();
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error saving purchase:', err);
-            toast.error('Failed to save purchase. Check console for details.');
+            toast.error(err?.message || 'Failed to save purchase');
         }
         setIsSaving(false);
     };
