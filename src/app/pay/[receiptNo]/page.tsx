@@ -234,12 +234,11 @@ export default function PayPage({ params }: { params: { receiptNo: string } }) {
                 {/* Payment Details Grid */}
                 <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:16}}>
                     <DetailBox icon="💰" label="Amount Paid" value={`Ksh ${sale!.total_amount.toFixed(2)}`} highlight />
-                    <DetailBox icon="📱" label="Payment Mode" value="M-Pesa (Buy Goods)" />
-                    <DetailBox icon="📞" label="Phone Used" value={paidPhone ? `+${paidPhone}` : sale?.customer_phone||'—'} />
                     <DetailBox icon="🧾" label="Receipt No" value={receiptNo} />
                     <DetailBox icon="🕐" label="Time Paid" value={paidAt||now} />
                     <DetailBox icon="👨‍🍳" label="Served By" value={sale?.waiter_name||'—'} />
                     {(sale?.table_name||sale?.table_no) && <DetailBox icon="🪑" label="Table" value={sale?.table_name||sale?.table_no||'—'} />}
+                    {sale?.customer_name && <DetailBox icon="👤" label="Customer" value={sale.customer_name} />}
                 </div>
 
                 {/* Items ordered */}

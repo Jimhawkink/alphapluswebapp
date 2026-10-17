@@ -649,7 +649,7 @@ function BillPaymentContent() {
                         </div>
                     </div>
 
-                    {/* Bills Table - Compact */}
+                    {/* Bills Table - Enriched */}
                     <div className="max-h-[420px] overflow-y-auto">
                         {isLoading ? (
                             <div className="p-6 text-center">
@@ -662,107 +662,199 @@ function BillPaymentContent() {
                                 <p className="text-gray-500 text-sm">No bills found</p>
                             </div>
                         ) : (
-                            <table className="w-full">
-                                <thead className="bg-gray-50 sticky top-0">
-                                    <tr>
-                                        <th className="text-left py-2 px-3 text-[10px] uppercase tracking-wider font-semibold text-gray-500">Receipt</th>
-                                        <th className="text-left py-2 px-2 text-[10px] uppercase tracking-wider font-semibold text-gray-500">Date</th>
-                                        <th className="text-right py-2 px-2 text-[10px] uppercase tracking-wider font-semibold text-gray-500">Total</th>
-                                        <th className="text-right py-2 px-2 text-[10px] uppercase tracking-wider font-semibold text-gray-500">Balance</th>
-                                        <th className="text-center py-2 px-2 text-[10px] uppercase tracking-wider font-semibold text-gray-500">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-50">
-                                    {filteredBills.map(bill => (
-                                        <tr
+                            <div className="divide-y divide-gray-100">
+                                {filteredBills.map(bill => {
+                                    const isPaid = bill.status === 'Completed' || bill.status === 'Paid';
+                                    const balance = Math.max(0, (bill.total_amount || 0) - (bill.amount_paid || 0));
+                                    const isSelected = selectedBill?.sale_id === bill.sale_id;
+                                    return (
+                                        <div
                                             key={bill.sale_id}
                                             onClick={() => selectBill(bill)}
-                                            className={`cursor-pointer transition-all ${selectedBill?.sale_id === bill.sale_id
-                                                ? 'bg-indigo-50 border-l-2 border-l-indigo-500'
-                                                : 'hover:bg-gray-50'
+                                            className={`cursor-pointer px-3 py-2.5 transition-all ${isSelected
+                                                ? 'bg-indigo-50 border-l-4 border-l-indigo-500'
+                                                : isPaid
+                                                    ? 'hover:bg-green-50 border-l-4 border-l-transparent hover:border-l-green-400'
+                                                    : 'hover:bg-amber-50 border-l-4 border-l-transparent hover:border-l-amber-400'
                                                 }`}
                                         >
-                                            <td className="py-2 px-3">
-                                                <span className="text-[11px] font-semibold text-indigo-600">
-                                                    {bill.receipt_no}
-                                                </span>
-                                            </td>
-                                            <td className="py-2 px-2 text-[11px] text-gray-500">
-                                                {new Date(bill.sale_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
-                                            </td>
-                                            <td className="py-2 px-2 text-right text-xs font-medium text-gray-700">
-                                                {bill.total_amount?.toLocaleString()}
-                                            </td>
-                                            <td className="py-2 px-2 text-right text-xs font-bold text-red-600">
-                                                {Math.max(0, (bill.total_amount || 0) - (bill.amount_paid || 0)).toLocaleString()}
-                                            </td>
-                                            <td className="py-2 px-2 text-center">
-                                                <span className={`text-[10px] font-bold ${bill.status === 'Completed' || bill.status === 'Paid' ? 'text-green-600' : 'text-amber-600'}`}>
-                                                    {bill.status === 'Completed' || bill.status === 'Paid' ? '✅' : '⏳'}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                            {/* Row 1: Receipt + Amount + Status */}
+                                            <div className="flex items-center justify-between mb-1">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[11px] font-bold text-indigo-600">{bill.receipt_no}</span>
+                                                    <span className="text-[10px] text-gray-400">
+                                                        {new Date(bill.sale_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-bold text-gray-800">Ksh {bill.total_amount?.toLocaleString()}</span>
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold border ${isPaid ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'}`}>
+                                                        {isPaid ? '✅ Paid' : '⏳ Pending'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            {/* Row 2: Waiter + Customer + M-Pesa / Balance */}
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 flex-wrap">
+                                                    {bill.waiter_name && (
+                                                        <span className="text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">
+                                                            👨‍🍳 {bill.waiter_name}
+                                                        </span>
+                                                    )}
+                                                    {bill.customer_name && (
+                                                        <span className="text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                                                            👤 {bill.customer_name}
+                                                        </span>
+                                                    )}
+                                                    {bill.table_name && (
+                                                        <span className="text-[10px] text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
+                                                            🪑 {bill.table_name}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-right">
+                                                    {isPaid && bill.mpesa_code ? (
+                                                        <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded font-mono">
+                                                            📱 {bill.mpesa_code}
+                                                        </span>
+                                                    ) : isPaid && bill.payment_method ? (
+                                                        <span className="text-[10px] text-green-600">
+                                                            {bill.payment_method === 'M-Pesa' ? '📱' : bill.payment_method === 'Cash' ? '💵' : '💳'} {bill.payment_method}
+                                                        </span>
+                                                    ) : balance > 0 ? (
+                                                        <span className="text-[10px] font-bold text-red-600">Bal: Ksh {balance.toLocaleString()}</span>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
                         )}
                     </div>
                 </div>
 
                 {/* Payment Panel - Middle */}
                 <div className="col-span-4 space-y-3">
-                    {/* Bill Details Card - Clean */}
-                    <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-                        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 bg-gray-50">
-                            <span className="text-base">🧾</span>
-                            <h3 className="font-semibold text-gray-700 text-sm">Bill Details</h3>
-                        </div>
-                        <div className="p-4">
-                            {selectedBill ? (
+                {/* Bill Details Card - Super Detailed */}
+                <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+                    <div className={`flex items-center gap-2 px-4 py-2.5 border-b border-gray-100 ${selectedBill && (selectedBill.status === 'Completed' || selectedBill.status === 'Paid') ? 'bg-gradient-to-r from-green-50 to-emerald-50' : 'bg-gray-50'}`}>
+                        <span className="text-base">🧾</span>
+                        <h3 className="font-semibold text-gray-700 text-sm">Bill Details</h3>
+                        {selectedBill && (selectedBill.status === 'Completed' || selectedBill.status === 'Paid') && (
+                            <span className="ml-auto text-[10px] font-bold bg-green-100 text-green-700 border border-green-200 px-2 py-0.5 rounded-full">✅ PAID</span>
+                        )}
+                    </div>
+                    <div className="p-4">
+                        {selectedBill ? (() => {
+                            const isPaidBill = selectedBill.status === 'Completed' || selectedBill.status === 'Paid';
+                            const method = selectedBill.payment_method || '';
+                            const methodIcon = method === 'M-Pesa' ? '📱' : method === 'Cash' ? '💵' : method === 'Card' ? '💳' : method === 'Bank Transfer' ? '🏦' : '💳';
+                            return (
                                 <div className="space-y-3">
+                                    {/* Receipt + Date row */}
                                     <div className="flex justify-between items-start">
                                         <div>
-                                            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Receipt</p>
-                                            <p className="font-bold text-gray-800">{selectedBill.receipt_no}</p>
+                                            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Receipt</p>
+                                            <p className="font-bold text-gray-900 text-base">{selectedBill.receipt_no}</p>
                                         </div>
                                         <div className="text-right">
-                                            <p className="text-[10px] uppercase tracking-wider text-gray-500 font-semibold">Customer</p>
-                                            <p className="font-medium text-gray-700 text-sm">{selectedBill.customer_name || 'Walk-in'}</p>
+                                            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Date</p>
+                                            <p className="text-sm font-medium text-gray-700">{selectedBill.sale_date}</p>
+                                            {selectedBill.sale_time && <p className="text-[10px] text-gray-400">{selectedBill.sale_time}</p>}
                                         </div>
                                     </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-500">Date</span>
-                                        <span className="text-gray-700">{selectedBill.sale_date}</span>
+
+                                    {/* Info grid */}
+                                    <div className="grid grid-cols-2 gap-1.5">
+                                        {selectedBill.waiter_name && (
+                                            <div className="bg-purple-50 rounded-lg px-2.5 py-2 border border-purple-100">
+                                                <p className="text-[9px] uppercase tracking-wider text-purple-400 font-bold">Served By</p>
+                                                <p className="text-xs font-bold text-purple-800 mt-0.5">👨‍🍳 {selectedBill.waiter_name}</p>
+                                            </div>
+                                        )}
+                                        {selectedBill.table_name && (
+                                            <div className="bg-blue-50 rounded-lg px-2.5 py-2 border border-blue-100">
+                                                <p className="text-[9px] uppercase tracking-wider text-blue-400 font-bold">Table</p>
+                                                <p className="text-xs font-bold text-blue-800 mt-0.5">🪑 {selectedBill.table_name}</p>
+                                            </div>
+                                        )}
+                                        {selectedBill.customer_name && (
+                                            <div className="bg-indigo-50 rounded-lg px-2.5 py-2 border border-indigo-100">
+                                                <p className="text-[9px] uppercase tracking-wider text-indigo-400 font-bold">Customer</p>
+                                                <p className="text-xs font-bold text-indigo-800 mt-0.5">👤 {selectedBill.customer_name}</p>
+                                            </div>
+                                        )}
+                                        {selectedBill.customer_phone && (
+                                            <div className="bg-gray-50 rounded-lg px-2.5 py-2 border border-gray-100">
+                                                <p className="text-[9px] uppercase tracking-wider text-gray-400 font-bold">Phone</p>
+                                                <p className="text-xs font-bold text-gray-700 mt-0.5">📞 {selectedBill.customer_phone}</p>
+                                            </div>
+                                        )}
                                     </div>
-                                    <div className="flex justify-between items-center text-sm">
-                                        <span className="text-gray-500">Status</span>
-                                        <span className={`font-semibold ${selectedBill.status === 'Pending' ? 'text-amber-600' : 'text-green-600'}`}>
-                                            {selectedBill.status === 'Pending' ? '⏳ Not Paid' : '✅ Paid'}
-                                        </span>
-                                    </div>
-                                    <div className="border-t border-gray-100 pt-3 space-y-2">
+
+                                    {/* Amounts */}
+                                    <div className="border-t border-gray-100 pt-2.5 space-y-1.5">
                                         <div className="flex justify-between text-sm">
                                             <span className="text-gray-500">Bill Total</span>
-                                            <span className="font-semibold text-gray-800">Ksh {selectedBill.total_amount?.toLocaleString()}</span>
+                                            <span className="font-bold text-gray-900">Ksh {selectedBill.total_amount?.toLocaleString()}</span>
                                         </div>
+                                        {selectedBill.discount > 0 && (
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Discount</span>
+                                                <span className="font-semibold text-orange-600">-Ksh {selectedBill.discount?.toLocaleString()}</span>
+                                            </div>
+                                        )}
                                         <div className="flex justify-between text-sm">
                                             <span className="text-gray-500">Paid</span>
-                                            <span className="font-semibold text-green-600">Ksh {paidAmount.toLocaleString()}</span>
+                                            <span className="font-bold text-green-600">Ksh {paidAmount.toLocaleString()}</span>
                                         </div>
-                                        <div className="flex justify-between items-center bg-red-50 p-2.5 rounded-lg">
-                                            <span className="text-red-700 font-medium text-sm">Balance</span>
-                                            <span className="font-bold text-red-600 text-lg">Ksh {outstandingAmount.toLocaleString()}</span>
-                                        </div>
+                                        {outstandingAmount > 0 ? (
+                                            <div className="flex justify-between items-center bg-red-50 p-2.5 rounded-lg border border-red-100">
+                                                <span className="text-red-700 font-semibold text-sm">Balance Due</span>
+                                                <span className="font-extrabold text-red-600 text-lg">Ksh {outstandingAmount.toLocaleString()}</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex justify-between items-center bg-green-50 p-2 rounded-lg border border-green-100">
+                                                <span className="text-green-700 font-semibold text-sm">Balance</span>
+                                                <span className="font-extrabold text-green-600">Ksh 0</span>
+                                            </div>
+                                        )}
                                     </div>
+
+                                    {/* PAID PAYMENT DETAILS — Only shown when paid */}
+                                    {isPaidBill && (
+                                        <div className="border-t border-gray-100 pt-3 space-y-2">
+                                            <p className="text-[10px] uppercase tracking-wider text-gray-400 font-bold mb-1.5">Payment Details</p>
+
+                                            {/* Payment Method Badge */}
+                                            <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${method === 'M-Pesa' ? 'bg-green-50 border border-green-200' : method === 'Cash' ? 'bg-amber-50 border border-amber-200' : 'bg-blue-50 border border-blue-200'}`}>
+                                                <span className={`text-sm font-bold ${method === 'M-Pesa' ? 'text-green-700' : method === 'Cash' ? 'text-amber-700' : 'text-blue-700'}`}>
+                                                    {methodIcon} {method || 'Unknown'}
+                                                </span>
+                                                <span className="text-xs font-bold text-gray-600">Ksh {selectedBill.amount_paid?.toLocaleString()}</span>
+                                            </div>
+
+                                            {/* M-Pesa Code — prominent if exists */}
+                                            {selectedBill.mpesa_code && (
+                                                <div className="bg-gradient-to-r from-green-600 to-emerald-600 rounded-xl p-3 text-center shadow-md">
+                                                    <p className="text-[9px] text-green-100 uppercase tracking-widest font-bold mb-1">M-Pesa Transaction Code</p>
+                                                    <p className="text-white font-black text-lg font-mono tracking-widest">{selectedBill.mpesa_code}</p>
+                                                    <p className="text-green-200 text-[9px] mt-1">✓ Payment Confirmed</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                            ) : (
-                                <div className="text-center py-6 text-gray-400">
-                                    <span className="text-3xl block mb-2">👆</span>
-                                    <p className="text-sm">Select a bill</p>
-                                </div>
-                            )}
-                        </div>
+                            );
+                        })() : (
+                            <div className="text-center py-6 text-gray-400">
+                                <span className="text-3xl block mb-2">👆</span>
+                                <p className="text-sm">Select a bill to view details</p>
+                            </div>
+                        )}
                     </div>
+                </div>
 
                     {/* Payment Method Card - Clean */}
                     <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
