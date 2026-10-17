@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// M-Pesa API endpoint - Supabase Edge Functions (same as mobile app)
-const MPESA_API_URL = 'https://pxcdaivlvltmdifxietb.supabase.co/functions/v1';
+// M-Pesa API endpoint - Hotel Supabase Edge Functions
+const MPESA_API_URL = 'https://ywsstybsffcipaqtkjjl.supabase.co/functions/v1';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl3c3N0eWJzZmZjaXBhcXRrampsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE0NzkzOTEsImV4cCI6MjEwNzA1NTM5MX0.dSjOnaB5W0jfZPXrTdc1H_OotXJLat2g6eqfX3udkwc';
 
 // Format phone number to 254 format
 function formatMpesaPhone(phone: string): string {
@@ -47,7 +48,10 @@ export async function POST(request: NextRequest) {
         // Call Supabase Edge Function STK Push
         const response = await fetch(`${MPESA_API_URL}/stkpush`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            },
             body: JSON.stringify({
                 phone: formattedPhone,
                 amount: Math.ceil(parseFloat(amount)),

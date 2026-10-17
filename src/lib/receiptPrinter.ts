@@ -842,8 +842,8 @@ export function createReceiptData(
     const hotelName = options?.hotelName || 'AlphaPlus';
     const shortDate = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }).replace(/\//g, '-');
 
-    // Create simple, short QR data URL
-    qrCodeData = `${baseUrl}/hotel-verify-receipt?r=${encodeURIComponent(invoiceNo)}&a=${total.toFixed(0)}&d=${shortDate}`;
+    // Create M-Pesa payment URL — customer scans → enters phone → STK Push fires
+    qrCodeData = `${baseUrl}/pay/${encodeURIComponent(invoiceNo)}`;
     verificationHash = invoiceNo + '_' + total.toFixed(2);
   } catch (error) {
     console.error('Error generating QR code:', error);
