@@ -45,3 +45,4 @@ next-env.d.ts
 # SQL files with sensitive data
 # Keep the schema but not any data dumps
 # supabase_data.sql
+.env*
