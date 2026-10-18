@@ -245,6 +245,8 @@ const buildMenu = (): MenuSection[] => [
         items: [
             { name: 'Dashboard', icon: Icons.dashboard, href: '/dashboard', badge: null },
             { name: 'Point of Sale', icon: Icons.pos, href: '/dashboard/pos', badge: 'LIVE' },
+            { name: 'Cashier Checkout', icon: Icons.doc, href: '/dashboard/bills', badge: 'EXIT' },
+            { name: 'Bill Payment', icon: Icons.money, href: '/dashboard/bill-payment', badge: 'PAY' },
             { name: 'Kitchen Display', icon: Icons.kitchen, href: '/dashboard/kitchen', badge: 'KDS' },
         ],
     },

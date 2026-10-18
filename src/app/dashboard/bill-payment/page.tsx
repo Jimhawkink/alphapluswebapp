@@ -601,10 +601,11 @@ function BillPaymentContent() {
                     </button>
                     <a
                         href="/dashboard/bills"
-                        className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-all"
+                        className="flex items-center gap-2 px-3.5 py-2 text-xs font-black bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl shadow-md hover:from-purple-500 hover:to-indigo-500 transition-all hover:scale-105"
+                        title="Open Cashier Exit Verification & Bills Desk"
                     >
-                        <span>📋</span>
-                        <span className="font-medium text-gray-700">All Bills</span>
+                        <span>🛡️</span>
+                        <span>Cashier Checkout Desk</span>
                     </a>
                 </div>
             </div>
