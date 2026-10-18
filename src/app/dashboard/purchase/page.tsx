@@ -249,35 +249,39 @@ export default function PurchaseEntryPage() {
         return (
             <div className="flex items-center justify-center h-96">
                 <div className="text-center">
-                    <div className="w-8 h-8 border-2 border-slate-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-2" />
-                    <p className="text-xs text-slate-500">Loading purchase entry form...</p>
+                    <div className="w-10 h-10 border-4 border-emerald-200 border-t-emerald-600 rounded-full animate-spin mx-auto mb-3" />
+                    <p className="text-sm font-semibold text-gray-500">Loading purchase entry form...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="space-y-4" style={{ fontFamily: "'Inter','Segoe UI',system-ui,sans-serif" }}>
-            {/* ── COMPACT GLASSMORPHIIC HEADER ── */}
-            <div className="bg-white/70 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-4 shadow-sm">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500/10 via-teal-500/10 to-cyan-500/10 border border-emerald-200/50 flex items-center justify-center text-emerald-600 text-lg shadow-xs">
+        <div className="space-y-5" style={{ fontFamily: "'Inter','Segoe UI',system-ui,sans-serif" }}>
+            {/* ── HERO BANNER (MATCHING DASHBOARD STYLE) ── */}
+            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 p-5 text-white shadow-xl">
+                <div className="absolute -right-6 -bottom-6 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+                <div className="absolute right-32 -top-10 w-28 h-28 rounded-full bg-white/10 pointer-events-none" />
+
+                <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                        <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white text-2xl shadow-md">
                             📥
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-slate-800 tracking-tight">New Purchase Entry</h1>
-                            <p className="text-xs text-slate-500">Record incoming stock & automatically update inventory balances</p>
+                            <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">New Purchase Entry</h1>
+                            <p className="text-emerald-100 text-sm font-medium mt-0.5">Record incoming goods, track supplier rates & sync inventory stock</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <div className="px-3 py-1.5 bg-slate-50 border border-slate-200/70 rounded-xl">
-                            <span className="text-[11px] text-slate-500">Invoice:</span>
-                            <span className="ml-1.5 font-mono text-xs font-bold text-slate-800">{invoiceNo}</span>
+
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <div className="px-4 py-2 bg-white/20 backdrop-blur-md border border-white/30 rounded-xl flex items-center gap-2">
+                            <span className="text-emerald-100 text-xs font-bold uppercase tracking-wider">Invoice No</span>
+                            <span className="font-mono text-base font-black text-white">{invoiceNo}</span>
                         </div>
                         <a
                             href="/dashboard/purchases"
-                            className="px-3.5 py-1.5 bg-white/80 hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-xs hover:border-slate-300 transition-all flex items-center gap-1.5"
+                            className="px-5 py-2.5 bg-white hover:bg-emerald-50 text-emerald-800 font-extrabold rounded-xl text-sm shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
                         >
                             <span>📋</span> All Records
                         </a>
@@ -285,60 +289,60 @@ export default function PurchaseEntryPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {/* ── LEFT: Form & Item Entry (2 cols) ── */}
-                <div className="lg:col-span-2 space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                {/* ── LEFT: Purchase Details & Item Entry (2 cols) ── */}
+                <div className="lg:col-span-2 space-y-5">
 
                     {/* Purchase Header Details */}
-                    <div className="bg-white/70 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-4 shadow-sm space-y-3">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm">🏢</span>
-                            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Purchase Header</h2>
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="text-lg">🏢</span>
+                            <h2 className="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Purchase Header Information</h2>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Purchase Date</label>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">📅 Purchase Date</label>
                                 <input
                                     type="date"
                                     value={purchaseDate}
                                     onChange={(e) => setPurchaseDate(e.target.value)}
-                                    className="w-full px-3 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 transition-all"
                                 />
                             </div>
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Supplier Ref / Invoice #</label>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">📄 Supplier Invoice #</label>
                                 <input
                                     type="text"
                                     value={supplierInvoiceNo}
                                     onChange={(e) => setSupplierInvoiceNo(e.target.value)}
                                     placeholder="e.g. INV-9042"
-                                    className="w-full px-3 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all"
+                                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 transition-all"
                                 />
                             </div>
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Payment Status</label>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">💳 Payment Status</label>
                                 <select
                                     value={paymentStatus}
                                     onChange={(e) => setPaymentStatus(e.target.value)}
-                                    className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer"
+                                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:border-emerald-500 transition-all cursor-pointer"
                                 >
-                                    <option value="Paid">Paid</option>
-                                    <option value="Unpaid">Unpaid / On Credit</option>
+                                    <option value="Paid">✅ Paid</option>
+                                    <option value="Unpaid">❌ Unpaid / On Credit</option>
                                 </select>
                             </div>
                         </div>
 
                         {/* Supplier Selector */}
                         <div>
-                            <label className="block text-[11px] font-semibold text-slate-500 mb-1">Supplier *</label>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">🏢 Supplier / Vendor *</label>
                             <select
                                 value={selectedSupplierId}
                                 onChange={(e) => setSelectedSupplierId(Number(e.target.value))}
-                                className={`w-full px-3 py-1.5 bg-slate-50/70 border rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer ${
-                                    !selectedSupplierId ? 'border-amber-300/80 bg-amber-500/5' : 'border-slate-200'
+                                className={`w-full px-3.5 py-2.5 bg-gray-50 border rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:border-emerald-500 transition-all cursor-pointer ${
+                                    !selectedSupplierId ? 'border-amber-400 bg-amber-50/40' : 'border-gray-200'
                                 }`}
                             >
-                                <option value={0}>— Select Vendor / Supplier —</option>
+                                <option value={0}>— Select Supplier —</option>
                                 {suppliers.map(s => (
                                     <option key={s.supplier_id} value={s.supplier_id}>
                                         {s.supplier_code} — {s.supplier_name} {s.phone ? `(${s.phone})` : ''}
@@ -346,57 +350,59 @@ export default function PurchaseEntryPage() {
                                 ))}
                             </select>
                             {selectedSupplier && (
-                                <div className="mt-2 p-2.5 bg-emerald-500/5 rounded-xl border border-emerald-200/40 flex items-center justify-between text-xs">
-                                    <div className="flex items-center gap-2">
-                                        <span className="font-semibold text-slate-800">{selectedSupplier.supplier_name}</span>
+                                <div className="mt-2.5 p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between text-sm">
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="font-bold text-gray-900">{selectedSupplier.supplier_name}</span>
                                         {selectedSupplier.contact_person && (
-                                            <span className="text-[11px] text-slate-400">({selectedSupplier.contact_person})</span>
+                                            <span className="text-xs text-gray-500 font-medium">({selectedSupplier.contact_person})</span>
                                         )}
                                     </div>
-                                    <span className="text-[11px] text-emerald-700 font-medium">{selectedSupplier.payment_terms || 'Standard Terms'}</span>
+                                    <span className="text-xs text-emerald-800 font-bold bg-emerald-100 px-2.5 py-1 rounded-lg">
+                                        {selectedSupplier.payment_terms || 'Standard Terms'}
+                                    </span>
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Ingredient Selector Card */}
-                    <div className="bg-white/70 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-4 shadow-sm space-y-3">
-                        <div className="flex items-center justify-between">
+                    {/* Add Ingredients Card */}
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4">
+                        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                             <div className="flex items-center gap-2">
-                                <span className="text-sm">🥬</span>
-                                <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Add Ingredient</h2>
+                                <span className="text-lg">🥬</span>
+                                <h2 className="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Add Items To Purchase</h2>
                             </div>
-                            <span className="text-[11px] text-slate-400">{filteredIngredients.length} ingredients available</span>
+                            <span className="text-xs font-bold text-gray-500">{filteredIngredients.length} ingredients found</span>
                         </div>
 
                         {/* Search & Filter */}
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-2 gap-3">
                             <input
                                 type="text"
-                                placeholder="🔍 Filter ingredient..."
+                                placeholder="🔍 Search ingredients..."
                                 value={ingredientSearch}
                                 onChange={(e) => setIngredientSearch(e.target.value)}
-                                className="px-3 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 focus:bg-white transition-all text-slate-800"
+                                className="px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-emerald-500 transition-all text-gray-800"
                             />
                             <select
                                 value={categoryFilter}
                                 onChange={(e) => setCategoryFilter(e.target.value)}
-                                className="px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 focus:bg-white transition-all text-slate-700 cursor-pointer"
+                                className="px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:outline-none focus:border-emerald-500 transition-all text-gray-800 cursor-pointer"
                             >
                                 {categories.map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
 
-                        {/* Add Row Controls */}
-                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 items-end">
+                        {/* Row Controls */}
+                        <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
                             <div className="sm:col-span-2">
-                                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Item *</label>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">Ingredient *</label>
                                 <select
                                     value={selectedProduct}
                                     onChange={(e) => selectIngredientForAdd(Number(e.target.value))}
-                                    className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all cursor-pointer"
+                                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-800 focus:outline-none focus:border-emerald-500 transition-all cursor-pointer"
                                 >
-                                    <option value={0}>— Select item —</option>
+                                    <option value={0}>— Choose Ingredient —</option>
                                     {filteredIngredients.map(i => (
                                         <option key={i.pid} value={i.pid}>
                                             {i.product_code ? `${i.product_code} - ` : ''}{i.product_name} ({i.base_unit || 'PCS'})
@@ -405,114 +411,114 @@ export default function PurchaseEntryPage() {
                                 </select>
                             </div>
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Quantity</label>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">Quantity</label>
                                 <input
                                     type="number"
                                     value={qty}
                                     onChange={(e) => setQty(Number(e.target.value))}
                                     min={0.001}
                                     step={0.001}
-                                    className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all font-mono"
+                                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:border-emerald-500 transition-all font-mono"
                                 />
                             </div>
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Cost / Unit</label>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">Cost / Unit (Ksh)</label>
                                 <input
                                     type="number"
                                     value={price}
                                     onChange={(e) => setPrice(Number(e.target.value))}
                                     min={0}
                                     step={0.01}
-                                    className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:border-emerald-500 focus:bg-white transition-all font-mono"
+                                    className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-bold text-gray-800 focus:outline-none focus:border-emerald-500 transition-all font-mono"
                                 />
                             </div>
                             <div>
                                 <button
                                     onClick={addItem}
-                                    className="w-full py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-1"
+                                    className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 text-white rounded-xl text-sm font-extrabold shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-1.5"
                                 >
-                                    <span>➕</span> Add
+                                    <span>➕</span> Add Item
                                 </button>
                             </div>
                         </div>
                     </div>
 
-                    {/* Items Grid */}
-                    <div className="bg-white/80 backdrop-blur-xl border border-slate-200/60 rounded-2xl shadow-sm overflow-hidden">
-                        <div className="px-4 py-2.5 bg-slate-50/80 border-b border-slate-200/70 flex items-center justify-between">
-                            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider">
-                                Order Items ({items.length})
+                    {/* Order Items List */}
+                    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                        <div className="px-5 py-3.5 bg-gradient-to-r from-slate-50 to-emerald-50/50 border-b border-gray-200 flex items-center justify-between">
+                            <span className="text-xs font-extrabold text-gray-800 uppercase tracking-wider">
+                                Line Items ({items.length})
                             </span>
                             {items.length > 0 && (
                                 <button
                                     onClick={() => { if (confirm('Clear all items?')) setItems([]); }}
-                                    className="text-[11px] text-rose-600 hover:underline"
+                                    className="text-xs font-bold text-red-600 hover:underline"
                                 >
-                                    Clear all
+                                    Clear all items
                                 </button>
                             )}
                         </div>
 
                         {items.length === 0 ? (
-                            <div className="p-10 text-center text-slate-400">
-                                <span className="text-3xl block mb-2 opacity-50">🛒</span>
-                                <p className="text-xs font-semibold text-slate-600">No items added to this purchase yet</p>
-                                <p className="text-[11px] text-slate-400 mt-0.5">Select an ingredient above and specify quantity & unit cost</p>
+                            <div className="p-12 text-center text-gray-400">
+                                <span className="text-4xl block mb-2 opacity-50">🛒</span>
+                                <p className="text-sm font-bold text-gray-700">No items added yet</p>
+                                <p className="text-xs text-gray-400 mt-0.5">Select an ingredient above and click Add Item</p>
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
-                                <table className="w-full text-left text-xs border-collapse">
+                                <table className="w-full text-left text-sm border-collapse">
                                     <thead>
-                                        <tr className="bg-slate-50/50 border-b border-slate-100 text-[11px] text-slate-500 font-semibold uppercase">
-                                            <th className="py-2 px-3">#</th>
-                                            <th className="py-2 px-3">Item</th>
-                                            <th className="py-2 px-3 text-center">Unit</th>
-                                            <th className="py-2 px-3 text-center">Qty</th>
-                                            <th className="py-2 px-3 text-right">Rate</th>
-                                            <th className="py-2 px-3 text-right">Total</th>
-                                            <th className="py-2 px-3 text-center"></th>
+                                        <tr className="bg-gray-50 border-b border-gray-200 text-xs text-gray-600 font-extrabold uppercase">
+                                            <th className="py-3 px-4">#</th>
+                                            <th className="py-3 px-4">Ingredient</th>
+                                            <th className="py-3 px-4 text-center">Unit</th>
+                                            <th className="py-3 px-4 text-center">Qty</th>
+                                            <th className="py-3 px-4 text-right">Unit Cost</th>
+                                            <th className="py-3 px-4 text-right">Total</th>
+                                            <th className="py-3 px-4 text-center">Action</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-100">
+                                    <tbody className="divide-y divide-gray-100">
                                         {items.map((item, idx) => (
-                                            <tr key={item.id} className="hover:bg-slate-50/60 transition-colors">
-                                                <td className="py-2 px-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                                                <td className="py-2 px-3">
-                                                    <p className="font-semibold text-slate-800 text-xs">{item.productName}</p>
-                                                    {item.productCode && <p className="text-[10px] text-slate-400 font-mono">{item.productCode}</p>}
+                                            <tr key={item.id} className="hover:bg-gray-50/60 transition-colors">
+                                                <td className="py-3 px-4 text-gray-400 font-mono text-xs">{idx + 1}</td>
+                                                <td className="py-3 px-4">
+                                                    <p className="font-bold text-gray-900 text-sm">{item.productName}</p>
+                                                    {item.productCode && <p className="text-xs text-gray-400 font-mono">{item.productCode}</p>}
                                                 </td>
-                                                <td className="py-2 px-3 text-center">
-                                                    <span className="px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-mono">
+                                                <td className="py-3 px-4 text-center">
+                                                    <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded font-semibold text-xs font-mono">
                                                         {item.unit}
                                                     </span>
                                                 </td>
-                                                <td className="py-2 px-3 text-center">
+                                                <td className="py-3 px-4 text-center">
                                                     <input
                                                         type="number"
                                                         value={item.qty}
                                                         onChange={(e) => updateItemQty(item.id, parseFloat(e.target.value) || 0)}
                                                         min={0.001}
                                                         step={0.001}
-                                                        className="w-16 px-1.5 py-1 text-center bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono"
+                                                        className="w-20 px-2 py-1 text-center bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold font-mono focus:outline-none focus:border-emerald-500"
                                                     />
                                                 </td>
-                                                <td className="py-2 px-3 text-right">
+                                                <td className="py-3 px-4 text-right">
                                                     <input
                                                         type="number"
                                                         value={item.price}
                                                         onChange={(e) => updateItemPrice(item.id, parseFloat(e.target.value) || 0)}
                                                         min={0}
                                                         step={0.01}
-                                                        className="w-20 px-1.5 py-1 text-right bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono"
+                                                        className="w-24 px-2 py-1 text-right bg-gray-50 border border-gray-200 rounded-lg text-sm font-bold font-mono focus:outline-none focus:border-emerald-500"
                                                     />
                                                 </td>
-                                                <td className="py-2 px-3 text-right font-mono font-bold text-slate-800">
+                                                <td className="py-3 px-4 text-right font-mono font-black text-gray-900 text-sm">
                                                     Ksh {item.total.toLocaleString()}
                                                 </td>
-                                                <td className="py-2 px-3 text-center">
+                                                <td className="py-3 px-4 text-center">
                                                     <button
                                                         onClick={() => removeItem(item.id)}
-                                                        className="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors"
+                                                        className="text-gray-400 hover:text-red-600 p-1 rounded transition-colors text-sm font-bold"
                                                     >
                                                         ✕
                                                     </button>
@@ -527,17 +533,17 @@ export default function PurchaseEntryPage() {
                 </div>
 
                 {/* ── RIGHT: Summary & Confirm Panel (1 col) ── */}
-                <div className="space-y-4">
-                    <div className="bg-white/70 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-4 shadow-sm space-y-3.5 sticky top-4">
-                        <div className="flex items-center gap-2">
-                            <span className="text-sm">📊</span>
-                            <h2 className="text-xs font-bold text-slate-700 uppercase tracking-wider">Purchase Summary</h2>
+                <div className="space-y-5">
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 space-y-4 sticky top-4">
+                        <div className="flex items-center gap-2 border-b border-gray-100 pb-3">
+                            <span className="text-lg">📊</span>
+                            <h2 className="text-sm font-extrabold text-gray-800 uppercase tracking-wide">Purchase Summary</h2>
                         </div>
 
                         {/* Adjustments */}
-                        <div className="space-y-2.5 text-xs">
+                        <div className="space-y-3 text-sm">
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-500 mb-1">Discount (Ksh)</label>
+                                <label className="block text-xs font-bold text-gray-700 mb-1">🔖 Discount (Ksh)</label>
                                 <input
                                     type="number"
                                     value={discountAmount}
@@ -545,20 +551,20 @@ export default function PurchaseEntryPage() {
                                     min={0}
                                     max={subtotal}
                                     step={0.01}
-                                    className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-indigo-500 font-mono text-slate-800"
+                                    className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 font-mono font-bold text-gray-900"
                                 />
                             </div>
                             <div>
-                                <label className="block text-[11px] font-semibold text-slate-500 mb-1">VAT</label>
-                                <div className="flex gap-1.5">
+                                <label className="block text-xs font-bold text-gray-700 mb-1">📈 VAT (%)</label>
+                                <div className="flex gap-2">
                                     {[0, 8, 16].map(r => (
                                         <button
                                             key={r}
                                             onClick={() => setVatRate(r)}
-                                            className={`flex-1 py-1 rounded-lg text-xs font-medium transition-all ${
+                                            className={`flex-1 py-1.5 rounded-xl text-xs font-bold transition-all ${
                                                 vatRate === r
-                                                    ? 'bg-slate-800 text-white shadow-xs'
-                                                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                                    ? 'bg-emerald-600 text-white shadow-sm'
+                                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                             }`}
                                         >
                                             {r}%
@@ -569,38 +575,40 @@ export default function PurchaseEntryPage() {
                         </div>
 
                         {/* Totals Breakdown */}
-                        <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-200/50 space-y-1.5 text-xs">
-                            <div className="flex justify-between text-slate-600">
+                        <div className="p-4 rounded-2xl bg-emerald-50/70 border border-emerald-200 space-y-2 text-sm">
+                            <div className="flex justify-between text-gray-700 font-medium">
                                 <span>Sub Total:</span>
-                                <span className="font-mono">Ksh {subtotal.toLocaleString()}</span>
+                                <span className="font-mono font-bold">Ksh {subtotal.toLocaleString()}</span>
                             </div>
                             {discountAmount > 0 && (
-                                <div className="flex justify-between text-amber-700">
+                                <div className="flex justify-between text-orange-700 font-medium">
                                     <span>Discount:</span>
-                                    <span className="font-mono">- Ksh {discountAmount.toLocaleString()}</span>
+                                    <span className="font-mono font-bold">- Ksh {discountAmount.toLocaleString()}</span>
                                 </div>
                             )}
                             {vatRate > 0 && (
-                                <div className="flex justify-between text-indigo-700">
+                                <div className="flex justify-between text-blue-700 font-medium">
                                     <span>VAT ({vatRate}%):</span>
-                                    <span className="font-mono">+ Ksh {vatAmount.toLocaleString()}</span>
+                                    <span className="font-mono font-bold">+ Ksh {vatAmount.toLocaleString()}</span>
                                 </div>
                             )}
-                            <div className="flex justify-between items-center pt-2 border-t border-slate-200 font-bold text-slate-900 text-sm">
+                            <div className="flex justify-between items-center pt-2.5 border-t border-emerald-200 font-black text-gray-900 text-base">
                                 <span>Grand Total:</span>
-                                <span className="font-mono text-emerald-700 text-base">Ksh {grandTotal.toLocaleString()}</span>
+                                <span className="font-mono text-emerald-800 text-2xl font-black">
+                                    Ksh {grandTotal.toLocaleString()}
+                                </span>
                             </div>
                         </div>
 
                         {/* Optional Notes */}
                         <div>
-                            <label className="block text-[11px] font-semibold text-slate-500 mb-1">Notes (Optional)</label>
+                            <label className="block text-xs font-bold text-gray-700 mb-1">📝 Notes (Optional)</label>
                             <textarea
                                 value={notes}
                                 onChange={(e) => setNotes(e.target.value)}
                                 rows={2}
                                 placeholder="Delivery remarks, batch memo..."
-                                className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 text-slate-800 resize-none"
+                                className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs focus:outline-none focus:border-emerald-500 text-gray-800 resize-none font-medium"
                             />
                         </div>
 
@@ -608,7 +616,7 @@ export default function PurchaseEntryPage() {
                         <button
                             onClick={savePurchase}
                             disabled={items.length === 0 || isSaving || grandTotal <= 0 || !selectedSupplierId}
-                            className="w-full py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 text-white rounded-xl text-base font-black shadow-lg hover:shadow-xl hover:scale-[1.01] active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                         >
                             {isSaving ? 'Saving Purchase...' : '💾 Save & Update Inventory'}
                         </button>

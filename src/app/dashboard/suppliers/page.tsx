@@ -235,48 +235,52 @@ export default function SuppliersPage() {
     return (
         <div className="flex gap-4 h-full" style={{ fontFamily: "'Inter','Segoe UI',system-ui,sans-serif" }}>
             {/* Main Content */}
-            <div className="flex-1 space-y-4 transition-all">
+            <div className="flex-1 space-y-5 transition-all">
 
-                {/* ── COMPACT GLASSMORPHIIC HEADER ── */}
-                <div className="bg-white/70 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-4 shadow-sm">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/10 via-violet-500/10 to-indigo-500/10 border border-purple-200/50 flex items-center justify-center text-purple-600 text-lg shadow-xs">
+                {/* ── HERO BANNER (MATCHING DASHBOARD STYLE) ── */}
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 p-5 text-white shadow-xl">
+                    <div className="absolute -right-6 -bottom-6 w-36 h-36 rounded-full bg-white/10 pointer-events-none" />
+                    <div className="absolute right-32 -top-10 w-28 h-28 rounded-full bg-white/10 pointer-events-none" />
+
+                    <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div className="flex items-center gap-3.5">
+                            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-white text-2xl shadow-md">
                                 🏢
                             </div>
                             <div>
-                                <h1 className="text-xl font-bold text-slate-800 tracking-tight">Suppliers & Vendors</h1>
-                                <p className="text-xs text-slate-500">Vendor directory, contact profiles & payable balances</p>
+                                <h1 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">Suppliers & Vendors</h1>
+                                <p className="text-purple-100 text-sm font-medium mt-0.5">Supplier directory, procurement accounts & payable balances</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <button
-                                onClick={loadSuppliers}
-                                title="Refresh"
-                                className="p-2 bg-white/80 hover:bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-xs shadow-xs transition-all"
-                            >
-                                🔄
-                            </button>
+
+                        <div className="flex flex-wrap items-center gap-2.5">
                             <button
                                 onClick={openAddModal}
-                                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm hover:shadow transition-all flex items-center gap-1.5"
+                                className="px-5 py-2.5 bg-white hover:bg-purple-50 text-purple-700 font-extrabold rounded-xl text-sm shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
                             >
                                 <span>➕</span> Add Supplier
+                            </button>
+                            <button
+                                onClick={loadSuppliers}
+                                title="Refresh suppliers"
+                                className="p-2.5 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white rounded-xl text-sm font-bold shadow-sm transition-all"
+                            >
+                                🔄
                             </button>
                         </div>
                     </div>
                 </div>
 
-                {/* ── TABLE SETUP NOTICE (IF TABLE NOT YET CREATED IN SUPABASE) ── */}
+                {/* ── ACTION REQUIRED / TABLE MISSING BANNER ── */}
                 {tableMissing && (
-                    <div className="bg-amber-500/10 backdrop-blur-md border border-amber-300/60 rounded-2xl p-3.5 shadow-xs">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                            <div className="flex items-center gap-2.5">
-                                <span className="text-xl">⚠️</span>
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-500 via-orange-500 to-amber-500 p-4 text-white shadow-lg">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                            <div className="flex items-center gap-3">
+                                <span className="text-2xl">🚨</span>
                                 <div>
-                                    <h3 className="font-semibold text-slate-800 text-xs">Supabase Table Setup Required</h3>
-                                    <p className="text-[11px] text-slate-600">
-                                        The <code className="bg-white/80 px-1.5 py-0.5 rounded font-mono text-amber-800 border border-amber-200 text-[10px]">suppliers</code> table needs to be created in your Supabase database.
+                                    <h3 className="font-extrabold text-base leading-tight">Action Required</h3>
+                                    <p className="text-white/90 text-sm mt-0.5 font-medium">
+                                        Database table <code className="bg-black/20 px-2 py-0.5 rounded font-mono text-xs">suppliers</code> needs to be set up in Supabase.
                                     </p>
                                 </div>
                             </div>
@@ -285,57 +289,99 @@ export default function SuppliersPage() {
                                     href="https://supabase.com/dashboard/project/ywsstybsffcipaqtkjjl/sql/new"
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-semibold text-xs transition-all shadow-xs"
+                                    className="px-4 py-2 bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/30 text-white rounded-xl font-bold text-xs shadow-sm transition-all"
                                 >
-                                    Open SQL Editor ↗
+                                    Open Supabase SQL ↗
                                 </a>
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* ── SLIM STATS CARDS (FAINTED COLORS & GLASSMORPHISM) ── */}
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-                    {[
-                        { label: 'Total Suppliers', value: stats.total, badge: 'total', bg: 'bg-purple-500/5', border: 'border-purple-200/50', text: 'text-purple-700', icon: '🏢' },
-                        { label: 'Active Vendors', value: stats.active, badge: 'enabled', bg: 'bg-emerald-500/5', border: 'border-emerald-200/50', text: 'text-emerald-700', icon: '✅' },
-                        { label: 'Kitchen / Internal', value: stats.kitchen, badge: 'internal', bg: 'bg-amber-500/5', border: 'border-amber-200/50', text: 'text-amber-700', icon: '🍳' },
-                        { label: 'External Vendors', value: stats.external, badge: 'partners', bg: 'bg-blue-500/5', border: 'border-blue-200/50', text: 'text-blue-700', icon: '🚚' },
-                        { label: 'Total Payable', value: `Ksh ${stats.creditBalance.toLocaleString()}`, badge: 'balance', bg: 'bg-rose-500/5', border: 'border-rose-200/50', text: 'text-rose-700', icon: '💰' },
-                    ].map((s, i) => (
-                        <div
-                            key={i}
-                            className={`p-3 rounded-xl bg-white/70 backdrop-blur-md border ${s.border} shadow-xs hover:border-slate-300 transition-all`}
-                        >
-                            <div className="flex items-center justify-between">
-                                <span className="text-base">{s.icon}</span>
-                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${s.bg} ${s.text}`}>
-                                    {s.badge}
-                                </span>
-                            </div>
-                            <p className="text-[11px] font-medium text-slate-500 mt-2 truncate">{s.label}</p>
-                            <p className="text-sm font-bold text-slate-800 mt-0.5 truncate">{s.value}</p>
+                {/* ── VIBRANT GLASSMORPHIC KPI CARDS (DASHBOARD STYLE) ── */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+                    {/* Card 1: Total Suppliers */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-600 p-4 text-white shadow-lg">
+                        <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/15 pointer-events-none" />
+                        <div className="flex items-center gap-1.5 text-white/90 text-xs font-bold uppercase tracking-wider">
+                            <span>🏢</span> Total Suppliers
                         </div>
-                    ))}
+                        <h3 className="text-2xl md:text-3xl font-black text-white mt-1.5">{stats.total}</h3>
+                        <span className="inline-block mt-2.5 px-2.5 py-0.5 rounded-lg bg-black/15 backdrop-blur-sm text-xs font-semibold text-white/95">
+                            Registered vendors
+                        </span>
+                    </div>
+
+                    {/* Card 2: Active */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-green-600 p-4 text-white shadow-lg">
+                        <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/15 pointer-events-none" />
+                        <div className="flex items-center gap-1.5 text-white/90 text-xs font-bold uppercase tracking-wider">
+                            <span>✅</span> Active Suppliers
+                        </div>
+                        <h3 className="text-2xl md:text-3xl font-black text-white mt-1.5">{stats.active}</h3>
+                        <span className="inline-block mt-2.5 px-2.5 py-0.5 rounded-lg bg-black/15 backdrop-blur-sm text-xs font-semibold text-white/95">
+                            Ready for ordering
+                        </span>
+                    </div>
+
+                    {/* Card 3: Kitchen / Internal */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 p-4 text-white shadow-lg">
+                        <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/15 pointer-events-none" />
+                        <div className="flex items-center gap-1.5 text-white/90 text-xs font-bold uppercase tracking-wider">
+                            <span>🍳</span> Kitchen / Internal
+                        </div>
+                        <h3 className="text-2xl md:text-3xl font-black text-white mt-1.5">{stats.kitchen}</h3>
+                        <span className="inline-block mt-2.5 px-2.5 py-0.5 rounded-lg bg-black/15 backdrop-blur-sm text-xs font-semibold text-white/95">
+                            Internal production
+                        </span>
+                    </div>
+
+                    {/* Card 4: External */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-cyan-600 p-4 text-white shadow-lg">
+                        <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/15 pointer-events-none" />
+                        <div className="flex items-center gap-1.5 text-white/90 text-xs font-bold uppercase tracking-wider">
+                            <span>🚚</span> External Vendors
+                        </div>
+                        <h3 className="text-2xl md:text-3xl font-black text-white mt-1.5">{stats.external}</h3>
+                        <span className="inline-block mt-2.5 px-2.5 py-0.5 rounded-lg bg-black/15 backdrop-blur-sm text-xs font-semibold text-white/95">
+                            Third party supplies
+                        </span>
+                    </div>
+
+                    {/* Card 5: Total Balance */}
+                    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-rose-500 to-red-600 p-4 text-white shadow-lg">
+                        <div className="absolute -right-4 -top-4 w-20 h-20 rounded-full bg-white/15 pointer-events-none" />
+                        <div className="flex items-center gap-1.5 text-white/90 text-xs font-bold uppercase tracking-wider">
+                            <span>💰</span> Payable Balance
+                        </div>
+                        <h3 className="text-xl md:text-2xl font-black text-white mt-1.5 truncate">
+                            Ksh {stats.creditBalance >= 1000 ? `${(stats.creditBalance / 1000).toFixed(1)}K` : stats.creditBalance.toLocaleString()}
+                        </h3>
+                        <span className="inline-block mt-2.5 px-2.5 py-0.5 rounded-lg bg-black/15 backdrop-blur-sm text-xs font-semibold text-white/95">
+                            Due to suppliers
+                        </span>
+                    </div>
                 </div>
 
-                {/* ── TRANSLUCENT FILTERS BAR ── */}
-                <div className="bg-white/70 backdrop-blur-xl border border-slate-200/60 rounded-2xl p-3.5 shadow-sm">
-                    <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
-                        <div className="sm:col-span-2">
+                {/* ── FILTERS ── */}
+                <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                        <div className="md:col-span-2">
+                            <label className="text-xs font-bold text-gray-500 mb-1 block">🔍 Search</label>
                             <input
                                 type="text"
-                                placeholder="🔍 Search by name, code, phone, or contact person..."
+                                placeholder="Search by name, code, phone, or contact person..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full px-3 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-purple-500 focus:bg-white transition-all"
+                                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:border-purple-500 transition-all font-medium"
                             />
                         </div>
                         <div>
+                            <label className="text-xs font-bold text-gray-500 mb-1 block">🏷️ Type</label>
                             <select
                                 value={typeFilter}
                                 onChange={(e) => setTypeFilter(e.target.value)}
-                                className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-purple-500 focus:bg-white transition-all cursor-pointer"
+                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:border-purple-500 transition-all font-medium cursor-pointer"
                             >
                                 <option value="All">All Types</option>
                                 <option value="Kitchen">Kitchen / Internal</option>
@@ -343,10 +389,11 @@ export default function SuppliersPage() {
                             </select>
                         </div>
                         <div>
+                            <label className="text-xs font-bold text-gray-500 mb-1 block">📊 Status</label>
                             <select
                                 value={activeFilter}
                                 onChange={(e) => setActiveFilter(e.target.value)}
-                                className="w-full px-2.5 py-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-purple-500 focus:bg-white transition-all cursor-pointer"
+                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-800 focus:outline-none focus:border-purple-500 transition-all font-medium cursor-pointer"
                             >
                                 <option value="All">All Statuses</option>
                                 <option value="Active">Active Only</option>
@@ -356,21 +403,21 @@ export default function SuppliersPage() {
                     </div>
                 </div>
 
-                {/* ── GLASSMORPHIC DATA GRID ── */}
-                <div className="bg-white/80 backdrop-blur-xl rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
+                {/* ── PREMIUM SUPPLIERS TABLE ── */}
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
                     {isLoading ? (
-                        <div className="p-12 flex flex-col items-center justify-center gap-3">
-                            <div className="w-8 h-8 border-2 border-slate-200 border-t-purple-600 rounded-full animate-spin" />
-                            <p className="text-xs text-slate-500">Loading suppliers...</p>
+                        <div className="p-16 flex flex-col items-center justify-center gap-3">
+                            <div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+                            <p className="text-sm font-semibold text-gray-500">Loading suppliers...</p>
                         </div>
                     ) : filtered.length === 0 ? (
-                        <div className="p-12 text-center">
-                            <span className="text-4xl block mb-2 opacity-60">🏢</span>
-                            <p className="text-sm font-semibold text-slate-700">No suppliers found</p>
-                            <p className="text-xs text-slate-400 mt-0.5">Try searching with a different term or register a new vendor</p>
+                        <div className="p-16 text-center">
+                            <span className="text-5xl block mb-3 opacity-60">🏢</span>
+                            <p className="text-base font-bold text-gray-800">No suppliers found</p>
+                            <p className="text-sm text-gray-500 mt-1">Register your first supplier or adjust your search filter</p>
                             <button
                                 onClick={openAddModal}
-                                className="mt-3 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-xs font-semibold shadow-xs"
+                                className="mt-4 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-xl text-sm font-bold shadow-md hover:shadow-lg transition-all"
                             >
                                 ➕ Add Supplier
                             </button>
@@ -379,18 +426,18 @@ export default function SuppliersPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-slate-50/80 backdrop-blur-sm border-b border-slate-200/70 text-slate-600 text-[11px] font-semibold uppercase tracking-wider">
-                                        <th className="py-2.5 px-3.5">Code</th>
-                                        <th className="py-2.5 px-3.5">Supplier Name</th>
-                                        <th className="py-2.5 px-3.5 hidden md:table-cell">Contact</th>
-                                        <th className="py-2.5 px-3.5 hidden lg:table-cell">City / Address</th>
-                                        <th className="py-2.5 px-3.5 text-right">Balance</th>
-                                        <th className="py-2.5 px-3.5 text-center">Type</th>
-                                        <th className="py-2.5 px-3.5 text-center">Status</th>
-                                        <th className="py-2.5 px-3.5 text-center">Actions</th>
+                                    <tr className="bg-gradient-to-r from-slate-50 to-purple-50/50 border-b border-gray-200 text-gray-700 text-xs font-extrabold uppercase tracking-wider">
+                                        <th className="py-3.5 px-4">Code</th>
+                                        <th className="py-3.5 px-4">Supplier Name</th>
+                                        <th className="py-3.5 px-4 hidden md:table-cell">Contact</th>
+                                        <th className="py-3.5 px-4 hidden lg:table-cell">Location</th>
+                                        <th className="py-3.5 px-4 text-right">Balance</th>
+                                        <th className="py-3.5 px-4 text-center">Type</th>
+                                        <th className="py-3.5 px-4 text-center">Status</th>
+                                        <th className="py-3.5 px-4 text-center">Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 text-xs text-slate-700">
+                                <tbody className="divide-y divide-gray-100 text-sm text-gray-700">
                                     {filtered.map((supplier) => {
                                         const isSelected = selectedSupplier?.supplier_id === supplier.supplier_id;
                                         return (
@@ -399,79 +446,79 @@ export default function SuppliersPage() {
                                                 onClick={() => selectSupplier(supplier)}
                                                 className={`cursor-pointer transition-colors ${
                                                     isSelected
-                                                        ? 'bg-purple-50/50 border-l-2 border-purple-500'
-                                                        : 'hover:bg-slate-50/60'
+                                                        ? 'bg-purple-50/80 border-l-4 border-purple-600'
+                                                        : 'hover:bg-purple-50/30'
                                                 }`}
                                             >
-                                                <td className="py-2.5 px-3.5">
-                                                    <span className="font-mono text-purple-700 bg-purple-500/10 px-2 py-0.5 rounded-md border border-purple-200/50 text-[11px]">
+                                                <td className="py-3.5 px-4">
+                                                    <span className="font-mono text-purple-700 bg-purple-100 px-2.5 py-1 rounded-lg text-xs font-extrabold">
                                                         {supplier.supplier_code}
                                                     </span>
                                                 </td>
-                                                <td className="py-2.5 px-3.5">
+                                                <td className="py-3.5 px-4">
                                                     <div>
-                                                        <p className="font-semibold text-slate-800 text-xs">{supplier.supplier_name}</p>
+                                                        <p className="font-bold text-gray-900 text-sm">{supplier.supplier_name}</p>
                                                         {supplier.contact_person && (
-                                                            <p className="text-[10px] text-slate-400">👤 {supplier.contact_person}</p>
+                                                            <p className="text-xs text-gray-500 font-medium">👤 {supplier.contact_person}</p>
                                                         )}
                                                     </div>
                                                 </td>
-                                                <td className="py-2.5 px-3.5 hidden md:table-cell">
-                                                    <div className="text-[11px] text-slate-600">
+                                                <td className="py-3.5 px-4 hidden md:table-cell">
+                                                    <div className="text-sm text-gray-800 font-medium">
                                                         {supplier.phone && <p>{supplier.phone}</p>}
-                                                        {supplier.email && <p className="text-[10px] text-slate-400 truncate max-w-[140px]">{supplier.email}</p>}
+                                                        {supplier.email && <p className="text-xs text-gray-400 truncate max-w-[150px]">{supplier.email}</p>}
                                                     </div>
                                                 </td>
-                                                <td className="py-2.5 px-3.5 hidden lg:table-cell text-slate-600 text-[11px]">
-                                                    {[supplier.city, supplier.address].filter(Boolean).join(', ') || <span className="text-slate-300">—</span>}
+                                                <td className="py-3.5 px-4 hidden lg:table-cell text-gray-600 text-sm">
+                                                    {[supplier.city, supplier.address].filter(Boolean).join(', ') || <span className="text-gray-300">—</span>}
                                                 </td>
-                                                <td className="py-2.5 px-3.5 text-right font-mono">
-                                                    <span className={`font-semibold ${supplier.balance_type === 'Credit' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                                <td className="py-3.5 px-4 text-right font-mono">
+                                                    <span className={`font-black text-base ${supplier.balance_type === 'Credit' ? 'text-red-600' : 'text-green-600'}`}>
                                                         Ksh {(supplier.current_balance || 0).toLocaleString()}
                                                     </span>
-                                                    <p className="text-[10px] text-slate-400">{supplier.balance_type || 'Credit'}</p>
+                                                    <p className="text-xs text-gray-400 font-medium">{supplier.balance_type || 'Credit'}</p>
                                                 </td>
-                                                <td className="py-2.5 px-3.5 text-center">
-                                                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                                                <td className="py-3.5 px-4 text-center">
+                                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
                                                         supplier.is_kitchen
-                                                            ? 'bg-amber-500/10 text-amber-700 border-amber-300/40'
-                                                            : 'bg-blue-500/10 text-blue-700 border-blue-300/40'
+                                                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                                            : 'bg-blue-100 text-blue-800 border border-blue-200'
                                                     }`}>
-                                                        {supplier.is_kitchen ? 'Kitchen' : 'External'}
+                                                        {supplier.is_kitchen ? '🍳 Kitchen' : '🚚 External'}
                                                     </span>
                                                 </td>
-                                                <td className="py-2.5 px-3.5 text-center" onClick={(e) => e.stopPropagation()}>
+                                                <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                                                     <button
                                                         onClick={() => toggleActive(supplier)}
-                                                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border transition-all ${
+                                                        className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold transition-all ${
                                                             supplier.active
-                                                                ? 'bg-emerald-500/10 text-emerald-700 border-emerald-300/40 hover:bg-emerald-500/20'
-                                                                : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                                                                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200 hover:bg-emerald-200'
+                                                                : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
                                                         }`}
                                                     >
                                                         {supplier.active ? 'Active' : 'Inactive'}
                                                     </button>
                                                 </td>
-                                                <td className="py-2.5 px-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                                                    <div className="flex items-center justify-center gap-1">
+                                                <td className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                                    <div className="flex items-center justify-center gap-1.5">
                                                         <button
                                                             onClick={() => selectSupplier(supplier)}
-                                                            title="View details"
-                                                            className="p-1 hover:bg-slate-100 rounded-lg text-slate-600 transition-colors"
+                                                            title="View Details"
+                                                            className="p-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm transition-colors"
                                                         >
                                                             👁️
                                                         </button>
                                                         <button
                                                             onClick={() => openEditModal(supplier)}
                                                             title="Edit"
-                                                            className="p-1 hover:bg-purple-50 rounded-lg text-purple-600 transition-colors"
+                                                            className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm transition-colors"
                                                         >
                                                             ✏️
                                                         </button>
                                                         <button
                                                             onClick={() => deleteSupplier(supplier)}
                                                             title="Delete"
-                                                            className="p-1 hover:bg-rose-50 rounded-lg text-rose-600 transition-colors"
+                                                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-sm transition-colors"
                                                         >
                                                             🗑️
                                                         </button>
@@ -482,7 +529,7 @@ export default function SuppliersPage() {
                                     })}
                                 </tbody>
                             </table>
-                            <div className="px-3.5 py-2.5 border-t border-slate-100 text-xs text-slate-500 bg-slate-50/40">
+                            <div className="px-5 py-3 border-t border-gray-100 text-sm font-semibold text-gray-500 bg-gray-50/50">
                                 {filtered.length} suppliers listed
                             </div>
                         </div>
@@ -490,94 +537,94 @@ export default function SuppliersPage() {
                 </div>
             </div>
 
-            {/* ── REFINED SLIDE-IN DETAIL PANEL ── */}
+            {/* ── SLIDE-IN DETAIL PANEL ── */}
             {selectedSupplier && (
-                <div className="w-[330px] flex-shrink-0 bg-white/80 backdrop-blur-xl border border-slate-200/70 rounded-2xl shadow-lg overflow-hidden flex flex-col max-h-[calc(100vh-100px)] sticky top-4">
+                <div className="w-[360px] flex-shrink-0 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col max-h-[calc(100vh-100px)] sticky top-4">
                     {/* Header */}
-                    <div className="p-3.5 border-b border-slate-100 bg-slate-50/60 flex items-center justify-between">
+                    <div className="p-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-between">
                         <div>
-                            <span className="font-mono text-xs font-bold text-purple-700">{selectedSupplier.supplier_code}</span>
-                            <h2 className="text-sm font-bold text-slate-800 leading-tight mt-0.5 truncate max-w-[220px]">
+                            <span className="font-mono text-xs font-bold text-purple-200">{selectedSupplier.supplier_code}</span>
+                            <h2 className="text-base font-extrabold text-white leading-tight mt-0.5 truncate max-w-[240px]">
                                 {selectedSupplier.supplier_name}
                             </h2>
                         </div>
                         <button
                             onClick={() => setSelectedSupplier(null)}
-                            className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 text-xs transition-colors"
+                            className="p-1.5 hover:bg-white/20 rounded-xl text-white text-sm"
                         >
                             ✕
                         </button>
                     </div>
 
                     {/* Body */}
-                    <div className="flex-1 overflow-y-auto p-3.5 space-y-3 text-xs">
-                        {/* Contact Card */}
-                        <div className="p-2.5 rounded-xl bg-slate-50/70 border border-slate-200/50 space-y-1.5">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Contact Information</span>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4 text-sm">
+                        {/* Contact Information */}
+                        <div className="p-3.5 rounded-xl bg-gray-50 border border-gray-200 space-y-2">
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block">Contact Details</span>
                             {selectedSupplier.contact_person && (
-                                <p className="text-slate-700 font-medium">👤 {selectedSupplier.contact_person}</p>
+                                <p className="text-gray-800 font-bold">👤 {selectedSupplier.contact_person}</p>
                             )}
                             {selectedSupplier.phone && (
-                                <p className="text-slate-600">📞 <a href={`tel:${selectedSupplier.phone}`} className="text-blue-600 hover:underline">{selectedSupplier.phone}</a></p>
+                                <p className="text-gray-700 font-medium">📞 <a href={`tel:${selectedSupplier.phone}`} className="text-blue-600 hover:underline">{selectedSupplier.phone}</a></p>
                             )}
                             {selectedSupplier.email && (
-                                <p className="text-slate-600 truncate">✉️ <a href={`mailto:${selectedSupplier.email}`} className="text-blue-600 hover:underline">{selectedSupplier.email}</a></p>
+                                <p className="text-gray-600 truncate">✉️ <a href={`mailto:${selectedSupplier.email}`} className="text-blue-600 hover:underline">{selectedSupplier.email}</a></p>
                             )}
                             {(selectedSupplier.city || selectedSupplier.address) && (
-                                <p className="text-slate-500">📍 {[selectedSupplier.address, selectedSupplier.city].filter(Boolean).join(', ')}</p>
+                                <p className="text-gray-600">📍 {[selectedSupplier.address, selectedSupplier.city].filter(Boolean).join(', ')}</p>
                             )}
                         </div>
 
-                        {/* Balance & Terms Card */}
-                        <div className="p-2.5 rounded-xl bg-purple-500/5 border border-purple-200/40 space-y-1.5">
+                        {/* Balance Details */}
+                        <div className="p-3.5 rounded-xl bg-purple-50 border border-purple-200 space-y-2">
                             <div className="flex justify-between items-center">
-                                <span className="text-slate-500">Current Balance:</span>
-                                <span className={`font-mono font-bold ${selectedSupplier.balance_type === 'Credit' ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                <span className="text-gray-600">Payable Balance:</span>
+                                <span className={`font-mono text-xl font-black ${selectedSupplier.balance_type === 'Credit' ? 'text-red-600' : 'text-green-600'}`}>
                                     Ksh {(selectedSupplier.current_balance || 0).toLocaleString()}
                                 </span>
                             </div>
-                            <div className="flex justify-between items-center text-[11px] text-slate-500">
-                                <span>Terms:</span>
-                                <span className="text-slate-700 font-medium">{selectedSupplier.payment_terms || 'Standard'}</span>
+                            <div className="flex justify-between items-center text-xs text-gray-500">
+                                <span>Payment Terms:</span>
+                                <span className="text-gray-800 font-bold">{selectedSupplier.payment_terms || 'Standard Terms'}</span>
                             </div>
                             {selectedSupplier.kra_pin && (
-                                <div className="flex justify-between items-center text-[11px] text-slate-500">
-                                    <span>KRA PIN:</span>
-                                    <span className="font-mono text-slate-700">{selectedSupplier.kra_pin}</span>
+                                <div className="flex justify-between items-center text-xs text-gray-500">
+                                    <span>KRA Tax PIN:</span>
+                                    <span className="font-mono font-bold text-gray-800">{selectedSupplier.kra_pin}</span>
                                 </div>
                             )}
                         </div>
 
                         {/* Notes */}
                         {selectedSupplier.notes && (
-                            <div className="p-2.5 rounded-xl bg-amber-500/5 border border-amber-200/40">
-                                <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider block mb-1">Notes</span>
-                                <p className="text-[11px] text-slate-600 leading-relaxed">{selectedSupplier.notes}</p>
+                            <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200">
+                                <span className="text-xs font-bold text-amber-800 uppercase tracking-wide block mb-1">Notes</span>
+                                <p className="text-xs text-gray-700 leading-relaxed">{selectedSupplier.notes}</p>
                             </div>
                         )}
 
                         {/* Recent Purchases */}
-                        <div className="space-y-1.5">
-                            <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                        <div className="space-y-2">
+                            <span className="text-xs font-bold text-gray-500 uppercase tracking-wide block">
                                 Recent Purchases ({purchaseHistory.length})
                             </span>
                             {loadingHistory ? (
-                                <div className="p-3 text-center text-slate-400">Loading history...</div>
+                                <div className="p-4 text-center text-gray-400">Loading purchase history...</div>
                             ) : purchaseHistory.length === 0 ? (
-                                <div className="p-2.5 text-center text-slate-400 bg-slate-50/50 rounded-xl">No purchases recorded</div>
+                                <div className="p-3 text-center text-gray-400 bg-gray-50 rounded-xl">No purchases recorded yet</div>
                             ) : (
-                                <div className="border border-slate-200/60 rounded-xl overflow-hidden divide-y divide-slate-100">
+                                <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
                                     {purchaseHistory.map(ph => (
-                                        <div key={ph.purchase_id} className="p-2 flex items-center justify-between bg-white text-[11px]">
+                                        <div key={ph.purchase_id} className="p-2.5 flex items-center justify-between bg-white text-xs">
                                             <div>
-                                                <p className="font-mono font-semibold text-slate-800">{ph.purchase_no}</p>
-                                                <p className="text-[10px] text-slate-400">
+                                                <p className="font-mono font-bold text-gray-900">{ph.purchase_no}</p>
+                                                <p className="text-xs text-gray-500 font-medium mt-0.5">
                                                     {new Date(ph.purchase_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
                                                 </p>
                                             </div>
                                             <div className="text-right">
-                                                <p className="font-mono font-bold text-slate-800">Ksh {(ph.grand_total || 0).toLocaleString()}</p>
-                                                <span className={`text-[10px] ${ph.payment_status === 'Paid' ? 'text-teal-600' : 'text-rose-500'}`}>
+                                                <p className="font-mono font-black text-gray-900 text-sm">Ksh {(ph.grand_total || 0).toLocaleString()}</p>
+                                                <span className={`text-xs font-bold ${ph.payment_status === 'Paid' ? 'text-teal-600' : 'text-red-500'}`}>
                                                     {ph.payment_status}
                                                 </span>
                                             </div>
@@ -589,10 +636,10 @@ export default function SuppliersPage() {
                     </div>
 
                     {/* Footer */}
-                    <div className="p-3 border-t border-slate-100 bg-slate-50/60 flex items-center gap-2">
+                    <div className="p-3.5 border-t border-gray-100 bg-gray-50 flex items-center gap-2">
                         <button
                             onClick={() => openEditModal(selectedSupplier)}
-                            className="flex-1 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all"
+                            className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 text-white rounded-xl text-sm font-bold shadow-md transition-all"
                         >
                             Edit Profile
                         </button>
@@ -600,183 +647,186 @@ export default function SuppliersPage() {
                 </div>
             )}
 
-            {/* ── REFINED COMPACT ADD/EDIT MODAL ── */}
+            {/* ── ADD/EDIT MODAL ── */}
             {showModal && (
-                <div className="fixed inset-0 bg-slate-900/30 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white/95 backdrop-blur-2xl rounded-2xl border border-slate-200/80 shadow-xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
-                        <div className="px-5 py-3.5 border-b border-slate-100 flex items-center justify-between sticky top-0 bg-white/90 backdrop-blur-md z-10">
-                            <h2 className="text-sm font-bold text-slate-800">
-                                {editingSupplier ? `Edit Supplier (${editingSupplier.supplier_code})` : 'New Supplier Registration'}
-                            </h2>
-                            <button onClick={() => setShowModal(false)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-500 text-xs">✕</button>
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+                        <div className="px-6 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 text-white flex items-center justify-between sticky top-0 z-10">
+                            <div>
+                                <h2 className="text-lg font-black text-white">
+                                    {editingSupplier ? `Edit Supplier (${editingSupplier.supplier_code})` : 'Register New Supplier'}
+                                </h2>
+                                <p className="text-xs text-purple-100 mt-0.5">Fill in the supplier's procurement & contact details</p>
+                            </div>
+                            <button onClick={() => setShowModal(false)} className="p-1.5 hover:bg-white/20 rounded-xl text-white">✕</button>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-5 space-y-4 text-xs">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4 text-sm">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                 <div className="sm:col-span-2">
-                                    <label className="block text-slate-600 font-semibold mb-1">Supplier / Vendor Name *</label>
+                                    <label className="block text-gray-700 font-bold mb-1">Supplier / Vendor Name *</label>
                                     <input
                                         type="text"
                                         value={formData.supplier_name}
                                         onChange={(e) => f(e.target.value, 'supplier_name')}
-                                        placeholder="e.g. Fresh Valley Farms"
+                                        placeholder="e.g. Fresh Valley Farms Ltd"
                                         required
-                                        className="w-full px-3 py-2 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white transition-all text-slate-800"
+                                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-gray-900 transition-all"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-slate-600 font-semibold mb-1">Contact Person</label>
+                                    <label className="block text-gray-700 font-bold mb-1">Contact Person</label>
                                     <input
                                         type="text"
                                         value={formData.contact_person}
                                         onChange={(e) => f(e.target.value, 'contact_person')}
                                         placeholder="Name"
-                                        className="w-full px-3 py-2 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white transition-all text-slate-800"
+                                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-gray-900 transition-all"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-slate-600 font-semibold mb-1">Primary Phone</label>
+                                    <label className="block text-gray-700 font-bold mb-1">Primary Phone</label>
                                     <input
                                         type="tel"
                                         value={formData.phone}
                                         onChange={(e) => f(e.target.value, 'phone')}
                                         placeholder="07..."
-                                        className="w-full px-3 py-2 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white transition-all text-slate-800"
+                                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-gray-900 transition-all"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-slate-600 font-semibold mb-1">Alternative Phone</label>
+                                    <label className="block text-gray-700 font-bold mb-1">Alternative Phone</label>
                                     <input
                                         type="tel"
                                         value={formData.phone2}
                                         onChange={(e) => f(e.target.value, 'phone2')}
                                         placeholder="07..."
-                                        className="w-full px-3 py-2 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white transition-all text-slate-800"
+                                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-gray-900 transition-all"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-slate-600 font-semibold mb-1">Email Address</label>
+                                    <label className="block text-gray-700 font-bold mb-1">Email Address</label>
                                     <input
                                         type="email"
                                         value={formData.email}
                                         onChange={(e) => f(e.target.value, 'email')}
-                                        placeholder="vendor@mail.com"
-                                        className="w-full px-3 py-2 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white transition-all text-slate-800"
+                                        placeholder="orders@supplier.co.ke"
+                                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-gray-900 transition-all"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-slate-600 font-semibold mb-1">City / Town</label>
+                                    <label className="block text-gray-700 font-bold mb-1">City / Town</label>
                                     <input
                                         type="text"
                                         value={formData.city}
                                         onChange={(e) => f(e.target.value, 'city')}
                                         placeholder="e.g. Nairobi"
-                                        className="w-full px-3 py-2 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white transition-all text-slate-800"
+                                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-gray-900 transition-all"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-slate-600 font-semibold mb-1">KRA PIN</label>
+                                    <label className="block text-gray-700 font-bold mb-1">KRA PIN</label>
                                     <input
                                         type="text"
                                         value={formData.kra_pin}
                                         onChange={(e) => f(e.target.value, 'kra_pin')}
-                                        placeholder="PIN"
-                                        className="w-full px-3 py-2 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white transition-all text-slate-800"
+                                        placeholder="P051..."
+                                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-gray-900 transition-all"
                                     />
                                 </div>
                                 <div className="sm:col-span-2">
-                                    <label className="block text-slate-600 font-semibold mb-1">Physical Address</label>
+                                    <label className="block text-gray-700 font-bold mb-1">Physical Address</label>
                                     <input
                                         type="text"
                                         value={formData.address}
                                         onChange={(e) => f(e.target.value, 'address')}
-                                        placeholder="Street / Building / Area"
-                                        className="w-full px-3 py-2 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white transition-all text-slate-800"
+                                        placeholder="Building, Road, Area"
+                                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 font-semibold text-gray-900 transition-all"
                                     />
                                 </div>
                             </div>
 
-                            {/* Financial */}
-                            <div className="p-3 rounded-xl bg-slate-50/70 border border-slate-200/60 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            {/* Financial Settings */}
+                            <div className="p-4 rounded-2xl bg-purple-50/70 border border-purple-200 grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
-                                    <label className="block text-slate-600 font-medium mb-1">Opening Balance</label>
+                                    <label className="block text-gray-700 font-bold text-xs mb-1">Opening Balance (Ksh)</label>
                                     <input
                                         type="number"
                                         value={formData.opening_balance}
                                         onChange={(e) => setFormData({ ...formData, opening_balance: parseFloat(e.target.value) || 0 })}
-                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-purple-500"
+                                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 font-bold focus:outline-none focus:border-purple-500"
                                         min="0"
                                         step="0.01"
                                     />
                                 </div>
                                 <div>
-                                    <label className="block text-slate-600 font-medium mb-1">Balance Type</label>
+                                    <label className="block text-gray-700 font-bold text-xs mb-1">Balance Type</label>
                                     <select
                                         value={formData.balance_type}
                                         onChange={(e) => f(e.target.value, 'balance_type')}
-                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-purple-500"
+                                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 font-bold focus:outline-none focus:border-purple-500"
                                     >
                                         <option value="Credit">Credit (We Owe)</option>
                                         <option value="Debit">Debit (They Owe)</option>
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="block text-slate-600 font-medium mb-1">Payment Terms</label>
+                                    <label className="block text-gray-700 font-bold text-xs mb-1">Payment Terms</label>
                                     <input
                                         type="text"
                                         value={formData.payment_terms}
                                         onChange={(e) => f(e.target.value, 'payment_terms')}
                                         placeholder="e.g. Net 30, COD"
-                                        className="w-full px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:border-purple-500"
+                                        className="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl text-gray-900 font-bold focus:outline-none focus:border-purple-500"
                                     />
                                 </div>
                             </div>
 
-                            {/* Type toggles & notes */}
-                            <div className="flex items-center gap-4">
+                            {/* Kitchen & Active toggles */}
+                            <div className="flex items-center gap-6 pt-1">
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
                                         checked={formData.is_kitchen}
                                         onChange={(e) => setFormData({ ...formData, is_kitchen: e.target.checked })}
-                                        className="rounded text-purple-600 focus:ring-purple-500"
+                                        className="w-4 h-4 rounded text-purple-600 focus:ring-purple-500"
                                     />
-                                    <span className="text-slate-700 font-medium">Internal Kitchen</span>
+                                    <span className="text-gray-800 font-bold text-sm">🍳 Internal Kitchen</span>
                                 </label>
                                 <label className="flex items-center gap-2 cursor-pointer">
                                     <input
                                         type="checkbox"
                                         checked={formData.active}
                                         onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                                        className="rounded text-emerald-600 focus:ring-emerald-500"
+                                        className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500"
                                     />
-                                    <span className="text-slate-700 font-medium">Active Status</span>
+                                    <span className="text-gray-800 font-bold text-sm">Active Vendor</span>
                                 </label>
                             </div>
 
                             <div>
-                                <label className="block text-slate-600 font-semibold mb-1">Notes</label>
+                                <label className="block text-gray-700 font-bold mb-1">Notes</label>
                                 <textarea
                                     value={formData.notes}
                                     onChange={(e) => f(e.target.value, 'notes')}
                                     rows={2}
-                                    placeholder="Internal vendor notes..."
-                                    className="w-full px-3 py-2 bg-slate-50/70 border border-slate-200 rounded-xl focus:outline-none focus:border-purple-500 focus:bg-white text-slate-800 resize-none"
+                                    placeholder="Delivery notes, terms..."
+                                    className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 text-gray-900 resize-none font-medium"
                                 />
                             </div>
 
-                            <div className="flex gap-2 pt-2 border-t border-slate-100">
+                            <div className="flex gap-3 pt-3 border-t border-gray-100">
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold transition-all"
+                                    className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold transition-all text-sm"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
                                     disabled={isSaving}
-                                    className="flex-1 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-semibold shadow-xs transition-all disabled:opacity-50"
+                                    className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 text-white rounded-xl font-black shadow-lg transition-all disabled:opacity-50 text-sm"
                                 >
                                     {isSaving ? 'Saving...' : (editingSupplier ? 'Update Supplier' : 'Register Supplier')}
                                 </button>
