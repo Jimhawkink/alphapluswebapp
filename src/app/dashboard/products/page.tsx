@@ -19,13 +19,13 @@ interface Product {
     sales_cost: number;
     reorder_point: number;
     margin_per: number;
-    show_ps: boolean;
+    show_in_pos: boolean;
     button_ui_color: string;
     photo: string;
-    hscode: string;
     batch_no: string;
     supplier_name: string;
     active: boolean;
+    vat?: number;
 }
 
 interface Category {
@@ -52,6 +52,7 @@ const defaultProduct: Omit<Product, 'pid' | 'product_code'> = {
     product_name: '',
     alias: '',
     vat_commodity: 'Standard',
+    vat: 16,
     description: '',
     barcode: '',
     category: '',
@@ -59,12 +60,11 @@ const defaultProduct: Omit<Product, 'pid' | 'product_code'> = {
     sales_unit: 'Piece',
     purchase_cost: 0,
     sales_cost: 0,
-    reorder_point: 10,
+    reorder_point: 5,
     margin_per: 0,
-    show_ps: true,
+    show_in_pos: true,
     button_ui_color: 'from-blue-400 to-blue-600',
     photo: '',
-    hscode: '',
     batch_no: '',
     supplier_name: '',
     active: true,
@@ -274,6 +274,7 @@ export default function ProductsPage() {
             product_name: product.product_name,
             alias: product.alias || '',
             vat_commodity: product.vat_commodity || 'Standard',
+            vat: product.vat || 16,
             description: product.description || '',
             barcode: product.barcode || '',
             category: product.category || '',
@@ -281,12 +282,11 @@ export default function ProductsPage() {
             sales_unit: product.sales_unit || 'Piece',
             purchase_cost: product.purchase_cost || 0,
             sales_cost: product.sales_cost || 0,
-            reorder_point: product.reorder_point || 10,
+            reorder_point: product.reorder_point || 5,
             margin_per: product.margin_per || 0,
-            show_ps: product.show_ps !== false,
+            show_in_pos: product.show_in_pos !== false,
             button_ui_color: product.button_ui_color || 'from-blue-400 to-blue-600',
             photo: product.photo || '',
-            hscode: product.hscode || '',
             batch_no: product.batch_no || '',
             supplier_name: product.supplier_name || '',
             active: product.active !== false,
@@ -304,26 +304,27 @@ export default function ProductsPage() {
         setIsSaving(true);
         try {
             const margin = calculateMargin(formData.purchase_cost, formData.sales_cost);
+            const vatRate = formData.vat_commodity === 'Standard' ? 16 : 0;
 
-            // Prepare product data for database
+            // Prepare product data for database matching public.products exactly (NO hscode, use show_in_pos)
             const productData = {
-                product_name: formData.product_name,
-                alias: formData.alias || null,
-                vat_commodity: formData.vat_commodity,
-                description: formData.description || null,
-                barcode: formData.barcode || null,
+                product_name: formData.product_name.trim(),
+                alias: formData.alias?.trim() || null,
+                vat_commodity: formData.vat_commodity || 'Standard',
+                vat: vatRate,
+                description: formData.description?.trim() || null,
+                barcode: formData.barcode?.trim() || null,
                 category: formData.category || null,
-                purchase_unit: formData.purchase_unit,
-                sales_unit: formData.sales_unit,
-                purchase_cost: formData.purchase_cost || 0,
-                sales_cost: formData.sales_cost || 0,
-                reorder_point: formData.reorder_point || 10,
+                purchase_unit: formData.purchase_unit || 'PCS',
+                sales_unit: formData.sales_unit || 'PCS',
+                purchase_cost: Number(formData.purchase_cost) || 0,
+                sales_cost: Number(formData.sales_cost) || 0,
+                reorder_point: Number(formData.reorder_point) || 5,
                 margin_per: margin,
-                show_ps: formData.show_ps !== false,
-                button_ui_color: formData.button_ui_color,
+                show_in_pos: formData.show_in_pos !== false,
+                button_ui_color: formData.button_ui_color || 'from-blue-400 to-blue-600',
                 photo: formData.photo || null,
-                hscode: formData.hscode || null,
-                batch_no: formData.batch_no || null,
+                batch_no: formData.batch_no?.trim() || null,
                 supplier_name: formData.supplier_name || null,
                 active: formData.active !== false,
             };
@@ -706,13 +707,13 @@ export default function ProductsPage() {
 
                                 <div>
                                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🔢 HS Code
+                                        🏷️ Batch / Lot No
                                     </label>
                                     <input
                                         type="text"
-                                        value={formData.hscode}
-                                        onChange={(e) => setFormData({ ...formData, hscode: e.target.value })}
-                                        placeholder="HS Code for tax"
+                                        value={formData.batch_no}
+                                        onChange={(e) => setFormData({ ...formData, batch_no: e.target.value })}
+                                        placeholder="e.g. BATCH-01"
                                         className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
                                     />
                                 </div>
@@ -886,8 +887,8 @@ export default function ProductsPage() {
                                     <label className="flex items-center gap-2 cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            checked={formData.show_ps}
-                                            onChange={(e) => setFormData({ ...formData, show_ps: e.target.checked })}
+                                            checked={formData.show_in_pos}
+                                            onChange={(e) => setFormData({ ...formData, show_in_pos: e.target.checked })}
                                             className="w-5 h-5 rounded border-gray-300 text-blue-500 focus:ring-blue-500"
                                         />
                                         <span className="font-medium text-gray-700">Show in POS</span>
