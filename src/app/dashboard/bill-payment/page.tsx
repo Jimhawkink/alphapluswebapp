@@ -529,6 +529,46 @@ function BillPaymentContent() {
         processPayment(true);
     };
 
+    // Print customer bill (with QR code) or re-print paid receipt
+    const handlePrintBill = async (isPaidReceipt: boolean) => {
+        if (!selectedBill) return;
+        try {
+            const company = await loadCompanyInfo();
+            const receiptData = createReceiptData(
+                selectedBill.receipt_no,
+                (selectedBill.items || []).map(item => ({
+                    name: item.product_name || 'Item',
+                    qty: item.quantity || 1,
+                    price: item.unit_price || 0,
+                    notes: item.notes,
+                    discount: item.discount || 0
+                })),
+                isPaidReceipt ? (selectedBill.payment_method || 'Paid') : 'Pending (M-Pesa / Cash)',
+                selectedBill.amount_paid || 0,
+                selectedBill.waiter_name || 'Cashier',
+                {
+                    customerName: selectedBill.customer_name || 'Walk-in Customer',
+                    mpesaReceipt: selectedBill.mpesa_code,
+                    tableNo: selectedBill.table_name,
+                    orderNotes: selectedBill.notes,
+                    shiftCode: selectedBill.shift_code,
+                    discount: selectedBill.discount || 0,
+                    isPaid: isPaidReceipt,
+                    taxMode: 'inclusive' as 'inclusive' | 'exclusive',
+                    vatRate: 16,
+                    levyRate: 2,
+                    hotelName: company.name
+                }
+            );
+            const receiptHTML = await generateCustomerBillHTML(receiptData, company, isPaidReceipt);
+            printReceipt(receiptHTML);
+            toast.success(isPaidReceipt ? '🖨️ Paid Receipt printed!' : '🖨️ Customer Bill with QR Code printed!');
+        } catch (err) {
+            console.error('Error printing bill:', err);
+            toast.error('Failed to print bill');
+        }
+    };
+
     // Get status badge color
     const getStatusBadge = (status: string) => {
         if (status === 'Completed' || status === 'Paid') {
@@ -845,6 +885,43 @@ function BillPaymentContent() {
                                             )}
                                         </div>
                                     )}
+
+                                    {/* QR & Print Quick Actions */}
+                                    <div className="pt-2.5 border-t border-gray-100 flex flex-col gap-1.5">
+                                        <div className="flex gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => handlePrintBill(isPaidBill)}
+                                                className={`flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-sm ${
+                                                    isPaidBill
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                                        : 'bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100'
+                                                }`}
+                                            >
+                                                <span>🖨️</span>
+                                                <span>{isPaidBill ? 'Re-Print Paid Receipt' : 'Print Customer Bill (QR)'}</span>
+                                            </button>
+                                            <a
+                                                href={`/pay/${encodeURIComponent(selectedBill.receipt_no)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="py-2 px-3 bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all"
+                                                title="Preview customer QR payment page"
+                                            >
+                                                <span>📱</span>
+                                                <span>QR Link</span>
+                                            </a>
+                                        </div>
+                                        {!isPaidBill ? (
+                                            <p className="text-[10px] text-gray-400 text-center">
+                                                Customer scans QR code on printed bill to trigger instant STK Push
+                                            </p>
+                                        ) : (
+                                            <p className="text-[10px] text-emerald-600 text-center font-semibold">
+                                                🔒 Privacy Protected: Scanning QR now shows "BILL PAID" with all details locked
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                             );
                         })() : (

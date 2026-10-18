@@ -505,12 +505,12 @@ export async function generateCustomerBillHTML(data: ReceiptData, company: Compa
   ` : ''}
 
   ${(data.qrCodeData && qrDataUrl) ? `
-  <div style="text-align:center; padding:8px; border:2px dashed #0066cc; margin-top:8px; border-radius:6px; background:#f0f8ff;">
-    <div style="font-weight:bold; font-size:10px; color:#0066cc; margin-bottom:4px;">📱 Scan to Pay via M-Pesa</div>
+  <div style="text-align:center; padding:8px; border:2px dashed ${isPaid ? '#10b981' : '#0066cc'}; margin-top:8px; border-radius:6px; background:${isPaid ? '#f0fdf4' : '#f0f8ff'};">
+    <div style="font-weight:bold; font-size:10px; color:${isPaid ? '#15803d' : '#0066cc'}; margin-bottom:4px;">${isPaid ? '✓ Scan to Verify Paid Bill' : '📱 Scan to Pay via M-Pesa'}</div>
     <div style="display:flex; justify-content:center; margin:3px 0;">
         <img src="${qrDataUrl}" alt="QR Code" style="width:150px;height:150px;image-rendering:crisp-edges;image-rendering:pixelated;">
     </div>
-    <div style="font-size:8px; color:#666; margin-top:3px;">${data.invoiceNo}</div>
+    <div style="font-size:8px; color:${isPaid ? '#15803d' : '#666'}; margin-top:3px; font-weight:${isPaid ? 'bold' : 'normal'};">${isPaid ? 'PAID & VERIFIED • ' + data.invoiceNo : data.invoiceNo}</div>
   </div>
   ` : ''}
 
