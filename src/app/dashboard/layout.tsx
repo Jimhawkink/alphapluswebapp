@@ -36,8 +36,16 @@ const Icons = {
     ),
     kitchen: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-            <path d="M8 12h4l2-4"/>
+            <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/>
+            <line x1="6" y1="17" x2="18" y2="17"/>
+        </svg>
+    ),
+    store: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l1-6h16l1 6"/>
+            <path d="M3 9a3 3 0 006 0 3 3 0 006 0 3 3 0 006 0"/>
+            <path d="M4 14v6a1 1 0 001 1h14a1 1 0 001-1v-6"/>
+            <path d="M9 21v-5a1 1 0 011-1h4a1 1 0 011 1v5"/>
         </svg>
     ),
     hotel: (
@@ -245,9 +253,10 @@ const buildMenu = (): MenuSection[] => [
         items: [
             { name: 'Dashboard', icon: Icons.dashboard, href: '/dashboard', badge: null },
             { name: 'Point of Sale', icon: Icons.pos, href: '/dashboard/pos', badge: 'LIVE' },
+            { name: 'Kitchen Display', icon: Icons.kitchen, href: '/dashboard/kitchen', badge: 'KDS' },
+            { name: 'Stores Management', icon: Icons.store, href: '/dashboard/stores', badge: 'STORES' },
             { name: 'Cashier Checkout', icon: Icons.doc, href: '/dashboard/bills', badge: 'EXIT' },
             { name: 'Bill Payment', icon: Icons.money, href: '/dashboard/bill-payment', badge: 'PAY' },
-            { name: 'Kitchen Display', icon: Icons.kitchen, href: '/dashboard/kitchen', badge: 'KDS' },
         ],
     },
     {
@@ -278,6 +287,12 @@ const buildMenu = (): MenuSection[] => [
         category: 'PRODUCTS & STOCK',
         items: [
             {
+                name: 'Stores Management',
+                icon: Icons.store,
+                href: '/dashboard/stores',
+                badge: '5 TABS',
+            },
+            {
                 name: 'Products', icon: Icons.box, id: 'products',
                 subItems: [
                     { name: 'List Products', icon: Icons.doc, href: '/dashboard/products' },
@@ -287,9 +302,9 @@ const buildMenu = (): MenuSection[] => [
                 ],
             },
             {
-                name: 'Inventory', icon: Icons.inventory, id: 'inventory',
+                name: 'Inventory Operations', icon: Icons.inventory, id: 'inventory',
                 subItems: [
-                    { name: '🏪 Stores', icon: Icons.inventory, href: '/dashboard/stores', badge: 'NEW' },
+                    { name: 'Store Stock & Issues', icon: Icons.store, href: '/dashboard/stores', badge: 'STORES' },
                     { name: 'Dish Stock', icon: Icons.doc, href: '/dashboard/dish-stock' },
                     { name: 'Ingredient Stock', icon: Icons.doc, href: '/dashboard/ingredient-stock' },
                     { name: 'Stock Transfer', icon: Icons.transfer, href: '/dashboard/stock-transfer' },
@@ -370,9 +385,23 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
         'front-office': true,
         'products': true,
+        'inventory': true,
     });
 
     useSessionTimeout();
+
+    // Automatically expand parent dropdown if active route is inside it
+    useEffect(() => {
+        if (!pathname) return;
+        const sections = buildMenu();
+        for (const sec of sections) {
+            for (const itm of sec.items) {
+                if (itm.id && itm.subItems?.some(s => s.href === pathname || pathname.startsWith(s.href + '/'))) {
+                    setExpandedMenus(prev => ({ ...prev, [itm.id!]: true }));
+                }
+            }
+        }
+    }, [pathname]);
 
     useEffect(() => {
         const userData = localStorage.getItem('user');
