@@ -253,7 +253,7 @@ table {
 }
 
 th {
-  color: white;
+  color: inherit;
 }
 
 td {

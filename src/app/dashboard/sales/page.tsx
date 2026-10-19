@@ -841,31 +841,31 @@ export default function SalesPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-left border-collapse">
                                 <thead>
-                                    <tr className="bg-gray-50 border-b border-gray-200 text-[11px] font-black uppercase tracking-wider text-gray-500">
-                                        <th className="py-3 px-3 w-10 text-center">Items</th>
-                                        <th onClick={() => handleSort('receipt')} className="py-3 px-3 cursor-pointer hover:text-indigo-600 select-none">
+                                    <tr className="bg-slate-900 border-b border-slate-800 text-[11px] font-black uppercase tracking-wider text-white">
+                                        <th className="py-3.5 px-3 w-10 text-center text-white font-black">Items</th>
+                                        <th onClick={() => handleSort('receipt')} className="py-3.5 px-3 cursor-pointer hover:text-indigo-300 select-none text-white font-black">
                                             Receipt No {sortField === 'receipt' && (sortOrder === 'asc' ? '▲' : '▼')}
                                         </th>
-                                        <th onClick={() => handleSort('date')} className="py-3 px-3 cursor-pointer hover:text-indigo-600 select-none">
+                                        <th onClick={() => handleSort('date')} className="py-3.5 px-3 cursor-pointer hover:text-indigo-300 select-none text-white font-black">
                                             Date & Time {sortField === 'date' && (sortOrder === 'asc' ? '▲' : '▼')}
                                         </th>
-                                        <th className="py-3 px-3">Customer / Table</th>
-                                        <th className="py-3 px-3">Staff / Waiter</th>
-                                        <th className="py-3 px-3">Payment & Mode</th>
-                                        <th onClick={() => handleSort('amount')} className="py-3 px-3 text-right cursor-pointer hover:text-indigo-600 select-none">
+                                        <th className="py-3.5 px-3 text-white font-black">Customer / Table</th>
+                                        <th className="py-3.5 px-3 text-white font-black">Staff / Waiter</th>
+                                        <th className="py-3.5 px-3 text-white font-black">Payment & Mode</th>
+                                        <th onClick={() => handleSort('amount')} className="py-3.5 px-3 text-right cursor-pointer hover:text-indigo-300 select-none text-white font-black">
                                             Gross Sale {sortField === 'amount' && (sortOrder === 'asc' ? '▲' : '▼')}
                                         </th>
-                                        <th onClick={() => handleSort('cost')} className="py-3 px-3 text-right cursor-pointer hover:text-indigo-600 select-none">
+                                        <th onClick={() => handleSort('cost')} className="py-3.5 px-3 text-right cursor-pointer hover:text-indigo-300 select-none text-white font-black">
                                             Cost (COGS) {sortField === 'cost' && (sortOrder === 'asc' ? '▲' : '▼')}
                                         </th>
-                                        <th onClick={() => handleSort('profit')} className="py-3 px-3 text-right cursor-pointer hover:text-indigo-600 select-none">
+                                        <th onClick={() => handleSort('profit')} className="py-3.5 px-3 text-right cursor-pointer hover:text-indigo-300 select-none text-white font-black">
                                             Profit {sortField === 'profit' && (sortOrder === 'asc' ? '▲' : '▼')}
                                         </th>
-                                        <th onClick={() => handleSort('margin')} className="py-3 px-3 text-center cursor-pointer hover:text-indigo-600 select-none">
+                                        <th onClick={() => handleSort('margin')} className="py-3.5 px-3 text-center cursor-pointer hover:text-indigo-300 select-none text-white font-black">
                                             Margin % {sortField === 'margin' && (sortOrder === 'asc' ? '▲' : '▼')}
                                         </th>
-                                        <th className="py-3 px-3 text-center">Status</th>
-                                        <th className="py-3 px-3 text-center">Actions</th>
+                                        <th className="py-3.5 px-3 text-center text-white font-black">Status</th>
+                                        <th className="py-3.5 px-3 text-center text-white font-black">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 text-xs">
@@ -1108,17 +1108,17 @@ export default function SalesPage() {
                                                                         <div className="overflow-x-auto">
                                                                             <table className="w-full text-left text-xs">
                                                                                 <thead>
-                                                                                    <tr className="bg-gray-50 text-[10px] font-bold text-gray-500 uppercase tracking-wider border-b border-gray-100">
-                                                                                        <th className="py-2 px-3 w-8">#</th>
-                                                                                        <th className="py-2 px-3">Item / Product</th>
-                                                                                        <th className="py-2 px-3 text-center w-16">Qty</th>
-                                                                                        <th className="py-2 px-3 text-right">Unit Price</th>
-                                                                                        <th className="py-2 px-3 text-right">Unit Cost</th>
-                                                                                        <th className="py-2 px-3 text-right">Subtotal</th>
-                                                                                        <th className="py-2 px-3 text-right">Total Cost</th>
-                                                                                        <th className="py-2 px-3 text-right">Item Profit</th>
-                                                                                        <th className="py-2 px-3 text-center">Margin %</th>
-                                                                                        <th className="py-2 px-3">Notes</th>
+                                                                                    <tr className="bg-slate-800 text-[10px] font-bold text-slate-200 uppercase tracking-wider border-b border-slate-700">
+                                                                                        <th className="py-2.5 px-3 w-8 text-white">#</th>
+                                                                                        <th className="py-2.5 px-3 text-white">Item / Product</th>
+                                                                                        <th className="py-2.5 px-3 text-center w-16 text-white">Qty</th>
+                                                                                        <th className="py-2.5 px-3 text-right text-white">Unit Price</th>
+                                                                                        <th className="py-2.5 px-3 text-right text-white">Unit Cost</th>
+                                                                                        <th className="py-2.5 px-3 text-right text-white">Subtotal</th>
+                                                                                        <th className="py-2.5 px-3 text-right text-white">Total Cost</th>
+                                                                                        <th className="py-2.5 px-3 text-right text-white">Item Profit</th>
+                                                                                        <th className="py-2.5 px-3 text-center text-white">Margin %</th>
+                                                                                        <th className="py-2.5 px-3 text-white">Notes</th>
                                                                                     </tr>
                                                                                 </thead>
                                                                                 <tbody className="divide-y divide-gray-100">
@@ -1486,12 +1486,12 @@ export default function SalesPage() {
                                 </h4>
                                 <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                                     <table className="w-full text-xs text-left">
-                                        <thead className="bg-gray-50 border-b border-gray-100 text-[10px] font-bold text-gray-500 uppercase">
+                                        <thead className="bg-slate-800 border-b border-slate-700 text-[10px] font-bold text-white uppercase">
                                             <tr>
-                                                <th className="py-2 px-3">Item</th>
-                                                <th className="py-2 px-2 text-center">Qty</th>
-                                                <th className="py-2 px-3 text-right">Price</th>
-                                                <th className="py-2 px-3 text-right">Profit</th>
+                                                <th className="py-2.5 px-3 text-white">Item</th>
+                                                <th className="py-2.5 px-2 text-center text-white">Qty</th>
+                                                <th className="py-2.5 px-3 text-right text-white">Price</th>
+                                                <th className="py-2.5 px-3 text-right text-white">Profit</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100">
