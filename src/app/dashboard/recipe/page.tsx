@@ -81,6 +81,7 @@ export default function RecipePage() {
     // Studio Selected Dish & Header Config
     const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
     const [portionsYield, setPortionsYield] = useState<number>(1);
+    const [numIngredients, setNumIngredients] = useState<number>(2);
     const [recipeDate, setRecipeDate] = useState(new Date().toISOString().split('T')[0]);
     const [batchNumber, setBatchNumber] = useState('');
     const [recipeNotes, setRecipeNotes] = useState('');
@@ -156,12 +157,30 @@ export default function RecipePage() {
                 .maybeSingle();
             if (orgData?.setting_value) setCompanyName(orgData.setting_value);
 
-            // Load active dishes (products)
-            const { data: dishData } = await supabase
+            // Load active dishes (products) - note products table does not have 'stock' column
+            const { data: dishData, error: dishError } = await supabase
                 .from('products')
-                .select('pid, product_code, product_name, barcode, purchase_cost, sales_cost, stock')
+                .select('pid, product_code, product_name, barcode, purchase_cost, sales_cost')
                 .eq('active', true)
                 .order('product_name');
+
+            if (dishError) {
+                console.error('Error loading products for recipe:', dishError);
+            }
+
+            // Load kitchen ready stock from active production batches
+            const { data: activeBatches } = await supabase
+                .from('production_batches')
+                .select('product_id, qty_remaining')
+                .gt('qty_remaining', 0);
+
+            const batchStockMap: Record<number, number> = {};
+            if (activeBatches) {
+                activeBatches.forEach((b: any) => {
+                    batchStockMap[b.product_id] = (batchStockMap[b.product_id] || 0) + (Number(b.qty_remaining) || 0);
+                });
+            }
+
             setDishes((dishData || []).map((d: any) => ({
                 pid: d.pid,
                 product_code: d.product_code,
@@ -169,7 +188,7 @@ export default function RecipePage() {
                 barcode: d.barcode,
                 purchase_cost: Number(d.purchase_cost) || 0,
                 sales_cost: Number(d.sales_cost) || 0,
-                current_stock: Number(d.stock) || 0
+                current_stock: batchStockMap[d.pid] || 0
             })));
 
             // Load store raw ingredients
@@ -301,6 +320,17 @@ export default function RecipePage() {
         setSelectedIngId('');
         setInputQty('');
         setInputUnit('');
+
+        // Progress feedback
+        const isNew = existingIdx === -1;
+        const currentCount = isNew ? recipeIngredients.length + 1 : recipeIngredients.length;
+        if (currentCount === numIngredients) {
+            toast.success(`All ${numIngredients} ingredients added! Ready to save or cook 🎉`, { icon: '✅' });
+        } else if (currentCount < numIngredients) {
+            toast.success(`Ingredient ${currentCount} of ${numIngredients} added (${ing.product_name})`);
+        } else {
+            toast.success(`Added ${ing.product_name} (${currentCount} total ingredients)`);
+        }
     };
 
     const handleRemoveIngredientRow = (ingId: number) => {
@@ -349,8 +379,10 @@ export default function RecipePage() {
                     };
                 });
                 setRecipeIngredients(mappedRows);
+                setNumIngredients(mappedRows.length || 2);
             } else {
                 setRecipeIngredients([]);
+                setNumIngredients(2);
             }
             setActiveTab('studio');
             toast.success(`Loaded recipe for ${r.dish_name} into Studio 🧪`);
@@ -358,6 +390,54 @@ export default function RecipePage() {
             console.error('Error loading recipe ingredients:', e);
             toast.error('Failed to load ingredients');
         }
+    };
+
+    // Handler when selecting a dish in the studio dropdown
+    const handleSelectDish = async (dishId: number) => {
+        const dish = dishes.find(d => d.pid === dishId) || null;
+        setSelectedDish(dish);
+        if (!dish) {
+            setRecipeIngredients([]);
+            return;
+        }
+
+        const dateStr = recipeDate.replace(/-/g, '').slice(2);
+        setBatchNumber(`B-${dish.product_code || dish.pid}-${dateStr}`);
+
+        // Automatically load existing saved recipe for this dish if one exists
+        const existingRecipe = savedRecipes.find(r => r.product_id === dish.pid);
+        if (existingRecipe) {
+            try {
+                const { data: ings } = await supabase
+                    .from('recipe_ingredients')
+                    .select('*')
+                    .eq('recipe_id', existingRecipe.recipe_id);
+
+                if (ings && ings.length > 0) {
+                    const mappedRows: RecipeIngredientRow[] = ings.map((it: any) => {
+                        const matchedStoreIng = ingredients.find(i => i.pid === it.ingredient_product_id);
+                        return {
+                            ingredient_id: it.ingredient_product_id,
+                            ingredient_name: it.ingredient_name,
+                            unit_measure: it.unit_measure || 'KG',
+                            qty_issued: Number(it.qty_issued) || 1,
+                            rate: Number(it.rate) || 0,
+                            total_cost: Number(it.total_cost) || 0,
+                            current_stock: matchedStoreIng ? matchedStoreIng.current_stock : 0,
+                            base_unit: matchedStoreIng ? matchedStoreIng.base_unit : 'KG'
+                        };
+                    });
+                    setRecipeIngredients(mappedRows);
+                    setNumIngredients(mappedRows.length || 2);
+                    setPortionsYield(existingRecipe.qty_produced || 1);
+                    toast.success(`Loaded saved recipe formula for ${dish.product_name} (${mappedRows.length} ingredients) 📖`);
+                    return;
+                }
+            } catch (err) {
+                console.error('Error auto-loading recipe formula:', err);
+            }
+        }
+        setRecipeIngredients([]);
     };
 
     // =========================================================================
@@ -476,17 +556,21 @@ export default function RecipePage() {
                     status: 'In Stock'
                 });
 
-            // 3. Increment dish stock in products table
-            const { data: productRow } = await supabase
-                .from('products')
-                .select('stock')
-                .eq('pid', selectedDish.pid)
-                .single();
-            const currentDishStock = Number(productRow?.stock) || 0;
-            await supabase
-                .from('products')
-                .update({ stock: currentDishStock + portionsYield })
-                .eq('pid', selectedDish.pid);
+            // 3. Save batch recipe ingredients
+            if (recipeId) {
+                const batchItems = recipeIngredients.map(r => ({
+                    recipe_id: recipeId,
+                    ingredient_product_id: r.ingredient_id,
+                    ingredient_name: r.ingredient_name,
+                    unit_measure: r.unit_measure,
+                    qty_issued: r.qty_issued,
+                    convert_unit: r.unit_measure,
+                    rate: r.rate,
+                    total_cost: r.total_cost,
+                    remaining_qty: r.current_stock
+                }));
+                await supabase.from('recipe_ingredients').insert(batchItems);
+            }
 
             // 4. Deplete raw ingredients from products_ingredients & log to stock_movements
             for (const r of recipeIngredients) {
@@ -674,10 +758,7 @@ export default function RecipePage() {
                                 <label className="text-xs font-bold uppercase text-gray-500 block mb-1.5">Menu Dish Item</label>
                                 <select
                                     value={selectedDish?.pid || ''}
-                                    onChange={(e) => {
-                                        const found = dishes.find(d => d.pid === Number(e.target.value));
-                                        setSelectedDish(found || null);
-                                    }}
+                                    onChange={(e) => handleSelectDish(Number(e.target.value))}
                                     className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-emerald-500"
                                 >
                                     <option value="">Select menu dish...</option>
@@ -706,9 +787,9 @@ export default function RecipePage() {
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-2 gap-3 pt-2">
+                            <div className="grid grid-cols-3 gap-2.5 pt-2">
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-gray-500 block mb-1">Standard Yield (Portions)</label>
+                                    <label className="text-xs font-bold uppercase text-gray-600 block mb-1">Yield (Portions)</label>
                                     <input
                                         type="number"
                                         min="1"
@@ -718,7 +799,19 @@ export default function RecipePage() {
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-gray-500 block mb-1">Recipe Date</label>
+                                    <label className="text-xs font-bold uppercase text-gray-600 block mb-1">No. of Ingredients</label>
+                                    <select
+                                        value={numIngredients}
+                                        onChange={(e) => setNumIngredients(Math.max(1, parseInt(e.target.value) || 1))}
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-black text-gray-900 cursor-pointer focus:border-emerald-500"
+                                    >
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20].map(n => (
+                                            <option key={n} value={n}>{n} Items</option>
+                                        ))}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-gray-600 block mb-1">Recipe Date</label>
                                     <input
                                         type="date"
                                         value={recipeDate}
@@ -779,14 +872,31 @@ export default function RecipePage() {
 
                     {/* Right 8 Cols: Dynamic Ingredients Table & Studio Actions */}
                     <div className="lg:col-span-8 bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 flex flex-col h-full space-y-5">
-                        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
                             <div>
-                                <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                                    <span>🧂</span> 2. Recipe Formula Ingredients ({recipeIngredients.length})
-                                </h2>
-                                <p className="text-xs text-gray-500">Add raw store ingredients with automatic unit conversions</p>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                                        <span>🧂</span> 2. Recipe Formula Ingredients ({recipeIngredients.length} / {numIngredients})
+                                    </h2>
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
+                                        recipeIngredients.length === numIngredients
+                                            ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                                            : recipeIngredients.length > numIngredients
+                                                ? 'bg-blue-100 text-blue-900 border border-blue-300'
+                                                : 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse'
+                                    }`}>
+                                        {recipeIngredients.length === numIngredients && `✓ Complete (${numIngredients}/${numIngredients})`}
+                                        {recipeIngredients.length < numIngredients && `⚠️ ${recipeIngredients.length} of ${numIngredients} added`}
+                                        {recipeIngredients.length > numIngredients && `✨ ${recipeIngredients.length} ingredients (target: ${numIngredients})`}
+                                    </span>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Target formula: <strong className="text-gray-800">{numIngredients} ingredients</strong>. Add raw store ingredients with auto conversions.
+                                </p>
                             </div>
-                            <span className="text-xs font-bold text-gray-400">Yield: {portionsYield} Portions</span>
+                            <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
+                                <span>Yield: <strong className="text-emerald-900 font-mono text-sm">{portionsYield}</strong> Portions</span>
+                            </div>
                         </div>
 
                         {/* Add Ingredient Line Picker */}
