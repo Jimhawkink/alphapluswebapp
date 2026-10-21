@@ -1940,24 +1940,16 @@ export default function POSPage() {
                 await executeOrderAutoPrintSequence(kotHtmlContent, billHtmlContent, printerPrefs);
             }
 
-            // Zero-Dialog Silent Mode vs Preview
-            if (printerPrefs.skipPreviewDialog && printerPrefs.orderPrintMode !== 'none') {
-                setShowKOTPreview(false);
-                setShowBillPreview(false);
-                await prepareForNextSale();
-                const modeMsg = printerPrefs.orderPrintMode === 'both'
-                    ? 'KOT & Customer Bill auto-printed in sequence! 🍳🧾'
-                    : printerPrefs.orderPrintMode === 'bill_only'
-                    ? 'Customer Bill auto-printed! 🧾'
-                    : 'KOT sent to kitchen printer! 🍳';
-                toast.success(`${modeMsg} Ready for next order.`);
-            } else {
-                if (printerPrefs.orderPrintMode === 'bill_only') {
-                    setShowBillPreview(true);
-                } else {
-                    setShowKOTPreview(true);
-                }
-            }
+            // Always auto-print silently — no preview popups
+            setShowKOTPreview(false);
+            setShowBillPreview(false);
+            await prepareForNextSale();
+            const modeMsg = printerPrefs.orderPrintMode === 'both'
+                ? 'KOT & Customer Bill sent to printers! 🍳🧾'
+                : printerPrefs.orderPrintMode === 'bill_only'
+                ? 'Customer Bill sent to printer! 🧾'
+                : 'KOT sent to kitchen! 🍳';
+            toast.success(`${modeMsg}`);
         } catch (error: any) {
             console.error('Error saving pending sale:', error);
             // Show detailed error message for debugging
@@ -2224,13 +2216,10 @@ export default function POSPage() {
             executeDirectPrint(html, { printerRole: 'customer' });
         }
 
-        if (printerPrefs.skipPreviewDialog && printerPrefs.autoPrintReceiptOnPay) {
-            setShowReceiptPreview(false);
-            clearCart();
-            toast.success('Payment completed & receipt sent to printer! 🧾 Ready for next customer.');
-        } else {
-            setShowReceiptPreview(true);
-        }
+        // Always silent — auto-print and clear cart immediately
+        setShowReceiptPreview(false);
+        clearCart();
+        toast.success('Payment complete! Receipt sent to printer. 🧾');
     };
 
     // Print receipt

@@ -11,7 +11,10 @@ import {
     executeDirectPrint,
     executeOrderAutoPrintSequence,
     playPrintChime,
-    defaultPrinterPreferences
+    defaultPrinterPreferences,
+    fetchInstalledWindowsPrinters,
+    InstalledPrinter,
+    DEFAULT_INSTALLED_PRINTERS
 } from '@/lib/printerSettings';
 import {
     generateCustomerBillHTML,
@@ -25,19 +28,7 @@ import {
     saveTaxDisplaySetting
 } from '@/lib/receiptPrinter';
 
-const COMMON_PRINTER_PROFILES = [
-    { id: 'browser_default', name: '🖨️ Default Windows / OS Printer', type: 'browser_default', width: '80mm' },
-    { id: 'epson_tmt88', name: 'EPSON TM-T88 Series (Thermal 80mm)', type: 'browser_default', width: '80mm' },
-    { id: 'epson_tmt20', name: 'EPSON TM-T20 / TM-m30 (Thermal 80mm)', type: 'browser_default', width: '80mm' },
-    { id: 'pos80_generic', name: 'POS-80 / Thermal Receipt Printer (80mm)', type: 'browser_default', width: '80mm' },
-    { id: 'pos58_generic', name: 'POS-58 / Mini Mobile Thermal (58mm)', type: 'browser_default', width: '58mm' },
-    { id: 'star_tsp100', name: 'Star Micronics TSP100 / TSP143 (80mm)', type: 'browser_default', width: '80mm' },
-    { id: 'bixolon_srp330', name: 'Bixolon SRP-330 / SRP-350 (80mm)', type: 'browser_default', width: '80mm' },
-    { id: 'xprinter_xp80', name: 'Xprinter XP-N160M / XP-80C (80mm)', type: 'browser_default', width: '80mm' },
-    { id: 'sunmi_terminal', name: 'Sunmi V2 / T2 POS Built-in Thermal', type: 'browser_default', width: '80mm' },
-    { id: 'network_raw', name: '🌐 Network RAW TCP/IP Printer (Port 9100)', type: 'network_raw', width: '80mm' },
-    { id: 'custom_windows', name: '⚙️ Custom Installed Windows Printer Name...', type: 'browser_default', width: '80mm' },
-];
+// Replaced with dynamic installedPrinters list from Windows Spooler
 
 interface SpoolerJob {
     id: string;
@@ -62,6 +53,8 @@ export default function PrintersSettingsPage() {
     const [simShowTax, setSimShowTax] = useState<boolean>(true);
     const [simHtml, setSimHtml] = useState<string>('');
     const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(defaultCompanyInfo);
+    const [installedPrinters, setInstalledPrinters] = useState<InstalledPrinter[]>(DEFAULT_INSTALLED_PRINTERS);
+    const [isScanningPrinters, setIsScanningPrinters] = useState(false);
 
     // Custom Name Inputs toggles
     const [customCustomerInput, setCustomCustomerInput] = useState(false);
@@ -78,6 +71,13 @@ export default function PrintersSettingsPage() {
         setPrefs(loaded);
         setSimShowTax(getTaxDisplaySettingSync());
 
+        // Fetch live Windows installed printers
+        fetchInstalledWindowsPrinters().then(printers => {
+            if (Array.isArray(printers) && printers.length > 0) {
+                setInstalledPrinters(printers);
+            }
+        });
+
         loadCompanyInfo().then(info => {
             setCompanyInfo(info);
             setIsLoading(false);
@@ -85,6 +85,19 @@ export default function PrintersSettingsPage() {
             setIsLoading(false);
         });
     }, []);
+
+    const handleRefreshPrinters = async () => {
+        setIsScanningPrinters(true);
+        try {
+            const list = await fetchInstalledWindowsPrinters();
+            setInstalledPrinters(list);
+            toast.success(`Found ${list.length} installed Windows printers! ✓`);
+        } catch (e: any) {
+            toast.error('Could not refresh printers: ' + e.message);
+        } finally {
+            setIsScanningPrinters(false);
+        }
+    };
 
     // Refresh Simulator HTML whenever simulation parameters change
     useEffect(() => {
@@ -452,6 +465,15 @@ exit
 
                 <div className="flex items-center gap-2 flex-wrap">
                     <button
+                        onClick={handleRefreshPrinters}
+                        disabled={isScanningPrinters}
+                        className="px-3.5 py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50"
+                        title="Scan Windows Print Spooler for all connected USB/Network printers"
+                    >
+                        <span className={isScanningPrinters ? 'animate-spin' : ''}>🔄</span>
+                        <span>{isScanningPrinters ? 'Detecting...' : `Detect Windows Printers (${installedPrinters.length})`}</span>
+                    </button>
+                    <button
                         onClick={handleTestSequence}
                         disabled={isTesting === 'sequence'}
                         className="px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-sm disabled:opacity-50"
@@ -645,7 +667,7 @@ exit
 
                                         <select
                                             value={
-                                                COMMON_PRINTER_PROFILES.some(p => p.name === prefs.customerPrinter.systemPrinterName)
+                                                installedPrinters.some(p => p.name === prefs.customerPrinter.systemPrinterName)
                                                     ? prefs.customerPrinter.systemPrinterName
                                                     : 'custom_windows'
                                             }
@@ -655,30 +677,31 @@ exit
                                                     setCustomCustomerInput(true);
                                                 } else {
                                                     setCustomCustomerInput(false);
-                                                    const matched = COMMON_PRINTER_PROFILES.find(p => p.name === val);
+                                                    const matched = installedPrinters.find(p => p.name === val);
                                                     setPrefs({
                                                         ...prefs,
                                                         customerPrinter: {
                                                             ...prefs.customerPrinter,
                                                             systemPrinterName: val,
                                                             paperWidth: (matched?.width as any) || '80mm',
-                                                            connectionType: matched?.type as any || 'browser_default'
+                                                            connectionType: 'browser_default'
                                                         }
                                                     });
                                                 }
                                             }}
                                             className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 focus:bg-white focus:border-indigo-500 outline-none"
                                         >
-                                            {COMMON_PRINTER_PROFILES.map(p => (
+                                            {installedPrinters.map(p => (
                                                 <option key={p.id} value={p.name}>
-                                                    {p.name}
+                                                    {p.isThermal ? '🧾' : '🖨️'} {p.name} {p.port ? `(${p.port})` : ''}
                                                 </option>
                                             ))}
+                                            <option value="custom_windows">⚙️ Type Custom Windows Printer Name...</option>
                                         </select>
                                     </div>
 
                                     {/* Custom Windows Printer Name Input (if user wants custom name or selected custom) */}
-                                    {(customCustomerInput || !COMMON_PRINTER_PROFILES.some(p => p.name === prefs.customerPrinter.systemPrinterName)) && (
+                                    {(customCustomerInput || !installedPrinters.some(p => p.name === prefs.customerPrinter.systemPrinterName)) && (
                                         <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-1">
                                             <label className="block text-[11px] font-bold text-amber-900 uppercase">
                                                 Type Exact Windows Installed Printer Name:
@@ -855,7 +878,7 @@ exit
 
                                         <select
                                             value={
-                                                COMMON_PRINTER_PROFILES.some(p => p.name === prefs.kitchenPrinter.systemPrinterName)
+                                                installedPrinters.some(p => p.name === prefs.kitchenPrinter.systemPrinterName)
                                                     ? prefs.kitchenPrinter.systemPrinterName
                                                     : 'custom_windows'
                                             }
@@ -865,30 +888,31 @@ exit
                                                     setCustomKitchenInput(true);
                                                 } else {
                                                     setCustomKitchenInput(false);
-                                                    const matched = COMMON_PRINTER_PROFILES.find(p => p.name === val);
+                                                    const matched = installedPrinters.find(p => p.name === val);
                                                     setPrefs({
                                                         ...prefs,
                                                         kitchenPrinter: {
                                                             ...prefs.kitchenPrinter,
                                                             systemPrinterName: val,
                                                             paperWidth: (matched?.width as any) || '80mm',
-                                                            connectionType: matched?.type as any || 'browser_default'
+                                                            connectionType: 'browser_default'
                                                         }
                                                     });
                                                 }
                                             }}
                                             className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 focus:bg-white focus:border-amber-500 outline-none"
                                         >
-                                            {COMMON_PRINTER_PROFILES.map(p => (
+                                            {installedPrinters.map(p => (
                                                 <option key={p.id} value={p.name}>
-                                                    {p.name}
+                                                    {p.isThermal ? '🍳' : '🖨️'} {p.name} {p.port ? `(${p.port})` : ''}
                                                 </option>
                                             ))}
+                                            <option value="custom_windows">⚙️ Type Custom Windows Printer Name...</option>
                                         </select>
                                     </div>
 
                                     {/* Custom Windows Printer Name Input */}
-                                    {(customKitchenInput || !COMMON_PRINTER_PROFILES.some(p => p.name === prefs.kitchenPrinter.systemPrinterName)) && (
+                                    {(customKitchenInput || !installedPrinters.some(p => p.name === prefs.kitchenPrinter.systemPrinterName)) && (
                                         <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-1">
                                             <label className="block text-[11px] font-bold text-amber-900 uppercase">
                                                 Type Exact Windows Installed Kitchen Printer Name:
