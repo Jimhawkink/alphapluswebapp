@@ -22,6 +22,7 @@ interface HotelReceiptProps {
         qrCodeData?: string;
         mpesaCode?: string;
         customerPhone?: string;
+        showTaxInfo?: boolean;
     };
     hotelInfo: {
         name: string;
@@ -113,7 +114,7 @@ export const HotelThermalReceipt = React.forwardRef<HTMLDivElement, HotelReceipt
                 </div>
 
                 {/* Tax Breakdown */}
-                {receiptData.taxMode === 'inclusive' && (
+                {receiptData.showTaxInfo !== false && receiptData.taxMode === 'inclusive' && (
                     <>
                         <DashedLine />
                         <div className="text-[9px] space-y-0.5 mb-2">
@@ -138,7 +139,7 @@ export const HotelThermalReceipt = React.forwardRef<HTMLDivElement, HotelReceipt
                     </>
                 )}
 
-                {receiptData.taxMode === 'exclusive' && (
+                {receiptData.showTaxInfo !== false && receiptData.taxMode === 'exclusive' && (
                     <div className="flex flex-col gap-1 mb-2 text-xs">
                         <div className="flex justify-between">
                             <span>VAT ({receiptData.vatRate}%):</span>

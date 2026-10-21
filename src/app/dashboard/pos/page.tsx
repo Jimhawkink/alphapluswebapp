@@ -11,6 +11,9 @@ import {
 import toast from 'react-hot-toast';
 import {
     createReceiptData,
+    loadTaxDisplaySetting,
+    saveTaxDisplaySetting,
+    getTaxDisplaySettingSync,
     createKOTData,
     generateReceiptHTML,
     generateKOTHTML,
@@ -136,13 +139,14 @@ const ProductCard = ({ product, onAdd }: { product: Product; onAdd: () => void }
 );
 
 // Cart Item Row - Light Theme
-const CartItemRow = ({ item, onIncrease, onDecrease, onRemove, onEditNotes, onEditDiscount }: {
+const CartItemRow = ({ item, onIncrease, onDecrease, onRemove, onEditNotes, onEditDiscount, showTaxInfo = true }: {
     item: CartItem;
     onIncrease: () => void;
     onDecrease: () => void;
     onRemove: () => void;
     onEditNotes: () => void;
     onEditDiscount: () => void;
+    showTaxInfo?: boolean;
 }) => {
     const itemTotal = (item.price * item.qty) - item.discount;
 
@@ -162,9 +166,11 @@ const CartItemRow = ({ item, onIncrease, onDecrease, onRemove, onEditNotes, onEd
                         <p className="text-xs text-amber-600 mt-1 italic">📝 {item.notes}</p>
                     )}
                     {/* Tax Breakdown */}
-                    <div className="mt-1 text-xs text-blue-600">
-                        💰 Tax: Ksh {Math.round(taxAmount)} (VAT: {Math.round(vatAmount)} + Levy: {Math.round(levyAmount)})
-                    </div>
+                    {showTaxInfo && (
+                        <div className="mt-1 text-xs text-blue-600">
+                            💰 Tax: Ksh {Math.round(taxAmount)} (VAT: {Math.round(vatAmount)} + Levy: {Math.round(levyAmount)})
+                        </div>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <button
@@ -329,13 +335,17 @@ const ReceiptPreviewModal = ({
     onClose,
     receiptHTML,
     title,
-    onPrint
+    onPrint,
+    showTaxInfo,
+    onToggleTax
 }: {
     isOpen: boolean;
     onClose: () => void;
     receiptHTML: string;
     title: string;
     onPrint: () => void;
+    showTaxInfo?: boolean;
+    onToggleTax?: () => void;
 }) => {
     if (!isOpen) return null;
 
@@ -346,7 +356,24 @@ const ReceiptPreviewModal = ({
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
                         <span>🧾</span> {title}
                     </h2>
-                    <button onClick={onClose} className="text-2xl text-gray-400 hover:text-gray-600">✕</button>
+                    <div className="flex items-center gap-2">
+                        {onToggleTax && (
+                            <button
+                                type="button"
+                                onClick={onToggleTax}
+                                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border shadow-sm ${
+                                    showTaxInfo
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-300 hover:bg-emerald-100'
+                                        : 'bg-slate-100 text-slate-600 border-slate-300 hover:bg-slate-200'
+                                }`}
+                                title="Click to toggle tax breakdown on this receipt"
+                            >
+                                <span>{showTaxInfo ? 'Tax Info: ON' : 'Tax Info: OFF'}</span>
+                                <span className={`w-2 h-2 rounded-full ${showTaxInfo ? 'bg-emerald-500 animate-pulse' : 'bg-slate-400'}`} />
+                            </button>
+                        )}
+                        <button onClick={onClose} className="text-2xl text-gray-400 hover:text-gray-600">✕</button>
+                    </div>
                 </div>
 
                 {/* Receipt Preview */}
@@ -941,6 +968,7 @@ export default function POSPage() {
     const [runningOrdersSearch, setRunningOrdersSearch] = useState(''); // NEW: Search filter
     const [orderNotes, setOrderNotes] = useState('');
     const [tableNo, setTableNo] = useState('');
+    const [showTaxInfo, setShowTaxInfo] = useState<boolean>(true);
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     // ─── USER ROLE ACCESS CONTROL ───
@@ -1484,6 +1512,9 @@ export default function POSPage() {
         };
 
         loadInitialData();
+        // Load initial tax display preference
+        setShowTaxInfo(getTaxDisplaySettingSync());
+        loadTaxDisplaySetting().then(val => setShowTaxInfo(val));
     }, [loadActiveShift, loadHotelName, loadUnpaidOrders]);
 
     // ─── LOAD LOW STOCK NOTIFICATION (products with stock < 10) ───
@@ -1530,6 +1561,46 @@ export default function POSPage() {
     }, [selectedWaiterName, selectedWaiterId]);
 
     // Toggle Fullscreen
+    
+    // ─── TAX DISPLAY TOGGLE (ON / OFF) ───
+    const handleToggleTaxInfo = async () => {
+        const nextVal = !showTaxInfo;
+        setShowTaxInfo(nextVal);
+        await saveTaxDisplaySetting(nextVal);
+        toast.success(nextVal ? 'Tax breakdown enabled on customer receipts ✓' : 'Tax breakdown hidden on customer receipts (clean mode) ✓');
+    };
+
+    const handleTogglePreviewTax = async () => {
+        const nextVal = !showTaxInfo;
+        setShowTaxInfo(nextVal);
+        await saveTaxDisplaySetting(nextVal);
+        const companyInfo = await loadCompanyInfo();
+        const receiptData = createReceiptData(
+            invoiceNo,
+            cart.map(item => ({
+                name: item.name,
+                qty: item.qty,
+                price: item.price,
+                notes: item.notes,
+                discount: item.discount
+            })),
+            'cash',
+            total,
+            'Cashier',
+            {
+                tableNo: tableNo || undefined,
+                orderNotes: orderNotes || undefined,
+                shiftCode: shift?.code || 'NO-SHIFT',
+                isPaid: true,
+                showTaxInfo: nextVal,
+                hotelName: companyInfo?.name || 'Alpha Plus Hotel'
+            }
+        );
+        const html = await generateCustomerBillHTML(receiptData, companyInfo, true);
+        setReceiptHTML(html);
+        toast.success(nextVal ? 'Preview updated: Tax Breakdown ON' : 'Preview updated: Tax Breakdown OFF');
+    };
+
     const toggleFullscreen = () => {
         if (!document.fullscreenElement) {
             document.documentElement.requestFullscreen();
@@ -1767,6 +1838,7 @@ export default function POSPage() {
                 orderNotes: orderNotes || undefined,
                 shiftCode: shift?.code || 'NO-SHIFT',
                 isPaid: false,
+                showTaxInfo: showTaxInfo,
                 // Kenya Tax Fields
                 taxMode: 'inclusive',
                 vatRate: 16,
@@ -2130,6 +2202,7 @@ export default function POSPage() {
                 orderNotes: orderNotes || undefined,
                 shiftCode: shift?.code || 'NO-SHIFT',
                 isPaid: true,
+                showTaxInfo: showTaxInfo,
                 // Kenya Tax Fields
                 taxMode: 'inclusive',
                 vatRate: 16,
@@ -2547,9 +2620,10 @@ export default function POSPage() {
                         ) : (
                             cart.map(item => (
                                 <CartItemRow
-                                    key={item.id}
-                                    item={item}
-                                    onIncrease={() => updateQty(item.id, 1)}
+                                key={item.id}
+                                item={item}
+                                showTaxInfo={showTaxInfo}
+                                onIncrease={() => updateQty(item.id, 1)}
                                     onDecrease={() => updateQty(item.id, -1)}
                                     onRemove={() => removeFromCart(item.id)}
                                     onEditNotes={() => { setEditingItemId(item.id); setShowNotesModal(true); }}
@@ -2582,7 +2656,7 @@ export default function POSPage() {
                             )}
 
                             {/* Tax Breakdown */}
-                            {totalTax > 0 && (
+                            {showTaxInfo && totalTax > 0 && (
                                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 space-y-1">
                                     <div className="text-xs font-bold text-blue-700 mb-1">📊 Tax Breakdown (Inclusive)</div>
                                     <div className="flex justify-between text-xs text-gray-600">

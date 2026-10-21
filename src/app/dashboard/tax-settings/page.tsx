@@ -36,8 +36,87 @@ export default function TaxSettingsPage() {
     const [editingTax, setEditingTax] = useState<TaxSetting | null>(null);
     const [formData, setFormData] = useState(defaultTax);
     const [isSaving, setIsSaving] = useState(false);
+    // ─── RECEIPT TAX DISPLAY SETTINGS ───
+    const [showTaxOnReceipt, setShowTaxOnReceipt] = useState<boolean>(true);
+    const [kraPin, setKraPin] = useState<string>('');
+    const [taxMode, setTaxMode] = useState<'inclusive' | 'exclusive'>('inclusive');
+    const [isSavingTaxConfig, setIsSavingTaxConfig] = useState(false);
 
-    const loadTaxes = useCallback(async () => {
+
+    
+    const loadReceiptTaxConfig = useCallback(async () => {
+        try {
+            // 1. Check localStorage first
+            const cachedShow = localStorage.getItem('show_tax_on_receipt');
+            if (cachedShow !== null) {
+                setShowTaxOnReceipt(cachedShow === 'true');
+            }
+
+            // 2. Query Supabase hotel_tax_config
+            const { data } = await supabase
+                .from('hotel_tax_config')
+                .select('config_key, config_value')
+                .in('config_key', ['show_tax_on_receipt', 'hotel_pin', 'tax_mode']);
+
+            if (data && data.length > 0) {
+                data.forEach(item => {
+                    if (item.config_key === 'show_tax_on_receipt') {
+                        const isShow = item.config_value === 'true';
+                        setShowTaxOnReceipt(isShow);
+                        localStorage.setItem('show_tax_on_receipt', isShow ? 'true' : 'false');
+                    } else if (item.config_key === 'hotel_pin') {
+                        setKraPin(item.config_value || '');
+                    } else if (item.config_key === 'tax_mode') {
+                        setTaxMode((item.config_value as any) || 'inclusive');
+                    }
+                });
+            }
+        } catch (err) {
+            console.error('Error loading receipt tax config:', err);
+        }
+    }, []);
+
+    const handleToggleShowTax = async (nextVal: boolean) => {
+        setShowTaxOnReceipt(nextVal);
+        localStorage.setItem('show_tax_on_receipt', nextVal ? 'true' : 'false');
+
+        try {
+            await supabase
+                .from('hotel_tax_config')
+                .upsert({
+                    config_key: 'show_tax_on_receipt',
+                    config_value: nextVal ? 'true' : 'false',
+                    description: 'Toggle to show or hide tax breakdown on receipts'
+                }, { onConflict: 'config_key' });
+
+            toast.success(nextVal ? 'Tax breakdown enabled on receipts ✓' : 'Tax breakdown hidden on receipts (clean mode) ✓');
+        } catch (err) {
+            console.error('Error saving tax toggle:', err);
+            toast.error('Failed to sync tax setting with cloud database');
+        }
+    };
+
+    const handleSaveTaxConfig = async () => {
+        setIsSavingTaxConfig(true);
+        try {
+            await supabase
+                .from('hotel_tax_config')
+                .upsert([
+                    { config_key: 'hotel_pin', config_value: kraPin, description: 'Merchant KRA PIN' },
+                    { config_key: 'tax_mode', config_value: taxMode, description: 'Inclusive vs Exclusive tax mode' },
+                    { config_key: 'show_tax_on_receipt', config_value: showTaxOnReceipt ? 'true' : 'false', description: 'Show tax toggle' }
+                ], { onConflict: 'config_key' });
+
+            toast.success('Receipt tax configuration saved successfully! ✓');
+        } catch (err) {
+            console.error('Error saving tax config:', err);
+            toast.error('Failed to save configuration');
+        } finally {
+            setIsSavingTaxConfig(false);
+        }
+    };
+
+const loadTaxes = useCallback(async () => {
         setIsLoading(true);
         try {
             const { data, error } = await supabase
@@ -56,7 +135,8 @@ export default function TaxSettingsPage() {
 
     useEffect(() => {
         loadTaxes();
-    }, [loadTaxes]);
+        loadReceiptTaxConfig();
+    }, [loadTaxes, loadReceiptTaxConfig]);
 
     const generateTaxCode = async (): Promise<string> => {
         try {
@@ -197,6 +277,253 @@ export default function TaxSettingsPage() {
                     Add Tax Type
                 </button>
             </div>
+
+            
+            {/* ── RECEIPT TAX DISPLAY TOGGLE & CONFIGURATION CARD ── */}
+            <div className="bg-white rounded-3xl border-2 border-purple-200/80 shadow-xl overflow-hidden">
+                <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-indigo-950 p-6 text-white flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center text-2xl border border-white/20 shadow-inner">
+                            🧾
+                        </div>
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-xl font-black tracking-tight">Customer Receipt Tax Settings</h2>
+                                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+                                    showTaxOnReceipt
+                                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                                        : 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                                }`}>
+                                    {showTaxOnReceipt ? 'TAX BREAKDOWN ACTIVE' : 'CLEAN RECEIPT MODE (TAX HIDDEN)'}
+                                </span>
+                            </div>
+                            <p className="text-xs text-purple-200/80 mt-0.5 font-medium">
+                                Configure whether printed customer receipts and POS cart display detailed KRA tax calculations or clean simplified totals
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Master Switch Toggle */}
+                    <div className="flex items-center gap-3 bg-white/10 backdrop-blur-md px-4 py-2.5 rounded-2xl border border-white/20">
+                        <span className="text-xs font-bold uppercase tracking-wider text-purple-100">
+                            Show Tax Info:
+                        </span>
+                        <button
+                            type="button"
+                            onClick={() => handleToggleShowTax(!showTaxOnReceipt)}
+                            className={`relative inline-flex h-7 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                showTaxOnReceipt ? 'bg-emerald-500' : 'bg-slate-700'
+                            }`}
+                        >
+                            <span
+                                className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                                    showTaxOnReceipt ? 'translate-x-7' : 'translate-x-0'
+                                }`}
+                            />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 bg-slate-50/50">
+                    {/* Left: Mode Explanation */}
+                    <div className="space-y-4">
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                            <span>⚙️</span> Tax Visibility Behavior
+                        </h3>
+
+                        <div
+                            onClick={() => handleToggleShowTax(true)}
+                            className={`p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                                showTaxOnReceipt
+                                    ? 'bg-emerald-50/70 border-emerald-500 shadow-md ring-2 ring-emerald-200'
+                                    : 'bg-white border-gray-200 hover:border-gray-300 opacity-70'
+                            }`}
+                        >
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="font-black text-sm text-emerald-950 flex items-center gap-1.5">
+                                    <span>🟢</span> Show Full Tax Breakdown
+                                </span>
+                                {showTaxOnReceipt && (
+                                    <span className="text-[10px] font-bold bg-emerald-600 text-white px-2 py-0.5 rounded-full">
+                                        ACTIVE
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                                Receipts display official <strong>★ TAX INVOICE ★</strong> header, merchant <strong>KRA PIN</strong>, per-item tax, Net Taxable Base, VAT 16%, and Catering/Tourism Levy 2%.
+                            </p>
+                        </div>
+
+                        <div
+                            onClick={() => handleToggleShowTax(false)}
+                            className={`p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+                                !showTaxOnReceipt
+                                    ? 'bg-amber-50/70 border-amber-500 shadow-md ring-2 ring-amber-200'
+                                    : 'bg-white border-gray-200 hover:border-gray-300 opacity-70'
+                            }`}
+                        >
+                            <div className="flex items-center justify-between mb-1">
+                                <span className="font-black text-sm text-amber-950 flex items-center gap-1.5">
+                                    <span>⚪</span> Hide Tax (Clean Receipt)
+                                </span>
+                                {!showTaxOnReceipt && (
+                                    <span className="text-[10px] font-bold bg-amber-600 text-white px-2 py-0.5 rounded-full">
+                                        ACTIVE
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                                Receipts display <strong>★ OFFICIAL CUSTOMER RECEIPT ★</strong>, showing only Item, Qty, Price, Subtotal, Discount, and Grand Total. Tax lines are completely omitted for a clean guest bill.
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Middle: Configuration Form */}
+                    <div className="bg-white rounded-2xl p-5 border border-gray-200 shadow-sm space-y-4">
+                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider flex items-center gap-2">
+                            <span>🏛️</span> Receipt Tax Credentials
+                        </h3>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5">
+                                Merchant KRA PIN Number
+                            </label>
+                            <input
+                                type="text"
+                                value={kraPin}
+                                onChange={e => setKraPin(e.target.value)}
+                                placeholder="e.g. P051234567X"
+                                className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-300 rounded-xl font-mono text-sm uppercase text-gray-900 focus:bg-white focus:border-purple-600 focus:outline-none"
+                            />
+                            <p className="text-[10px] text-gray-500 mt-1">Printed on receipts when tax breakdown is enabled.</p>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5">
+                                Pricing Tax Mode
+                            </label>
+                            <div className="grid grid-cols-2 gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setTaxMode('inclusive')}
+                                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
+                                        taxMode === 'inclusive'
+                                            ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    Inclusive (Kenya Std)
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setTaxMode('exclusive')}
+                                    className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
+                                        taxMode === 'exclusive'
+                                            ? 'bg-purple-600 text-white border-purple-600 shadow-sm'
+                                            : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                                    }`}
+                                >
+                                    Exclusive (Add on Top)
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-gray-500 mt-1">Default for hospitality in Kenya is Inclusive.</p>
+                        </div>
+
+                        <button
+                            type="button"
+                            onClick={handleSaveTaxConfig}
+                            disabled={isSavingTaxConfig}
+                            className="w-full py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl font-bold text-xs shadow-md hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                        >
+                            <span>💾</span>
+                            <span>{isSavingTaxConfig ? 'Saving...' : 'Save Receipt Tax Credentials'}</span>
+                        </button>
+                    </div>
+
+                    {/* Right: Live Visual Receipt Mockup */}
+                    <div className="bg-slate-900 rounded-2xl p-4 text-white shadow-md flex flex-col justify-between font-mono text-xs">
+                        <div>
+                            <div className="flex items-center justify-between border-b border-slate-700 pb-2 mb-3">
+                                <span className="font-bold text-[10px] text-purple-300 uppercase tracking-wider">
+                                    LIVE RECEIPT SAMPLE PREVIEW
+                                </span>
+                                <span className="text-[9px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
+                                    80mm Thermal
+                                </span>
+                            </div>
+
+                            <div className="bg-white text-black p-3 rounded-xl shadow-inner text-[10px] leading-tight space-y-1.5 font-sans">
+                                <div className="text-center border-b border-dashed border-gray-400 pb-1.5">
+                                    <p className="font-black text-xs uppercase">ALPHA PLUS RESTAURANT</p>
+                                    <p className="text-[9px] text-gray-500">Main Street, Nairobi • TEL: +254 712 345 678</p>
+                                    {showTaxOnReceipt && (
+                                        <p className="text-[9px] font-bold text-blue-700 mt-0.5 font-mono">PIN: {kraPin || 'P051234567X'}</p>
+                                    )}
+                                </div>
+
+                                <div className="text-center font-black text-[9px] uppercase tracking-wider bg-gray-100 py-1 rounded">
+                                    {showTaxOnReceipt ? '★ OFFICIAL TAX INVOICE ★' : '★ OFFICIAL CUSTOMER RECEIPT ★'}
+                                </div>
+
+                                <div className="flex justify-between text-[9px] text-gray-500">
+                                    <span>RCP-00042</span>
+                                    <span>TABLE 04 • 12:30 PM</span>
+                                </div>
+
+                                <div className="border-t border-b border-gray-200 py-1 space-y-1 text-[9.5px]">
+                                    <div className="flex justify-between font-semibold">
+                                        <span>1x Beef Stew & Ugali</span>
+                                        <span>Ksh 350.00</span>
+                                    </div>
+                                    <div className="flex justify-between font-semibold">
+                                        <span>1x Fresh Passion Juice</span>
+                                        <span>Ksh 100.00</span>
+                                    </div>
+                                </div>
+
+                                {/* Tax Breakdown Display */}
+                                {showTaxOnReceipt ? (
+                                    <div className="bg-blue-50 border border-blue-200 rounded p-1.5 text-[8.5px] space-y-0.5 text-blue-900 font-mono">
+                                        <div className="flex justify-between font-bold">
+                                            <span>TAX BREAKDOWN (18% INCL):</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Net Taxable Base:</span>
+                                            <span>Ksh 381.36</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>VAT (16%):</span>
+                                            <span>Ksh 61.02</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Catering Levy (2%):</span>
+                                            <span>Ksh 7.63</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="bg-amber-50 border border-amber-200 rounded p-1 text-[8.5px] text-center text-amber-800 italic">
+                                        (Tax details hidden on customer receipt)
+                                    </div>
+                                )}
+
+                                <div className="bg-black text-white p-2 rounded flex justify-between font-black text-xs">
+                                    <span>TOTAL:</span>
+                                    <span>Ksh 450.00</span>
+                                </div>
+
+                                <div className="text-center text-[8px] text-gray-400 pt-1 border-t border-dashed border-gray-300">
+                                    ★ THANK YOU FOR DINING WITH US! ★
+                                </div>
+                            </div>
+                        </div>
+
+                        <p className="text-[10px] text-slate-400 mt-3 text-center">
+                            Changes take effect immediately across all POS terminals and Sales Ledgers.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
 
             {/* Info Card */}
             <div className="bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 border border-purple-200 rounded-2xl p-5">

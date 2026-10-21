@@ -26,6 +26,7 @@ export default function HotelTaxSettingsPage() {
     const [taxMode, setTaxMode] = useState<'inclusive' | 'exclusive'>('inclusive');
     const [hotelName, setHotelName] = useState('');
     const [hotelPin, setHotelPin] = useState('');
+    const [showTaxOnReceipt, setShowTaxOnReceipt] = useState<boolean>(true);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [editingTax, setEditingTax] = useState<number | null>(null);
@@ -58,7 +59,7 @@ export default function HotelTaxSettingsPage() {
             const { data, error } = await supabase
                 .from('hotel_tax_config')
                 .select('*')
-                .in('config_key', ['tax_mode', 'hotel_name', 'hotel_pin']);
+                .in('config_key', ['tax_mode', 'hotel_name', 'hotel_pin', 'show_tax_on_receipt']);
 
             if (error) throw error;
 
@@ -69,12 +70,44 @@ export default function HotelTaxSettingsPage() {
                     setHotelName(config.config_value);
                 } else if (config.config_key === 'hotel_pin') {
                     setHotelPin(config.config_value);
+                } else if (config.config_key === 'show_tax_on_receipt') {
+                    const isShow = config.config_value === 'true';
+                    setShowTaxOnReceipt(isShow);
+                    if (typeof window !== 'undefined') {
+                        localStorage.setItem('show_tax_on_receipt', isShow ? 'true' : 'false');
+                    }
                 }
             });
         } catch (err) {
             console.error('Error loading config:', err);
         }
         setIsLoading(false);
+    };
+
+    
+    const updateShowTaxOnReceipt = async (show: boolean) => {
+        setIsSaving(true);
+        setShowTaxOnReceipt(show);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('show_tax_on_receipt', show ? 'true' : 'false');
+        }
+        try {
+            const { error } = await supabase
+                .from('hotel_tax_config')
+                .upsert({
+                    config_key: 'show_tax_on_receipt',
+                    config_value: show ? 'true' : 'false',
+                    description: 'Toggle to show or hide tax information on customer receipts',
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'config_key' });
+
+            if (error) throw error;
+            toast.success(show ? 'Tax breakdown enabled on customer receipts ✓' : 'Tax breakdown hidden on customer receipts (clean mode) ✓');
+        } catch (err: any) {
+            console.error('Error updating tax display toggle:', err);
+            toast.error('Failed to update receipt tax setting');
+        }
+        setIsSaving(false);
     };
 
     const updateTaxMode = async (mode: 'inclusive' | 'exclusive') => {
@@ -187,6 +220,49 @@ export default function HotelTaxSettingsPage() {
                     <span>🏨</span> Hotel Tax Settings
                 </h1>
                 <p className="text-gray-600 mt-1">Manage Kenya tax rates and calculation mode</p>
+            </div>
+
+            
+            {/* Customer Receipt Tax Display Master Switch */}
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-2xl p-6 text-white shadow-xl mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-2xl border border-white/20">
+                        🧾
+                    </div>
+                    <div>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-lg font-black tracking-tight">Receipt Tax Display Settings</h2>
+                            <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+                                showTaxOnReceipt
+                                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40'
+                                    : 'bg-amber-500/20 text-amber-300 border-amber-400/40'
+                            }`}>
+                                {showTaxOnReceipt ? 'TAX DETAILS SHOWN' : 'CLEAN MODE (TAX HIDDEN)'}
+                            </span>
+                        </div>
+                        <p className="text-xs text-indigo-200/80 mt-0.5">
+                            Toggle whether customer receipts print full KRA tax breakdown (VAT 16% + Catering Levy 2%) or print simplified totals.
+                        </p>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl border border-white/20 self-start md:self-auto">
+                    <span className="text-xs font-bold text-indigo-100 uppercase">Show Tax Info:</span>
+                    <button
+                        type="button"
+                        onClick={() => updateShowTaxOnReceipt(!showTaxOnReceipt)}
+                        disabled={isSaving}
+                        className={`relative inline-flex h-6 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                            showTaxOnReceipt ? 'bg-emerald-500' : 'bg-slate-700'
+                        }`}
+                    >
+                        <span
+                            className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                showTaxOnReceipt ? 'translate-x-6' : 'translate-x-0'
+                            }`}
+                        />
+                    </button>
+                </div>
             </div>
 
             {/* Hotel Information Card */}
