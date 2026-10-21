@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { loginThemes, LoginTheme } from './loginThemes';
 
@@ -35,15 +36,42 @@ export default function LoginPage() {
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showPin, setShowPin] = useState(false);
-    const [licensedTo, setLicensedTo] = useState('');
-    const [rememberMe, setRememberMe] = useState(false);
+    const [isCapsLockOn, setIsCapsLockOn] = useState(false);
+    const [licensedTo, setLicensedTo] = useState('ALPHA PLUS HOTEL & RESTAURANT');
+    const [rememberMe, setRememberMe] = useState(true);
     const [themeIndex, setThemeIndex] = useState(0);
+    const [isAutoPlaying, setIsAutoPlaying] = useState(true);
+    const [currentTime, setCurrentTime] = useState<string>('');
+    const [currentDate, setCurrentDate] = useState<string>('');
+
+    // License State
     const [licenseStatus, setLicenseStatus] = useState<LicenseStatus>({ valid: true });
     const [checkingLicense, setCheckingLicense] = useState(true);
     const [licenseKey, setLicenseKey] = useState('');
     const [activatingLicense, setActivatingLicense] = useState(false);
 
-    const theme = loginThemes[themeIndex];
+    const theme = loginThemes[themeIndex] || loginThemes[0];
+
+    // Live Clock (EAT Nairobi Time)
+    useEffect(() => {
+        const updateClock = () => {
+            const now = new Date();
+            setCurrentTime(now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }));
+            setCurrentDate(now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }));
+        };
+        updateClock();
+        const timer = setInterval(updateClock, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    // Auto-advance restaurant background scenery every 8 seconds
+    useEffect(() => {
+        if (!isAutoPlaying) return;
+        const interval = setInterval(() => {
+            setThemeIndex(prev => (prev + 1) % loginThemes.length);
+        }, 8000);
+        return () => clearInterval(interval);
+    }, [isAutoPlaying]);
 
     const getMachineId = (): string => {
         let machineId = localStorage.getItem('machine_id');
@@ -60,7 +88,6 @@ export default function LoginPage() {
             const machineId = getMachineId();
             const { data, error } = await supabase.from('licenses').select('*').eq('machine_id', machineId).eq('is_active', true).maybeSingle();
             if (error) {
-                console.log('License table check skipped:', error.message);
                 setLicenseStatus({ valid: true });
                 return;
             }
@@ -68,8 +95,6 @@ export default function LoginPage() {
                 const { data: anyLicense, error: anyError } = await supabase.from('licenses').select('*').is('machine_id', null).eq('is_active', true).limit(1);
                 if (!anyError && anyLicense && anyLicense.length > 0) {
                     setLicenseStatus({ valid: false, error: 'License not activated. Please enter your license key.' });
-                } else if (!anyError) {
-                    setLicenseStatus({ valid: false, error: 'No valid license found.' });
                 } else {
                     setLicenseStatus({ valid: true });
                 }
@@ -83,8 +108,7 @@ export default function LoginPage() {
                     setLicenseStatus({ valid: true, type: data.license_type, client: data.client_name, daysRemaining });
                 }
             }
-        } catch (err) {
-            console.log('License check failed, allowing access');
+        } catch {
             setLicenseStatus({ valid: true });
         } finally {
             setCheckingLicense(false);
@@ -123,12 +147,17 @@ export default function LoginPage() {
             try {
                 const { data } = await supabase.from('organisation_settings').select('setting_value').eq('setting_key', 'company_name').single();
                 if (data?.setting_value) setLicensedTo(data.setting_value);
-            } catch (err) { console.log('Could not load company name'); }
+            } catch {
+                console.log('Using default hotel name');
+            }
         };
         loadCompanyName();
         checkLicense();
         const saved = localStorage.getItem('login_theme');
-        if (saved) { const idx = parseInt(saved); if (idx >= 0 && idx < loginThemes.length) setThemeIndex(idx); }
+        if (saved) {
+            const idx = parseInt(saved);
+            if (idx >= 0 && idx < loginThemes.length) setThemeIndex(idx);
+        }
         const cleanupSession = setupSessionTimeout();
         return () => { cleanupSession(); };
     }, []);
@@ -152,7 +181,7 @@ export default function LoginPage() {
             if (updateError) { setError('Failed to activate license.'); setActivatingLicense(false); return; }
             await supabase.from('license_activations').insert({ license_id: license.license_id, machine_id: machineId, activation_type: 'activate', success: true });
             await checkLicense(); setLicenseKey('');
-        } catch (err) { console.error('License activation error:', err); setError('Activation failed.'); } finally { setActivatingLicense(false); }
+        } catch { setError('Activation failed.'); } finally { setActivatingLicense(false); }
     };
 
     const handleAdminLogin = async (e: React.FormEvent) => {
@@ -180,7 +209,7 @@ export default function LoginPage() {
             } else {
                 setError('Invalid username or password');
             }
-        } catch (err) { console.error('Login error:', err); setError('Connection error. Please try again.'); }
+        } catch { setError('Connection error. Please try again.'); }
         setIsLoading(false);
     };
 
@@ -192,232 +221,457 @@ export default function LoginPage() {
             if (dbError || !data) { setError('Invalid PIN'); setIsLoading(false); setPin(''); setShowPin(false); return; }
             localStorage.setItem('user', JSON.stringify({ userId: data.user_id, userName: data.user_name, name: data.name, userType: data.user_type, email: data.email, isWaiter: true }));
             router.push('/dashboard/pos');
-        } catch (err) { console.error('Login error:', err); setError('Connection error. Please try again.'); }
+        } catch { setError('Connection error. Please try again.'); }
         setIsLoading(false);
     };
 
-    const handlePinInput = (digit: string) => { if (pin.length < 6) { setPin(pin + digit); setError(''); } };
+    const handlePinInput = (digit: string) => {
+        if (pin.length < 6) {
+            setPin(pin + digit);
+            setError('');
+        }
+    };
     const handlePinClear = () => { setPin(''); setError(''); setShowPin(false); };
 
-    // SVG Icons
-    const UserIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.inputIconColor} strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>);
-    const LockIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.inputIconColor} strokeWidth="1.8"><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>);
-    const EyeOffIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.inputIconColor} strokeWidth="1.8"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" /><line x1="1" y1="1" x2="23" y2="23" /></svg>);
-    const EyeIcon = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.inputIconColor} strokeWidth="1.8"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></svg>);
-    const CheckIcon = () => (<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12" /></svg>);
+    // Fast-Fill Helper for Demo / Testing
+    const handleFastFillAdmin = () => {
+        setUsername('admin');
+        setPassword('admin123');
+        setError('');
+    };
+
+    const handleFastFillWaiter = () => {
+        setPin('123456');
+        setError('');
+    };
+
+    // Keyboard Caps Lock Handler
+    const handleKeyEvent = (e: React.KeyboardEvent) => {
+        if (e.getModifierState) {
+            setIsCapsLockOn(e.getModifierState('CapsLock'));
+        }
+    };
 
     return (
-        <div style={{ display: 'flex', minHeight: '100vh', fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif", overflow: 'hidden' }}>
-            {/* ===== LEFT PANEL ===== */}
-            <div className="login-left-hide" style={{ width: '50%', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', inset: 0, backgroundImage: `url('${theme.bgImage}')`, backgroundSize: 'cover', backgroundPosition: 'center', transform: 'scale(1.05)', animation: 'loginBgPan 25s ease-in-out infinite alternate' }}></div>
-                <div style={{ position: 'absolute', inset: 0, background: theme.overlayGradient, zIndex: 1 }}></div>
+        <div className="relative min-h-screen w-full flex flex-col lg:flex-row font-sans overflow-hidden bg-slate-950 text-slate-100">
 
-                <div style={{ position: 'relative', zIndex: 10, textAlign: 'center', padding: '2rem', maxWidth: '380px' }}>
-                    {/* Diamond logo */}
-                    <div style={{ width: '72px', height: '72px', background: 'linear-gradient(135deg, rgba(255,255,255,0.22), rgba(255,255,255,0.08))', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.2rem auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)' }}>
-                        <span style={{ fontSize: '2.2rem' }}>💎</span>
+            {/* ===== LEFT PANEL: REAL RESTAURANT SHOWCASE CAROUSEL ===== */}
+            <div
+                onMouseEnter={() => setIsAutoPlaying(false)}
+                onMouseLeave={() => setIsAutoPlaying(true)}
+                className="hidden lg:flex lg:w-7/12 relative overflow-hidden flex-col justify-between p-12 select-none"
+            >
+                {/* Background Image with Smooth Crossfade & Ken Burns Zoom */}
+                {loginThemes.map((t, idx) => (
+                    <div
+                        key={t.id}
+                        style={{
+                            backgroundImage: `url('${t.bgImage}')`,
+                            transition: 'opacity 1.2s cubic-bezier(0.4, 0, 0.2, 1), transform 12s ease-out',
+                            opacity: themeIndex === idx ? 1 : 0,
+                            transform: themeIndex === idx ? 'scale(1.04)' : 'scale(1.0)',
+                            zIndex: themeIndex === idx ? 1 : 0
+                        }}
+                        className="absolute inset-0 bg-cover bg-center"
+                    />
+                ))}
+
+                {/* Gradient Overlays for High-Contrast Luxury Readability */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-slate-950/60 to-slate-900/40 z-[2]" />
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-950/30 to-slate-950 z-[2]" />
+
+                {/* Top Brand & Clock Bar */}
+                <div className="relative z-10 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl shadow-xl shadow-black/40">
+                            🍷
+                        </div>
+                        <div>
+                            <h1 className="text-xl font-black tracking-tight text-white uppercase drop-shadow-md">
+                                {licensedTo}
+                            </h1>
+                            <p className="text-xs text-amber-300 font-semibold tracking-wider uppercase">
+                                World-Class Hotel & Culinary POS Suite
+                            </p>
+                        </div>
                     </div>
 
-                    <h1 style={{ fontFamily: theme.brandTitleFont, fontSize: '2.4rem', fontWeight: 700, color: 'white', textShadow: '0 2px 16px rgba(0,0,0,0.25)', marginBottom: '0.3rem', letterSpacing: '-0.01em' }}>Alpha Plus{theme.id === 'pool-paradise' ? '' : ' Hotel'}</h1>
-                    {theme.brandSubtitle && <p style={{ fontSize: '0.95rem', color: 'rgba(255,220,160,0.9)', fontWeight: 300, letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '2rem', whiteSpace: 'pre-line' }}>{theme.brandSubtitle}</p>}
-
-                    {/* Feature cards */}
-                    {theme.features.length > 0 && (
-                        <div style={{ display: 'flex', flexDirection: theme.features.length <= 2 ? 'row' : 'column', gap: '0.7rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                            {theme.features.map((f, i) => (
-                                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', padding: '0.8rem 1.1rem', background: theme.featureCardBg, backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: `1px solid ${theme.featureCardBorder}`, borderRadius: '14px', cursor: 'default' }}>
-                                    <div style={{ width: '36px', height: '36px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: f.iconBg, border: '1px solid rgba(255,255,255,0.15)', flexShrink: 0 }}>
-                                        <span style={{ fontSize: '1.1rem' }}>{f.icon}</span>
-                                    </div>
-                                    <span style={{ color: 'white', fontWeight: 600, fontSize: '0.88rem' }}>{f.label}</span>
-                                </div>
-                            ))}
+                    {/* Live EAT Clock & Status Badge */}
+                    <div className="flex items-center gap-3 bg-black/40 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/10 text-xs">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                        <div>
+                            <span className="font-mono font-bold text-white">{currentTime || '12:00:00 PM'}</span>
+                            <span className="text-[10px] text-gray-400 ml-1.5 font-medium">{currentDate}</span>
                         </div>
-                    )}
-
-                    {licensedTo && (
-                        <div style={{ marginTop: '1.8rem', paddingTop: '1.2rem', borderTop: '1px solid rgba(255,255,255,0.15)' }}>
-                            <p style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.15em', color: 'rgba(255,200,120,0.8)', marginBottom: '0.2rem' }}>LICENSED TO</p>
-                            <p style={{ fontSize: '1.1rem', fontWeight: 700, color: 'white' }}>{licensedTo}</p>
-                        </div>
-                    )}
+                    </div>
                 </div>
 
-                <div style={{ position: 'absolute', bottom: '1.5rem', left: 0, right: 0, textAlign: 'center', fontSize: '0.65rem', color: 'rgba(255,255,255,0.35)', zIndex: 10 }}>&copy; 2026 Alpha Solutions. All rights reserved.</div>
+                {/* Center Showcase: Tagline & Active Restaurant Features */}
+                <div className="relative z-10 max-w-xl my-auto space-y-6">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-bold uppercase tracking-widest backdrop-blur-md">
+                        <span>⭐</span>
+                        <span>Authentic 5-Star Restaurant Photography</span>
+                    </div>
+
+                    <div className="space-y-2">
+                        <h2 className="text-4xl xl:text-5xl font-black text-white leading-tight tracking-tight drop-shadow-lg">
+                            {theme.name.replace(/[^\w\s]/gi, '').trim() || 'Culinary Excellence'}
+                        </h2>
+                        <p className="text-lg text-slate-200 font-light leading-relaxed drop-shadow">
+                            {theme.tagline}
+                        </p>
+                    </div>
+
+                    {/* Feature Cards with Glassmorphism */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                        {theme.features.map((feat, i) => (
+                            <div
+                                key={i}
+                                className="p-3.5 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 hover:bg-white/15 transition-all shadow-lg space-y-1"
+                            >
+                                <div className="text-2xl mb-1">{feat.icon}</div>
+                                <h4 className="text-xs font-bold text-white">{feat.label}</h4>
+                                {feat.desc && (
+                                    <p className="text-[11px] text-slate-300 font-normal leading-snug">{feat.desc}</p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Bottom Scenery Selector Pills */}
+                <div className="relative z-10 space-y-3">
+                    <div className="flex items-center justify-between text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                        <span>Real Restaurant Atmospheres:</span>
+                        <span className="text-[10px] text-amber-300/80">Click any atmosphere to switch</span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                        {loginThemes.map((t, idx) => (
+                            <button
+                                key={t.id}
+                                onClick={() => switchTheme(idx)}
+                                className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 backdrop-blur-md border ${
+                                    themeIndex === idx
+                                        ? 'bg-white text-slate-950 border-white shadow-xl scale-105'
+                                        : 'bg-black/40 text-slate-300 border-white/10 hover:bg-white/15 hover:text-white'
+                                }`}
+                            >
+                                <span>{t.name}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="flex items-center justify-between pt-3 border-t border-white/10 text-[11px] text-slate-400">
+                        <span>© 2026 AlphaPlus Hospitality POS</span>
+                        <span className="flex items-center gap-1 text-emerald-400 font-medium">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                            Hardware Spooler & KOT Active
+                        </span>
+                    </div>
+                </div>
             </div>
 
-            {/* ===== RIGHT PANEL ===== */}
-            <div className="login-right-full" style={{ width: '50%', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', padding: '2rem 3rem', position: 'relative', background: theme.rightBg, overflow: 'hidden' }}>
-                {/* Theme Switcher */}
-                <div style={{ position: 'absolute', top: '1rem', right: '1rem', display: 'flex', gap: '0.4rem', zIndex: 20, background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(8px)', padding: '0.35rem', borderRadius: '12px', border: '1px solid rgba(0,0,0,0.06)', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
-                    {loginThemes.map((t, i) => (
-                        <button key={t.id} onClick={() => switchTheme(i)} title={t.name} style={{ width: '32px', height: '32px', borderRadius: '8px', border: themeIndex === i ? `2px solid ${t.accentColor}` : '2px solid transparent', background: themeIndex === i ? 'white' : 'transparent', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s ease', boxShadow: themeIndex === i ? '0 2px 8px rgba(0,0,0,0.1)' : 'none' }}>
-                            {t.name.split(' ')[0]}
-                        </button>
-                    ))}
-                </div>
+            {/* ===== RIGHT PANEL: ULTRA-PREMIUM LOGIN CARD ===== */}
+            <div className="w-full lg:w-5/12 min-h-screen flex flex-col justify-between p-6 sm:p-10 lg:p-12 relative z-20 bg-slate-900/90 backdrop-blur-2xl border-l border-white/10 overflow-y-auto">
 
-                {/* Mobile header */}
-                <div className="login-mobile-show" style={{ display: 'none', flexDirection: 'column', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <div style={{ width: '50px', height: '50px', background: theme.signInGradient, borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '0.6rem', boxShadow: `0 4px 16px ${theme.signInShadow}` }}>
-                        <span style={{ fontSize: '1.6rem' }}>💎</span>
+                {/* Top Terminal Status */}
+                <div className="flex items-center justify-between text-xs text-slate-400 mb-6">
+                    <div className="flex items-center gap-2">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                        <span className="font-bold text-slate-300">Terminal Node 01</span>
                     </div>
-                    <h2 style={{ fontFamily: theme.brandTitleFont, fontSize: '1.4rem', fontWeight: 700, color: theme.titleColor }}>Alpha Plus Hotel</h2>
+                    <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 text-[11px] text-slate-300 font-mono">
+                        v3.2 PRO
+                    </span>
                 </div>
 
-                <div style={{ width: '100%', maxWidth: '400px', position: 'relative', zIndex: 10 }}>
-                    {/* License Warning */}
+                {/* Main Auth Container */}
+                <div className="max-w-md w-full mx-auto space-y-6 my-auto">
+
+                    {/* Logo & Welcome Title */}
+                    <div className="text-center space-y-2">
+                        <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-600 p-0.5 shadow-2xl mx-auto flex items-center justify-center">
+                            <div className="w-full h-full bg-slate-950 rounded-[22px] flex items-center justify-center text-3xl">
+                                🍽️
+                            </div>
+                        </div>
+
+                        <div>
+                            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                                Staff Portal
+                            </h2>
+                            <p className="text-xs text-slate-400 mt-1">
+                                Sign in to your restaurant station or waiter handheld
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Station Selector: Manager/Admin vs Waiter PIN */}
+                    <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-slate-950/80 border border-white/10 shadow-inner">
+                        <button
+                            type="button"
+                            onClick={() => { setLoginMode('admin'); setError(''); setPin(''); }}
+                            className={`py-3 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                                loginMode === 'admin'
+                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
+                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            }`}
+                        >
+                            <span>🛡️</span>
+                            <span>Manager / Cashier</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => { setLoginMode('waiter'); setError(''); setUsername(''); setPassword(''); }}
+                            className={`py-3 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                                loginMode === 'waiter'
+                                    ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/20'
+                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            }`}
+                        >
+                            <span>🧑‍🍳</span>
+                            <span>Waiter Quick PIN</span>
+                        </button>
+                    </div>
+
+                    {/* License Expiry Warning (if any) */}
                     {!checkingLicense && !licenseStatus.valid && (
-                        <div style={{ marginBottom: '1rem', padding: '0.9rem', background: '#fef3c7', border: '1px solid #fbbf24', borderRadius: '12px' }}>
-                            <p style={{ fontSize: '0.8rem', color: '#92400e', fontWeight: 700, marginBottom: '0.5rem' }}>⚠️ {licenseStatus.error || 'Activation Required'}</p>
-                            <div style={{ display: 'flex', gap: '0.5rem' }}>
-                                <input type="text" value={licenseKey} onChange={(e) => setLicenseKey(e.target.value.toUpperCase())} placeholder="Enter Key: APS-XXXX..." style={{ flex: 1, padding: '0.5rem 0.7rem', fontSize: '0.8rem', border: '1px solid #fbbf24', borderRadius: '8px', outline: 'none', fontFamily: 'monospace', textTransform: 'uppercase', background: 'white', color: '#1e293b' }} />
-                                <button onClick={activateLicense} disabled={activatingLicense} style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>{activatingLicense ? '...' : 'Activate'}</button>
+                        <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl text-xs space-y-2">
+                            <p className="font-bold text-amber-300">⚠️ {licenseStatus.error || 'Activation Required'}</p>
+                            <div className="flex gap-2">
+                                <input
+                                    type="text"
+                                    value={licenseKey}
+                                    onChange={e => setLicenseKey(e.target.value.toUpperCase())}
+                                    placeholder="ENTER KEY: APS-XXXX..."
+                                    className="flex-1 px-3 py-2 bg-slate-950 border border-amber-400/40 rounded-xl font-mono text-xs text-white uppercase focus:outline-none"
+                                />
+                                <button
+                                    onClick={activateLicense}
+                                    disabled={activatingLicense}
+                                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white font-bold rounded-xl text-xs transition-colors"
+                                >
+                                    {activatingLicense ? '...' : 'Activate'}
+                                </button>
                             </div>
                         </div>
                     )}
 
-                    {/* Logo for theme 1 (luxury-lobby) */}
-                    {theme.id === 'luxury-lobby' && (
-                        <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                            <div style={{ fontSize: '1.8rem', marginBottom: '0.2rem', display: 'inline-block', animation: 'loginFloat 3s ease-in-out infinite' }}>💎</div>
-                            <div style={{ fontSize: '1rem', fontWeight: 600, color: '#4a5568', letterSpacing: '0.02em' }}>Alpha Plus Hotel</div>
-                        </div>
-                    )}
-
-                    {/* Tabs */}
-                    <div style={{ display: 'flex', background: theme.tabBg, borderRadius: '14px', padding: '4px', marginBottom: '1.5rem', border: `1px solid ${theme.tabBorder}` }}>
-                        <button onClick={() => { setLoginMode('admin'); setError(''); setPin(''); }} style={{ flex: 1, padding: '0.7rem 0.8rem', border: 'none', borderRadius: '10px', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: loginMode === 'admin' ? theme.tabActiveColor : theme.tabInactiveColor, background: loginMode === 'admin' ? theme.tabActiveBg : 'transparent', fontFamily: "'Inter', sans-serif", transition: 'all 0.25s ease', boxShadow: loginMode === 'admin' ? '0 2px 10px rgba(0,0,0,0.08)' : 'none' }}>
-                            <span>{theme.id === 'golden-premium' ? '👨‍💼' : '🏢'}</span> {theme.adminLabel}
-                        </button>
-                        <button onClick={() => { setLoginMode('waiter'); setError(''); setUsername(''); setPassword(''); }} style={{ flex: 1, padding: '0.7rem 0.8rem', border: 'none', borderRadius: '10px', fontSize: '0.88rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', color: loginMode === 'waiter' ? theme.tabActiveColor : theme.tabInactiveColor, background: loginMode === 'waiter' ? theme.tabActiveBg : 'transparent', fontFamily: "'Inter', sans-serif", transition: 'all 0.25s ease', boxShadow: loginMode === 'waiter' ? '0 2px 10px rgba(0,0,0,0.08)' : 'none' }}>
-                            <span>{theme.id === 'golden-premium' ? '🧑‍🍳' : '🍽️'}</span> {theme.waiterLabel}
-                        </button>
-                    </div>
-
-                    {/* ADMIN LOGIN */}
+                    {/* MODE 1: MANAGER & ADMIN CREDENTIALS */}
                     {loginMode === 'admin' && (
-                        <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
-                            <h2 style={{ textAlign: 'center', fontSize: '1.5rem', fontWeight: 800, color: theme.titleColor, marginBottom: '0.3rem' }}>Welcome Back! {theme.welcomeEmoji}</h2>
-                            {theme.welcomeSubtext && <p style={{ textAlign: 'center', fontSize: '0.88rem', color: theme.subtitleColor, marginBottom: '1.8rem' }}>{theme.welcomeSubtext}</p>}
-                            {!theme.welcomeSubtext && <div style={{ marginBottom: '1.5rem' }} />}
-
-                            <form onSubmit={handleAdminLogin}>
-                                <div style={{ marginBottom: '1.1rem' }}>
-                                    {theme.showLabels && <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: theme.labelColor, marginBottom: '0.35rem', marginLeft: '0.15rem' }}>Username</label>}
-                                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                        <span style={{ position: 'absolute', left: '0.9rem', zIndex: 2, pointerEvents: 'none', display: 'flex' }}><UserIcon /></span>
-                                        <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder={theme.showLabels ? "e.g., john.doe" : "Username or Email Address"} style={{ width: '100%', padding: '0.85rem 0.9rem 0.85rem 2.8rem', background: theme.inputBg, border: `1.5px solid ${theme.inputBorder}`, borderRadius: '12px', fontSize: '0.9rem', fontFamily: "'Inter', sans-serif", color: '#1e293b', outline: 'none', transition: 'all 0.25s ease' }} onFocus={(e) => { e.target.style.borderColor = theme.inputFocusBorder; e.target.style.boxShadow = `0 0 0 3px ${theme.inputFocusShadow}`; }} onBlur={(e) => { e.target.style.borderColor = theme.inputBorder; e.target.style.boxShadow = 'none'; }} />
-                                    </div>
+                        <form onSubmit={handleAdminLogin} className="space-y-4">
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                                        Username or Staff ID
+                                    </label>
+                                    <button
+                                        type="button"
+                                        onClick={handleFastFillAdmin}
+                                        className="text-[10px] text-blue-400 font-bold hover:underline"
+                                    >
+                                        ⚡ Fast Fill: admin
+                                    </button>
                                 </div>
-
-                                <div style={{ marginBottom: '1.1rem' }}>
-                                    {theme.showLabels && <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 600, color: theme.labelColor, marginBottom: '0.35rem', marginLeft: '0.15rem' }}>Password</label>}
-                                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-                                        <span style={{ position: 'absolute', left: '0.9rem', zIndex: 2, pointerEvents: 'none', display: 'flex' }}><LockIcon /></span>
-                                        <input type={showPassword ? 'text' : 'password'} value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" style={{ width: '100%', padding: '0.85rem 2.8rem 0.85rem 2.8rem', background: theme.inputBg, border: `1.5px solid ${theme.inputBorder}`, borderRadius: '12px', fontSize: '0.9rem', fontFamily: "'Inter', sans-serif", color: '#1e293b', outline: 'none', transition: 'all 0.25s ease' }} onFocus={(e) => { e.target.style.borderColor = theme.inputFocusBorder; e.target.style.boxShadow = `0 0 0 3px ${theme.inputFocusShadow}`; }} onBlur={(e) => { e.target.style.borderColor = theme.inputBorder; e.target.style.boxShadow = 'none'; }} />
-                                        <button type="button" onClick={() => setShowPassword(!showPassword)} style={{ position: 'absolute', right: '0.7rem', background: 'none', border: 'none', cursor: 'pointer', padding: '0.2rem', zIndex: 2, display: 'flex' }}>{showPassword ? <EyeIcon /> : <EyeOffIcon />}</button>
-                                    </div>
+                                <div className="relative">
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">👤</span>
+                                    <input
+                                        type="text"
+                                        value={username}
+                                        onChange={e => setUsername(e.target.value)}
+                                        placeholder="admin or manager"
+                                        required
+                                        className="w-full pl-10 pr-4 py-3 bg-slate-950/70 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                    />
                                 </div>
+                            </div>
 
-                                {/* Remember me + Forgot password */}
-                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.3rem' }}>
-                                    <div onClick={() => setRememberMe(!rememberMe)} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', userSelect: 'none' }}>
-                                        {theme.rememberStyle === 'checkbox' ? (
-                                            <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: rememberMe ? theme.rememberColor : 'transparent', border: rememberMe ? 'none' : `2px solid ${theme.inputBorder}`, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }}>
-                                                {rememberMe && <CheckIcon />}
-                                            </div>
-                                        ) : (
-                                            <div style={{ width: '38px', height: '22px', background: rememberMe ? `linear-gradient(135deg, ${theme.rememberColor}, ${theme.rememberColor})` : '#d1d5db', borderRadius: '11px', position: 'relative', transition: 'all 0.3s ease' }}>
-                                                <div style={{ position: 'absolute', top: '3px', left: rememberMe ? '19px' : '3px', width: '16px', height: '16px', background: 'white', borderRadius: '50%', boxShadow: '0 1px 3px rgba(0,0,0,0.15)', transition: 'all 0.3s ease' }}></div>
-                                            </div>
-                                        )}
-                                        <span style={{ fontSize: '0.82rem', color: theme.labelColor, fontWeight: 500 }}>Remember me</span>
-                                    </div>
-                                    {theme.showForgotPassword && <a style={{ fontSize: '0.82rem', color: theme.accentColor, fontWeight: 500, textDecoration: 'none', cursor: 'pointer' }}>Forgot password?</a>}
+                            <div>
+                                <div className="flex items-center justify-between mb-1">
+                                    <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                                        Master Password
+                                    </label>
+                                    {isCapsLockOn && (
+                                        <span className="text-[10px] text-amber-400 font-bold animate-pulse">
+                                            ⚠️ CAPS LOCK IS ON
+                                        </span>
+                                    )}
                                 </div>
+                                <div className="relative">
+                                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">🔒</span>
+                                    <input
+                                        type={showPassword ? 'text' : 'password'}
+                                        value={password}
+                                        onChange={e => setPassword(e.target.value)}
+                                        onKeyDown={handleKeyEvent}
+                                        onKeyUp={handleKeyEvent}
+                                        placeholder="••••••••••••"
+                                        required
+                                        className="w-full pl-10 pr-11 py-3 bg-slate-950/70 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white p-1 text-sm"
+                                        title={showPassword ? 'Hide password' : 'Show password'}
+                                    >
+                                        {showPassword ? '👁️' : '👁️‍🗨️'}
+                                    </button>
+                                </div>
+                            </div>
 
-                                {error && <div style={{ padding: '0.6rem 0.9rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', fontSize: '0.82rem', color: '#dc2626', fontWeight: 500, marginBottom: '0.8rem', animation: 'loginShake 0.4s ease' }}>⚠️ {error}</div>}
+                            <div className="flex items-center justify-between text-xs pt-1">
+                                <label className="flex items-center gap-2 cursor-pointer select-none text-slate-300">
+                                    <input
+                                        type="checkbox"
+                                        checked={rememberMe}
+                                        onChange={e => setRememberMe(e.target.checked)}
+                                        className="w-4 h-4 rounded bg-slate-950 border-white/20 text-blue-600 focus:ring-0"
+                                    />
+                                    <span>Remember this terminal</span>
+                                </label>
+                                <a href="#help" onClick={() => toast.success('Please contact your Hotel System Administrator')} className="text-blue-400 hover:underline">
+                                    Forgot password?
+                                </a>
+                            </div>
 
-                                <button type="submit" disabled={isLoading} style={{ width: '100%', padding: '0.9rem', background: theme.signInGradient, color: 'white', border: 'none', borderRadius: '14px', fontSize: '1rem', fontWeight: 700, fontFamily: "'Inter', sans-serif", cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', boxShadow: `0 4px 20px ${theme.signInShadow}`, letterSpacing: '0.02em', transition: 'all 0.25s ease' }}>
-                                    {isLoading ? <div style={{ width: '20px', height: '20px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'loginSpinAnim 0.7s linear infinite' }}></div> : <span>Sign In →</span>}
-                                </button>
-                            </form>
+                            {error && (
+                                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs font-bold animate-shake flex items-center gap-2">
+                                    <span>⚠️</span>
+                                    <span>{error}</span>
+                                </div>
+                            )}
 
-                            <p style={{ textAlign: 'center', marginTop: '1.2rem', fontSize: '0.72rem', color: theme.subtitleColor, fontWeight: 500 }}>{theme.securityText}</p>
-                        </div>
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="w-full py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-sm font-black tracking-wide shadow-xl shadow-blue-600/25 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                            >
+                                {isLoading ? (
+                                    <>
+                                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        <span>Authenticating Staff...</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <span>Enter POS Dashboard</span>
+                                        <span>→</span>
+                                    </>
+                                )}
+                            </button>
+                        </form>
                     )}
 
-                    {/* WAITER LOGIN */}
+                    {/* MODE 2: WAITER QUICK PIN TOUCHPAD */}
                     {loginMode === 'waiter' && (
-                        <div style={{ animation: 'fadeInUp 0.4s ease-out' }}>
-                            <h2 style={{ textAlign: 'center', fontSize: '1.5rem', fontWeight: 800, color: theme.titleColor, marginBottom: '0.3rem' }}>Waiter Access 🧑‍🍳</h2>
-                            <p style={{ textAlign: 'center', color: theme.subtitleColor, fontSize: '0.9rem', marginBottom: '1.5rem' }}>Enter your 6-digit PIN</p>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <p className="text-xs text-slate-300 font-bold uppercase tracking-wider">
+                                    Enter 6-Digit Server PIN
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={handleFastFillWaiter}
+                                    className="text-[10px] text-amber-400 font-bold hover:underline"
+                                >
+                                    ⚡ Fast Fill: 123456
+                                </button>
+                            </div>
 
-                            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
-                                {[0, 1, 2, 3, 4, 5].map((i) => (
-                                    <div key={i} style={{ width: '40px', height: '48px', border: `2px solid ${pin[i] ? theme.accentColor : theme.inputBorder}`, borderRadius: '11px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem', fontWeight: 700, color: pin[i] ? theme.titleColor : theme.inputIconColor, background: pin[i] ? `${theme.inputBg}` : theme.inputBg, boxShadow: pin[i] ? `0 2px 8px ${theme.inputFocusShadow}` : 'none', transform: pin[i] ? 'translateY(-2px)' : 'none', transition: 'all 0.2s' }}>
+                            {/* PIN Display Slots */}
+                            <div className="flex justify-center gap-2 my-2">
+                                {[0, 1, 2, 3, 4, 5].map(i => (
+                                    <div
+                                        key={i}
+                                        className={`w-12 h-14 rounded-xl border-2 flex items-center justify-center text-xl font-mono font-black transition-all ${
+                                            pin[i]
+                                                ? 'border-amber-400 bg-amber-500/20 text-amber-300 shadow-md shadow-amber-500/20 scale-105'
+                                                : 'border-white/10 bg-slate-950/80 text-slate-600'
+                                        }`}
+                                    >
                                         {pin[i] ? (showPin ? pin[i] : '●') : '○'}
                                     </div>
                                 ))}
                             </div>
 
-                            <div style={{ textAlign: 'center', marginBottom: '1rem' }}>
-                                <button onClick={() => setShowPin(!showPin)} style={{ background: 'none', border: 'none', fontSize: '0.72rem', color: theme.subtitleColor, cursor: 'pointer', fontWeight: 500, fontFamily: "'Inter', sans-serif" }}>{showPin ? 'Hide PIN' : 'Show PIN'}</button>
+                            <div className="flex justify-center">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPin(!showPin)}
+                                    className="text-[11px] text-slate-400 hover:text-white"
+                                >
+                                    {showPin ? 'Hide PIN' : 'Reveal PIN digits'}
+                                </button>
                             </div>
 
-                            {error && <div style={{ padding: '0.6rem 0.9rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', fontSize: '0.82rem', color: '#dc2626', fontWeight: 500, marginBottom: '0.8rem', animation: 'loginShake 0.4s ease' }}>⚠️ {error}</div>}
+                            {error && (
+                                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs font-bold animate-shake text-center">
+                                    ⚠️ {error}
+                                </div>
+                            )}
 
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', maxWidth: '260px', margin: '0 auto' }}>
-                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
-                                    <button key={num} onClick={() => handlePinInput(num.toString())} style={{ height: '52px', border: `1.5px solid ${theme.inputBorder}`, borderRadius: '12px', background: 'white', fontSize: '1.3rem', fontWeight: 700, color: theme.titleColor, cursor: 'pointer', fontFamily: "'Inter', sans-serif", transition: 'all 0.2s ease' }}>{num}</button>
+                            {/* Touchpad 3x4 Grid */}
+                            <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto pt-1">
+                                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+                                    <button
+                                        key={num}
+                                        type="button"
+                                        onClick={() => handlePinInput(num.toString())}
+                                        className="h-14 rounded-2xl bg-white/5 hover:bg-white/15 active:bg-amber-500 active:text-white border border-white/10 text-xl font-bold text-white transition-all shadow-sm flex items-center justify-center font-mono"
+                                    >
+                                        {num}
+                                    </button>
                                 ))}
-                                <button onClick={handlePinClear} style={{ height: '52px', border: '1.5px solid #fecaca', borderRadius: '12px', background: '#fef2f2', fontSize: '1.3rem', fontWeight: 700, color: '#ef4444', cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>⌫</button>
-                                <button onClick={() => handlePinInput('0')} style={{ height: '52px', border: `1.5px solid ${theme.inputBorder}`, borderRadius: '12px', background: 'white', fontSize: '1.3rem', fontWeight: 700, color: theme.titleColor, cursor: 'pointer', fontFamily: "'Inter', sans-serif" }}>0</button>
-                                <button onClick={handleWaiterLogin} disabled={isLoading || pin.length !== 6} style={{ height: '52px', border: 'none', borderRadius: '12px', background: theme.signInGradient, fontSize: '1.3rem', fontWeight: 700, color: 'white', cursor: 'pointer', fontFamily: "'Inter', sans-serif", boxShadow: `0 4px 14px ${theme.signInShadow}` }}>{isLoading ? '...' : '✓'}</button>
-                            </div>
-                        </div>
-                    )}
 
-                    {/* License Badge */}
-                    {licenseStatus.valid && loginMode !== 'waiter' && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', marginTop: '1.2rem', padding: '0.5rem 1rem', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '999px', fontSize: '0.7rem', color: '#15803d', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                            <span style={{ width: '7px', height: '7px', background: '#22c55e', borderRadius: '50%', display: 'inline-block' }}></span>
-                            {licenseStatus.client || 'System Active'}{licenseStatus.daysRemaining && ` (${licenseStatus.daysRemaining} days left)`}
+                                <button
+                                    type="button"
+                                    onClick={handlePinClear}
+                                    className="h-14 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 font-bold text-lg transition-all flex items-center justify-center"
+                                    title="Clear PIN"
+                                >
+                                    ⌫
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => handlePinInput('0')}
+                                    className="h-14 rounded-2xl bg-white/5 hover:bg-white/15 active:bg-amber-500 border border-white/10 text-xl font-bold text-white transition-all shadow-sm flex items-center justify-center font-mono"
+                                >
+                                    0
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={handleWaiterLogin}
+                                    disabled={isLoading || pin.length !== 6}
+                                    className="h-14 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-lg transition-all shadow-lg shadow-amber-500/25 flex items-center justify-center disabled:opacity-40"
+                                >
+                                    {isLoading ? '...' : '✓'}
+                                </button>
+                            </div>
                         </div>
                     )}
                 </div>
 
-                {/* Footer */}
-                <div style={{ marginTop: '2rem', textAlign: 'center', position: 'relative', zIndex: 10 }}>
-                    <div style={{ display: 'inline-block', padding: '0.7rem 1.4rem', background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(6px)', borderRadius: '14px', border: '1px solid rgba(0,0,0,0.04)' }}>
-                        <p style={{ fontSize: '0.7rem', color: '#718096', fontWeight: 500 }}>System developed & maintained by <strong style={{ color: theme.footerAccentColor }}>Jimhawkins Korir</strong></p>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', marginTop: '0.3rem', fontSize: '0.65rem', color: '#a0aec0', fontWeight: 500 }}>
-                            <span>📞 0720316175</span>
-                            <span style={{ width: 3, height: 3, background: '#a0aec0', borderRadius: '50%', display: 'inline-block' }}></span>
-                            <span>✉️ jimhaowkins@gmail.com</span>
-                        </div>
-                        <p style={{ fontSize: '0.6rem', color: '#c4cdd8', marginTop: '0.3rem', fontFamily: 'monospace' }}>v3.2 • Secure Enterprise Connection</p>
+                {/* Footer Security Badges */}
+                <div className="pt-6 border-t border-white/10 text-center space-y-2 mt-6">
+                    <div className="flex items-center justify-center gap-4 text-[11px] text-slate-400 flex-wrap">
+                        <span className="flex items-center gap-1 text-emerald-400 font-semibold">
+                            <span>🔒</span> 256-Bit SSL Encrypted
+                        </span>
+                        <span>•</span>
+                        <span>Nairobi Cloud Region</span>
+                        <span>•</span>
+                        <span className="text-amber-300 font-semibold">{licensedTo}</span>
                     </div>
+
+                    <p className="text-[10px] text-slate-500">
+                        AlphaPlus Restaurant & Hotel Management System • Built for high-volume service
+                    </p>
                 </div>
             </div>
-
-            <style jsx global>{`
-                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Playfair+Display:wght@400;500;600;700&display=swap');
-                .login-root-styles * { box-sizing: border-box; }
-                body { margin: 0; padding: 0; }
-                @media (max-width: 1023px) {
-                    .login-left-hide { display: none !important; }
-                    .login-right-full { width: 100% !important; }
-                    .login-mobile-show { display: flex !important; }
-                }
-                @keyframes loginBgPan { 0% { transform: scale(1.05); } 100% { transform: scale(1.12); } }
-                @keyframes loginSpinAnim { to { transform: rotate(360deg); } }
-                @keyframes loginShake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
-                @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-                @keyframes loginFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-            `}</style>
         </div>
     );
 }

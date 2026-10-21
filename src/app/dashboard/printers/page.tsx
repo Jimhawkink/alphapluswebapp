@@ -6,6 +6,7 @@ import {
     loadPOSPrinterSettings,
     savePOSPrinterSettings,
     POSPrinterPreferences,
+    PrinterConfig,
     OrderPrintMode,
     executeDirectPrint,
     executeOrderAutoPrintSequence,
@@ -23,6 +24,20 @@ import {
     getTaxDisplaySettingSync,
     saveTaxDisplaySetting
 } from '@/lib/receiptPrinter';
+
+const COMMON_PRINTER_PROFILES = [
+    { id: 'browser_default', name: '🖨️ Default Windows / OS Printer', type: 'browser_default', width: '80mm' },
+    { id: 'epson_tmt88', name: 'EPSON TM-T88 Series (Thermal 80mm)', type: 'browser_default', width: '80mm' },
+    { id: 'epson_tmt20', name: 'EPSON TM-T20 / TM-m30 (Thermal 80mm)', type: 'browser_default', width: '80mm' },
+    { id: 'pos80_generic', name: 'POS-80 / Thermal Receipt Printer (80mm)', type: 'browser_default', width: '80mm' },
+    { id: 'pos58_generic', name: 'POS-58 / Mini Mobile Thermal (58mm)', type: 'browser_default', width: '58mm' },
+    { id: 'star_tsp100', name: 'Star Micronics TSP100 / TSP143 (80mm)', type: 'browser_default', width: '80mm' },
+    { id: 'bixolon_srp330', name: 'Bixolon SRP-330 / SRP-350 (80mm)', type: 'browser_default', width: '80mm' },
+    { id: 'xprinter_xp80', name: 'Xprinter XP-N160M / XP-80C (80mm)', type: 'browser_default', width: '80mm' },
+    { id: 'sunmi_terminal', name: 'Sunmi V2 / T2 POS Built-in Thermal', type: 'browser_default', width: '80mm' },
+    { id: 'network_raw', name: '🌐 Network RAW TCP/IP Printer (Port 9100)', type: 'network_raw', width: '80mm' },
+    { id: 'custom_windows', name: '⚙️ Custom Installed Windows Printer Name...', type: 'browser_default', width: '80mm' },
+];
 
 interface SpoolerJob {
     id: string;
@@ -47,6 +62,10 @@ export default function PrintersSettingsPage() {
     const [simShowTax, setSimShowTax] = useState<boolean>(true);
     const [simHtml, setSimHtml] = useState<string>('');
     const [companyInfo, setCompanyInfo] = useState<CompanyInfo>(defaultCompanyInfo);
+
+    // Custom Name Inputs toggles
+    const [customCustomerInput, setCustomCustomerInput] = useState(false);
+    const [customKitchenInput, setCustomKitchenInput] = useState(false);
 
     // Spooler Audit Log State
     const [spoolerLogs, setSpoolerLogs] = useState<SpoolerJob[]>([
@@ -142,9 +161,70 @@ export default function PrintersSettingsPage() {
         setIsSaving(false);
         if (ok) {
             setPrefs(toSave);
-            toast.success('Hotel printer routing & sequence settings saved! ✓');
+            toast.success('Printer configuration saved & synced! ✓');
         } else {
             toast.error('Failed to sync to cloud database');
+        }
+    };
+
+    // ── Save Individual Point (Customer Bill vs Kitchen KOT) ───────────────────
+    const handleSavePoint = async (point: 'customer' | 'kitchen') => {
+        setIsSaving(true);
+        const ok = await savePOSPrinterSettings(prefs);
+        setIsSaving(false);
+        if (ok) {
+            const printerName = point === 'customer'
+                ? prefs.customerPrinter.systemPrinterName
+                : prefs.kitchenPrinter.systemPrinterName;
+            toast.success(`Saved! Assigned to ${point === 'customer' ? 'Customer Bill' : 'Kitchen KOT'}: ${printerName} ✓`);
+        } else {
+            toast.error('Failed to save printer configuration');
+        }
+    };
+
+    // ── WebUSB / Serial Hardware Scanner ───────────────────────────────────────
+    const handleScanUSB = async (role: 'customer' | 'kitchen') => {
+        try {
+            if (typeof window !== 'undefined' && 'usb' in navigator) {
+                const device = await (navigator as any).usb.requestDevice({ filters: [] });
+                if (device) {
+                    const devName = `${device.productName || 'USB Thermal'} (${device.manufacturerName || 'Port ' + device.vendorId})`;
+                    const updated = {
+                        ...prefs,
+                        [role === 'customer' ? 'customerPrinter' : 'kitchenPrinter']: {
+                            ...(role === 'customer' ? prefs.customerPrinter : prefs.kitchenPrinter),
+                            systemPrinterName: devName,
+                            connectionType: 'usb_serial'
+                        }
+                    };
+                    setPrefs(updated as any);
+                    handleSave(updated as any);
+                    toast.success(`Discovered & Assigned: ${devName}`);
+                    return;
+                }
+            } else if (typeof window !== 'undefined' && 'serial' in navigator) {
+                const port = await (navigator as any).serial.requestPort();
+                if (port) {
+                    const devName = 'COM / Serial ESC-POS Thermal Printer';
+                    const updated = {
+                        ...prefs,
+                        [role === 'customer' ? 'customerPrinter' : 'kitchenPrinter']: {
+                            ...(role === 'customer' ? prefs.customerPrinter : prefs.kitchenPrinter),
+                            systemPrinterName: devName,
+                            connectionType: 'usb_serial'
+                        }
+                    };
+                    setPrefs(updated as any);
+                    handleSave(updated as any);
+                    toast.success(`Paired Serial Port Printer!`);
+                    return;
+                }
+            }
+            toast('WebUSB not supported on this browser. You can select your printer from the dropdown or type its Windows name directly.', { icon: 'ℹ️' });
+        } catch (err: any) {
+            if (err.name !== 'NotFoundError') {
+                console.warn('Hardware pair skipped:', err);
+            }
         }
     };
 
@@ -207,7 +287,7 @@ export default function PrintersSettingsPage() {
                 forceDialog: !prefs.skipPreviewDialog
             });
             addSpoolerLog('Tax Invoice', prefs.customerPrinter.label, prefs.customerPrinter.copies);
-            toast.success('Test Customer Receipt dispatched to printer!');
+            toast.success(`Test Customer Receipt dispatched to [${prefs.customerPrinter.systemPrinterName}]!`);
         } catch (err: any) {
             console.error('Test print error:', err);
             toast.error('Test print failed: ' + err.message);
@@ -242,7 +322,7 @@ export default function PrintersSettingsPage() {
                 forceDialog: !prefs.skipPreviewDialog
             });
             addSpoolerLog('KOT', prefs.kitchenPrinter.label, prefs.kitchenPrinter.copies);
-            toast.success('Test Kitchen KOT dispatched to chef line!');
+            toast.success(`Test Kitchen KOT dispatched to [${prefs.kitchenPrinter.systemPrinterName}]!`);
         } catch (err: any) {
             console.error('Test KOT print error:', err);
             toast.error('Test KOT failed: ' + err.message);
@@ -361,11 +441,11 @@ exit
                         <div className="flex items-center gap-2 flex-wrap">
                             <h1 className="text-2xl font-black text-gray-900 tracking-tight">Receipt & KOT Printers</h1>
                             <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                HARDWARE ROUTING & AUTOMATION
+                                HARDWARE ROUTING & PRINTER SELECTION
                             </span>
                         </div>
                         <p className="text-xs text-gray-500 font-medium mt-1">
-                            Configure Customer Bill Printers, Kitchen KOT Stations, Automated Sequence, and Zero-Dialog Silent Printing
+                            Select, assign, and save your installed physical thermal printers for Customer Bills and Kitchen KOT tickets
                         </p>
                     </div>
                 </div>
@@ -437,14 +517,14 @@ exit
             <div className="flex border-b border-gray-200 bg-white rounded-2xl p-1.5 shadow-sm gap-2 overflow-x-auto">
                 <button
                     onClick={() => setActiveTab('routing')}
-                    className={`flex-1 min-w-[150px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 min-w-[170px] py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
                         activeTab === 'routing'
                             ? 'bg-indigo-600 text-white shadow-sm'
                             : 'text-gray-600 hover:bg-gray-100'
                     }`}
                 >
                     <span>🖨️</span>
-                    <span>Printer Stations</span>
+                    <span>Installed Printers & Routing</span>
                 </button>
                 <button
                     onClick={() => setActiveTab('automation')}
@@ -492,249 +572,457 @@ exit
                 </button>
             </div>
 
-            {/* ── TAB 1: PRINTER STATIONS ROUTING ─────────────────────────────── */}
+            {/* ── TAB 1: PRINTER STATIONS ROUTING & SELECTION ─────────────────── */}
             {activeTab === 'routing' && (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div className="space-y-6">
 
-                    {/* 1. CUSTOMER BILL & RECEIPT PRINTER */}
-                    <div className="bg-white rounded-3xl border-2 border-indigo-100 shadow-sm overflow-hidden flex flex-col justify-between">
-                        <div>
-                            <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-5 text-white flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl">
-                                        🧾
-                                    </div>
-                                    <div>
-                                        <h3 className="font-black text-sm tracking-wide uppercase">Counter Customer Bill Printer</h3>
-                                        <p className="text-[11px] text-indigo-200">Cashier Counter • Customer Receipts & Tax Invoices</p>
-                                    </div>
-                                </div>
-                                <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-2.5 py-0.5 rounded-full font-bold">
-                                    PRIMARY
-                                </span>
-                            </div>
-
-                            <div className="p-6 space-y-4 text-xs">
-                                <div>
-                                    <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                                        Station Label
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={prefs.customerPrinter.label}
-                                        onChange={e => setPrefs({
-                                            ...prefs,
-                                            customerPrinter: { ...prefs.customerPrinter, label: e.target.value }
-                                        })}
-                                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:bg-white focus:border-indigo-500 outline-none"
-                                    />
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                                            Paper Roll Width
-                                        </label>
-                                        <select
-                                            value={prefs.customerPrinter.paperWidth}
-                                            onChange={e => setPrefs({
-                                                ...prefs,
-                                                customerPrinter: { ...prefs.customerPrinter, paperWidth: e.target.value as any }
-                                            })}
-                                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:bg-white focus:border-indigo-500 outline-none"
-                                        >
-                                            <option value="80mm">80mm (Standard Restaurant)</option>
-                                            <option value="58mm">58mm (Compact Mobile)</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                                            Copies to Print
-                                        </label>
-                                        <select
-                                            value={prefs.customerPrinter.copies}
-                                            onChange={e => setPrefs({
-                                                ...prefs,
-                                                customerPrinter: { ...prefs.customerPrinter, copies: Number(e.target.value) }
-                                            })}
-                                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:bg-white focus:border-indigo-500 outline-none"
-                                        >
-                                            <option value={1}>1 Copy (Guest)</option>
-                                            <option value={2}>2 Copies (Guest + Merchant Copy)</option>
-                                            <option value={3}>3 Copies</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="pt-2 border-t border-gray-100 space-y-2.5">
-                                    <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-gray-50">
-                                        <div>
-                                            <p className="font-bold text-gray-800">Auto-Cut Paper After Receipt</p>
-                                            <p className="text-[10px] text-gray-400">Sends ESC/POS GS V cut command to guillotine cutter</p>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={prefs.customerPrinter.autoCut}
-                                            onChange={e => setPrefs({
-                                                ...prefs,
-                                                customerPrinter: { ...prefs.customerPrinter, autoCut: e.target.checked }
-                                            })}
-                                            className="w-4 h-4 text-indigo-600 rounded"
-                                        />
-                                    </label>
-
-                                    <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-gray-50">
-                                        <div>
-                                            <p className="font-bold text-gray-800">Kick Cash Drawer on Cash Payment</p>
-                                            <p className="text-[10px] text-gray-400">Sends 24V pulse to RJ11 cash drawer port</p>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={prefs.customerPrinter.openDrawer}
-                                            onChange={e => setPrefs({
-                                                ...prefs,
-                                                customerPrinter: { ...prefs.customerPrinter, openDrawer: e.target.checked }
-                                            })}
-                                            className="w-4 h-4 text-indigo-600 rounded"
-                                        />
-                                    </label>
-                                </div>
+                    {/* Quick Helper Banner */}
+                    <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+                        <div className="flex items-center gap-3">
+                            <span className="text-2xl">🔌</span>
+                            <div>
+                                <h4 className="font-bold text-blue-950">How to Select & Save Installed Printers for each Point:</h4>
+                                <p className="text-blue-800">
+                                    Choose your printer model from the dropdown or type your exact Windows printer name (e.g., <strong>POS-80</strong> or <strong>EPSON TM-T20</strong>). Click <strong>"Save Printer for Point"</strong> to bind it!
+                                </p>
                             </div>
                         </div>
-
-                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-between gap-2">
-                            <button
-                                onClick={handleTestDrawer}
-                                className="px-3.5 py-2 bg-white border border-gray-200 hover:bg-gray-100 rounded-xl text-gray-700 font-bold text-xs transition-colors flex items-center gap-1 shadow-sm"
-                            >
-                                <span>💵</span> Test Drawer Kick
-                            </button>
-                            <button
-                                onClick={handleTestCustomerReceipt}
-                                disabled={isTesting === 'customer'}
-                                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
-                            >
-                                <span>🖨️</span>
-                                <span>{isTesting === 'customer' ? 'Printing...' : 'Test Customer Bill'}</span>
-                            </button>
-                        </div>
+                        <span className="text-[11px] font-bold bg-white text-indigo-700 px-3 py-1 rounded-full border border-blue-200 shadow-sm shrink-0">
+                            WINDOWS & MAC READY
+                        </span>
                     </div>
 
-                    {/* 2. KITCHEN KOT CHEF PRINTER */}
-                    <div className="bg-white rounded-3xl border-2 border-orange-100 shadow-sm overflow-hidden flex flex-col justify-between">
-                        <div>
-                            <div className="bg-gradient-to-r from-slate-900 to-amber-950 p-5 text-white flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl">
-                                        🍳
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+                        {/* 1. CUSTOMER BILL & RECEIPT PRINTER */}
+                        <div className="bg-white rounded-3xl border-2 border-indigo-200 shadow-md overflow-hidden flex flex-col justify-between">
+                            <div>
+                                <div className="bg-gradient-to-r from-slate-900 to-indigo-950 p-5 text-white flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl">
+                                            🧾
+                                        </div>
+                                        <div>
+                                            <h3 className="font-black text-sm tracking-wide uppercase">POINT 1: Customer Bill & Receipt Printer</h3>
+                                            <p className="text-[11px] text-indigo-200">Cashier Counter • Guest Bills, Tax Invoices & Final Receipts</p>
+                                        </div>
                                     </div>
+                                    <span className="text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 px-2.5 py-0.5 rounded-full font-bold">
+                                        CUSTOMER POINT
+                                    </span>
+                                </div>
+
+                                <div className="p-6 space-y-4 text-xs">
+
+                                    {/* Active Assigned Printer Chip */}
+                                    <div className="p-3 bg-indigo-50/70 rounded-xl border border-indigo-200 flex items-center justify-between">
+                                        <div>
+                                            <span className="text-[10px] uppercase font-bold text-indigo-900 block">Currently Assigned Printer:</span>
+                                            <span className="font-black text-xs text-indigo-950 flex items-center gap-1.5 mt-0.5">
+                                                <span>🖨️</span>
+                                                <span>{prefs.customerPrinter.systemPrinterName || 'Default Windows Printer'}</span>
+                                            </span>
+                                        </div>
+                                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full border border-emerald-200">
+                                            ACTIVE POINT
+                                        </span>
+                                    </div>
+
+                                    {/* Printer Selection Dropdown */}
                                     <div>
-                                        <h3 className="font-black text-sm tracking-wide uppercase">Kitchen KOT Chef Printer</h3>
-                                        <p className="text-[11px] text-amber-200">Hot Kitchen / Chef Line • Kitchen Order Tickets</p>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-[11px] font-bold text-gray-700 uppercase">
+                                                Select Installed Physical Printer
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleScanUSB('customer')}
+                                                className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                                            >
+                                                <span>🔍</span> Scan / Pair USB Printer
+                                            </button>
+                                        </div>
+
+                                        <select
+                                            value={
+                                                COMMON_PRINTER_PROFILES.some(p => p.name === prefs.customerPrinter.systemPrinterName)
+                                                    ? prefs.customerPrinter.systemPrinterName
+                                                    : 'custom_windows'
+                                            }
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === 'custom_windows') {
+                                                    setCustomCustomerInput(true);
+                                                } else {
+                                                    setCustomCustomerInput(false);
+                                                    const matched = COMMON_PRINTER_PROFILES.find(p => p.name === val);
+                                                    setPrefs({
+                                                        ...prefs,
+                                                        customerPrinter: {
+                                                            ...prefs.customerPrinter,
+                                                            systemPrinterName: val,
+                                                            paperWidth: (matched?.width as any) || '80mm',
+                                                            connectionType: matched?.type as any || 'browser_default'
+                                                        }
+                                                    });
+                                                }
+                                            }}
+                                            className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 focus:bg-white focus:border-indigo-500 outline-none"
+                                        >
+                                            {COMMON_PRINTER_PROFILES.map(p => (
+                                                <option key={p.id} value={p.name}>
+                                                    {p.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Custom Windows Printer Name Input (if user wants custom name or selected custom) */}
+                                    {(customCustomerInput || !COMMON_PRINTER_PROFILES.some(p => p.name === prefs.customerPrinter.systemPrinterName)) && (
+                                        <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-1">
+                                            <label className="block text-[11px] font-bold text-amber-900 uppercase">
+                                                Type Exact Windows Installed Printer Name:
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={prefs.customerPrinter.systemPrinterName}
+                                                onChange={e => setPrefs({
+                                                    ...prefs,
+                                                    customerPrinter: { ...prefs.customerPrinter, systemPrinterName: e.target.value }
+                                                })}
+                                                placeholder="e.g., EPSON TM-T20III or POS-80"
+                                                className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg font-bold text-gray-800 focus:outline-none"
+                                            />
+                                            <p className="text-[10px] text-amber-700">
+                                                Must match the exact name listed in Windows Settings &gt; Printers & Scanners.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Paper Roll Width & Copies */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                                                Paper Roll Width
+                                            </label>
+                                            <select
+                                                value={prefs.customerPrinter.paperWidth}
+                                                onChange={e => setPrefs({
+                                                    ...prefs,
+                                                    customerPrinter: { ...prefs.customerPrinter, paperWidth: e.target.value as any }
+                                                })}
+                                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:bg-white focus:border-indigo-500 outline-none"
+                                            >
+                                                <option value="80mm">80mm (Standard Restaurant Roll)</option>
+                                                <option value="58mm">58mm (Compact Mobile Roll)</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                                                Copies to Print
+                                            </label>
+                                            <select
+                                                value={prefs.customerPrinter.copies}
+                                                onChange={e => setPrefs({
+                                                    ...prefs,
+                                                    customerPrinter: { ...prefs.customerPrinter, copies: Number(e.target.value) }
+                                                })}
+                                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:bg-white focus:border-indigo-500 outline-none"
+                                            >
+                                                <option value={1}>1 Copy (Guest Copy)</option>
+                                                <option value={2}>2 Copies (Guest + Merchant Copy)</option>
+                                                <option value={3}>3 Copies</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Hardware Toggles */}
+                                    <div className="pt-2 border-t border-gray-100 space-y-2">
+                                        <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-gray-50">
+                                            <div>
+                                                <p className="font-bold text-gray-800">Auto-Cut Paper After Receipt</p>
+                                                <p className="text-[10px] text-gray-400">Sends ESC/POS GS V cut command</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={prefs.customerPrinter.autoCut}
+                                                onChange={e => setPrefs({
+                                                    ...prefs,
+                                                    customerPrinter: { ...prefs.customerPrinter, autoCut: e.target.checked }
+                                                })}
+                                                className="w-4 h-4 text-indigo-600 rounded"
+                                            />
+                                        </label>
+
+                                        <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-gray-50">
+                                            <div>
+                                                <p className="font-bold text-gray-800">Kick Cash Drawer on Cash Payment</p>
+                                                <p className="text-[10px] text-gray-400">Sends 24V pulse to RJ11 cash drawer port</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={prefs.customerPrinter.openDrawer}
+                                                onChange={e => setPrefs({
+                                                    ...prefs,
+                                                    customerPrinter: { ...prefs.customerPrinter, openDrawer: e.target.checked }
+                                                })}
+                                                className="w-4 h-4 text-indigo-600 rounded"
+                                            />
+                                        </label>
                                     </div>
                                 </div>
-                                <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-400/40 px-2.5 py-0.5 rounded-full font-bold">
-                                    KITCHEN
-                                </span>
                             </div>
 
-                            <div className="p-6 space-y-4 text-xs">
-                                <div>
-                                    <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                                        Kitchen Station Label
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={prefs.kitchenPrinter.label}
-                                        onChange={e => setPrefs({
-                                            ...prefs,
-                                            kitchenPrinter: { ...prefs.kitchenPrinter, label: e.target.value }
-                                        })}
-                                        className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:bg-white focus:border-amber-500 outline-none"
-                                    />
+                            {/* Card Footer: Save as Customer Bill Point + Test */}
+                            <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={handleTestDrawer}
+                                        className="px-3 py-2 bg-white border border-gray-200 hover:bg-gray-100 rounded-xl text-gray-700 font-bold text-xs transition-colors flex items-center gap-1 shadow-sm"
+                                    >
+                                        <span>💵</span> Drawer
+                                    </button>
+                                    <button
+                                        onClick={handleTestCustomerReceipt}
+                                        disabled={isTesting === 'customer'}
+                                        className="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold text-xs transition-all shadow-sm flex items-center gap-1 disabled:opacity-50"
+                                    >
+                                        <span>🖨️</span>
+                                        <span>{isTesting === 'customer' ? 'Printing...' : 'Test Bill'}</span>
+                                    </button>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-3">
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                                            Paper Roll Width
-                                        </label>
-                                        <select
-                                            value={prefs.kitchenPrinter.paperWidth}
-                                            onChange={e => setPrefs({
-                                                ...prefs,
-                                                kitchenPrinter: { ...prefs.kitchenPrinter, paperWidth: e.target.value as any }
-                                            })}
-                                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:bg-white focus:border-amber-500 outline-none"
-                                        >
-                                            <option value="80mm">80mm (Recommended for KOT)</option>
-                                            <option value="58mm">58mm</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
-                                            Copies to Print
-                                        </label>
-                                        <select
-                                            value={prefs.kitchenPrinter.copies}
-                                            onChange={e => setPrefs({
-                                                ...prefs,
-                                                kitchenPrinter: { ...prefs.kitchenPrinter, copies: Number(e.target.value) }
-                                            })}
-                                            className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:bg-white focus:border-amber-500 outline-none"
-                                        >
-                                            <option value={1}>1 Copy (Chef Line)</option>
-                                            <option value={2}>2 Copies (Chef + Expediter)</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div className="pt-2 border-t border-gray-100 space-y-2.5">
-                                    <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-gray-50">
-                                        <div>
-                                            <p className="font-bold text-gray-800">Auto-Cut Paper After KOT</p>
-                                            <p className="text-[10px] text-gray-400">Separates each ticket cleanly on the kitchen line</p>
-                                        </div>
-                                        <input
-                                            type="checkbox"
-                                            checked={prefs.kitchenPrinter.autoCut}
-                                            onChange={e => setPrefs({
-                                                ...prefs,
-                                                kitchenPrinter: { ...prefs.kitchenPrinter, autoCut: e.target.checked }
-                                            })}
-                                            className="w-4 h-4 text-amber-600 rounded"
-                                        />
-                                    </label>
-
-                                    <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 text-amber-900 text-[11px] space-y-1">
-                                        <p className="font-bold flex items-center gap-1">
-                                            <span>💡</span> Automatic Sequence Tip:
-                                        </p>
-                                        <p className="text-[10px] leading-relaxed">
-                                            AlphaPlus can automatically print <strong>BOTH KOT & Customer Bill</strong> in sequence, or <strong>Customer Bill ALONE</strong>, or <strong>KOT ALONE</strong>. You can switch this at any time in the Order Mode tab!
-                                        </p>
-                                    </div>
-                                </div>
+                                <button
+                                    onClick={() => handleSavePoint('customer')}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-black text-xs transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                    <span>💾</span>
+                                    <span>Save for Customer Bill</span>
+                                </button>
                             </div>
                         </div>
 
-                        <div className="p-4 bg-gray-50 border-t border-gray-100 flex items-center justify-end">
-                            <button
-                                onClick={handleTestKOT}
-                                disabled={isTesting === 'kitchen'}
-                                className="px-5 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-50"
-                            >
-                                <span>🍳</span>
-                                <span>{isTesting === 'kitchen' ? 'Printing...' : 'Test Kitchen KOT'}</span>
-                            </button>
+                        {/* 2. KITCHEN KOT CHEF PRINTER */}
+                        <div className="bg-white rounded-3xl border-2 border-orange-200 shadow-md overflow-hidden flex flex-col justify-between">
+                            <div>
+                                <div className="bg-gradient-to-r from-slate-900 to-amber-950 p-5 text-white flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-xl">
+                                            🍳
+                                        </div>
+                                        <div>
+                                            <h3 className="font-black text-sm tracking-wide uppercase">POINT 2: Kitchen KOT Chef Printer</h3>
+                                            <p className="text-[11px] text-amber-200">Hot Kitchen / Line Cook • Kitchen Order Tickets</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-400/40 px-2.5 py-0.5 rounded-full font-bold">
+                                        KITCHEN POINT
+                                    </span>
+                                </div>
+
+                                <div className="p-6 space-y-4 text-xs">
+
+                                    {/* Active Assigned Printer Chip */}
+                                    <div className="p-3 bg-amber-50/70 rounded-xl border border-amber-200 flex items-center justify-between">
+                                        <div>
+                                            <span className="text-[10px] uppercase font-bold text-amber-900 block">Currently Assigned Printer:</span>
+                                            <span className="font-black text-xs text-amber-950 flex items-center gap-1.5 mt-0.5">
+                                                <span>🍳</span>
+                                                <span>{prefs.kitchenPrinter.systemPrinterName || 'Kitchen Thermal Printer (80mm)'}</span>
+                                            </span>
+                                        </div>
+                                        <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-full border border-amber-200">
+                                            ACTIVE POINT
+                                        </span>
+                                    </div>
+
+                                    {/* Printer Selection Dropdown */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <label className="text-[11px] font-bold text-gray-700 uppercase">
+                                                Select Installed Physical Printer
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleScanUSB('kitchen')}
+                                                className="text-[10px] font-bold text-amber-700 hover:text-amber-900 flex items-center gap-1"
+                                            >
+                                                <span>🔍</span> Scan / Pair USB Printer
+                                            </button>
+                                        </div>
+
+                                        <select
+                                            value={
+                                                COMMON_PRINTER_PROFILES.some(p => p.name === prefs.kitchenPrinter.systemPrinterName)
+                                                    ? prefs.kitchenPrinter.systemPrinterName
+                                                    : 'custom_windows'
+                                            }
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                if (val === 'custom_windows') {
+                                                    setCustomKitchenInput(true);
+                                                } else {
+                                                    setCustomKitchenInput(false);
+                                                    const matched = COMMON_PRINTER_PROFILES.find(p => p.name === val);
+                                                    setPrefs({
+                                                        ...prefs,
+                                                        kitchenPrinter: {
+                                                            ...prefs.kitchenPrinter,
+                                                            systemPrinterName: val,
+                                                            paperWidth: (matched?.width as any) || '80mm',
+                                                            connectionType: matched?.type as any || 'browser_default'
+                                                        }
+                                                    });
+                                                }
+                                            }}
+                                            className="w-full px-3.5 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-bold text-gray-800 focus:bg-white focus:border-amber-500 outline-none"
+                                        >
+                                            {COMMON_PRINTER_PROFILES.map(p => (
+                                                <option key={p.id} value={p.name}>
+                                                    {p.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Custom Windows Printer Name Input */}
+                                    {(customKitchenInput || !COMMON_PRINTER_PROFILES.some(p => p.name === prefs.kitchenPrinter.systemPrinterName)) && (
+                                        <div className="p-3 bg-amber-50/60 rounded-xl border border-amber-200 space-y-1">
+                                            <label className="block text-[11px] font-bold text-amber-900 uppercase">
+                                                Type Exact Windows Installed Kitchen Printer Name:
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={prefs.kitchenPrinter.systemPrinterName}
+                                                onChange={e => setPrefs({
+                                                    ...prefs,
+                                                    kitchenPrinter: { ...prefs.kitchenPrinter, systemPrinterName: e.target.value }
+                                                })}
+                                                placeholder="e.g., Kitchen TM-T88 or POS-80-Kitchen"
+                                                className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg font-bold text-gray-800 focus:outline-none"
+                                            />
+                                            <p className="text-[10px] text-amber-700">
+                                                Must match the printer name installed on this computer or POS terminal.
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Network RAW IP configuration (if network printer selected) */}
+                                    {prefs.kitchenPrinter.connectionType === 'network_raw' && (
+                                        <div className="grid grid-cols-3 gap-2 p-3 bg-blue-50/70 rounded-xl border border-blue-200">
+                                            <div className="col-span-2">
+                                                <label className="block text-[10px] font-bold text-blue-900 uppercase mb-0.5">Kitchen IP Address</label>
+                                                <input
+                                                    type="text"
+                                                    value={prefs.kitchenPrinter.ipAddress || '192.168.1.200'}
+                                                    onChange={e => setPrefs({
+                                                        ...prefs,
+                                                        kitchenPrinter: { ...prefs.kitchenPrinter, ipAddress: e.target.value }
+                                                    })}
+                                                    className="w-full px-2.5 py-1.5 bg-white border border-blue-300 rounded-lg font-mono text-xs"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-blue-900 uppercase mb-0.5">Port</label>
+                                                <input
+                                                    type="number"
+                                                    value={prefs.kitchenPrinter.port || 9100}
+                                                    onChange={e => setPrefs({
+                                                        ...prefs,
+                                                        kitchenPrinter: { ...prefs.kitchenPrinter, port: Number(e.target.value) }
+                                                    })}
+                                                    className="w-full px-2.5 py-1.5 bg-white border border-blue-300 rounded-lg font-mono text-xs"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Paper Roll Width & Copies */}
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                                                Paper Roll Width
+                                            </label>
+                                            <select
+                                                value={prefs.kitchenPrinter.paperWidth}
+                                                onChange={e => setPrefs({
+                                                    ...prefs,
+                                                    kitchenPrinter: { ...prefs.kitchenPrinter, paperWidth: e.target.value as any }
+                                                })}
+                                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:bg-white focus:border-amber-500 outline-none"
+                                            >
+                                                <option value="80mm">80mm (Recommended for KOT)</option>
+                                                <option value="58mm">58mm</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[11px] font-bold text-gray-700 uppercase mb-1">
+                                                Copies to Print
+                                            </label>
+                                            <select
+                                                value={prefs.kitchenPrinter.copies}
+                                                onChange={e => setPrefs({
+                                                    ...prefs,
+                                                    kitchenPrinter: { ...prefs.kitchenPrinter, copies: Number(e.target.value) }
+                                                })}
+                                                className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl font-medium focus:bg-white focus:border-amber-500 outline-none"
+                                            >
+                                                <option value={1}>1 Copy (Chef Line)</option>
+                                                <option value={2}>2 Copies (Chef + Expediter)</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Auto-Cut */}
+                                    <div className="pt-2 border-t border-gray-100">
+                                        <label className="flex items-center justify-between cursor-pointer p-2 rounded-xl hover:bg-gray-50">
+                                            <div>
+                                                <p className="font-bold text-gray-800">Auto-Cut Paper After KOT</p>
+                                                <p className="text-[10px] text-gray-400">Separates each ticket cleanly on the kitchen line</p>
+                                            </div>
+                                            <input
+                                                type="checkbox"
+                                                checked={prefs.kitchenPrinter.autoCut}
+                                                onChange={e => setPrefs({
+                                                    ...prefs,
+                                                    kitchenPrinter: { ...prefs.kitchenPrinter, autoCut: e.target.checked }
+                                                })}
+                                                className="w-4 h-4 text-amber-600 rounded"
+                                            />
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Card Footer: Save as Kitchen KOT Point + Test */}
+                            <div className="p-4 bg-gray-50 border-t border-gray-100 flex flex-wrap items-center justify-between gap-2">
+                                <button
+                                    onClick={handleTestKOT}
+                                    disabled={isTesting === 'kitchen'}
+                                    className="px-3.5 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-bold text-xs transition-all shadow-sm flex items-center gap-1 disabled:opacity-50"
+                                >
+                                    <span>🍳</span>
+                                    <span>{isTesting === 'kitchen' ? 'Printing...' : 'Test Kitchen KOT'}</span>
+                                </button>
+
+                                <button
+                                    onClick={() => handleSavePoint('kitchen')}
+                                    disabled={isSaving}
+                                    className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-black text-xs transition-all shadow-md flex items-center gap-1.5 disabled:opacity-50"
+                                >
+                                    <span>💾</span>
+                                    <span>Save for Kitchen KOT</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* ── TAB 2: AUTOMATIC ORDER MODE & SEQUENCE (KEY USER FEATURE) ───── */}
+            {/* ── TAB 2: AUTOMATIC ORDER MODE & SEQUENCE ──────────────────────── */}
             {activeTab === 'automation' && (
                 <div className="space-y-6">
 
