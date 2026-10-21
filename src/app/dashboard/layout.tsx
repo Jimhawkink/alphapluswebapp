@@ -265,6 +265,7 @@ const buildMenu = (): MenuSection[] => [
             { name: 'Stores Management', icon: Icons.store, href: '/dashboard/stores', badge: 'STORES' },
             { name: 'Cashier Checkout', icon: Icons.doc, href: '/dashboard/bills', badge: 'EXIT' },
             { name: 'Bill Payment', icon: Icons.money, href: '/dashboard/bill-payment', badge: 'PAY' },
+            { name: 'Split & Merge Receipts', icon: Icons.doc, href: '/dashboard/split-merge-receipts', badge: 'PRO' },
         ],
     },
     {

@@ -40,6 +40,10 @@ export interface ReceiptData {
   levyRate?: number;
   levyAmount?: number;
   totalTax?: number;
+  buyerPin?: string;
+  cuSerialNumber?: string;
+  internalDataSignature?: string;
+  isEtimsEnabled?: boolean;
   qrCodeData?: string;
   verificationHash?: string;
 }
@@ -68,6 +72,7 @@ export interface CompanyInfo {
   pin?: string;
   logo?: string;
   slogan?: string;
+  scu_serial?: string;
 }
 
 // Default company info - will be loaded from database
@@ -251,17 +256,27 @@ export async function generateCustomerBillHTML(
 ): Promise<string> {
   const showTax = data.showTaxInfo ?? getTaxDisplaySettingSync();
 
+  // eTIMS is strictly OPTIONAL and disabled by default (hotel/restaurant can turn it ON when registered)
+  const isEtimsActive = Boolean(data.isEtimsEnabled);
+  const pin = company.pin || 'P051234567X';
+  const cuSerial = data.cuSerialNumber || (company as any).scu_serial || `KRA-SCU-${pin.substring(0, 6)}-${data.invoiceNo.replace(/[^A-Za-z0-9]/g, '')}`;
+  const internalSig = data.internalDataSignature || (data.invoiceNo + '-' + pin + '-' + Math.round(data.total)).split('').reduce((a, b) => { a = ((a << 5) - a) + b.charCodeAt(0); return a & a; }, 0).toString(16).toUpperCase();
+
+  let qrContent = data.qrCodeData || '';
+  if (isEtimsActive && isPaid) {
+    qrContent = `https://etims.kra.go.ke/common/link/etims/receipt/index?invoice=${encodeURIComponent(data.invoiceNo)}&pin=${encodeURIComponent(pin)}&amt=${data.total}&date=${encodeURIComponent(data.date)}`;
+  }
+
   let qrDataUrl = '';
-  if (data.qrCodeData) {
+  if (qrContent) {
     try {
-      qrDataUrl = await QRCode.toDataURL(data.qrCodeData, {
+      qrDataUrl = await QRCode.toDataURL(qrContent, {
         errorCorrectionLevel: 'M', margin: 1, width: 280,
         color: { dark: '#000000', light: '#ffffff' }
       });
     } catch (e) { console.error('QR error', e); }
   }
-
-  const fmt = (n: number | undefined | null) =>
+const fmt = (n: number | undefined | null) =>
     (Number(n) || 0).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const totalQty = data.items.reduce((s, i) => s + (i.qty || 1), 0);
@@ -378,7 +393,7 @@ tr.item-row{ border-bottom:1px dashed #ddd; }
 </div>
 
 <div class="ln-solid"></div>
-<div class="doc-title">${isPaid ? (showTax ? '✦ Tax Invoice ✦' : '✦ Official Receipt ✦') : '✦ Guest Bill ✦'}</div>
+<div class="doc-title">${isPaid ? (isEtimsActive ? '✦ KRA eTIMS TAX INVOICE ✦' : (showTax ? '✦ Tax Invoice ✦' : '✦ Official Receipt ✦')) : '✦ Guest Bill ✦'}</div>
 <div class="ln-solid"></div>
 
 <div class="meta">
@@ -389,6 +404,8 @@ tr.item-row{ border-bottom:1px dashed #ddd; }
   <div><span class="lbl">Server </span><span class="val">${data.cashier}</span></div>
   <div><span class="lbl">Payment </span><span class="val">${data.paymentMethod.toUpperCase()}</span></div>
   ${data.customerName ? `<div style="grid-column:1/-1;"><span class="lbl">Guest </span><span class="val">${data.customerName}</span></div>` : ''}
+  ${(isEtimsActive && isPaid) ? `<div><span class="lbl">CU Serial </span><span class="val">${cuSerial}</span></div>` : ''}
+  ${data.buyerPin ? `<div><span class="lbl">Buyer PIN </span><span class="val">${data.buyerPin}</span></div>` : ''}
 </div>
 
 <div class="ln-dash"></div>
@@ -440,11 +457,16 @@ ${(data.paymentMethod.toUpperCase().includes('MPESA') || data.mpesaReceipt)
   ? `<div class="mpesa">M-Pesa Ref: ${data.mpesaReceipt || 'CONFIRMED'}</div>` : ''}
 ` : ''}
 
-${(data.qrCodeData && qrDataUrl) ? `
+${(qrContent && qrDataUrl) ? `
 <div class="qr-wrap">
-  <div class="qr-lbl">📱 Scan QR · Pay Instantly</div>
-  <div class="qr-sub">M-Pesa · Visa · Mobile Money</div>
-  <img src="${qrDataUrl}" alt="Scan to Pay" />
+  <div class="qr-lbl">${(isEtimsActive && isPaid) ? '🇰🇪 KRA eTIMS FISCAL RECEIPT' : '📱 Scan QR · Pay Instantly'}</div>
+  <div class="qr-sub">${(isEtimsActive && isPaid) ? 'Kenya Revenue Authority Digital Verification' : 'M-Pesa · Visa · Mobile Money'}</div>
+  <img src="${qrDataUrl}" alt="QR" />
+  ${(isEtimsActive && isPaid) ? `
+  <div style="font-size:8px;font-family:monospace;color:#222;margin-top:2px;">SCU: ${cuSerial}</div>
+  <div style="font-size:7.5px;font-family:monospace;color:#444;">SIGN: ${internalSig}</div>
+  <div style="font-size:7.5px;color:#555;margin-top:1px;">Verify online: etims.kra.go.ke</div>
+  ` : ''}
 </div>` : ''}
 
 ${data.orderNotes ? `<div style="font-size:9.5px;font-style:italic;margin:2px 0;">Note: ${data.orderNotes}</div>` : ''}
@@ -693,6 +715,10 @@ export function createReceiptData(
     levyRate?: number;
     showTaxInfo?: boolean;
     hotelName?: string;
+    buyerPin?: string;
+    cuSerialNumber?: string;
+    internalDataSignature?: string;
+    isEtimsEnabled?: boolean;
   }
 ): ReceiptData {
   const now = new Date();

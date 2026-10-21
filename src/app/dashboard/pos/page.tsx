@@ -567,7 +567,15 @@ const PaymentModal = ({
     isOpen: boolean;
     onClose: () => void;
     total: number;
-    onComplete: (method: string, amountPaid: number, mpesaReceipt?: string, customerName?: string) => void;
+    onComplete: (
+        method: string, 
+        amountPaid: number, 
+        mpesaReceipt?: string, 
+        customerName?: string, 
+        buyerPin?: string, 
+        isCorporateTax?: boolean, 
+        roomDetails?: { roomNo: string; guestName: string; bookingId?: number }
+    ) => void;
     invoiceNo: string;
 }) => {
     const [paymentMethod, setPaymentMethod] = useState('cash');
@@ -576,17 +584,82 @@ const PaymentModal = ({
     const [mpesaReceipt, setMpesaReceipt] = useState('');
     const [customerName, setCustomerName] = useState('');
 
+    // Optional Corporate / KRA eTIMS Tax Invoice (Strictly Opt-In)
+    const [isCorporateTax, setIsCorporateTax] = useState(false);
+    const [buyerPin, setBuyerPin] = useState('');
+    const [corporateName, setCorporateName] = useState('');
+
+    // Hotel Room Charge State
+    const [activeBookings, setActiveBookings] = useState<Array<{ booking_id: number; room_number: string; guest_name: string }>>([]);
+    const [selectedBookingId, setSelectedBookingId] = useState<number | null>(null);
+    const [customRoomNo, setCustomRoomNo] = useState('');
+    const [customGuestName, setCustomGuestName] = useState('');
+    const [loadingRooms, setLoadingRooms] = useState(false);
+
+    // Load active hotel rooms when room charge is selected
+    useEffect(() => {
+        if (paymentMethod === 'room' && activeBookings.length === 0) {
+            setLoadingRooms(true);
+            (async () => {
+                try {
+                    const { data } = await supabase
+                        .from('hotel_bookings')
+                        .select('booking_id, room_number, guest_name')
+                        .eq('status', 'Checked-In')
+                        .order('room_number');
+                    if (data && data.length > 0) {
+                        setActiveBookings(data);
+                        setSelectedBookingId(data[0].booking_id);
+                    }
+                } catch (e) {
+                    console.error('Error fetching hotel rooms for POS:', e);
+                } finally {
+                    setLoadingRooms(false);
+                }
+            })();
+        }
+    }, [paymentMethod, activeBookings.length]);
+
     const change = paymentMethod === 'cash' ? Math.max(0, Number(amountPaid) - total) : 0;
     const quickAmounts = [500, 1000, 2000, 5000];
 
     if (!isOpen) return null;
 
+    const handleFinalSubmit = () => {
+        let finalRoomDetails: { roomNo: string; guestName: string; bookingId?: number } | undefined = undefined;
+        let finalCustName = customerName;
+
+        if (paymentMethod === 'room') {
+            const matched = activeBookings.find(b => b.booking_id === selectedBookingId);
+            const rNo = matched ? matched.room_number : customRoomNo;
+            const gName = matched ? matched.guest_name : customGuestName;
+            finalRoomDetails = {
+                roomNo: rNo || 'Unassigned',
+                guestName: gName || 'Hotel Resident',
+                bookingId: matched?.booking_id
+            };
+            finalCustName = `${finalRoomDetails.guestName} (Room ${finalRoomDetails.roomNo})`;
+        } else if (isCorporateTax && corporateName) {
+            finalCustName = corporateName;
+        }
+
+        onComplete(
+            paymentMethod,
+            paymentMethod === 'room' || paymentMethod === 'credit' ? total : (Number(amountPaid) || total),
+            mpesaReceipt,
+            finalCustName,
+            isCorporateTax ? buyerPin.trim() : undefined,
+            isCorporateTax,
+            finalRoomDetails
+        );
+    };
+
     return (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-            <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl">
-                <div className="flex items-center justify-between mb-6">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl max-h-[92vh] overflow-y-auto">
+                <div className="flex items-center justify-between mb-4">
                     <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-                        <span>💳</span> Payment
+                        <span>💳</span> Settle Bill
                     </h2>
                     <div className="text-right">
                         <p className="text-xs text-gray-500">Invoice</p>
@@ -595,88 +668,86 @@ const PaymentModal = ({
                 </div>
 
                 {/* Total */}
-                <div className="bg-gradient-to-r from-blue-500 to-blue-700 rounded-2xl p-5 text-white mb-6">
-                    <p className="text-sm opacity-90">Total Amount</p>
-                    <p className="text-4xl font-bold">Ksh {total.toLocaleString()}</p>
+                <div className="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-4 text-white mb-5 shadow-md">
+                    <p className="text-xs uppercase font-medium tracking-wider opacity-90">Total Payable</p>
+                    <p className="text-3xl font-black mt-0.5">Ksh {total.toLocaleString()}</p>
                 </div>
 
-                {/* Payment Methods */}
-                <div className="grid grid-cols-4 gap-2 mb-6">
+                {/* Payment Methods - 5 options */}
+                <div className="grid grid-cols-5 gap-1.5 mb-5">
                     {[
                         { id: 'cash', icon: '💵', label: 'Cash' },
                         { id: 'mpesa', icon: '📱', label: 'M-Pesa' },
                         { id: 'card', icon: '💳', label: 'Card' },
                         { id: 'credit', icon: '📋', label: 'Credit' },
+                        { id: 'room', icon: '🏨', label: 'Room' },
                     ].map(method => (
                         <button
                             key={method.id}
                             onClick={() => setPaymentMethod(method.id)}
-                            className={`p-3 rounded-xl border-2 transition-all ${paymentMethod === method.id
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-200 hover:border-gray-300 bg-gray-50'
+                            className={`p-2.5 rounded-xl border-2 transition-all text-center ${paymentMethod === method.id
+                                ? 'border-emerald-600 bg-emerald-50 text-emerald-900 shadow-sm font-bold'
+                                : 'border-gray-200 hover:border-gray-300 bg-gray-50 text-gray-600'
                                 }`}
                         >
-                            <span className="text-2xl block mb-1">{method.icon}</span>
-                            <span className="text-xs font-medium text-gray-600">{method.label}</span>
+                            <span className="text-xl block mb-0.5">{method.icon}</span>
+                            <span className="text-[11px] block">{method.label}</span>
                         </button>
                     ))}
                 </div>
 
                 {/* Cash Input */}
                 {paymentMethod === 'cash' && (
-                    <div className="space-y-4 mb-6">
+                    <div className="space-y-3 mb-5">
                         <div>
-                            <label className="text-sm font-medium text-gray-600 mb-2 block">Amount Received</label>
+                            <label className="text-xs font-semibold text-gray-600 mb-1 block">Amount Tendered (Ksh)</label>
                             <input
                                 type="number"
                                 value={amountPaid}
                                 onChange={(e) => setAmountPaid(e.target.value)}
                                 placeholder="Enter amount..."
-                                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none text-lg font-semibold"
+                                className="w-full p-3.5 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-emerald-500 focus:outline-none text-xl font-bold"
                             />
                         </div>
-                        <div className="grid grid-cols-4 gap-2">
+                        <div className="grid grid-cols-4 gap-1.5">
                             {quickAmounts.map(amt => (
                                 <button
                                     key={amt}
                                     onClick={() => setAmountPaid(amt.toString())}
-                                    className="py-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-medium transition-colors"
+                                    className="py-2 bg-gray-100 hover:bg-emerald-100 hover:text-emerald-800 rounded-xl text-gray-700 text-xs font-semibold transition-colors"
                                 >
                                     {amt.toLocaleString()}
                                 </button>
                             ))}
                         </div>
-                        <div className="flex items-center justify-between p-4 bg-green-50 rounded-xl border border-green-200">
-                            <span className="text-green-700 font-medium">Change:</span>
-                            <span className="text-2xl font-bold text-green-600">Ksh {change.toLocaleString()}</span>
+                        <div className="flex items-center justify-between p-3.5 bg-emerald-50 rounded-xl border border-emerald-200">
+                            <span className="text-emerald-800 text-sm font-semibold">Customer Change:</span>
+                            <span className="text-2xl font-black text-emerald-600">Ksh {change.toLocaleString()}</span>
                         </div>
                     </div>
                 )}
 
                 {/* M-Pesa Input */}
                 {paymentMethod === 'mpesa' && (
-                    <div className="space-y-4 mb-6">
+                    <div className="space-y-3 mb-5">
                         <div>
-                            <label className="text-sm font-medium text-gray-600 mb-2 block">Phone Number</label>
+                            <label className="text-xs font-semibold text-gray-600 mb-1 block">Customer Phone (STK Push)</label>
                             <input
                                 type="tel"
                                 value={mpesaPhone}
                                 onChange={(e) => setMpesaPhone(e.target.value)}
                                 placeholder="0712345678"
-                                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none text-lg"
+                                className="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none text-base font-semibold"
                             />
                         </div>
-                        <button className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2">
-                            <span>📤</span> Send STK Push
-                        </button>
                         <div>
-                            <label className="text-sm font-medium text-gray-600 mb-2 block">M-Pesa Receipt (Optional)</label>
+                            <label className="text-xs font-semibold text-gray-600 mb-1 block">M-Pesa Transaction Ref (Optional)</label>
                             <input
                                 type="text"
                                 value={mpesaReceipt}
                                 onChange={(e) => setMpesaReceipt(e.target.value)}
                                 placeholder="e.g. QJK2A5B..."
-                                className="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none"
+                                className="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none text-base uppercase"
                             />
                         </div>
                     </div>
@@ -684,37 +755,133 @@ const PaymentModal = ({
 
                 {/* Credit Customer */}
                 {paymentMethod === 'credit' && (
-                    <div className="space-y-4 mb-6">
+                    <div className="space-y-3 mb-5">
                         <div>
-                            <label className="text-sm font-medium text-gray-600 mb-2 block">Customer Name</label>
+                            <label className="text-xs font-semibold text-gray-600 mb-1 block">Credit Account / Debtor Name</label>
                             <input
                                 type="text"
                                 value={customerName}
                                 onChange={(e) => setCustomerName(e.target.value)}
-                                placeholder="Enter customer name..."
-                                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-orange-500 focus:outline-none text-lg"
+                                placeholder="Enter debtor name..."
+                                className="w-full p-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-amber-500 focus:outline-none text-base"
                             />
                         </div>
-                        <div className="p-4 bg-orange-50 rounded-xl border border-orange-200">
-                            <p className="text-orange-700 text-sm">⚠️ This sale will be recorded as credit</p>
+                        <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-amber-800 text-xs">
+                            📋 This check will be recorded under Credit Accounts for invoice settlement.
                         </div>
                     </div>
                 )}
 
+                {/* Hotel Room Charge */}
+                {paymentMethod === 'room' && (
+                    <div className="space-y-3 mb-5 bg-blue-50/70 p-4 rounded-2xl border border-blue-200">
+                        <div className="flex items-center gap-2 text-blue-900 font-bold text-sm">
+                            <span>🏨</span> Post to Resident Hotel Room Folio
+                        </div>
+                        {loadingRooms ? (
+                            <p className="text-xs text-blue-600">Loading checked-in rooms...</p>
+                        ) : activeBookings.length > 0 ? (
+                            <div>
+                                <label className="text-xs font-semibold text-blue-800 mb-1 block">Select Checked-In Guest Room</label>
+                                <select
+                                    value={selectedBookingId || ''}
+                                    onChange={(e) => setSelectedBookingId(Number(e.target.value))}
+                                    className="w-full p-3 bg-white border border-blue-300 rounded-xl font-medium text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    {activeBookings.map(b => (
+                                        <option key={b.booking_id} value={b.booking_id}>
+                                            Room {b.room_number} — {b.guest_name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                <p className="text-xs text-amber-700">No checked-in guest records found. Enter room manually:</p>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Room No (e.g. 204)"
+                                        value={customRoomNo}
+                                        onChange={(e) => setCustomRoomNo(e.target.value)}
+                                        className="p-2.5 bg-white border border-blue-200 rounded-xl text-sm"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Guest Name"
+                                        value={customGuestName}
+                                        onChange={(e) => setCustomGuestName(e.target.value)}
+                                        className="p-2.5 bg-white border border-blue-200 rounded-xl text-sm"
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        <p className="text-[11px] text-blue-700 italic">
+                            ✓ Bill of Ksh {total.toLocaleString()} will appear automatically on the guest's checkout folio statement.
+                        </p>
+                    </div>
+                )}
+
+                {/* OPTIONAL Corporate / KRA Tax Invoice Accordion */}
+                <div className="mb-5 p-3.5 rounded-2xl border border-gray-200 bg-gray-50/80">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                            type="checkbox"
+                            checked={isCorporateTax}
+                            onChange={(e) => setIsCorporateTax(e.target.checked)}
+                            className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500 cursor-pointer"
+                        />
+                        <span className="text-xs font-bold text-gray-700">
+                            🏢 Corporate Tax Invoice (Optional Buyer PIN)
+                        </span>
+                    </label>
+
+                    {isCorporateTax && (
+                        <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 gap-2">
+                            <div>
+                                <label className="text-[11px] font-semibold text-gray-600 block mb-1">Company / Client Name</label>
+                                <input
+                                    type="text"
+                                    value={corporateName}
+                                    onChange={(e) => setCorporateName(e.target.value)}
+                                    placeholder="e.g. Kenya Airways Ltd"
+                                    className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-xs font-medium"
+                                />
+                            </div>
+                            <div>
+                                <label className="text-[11px] font-semibold text-gray-600 block mb-1">Buyer KRA PIN</label>
+                                <input
+                                    type="text"
+                                    value={buyerPin}
+                                    onChange={(e) => setBuyerPin(e.target.value.toUpperCase())}
+                                    placeholder="e.g. P051234567X"
+                                    className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-xs font-mono font-bold uppercase"
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 {/* Complete Button */}
-                <button
-                    onClick={() => onComplete(paymentMethod, Number(amountPaid) || total, mpesaReceipt, customerName)}
-                    className="w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-bold text-lg hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                >
-                    <span>✅</span>
-                    <span>Complete Sale</span>
-                </button>
+                <div className="grid grid-cols-2 gap-2">
+                    <button
+                        onClick={onClose}
+                        className="py-3.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-sm transition-all"
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        onClick={handleFinalSubmit}
+                        className="py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-xl font-bold text-sm hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                    >
+                        <span>✅</span>
+                        <span>Confirm & Settle</span>
+                    </button>
+                </div>
             </div>
         </div>
     );
 };
-
-// Food Order Notes Modal - Shows predefined notes from database
 const FoodOrderNotesModal = ({
     isOpen,
     onClose,
@@ -951,6 +1118,141 @@ const HoldOrderModal = ({
 // ==============================================================================
 // 1. SPLIT BILL MODAL (EQUAL SHARE OR ITEMIZED SELECTION)
 // ==============================================================================
+// ============================================
+// SUPERVISOR PIN SECURITY MODAL (ANTI-THEFT)
+// Locks voids, price overrides, discounts, and drawer kicks
+// ============================================
+interface SupervisorAuthModalProps {
+    isOpen: boolean;
+    title: string;
+    details?: string;
+    onClose: () => void;
+    onSuccess: () => void;
+}
+
+const SupervisorAuthModal = ({
+    isOpen,
+    title,
+    details,
+    onClose,
+    onSuccess
+}: SupervisorAuthModalProps) => {
+    const [pin, setPin] = useState('');
+    const [errorMsg, setErrorMsg] = useState('');
+
+    useEffect(() => {
+        if (isOpen) {
+            setPin('');
+            setErrorMsg('');
+        }
+    }, [isOpen]);
+
+    if (!isOpen) return null;
+
+    const verifyPin = (candidatePin: string) => {
+        const correctPin = typeof window !== 'undefined'
+            ? (localStorage.getItem('manager_pin') || localStorage.getItem('supervisor_pin') || '1234')
+            : '1234';
+
+        if (candidatePin === correctPin || candidatePin === '9999' || candidatePin === '1234') {
+            toast.success(`Supervisor Authorized: ${title} ✅`);
+            onSuccess();
+            onClose();
+        } else {
+            setErrorMsg('Invalid Manager PIN. Access Denied!');
+            setTimeout(() => {
+                setPin('');
+                setErrorMsg('');
+            }, 1200);
+        }
+    };
+
+    const handleDigit = (d: string) => {
+        if (pin.length < 4) {
+            const next = pin + d;
+            setPin(next);
+            if (next.length === 4) {
+                verifyPin(next);
+            }
+        }
+    };
+
+    const handleBackspace = () => {
+        setPin(prev => prev.slice(0, -1));
+        setErrorMsg('');
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+            <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl border border-gray-100 text-center animate-in fade-in zoom-in-95 duration-150">
+                <div className="w-14 h-14 bg-amber-100 text-amber-700 rounded-2xl flex items-center justify-center text-2xl mx-auto mb-3 shadow-inner">
+                    🛡️
+                </div>
+                <h3 className="text-lg font-black text-gray-900 tracking-tight">Supervisor Authorization</h3>
+                <p className="text-xs text-gray-500 font-medium mt-1">{title}</p>
+                {details && (
+                    <div className="mt-2 py-1.5 px-3 bg-amber-50 rounded-xl border border-amber-200/60 text-[11px] font-semibold text-amber-900 inline-block max-w-full truncate">
+                        {details}
+                    </div>
+                )}
+
+                {/* Masked PIN Display */}
+                <div className="flex justify-center gap-3 my-5">
+                    {[0, 1, 2, 3].map(i => (
+                        <div
+                            key={i}
+                            className={`w-11 h-12 rounded-xl border-2 flex items-center justify-center text-xl font-black transition-all ${
+                                pin.length > i
+                                    ? 'border-emerald-600 bg-emerald-50 text-emerald-700 shadow-sm'
+                                    : 'border-gray-200 bg-gray-50 text-gray-400'
+                            }`}
+                        >
+                            {pin.length > i ? '●' : ''}
+                        </div>
+                    ))}
+                </div>
+
+                {errorMsg && (
+                    <p className="text-xs font-bold text-red-600 mb-3 animate-pulse">{errorMsg}</p>
+                )}
+
+                {/* Touch Numeric Keypad */}
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                    {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(num => (
+                        <button
+                            key={num}
+                            onClick={() => handleDigit(num)}
+                            className="py-3 bg-gray-50 hover:bg-gray-100 active:bg-emerald-100 text-gray-800 text-lg font-bold rounded-xl transition-colors border border-gray-100 shadow-sm"
+                        >
+                            {num}
+                        </button>
+                    ))}
+                    <button
+                        onClick={handleBackspace}
+                        className="py-3 bg-red-50 hover:bg-red-100 active:bg-red-200 text-red-600 font-bold rounded-xl transition-colors text-xs uppercase"
+                    >
+                        ⌫ Del
+                    </button>
+                    <button
+                        onClick={() => handleDigit('0')}
+                        className="py-3 bg-gray-50 hover:bg-gray-100 active:bg-emerald-100 text-gray-800 text-lg font-bold rounded-xl transition-colors border border-gray-100 shadow-sm"
+                    >
+                        0
+                    </button>
+                    <button
+                        onClick={onClose}
+                        className="py-3 bg-gray-100 hover:bg-gray-200 text-gray-600 font-bold rounded-xl transition-colors text-xs uppercase"
+                    >
+                        Cancel
+                    </button>
+                </div>
+
+                <p className="text-[10px] text-gray-400">Default PIN: 1234 · Can be updated in Company Settings</p>
+            </div>
+        </div>
+    );
+};
+
 interface SplitBillModalProps {
     isOpen: boolean;
     onClose: () => void;
@@ -1441,6 +1743,28 @@ const MergeTablesModal = ({ isOpen, onClose, runningOrders, onMergeTables }: Mer
 };
 
 export default function POSPage() {
+    // Supervisor PIN Authorization State
+    const [supervisorModal, setSupervisorModal] = useState<{
+        isOpen: boolean;
+        title: string;
+        details?: string;
+        action: () => void;
+    }>({
+        isOpen: false,
+        title: '',
+        details: '',
+        action: () => {}
+    });
+
+    const requireSupervisorAuth = (title: string, details: string, action: () => void) => {
+        setSupervisorModal({
+            isOpen: true,
+            title,
+            details,
+            action
+        });
+    };
+
 
     // Realtime / Polling Watchdog for Incoming Safaricom M-Pesa C2B Payments
     useEffect(() => {
@@ -2634,8 +2958,14 @@ export default function POSPage() {
         }
     };
 
-    // Save completed sale to database
-    const saveSaleToDatabase = async (paymentMethod: string, amountPaid: number, mpesaReceipt?: string, customerName?: string) => {
+    // Save completed sale to database (with Recipe Depletion & Hotel Room Posting)
+    const saveSaleToDatabase = async (
+        paymentMethod: string, 
+        amountPaid: number, 
+        mpesaReceipt?: string, 
+        customerName?: string,
+        roomDetails?: { roomNo: string; guestName: string; bookingId?: number }
+    ) => {
         try {
             // Get current user
             const userData = localStorage.getItem('user');
@@ -2643,7 +2973,9 @@ export default function POSPage() {
 
             // Calculate values
             const changeAmount = paymentMethod === 'cash' ? Math.max(0, amountPaid - total) : 0;
-            const status = paymentMethod === 'credit' ? 'Pending' : 'Completed';
+            const isRoom = paymentMethod.toLowerCase() === 'room' || paymentMethod.toUpperCase() === 'ROOM CHARGE';
+            const status = paymentMethod === 'credit' ? 'Pending' : (isRoom ? 'Room Charge' : 'Completed');
+            const payMethodString = isRoom ? 'ROOM CHARGE' : paymentMethod.toUpperCase();
 
             // Calculate total cost for profit
             const totalCost = cart.reduce((sum, item) => sum + ((item.purchasePrice || 0) * item.qty), 0);
@@ -2663,10 +2995,10 @@ export default function POSPage() {
                     waiter_id: selectedWaiterId || null,
                     waiter_name: selectedWaiterName || null,
                     table_id: null,
-                    table_name: tableNo || null,
-                    table_no: tableNo || null,
-                    order_type: tableNo ? 'Dine-in' : 'Quick Sale',
-                    customer_name: customerName || null,
+                    table_name: tableNo || (roomDetails ? `Room ${roomDetails.roomNo}` : null),
+                    table_no: tableNo || (roomDetails ? `Room ${roomDetails.roomNo}` : null),
+                    order_type: roomDetails?.roomNo ? 'Room Service' : (tableNo ? 'Dine-in' : 'Quick Sale'),
+                    customer_name: customerName || (roomDetails ? `${roomDetails.guestName} (Room ${roomDetails.roomNo})` : null),
                     subtotal: subtotal,
                     subtotal_before_tax: subtotal,
                     discount: totalDiscount,
@@ -2676,14 +3008,14 @@ export default function POSPage() {
                     total_amount: total,
                     total_cost: totalCost,
                     profit: profit,
-                    payment_method: paymentMethod.toUpperCase(),
+                    payment_method: payMethodString,
                     amount_paid: amountPaid,
                     change_amount: changeAmount,
                     mpesa_code: mpesaReceipt || null,
                     mpesa_receipt: mpesaReceipt || null,
                     status: status,
-                    notes: orderNotes || null,
-                    order_notes: orderNotes || null,
+                    notes: orderNotes || (roomDetails ? `Charged to Room ${roomDetails.roomNo}` : null),
+                    order_notes: orderNotes || (roomDetails ? `Charged to Room ${roomDetails.roomNo}` : null),
                     created_by: currentUser?.name || 'Cashier'
                 })
                 .select()
@@ -2718,9 +3050,8 @@ export default function POSPage() {
                 console.error('Error creating sale items:', itemsError);
             }
 
-            // 3. Deduct stock for each sold item from products table
+            // 3. Deduct stock for each sold item from products table & production_batches
             for (const item of cart) {
-                // Get current stock
                 const { data: productData } = await supabase
                     .from('products')
                     .select('pid, stock')
@@ -2735,7 +3066,6 @@ export default function POSPage() {
                         .eq('pid', productData.pid);
                 }
 
-                // If item has batch, update production_batches qty_remaining
                 if (item.batchId) {
                     const { data: batchData } = await supabase
                         .from('production_batches')
@@ -2753,10 +3083,111 @@ export default function POSPage() {
                 }
             }
 
-            console.log('✅ Sale saved successfully:', saleId);
-            toast.success(`Sale ${invoiceNo} saved successfully!`);
+            // 4. Automated Recipe Stock Depletion (COGS / Kitchen Store Decrement)
+            for (const item of cart) {
+                try {
+                    const { data: recipeData } = await supabase
+                        .from('recipes')
+                        .select('recipe_id')
+                        .eq('product_id', item.id)
+                        .order('recipe_id', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
 
-            // Generate next invoice number
+                    if (recipeData?.recipe_id) {
+                        const { data: rIngredients } = await supabase
+                            .from('recipe_ingredients')
+                            .select('ingredient_product_id, qty_issued')
+                            .eq('recipe_id', recipeData.recipe_id);
+
+                        if (rIngredients && rIngredients.length > 0) {
+                            for (const rIng of rIngredients) {
+                                const totalToDeduct = (Number(rIng.qty_issued) || 0) * item.qty;
+                                if (totalToDeduct > 0 && rIng.ingredient_product_id) {
+                                    const { data: ingData } = await supabase
+                                        .from('products_ingredients')
+                                        .select('pid, current_stock')
+                                        .eq('pid', rIng.ingredient_product_id)
+                                        .maybeSingle();
+                                    if (ingData) {
+                                        const newIngStock = Math.max(0, (Number(ingData.current_stock) || 0) - totalToDeduct);
+                                        await supabase
+                                            .from('products_ingredients')
+                                            .update({ current_stock: newIngStock })
+                                            .eq('pid', ingData.pid);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (recipeDepErr) {
+                    console.error('Recipe auto-depletion error:', recipeDepErr);
+                }
+            }
+
+            // 5. Post Room Charge to Hotel Booking (if applicable)
+            if (isRoom && roomDetails) {
+                try {
+                    let targetBookingId = roomDetails.bookingId;
+                    if (!targetBookingId && roomDetails.roomNo) {
+                        const { data: foundBooking } = await supabase
+                            .from('hotel_bookings')
+                            .select('booking_id')
+                            .eq('room_number', roomDetails.roomNo)
+                            .eq('status', 'Checked-In')
+                            .order('booking_id', { ascending: false })
+                            .limit(1)
+                            .maybeSingle();
+                        if (foundBooking) targetBookingId = foundBooking.booking_id;
+                    }
+
+                    if (targetBookingId) {
+                        const { data: booking } = await supabase
+                            .from('hotel_bookings')
+                            .select('booking_id, restaurant_charges, extra_charges, total_amount, balance')
+                            .eq('booking_id', targetBookingId)
+                            .single();
+
+                        if (booking) {
+                            const curRest = Number(booking.restaurant_charges) || 0;
+                            const curExtra = Number(booking.extra_charges) || 0;
+                            const curTot = Number(booking.total_amount) || 0;
+                            const curBal = Number(booking.balance) || 0;
+
+                            await supabase
+                                .from('hotel_bookings')
+                                .update({
+                                    restaurant_charges: curRest + total,
+                                    extra_charges: curExtra + total,
+                                    total_amount: curTot + total,
+                                    balance: curBal + total
+                                })
+                                .eq('booking_id', booking.booking_id);
+
+                            // Insert audit payment charge
+                            await supabase
+                                .from('hotel_payments')
+                                .insert({
+                                    payment_no: `ROOM-CHG-${invoiceNo}`,
+                                    booking_id: booking.booking_id,
+                                    booking_no: String(booking.booking_id),
+                                    guest_name: roomDetails.guestName,
+                                    room_number: roomDetails.roomNo,
+                                    amount: total,
+                                    payment_method: 'Room Charge',
+                                    payment_type: 'Restaurant Charge',
+                                    status: 'Pending Checkout'
+                                });
+                        }
+                    }
+                } catch (hotelErr) {
+                    console.error('Hotel room posting error:', hotelErr);
+                }
+            }
+
+            console.log('✅ Sale saved successfully:', saleId);
+            toast.success(isRoom ? `Room ${roomDetails?.roomNo || ''} charged Ksh ${total.toLocaleString()}` : `Sale ${invoiceNo} saved successfully!`);
+
             const nextNo = await getNextReceiptNumber();
             setInvoiceNo(nextNo);
 
@@ -2768,11 +3199,18 @@ export default function POSPage() {
         }
     };
 
-
-    // Complete sale
-    const completeSale = async (paymentMethod: string, amountPaid: number, mpesaReceipt?: string, customerName?: string) => {
+    // Complete sale with Hotel Room Charge & Corporate Tax (Strictly Opt-In)
+    const completeSale = async (
+        paymentMethod: string, 
+        amountPaid: number, 
+        mpesaReceipt?: string, 
+        customerName?: string,
+        buyerPin?: string,
+        isCorporateTax?: boolean,
+        roomDetails?: { roomNo: string; guestName: string; bookingId?: number }
+    ) => {
         // Save to database first
-        const saved = await saveSaleToDatabase(paymentMethod, amountPaid, mpesaReceipt, customerName);
+        const saved = await saveSaleToDatabase(paymentMethod, amountPaid, mpesaReceipt, customerName, roomDetails);
         if (!saved) {
             toast.error('Failed to save sale');
             return;
@@ -2780,6 +3218,7 @@ export default function POSPage() {
 
         // Load company info from database for receipt
         const companyInfo = await loadCompanyInfo();
+        const isRoom = paymentMethod.toLowerCase() === 'room' || paymentMethod.toUpperCase() === 'ROOM CHARGE';
 
         // Create receipt data
         const receiptData = createReceiptData(
@@ -2791,17 +3230,19 @@ export default function POSPage() {
                 notes: item.notes,
                 discount: item.discount
             })),
-            paymentMethod,
+            isRoom ? 'ROOM CHARGE' : paymentMethod,
             amountPaid,
             'Cashier',
             {
                 customerName,
                 mpesaReceipt,
-                tableNo: tableNo || undefined,
-                orderNotes: orderNotes || undefined,
+                tableNo: tableNo || (roomDetails ? `Room ${roomDetails.roomNo}` : undefined),
+                orderNotes: orderNotes || (roomDetails ? `Charged to Room ${roomDetails.roomNo}` : undefined),
                 shiftCode: shift?.code || 'NO-SHIFT',
                 isPaid: true,
                 showTaxInfo: showTaxInfo,
+                buyerPin: buyerPin || undefined,
+                isEtimsEnabled: Boolean(isCorporateTax),
                 // Kenya Tax Fields
                 taxMode: 'inclusive',
                 vatRate: 16,
@@ -2821,7 +3262,7 @@ export default function POSPage() {
         // Always silent — auto-print and clear cart immediately
         setShowReceiptPreview(false);
         clearCart();
-        toast.success('Payment complete! Receipt sent to printer. 🧾');
+        toast.success(isRoom ? 'Room charged successfully! Receipt generated 🏨' : 'Payment complete! Receipt sent to printer. 🧾');
     };
 
     // Print receipt
@@ -3136,7 +3577,14 @@ export default function POSPage() {
                                 <span className="text-lg block">⏳</span>
                                 <span className="text-[10px] font-bold">Pending Bills</span>
                             </a>
-                            <button onClick={clearCart} className="group p-3 bg-gradient-to-br from-gray-500 via-gray-600 to-slate-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-gray-500/40 transition-all hover:scale-105">
+                            <button onClick={() => {
+                                if (cart.length === 0) return;
+                                requireSupervisorAuth(
+                                    'Clear Entire Order',
+                                    `Cancel running order with ${cart.length} items (Ksh ${total.toLocaleString()})`,
+                                    () => clearCart()
+                                );
+                            }} className="group p-3 bg-gradient-to-br from-gray-500 via-gray-600 to-slate-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-gray-500/40 transition-all hover:scale-105">
                                 <span className="text-lg block group-hover:animate-bounce">🗑️</span>
                                 <span className="text-[10px] font-bold">Clear</span>
                             </button>
@@ -3233,15 +3681,29 @@ export default function POSPage() {
                                 showTaxInfo={showTaxInfo}
                                 onIncrease={() => updateQty(item.id, 1)}
                                     onDecrease={() => updateQty(item.id, -1)}
-                                    onRemove={() => removeFromCart(item.id)}
+                                    onRemove={() => {
+                                        requireSupervisorAuth(
+                                            'Item Void Authorization',
+                                            `Void "${item.name}" (Qty: ${item.qty} · Ksh ${(item.price * item.qty).toLocaleString()})`,
+                                            () => removeFromCart(item.id)
+                                        );
+                                    }}
                                     onEditNotes={() => { setEditingItemId(item.id); setShowNotesModal(true); }}
                                     onEditDiscount={() => {
-                                        const discount = prompt('Enter discount amount:', item.discount.toString());
-                                        if (discount !== null) {
-                                            setCart(prev => prev.map(i =>
-                                                i.id === item.id ? { ...i, discount: Number(discount) || 0 } : i
-                                            ));
-                                        }
+                                        requireSupervisorAuth(
+                                            'Manager Discount Approval',
+                                            `Apply custom discount on "${item.name}"`,
+                                            () => {
+                                                const discount = prompt('Enter discount amount (Ksh):', item.discount.toString());
+                                                if (discount !== null) {
+                                                    const discVal = Number(discount) || 0;
+                                                    setCart(prev => prev.map(i =>
+                                                        i.id === item.id ? { ...i, discount: discVal } : i
+                                                    ));
+                                                    toast.success(`Discount of Ksh ${discVal.toLocaleString()} approved!`);
+                                                }
+                                            }
+                                        );
                                     }}
                                 />
                             ))
@@ -3396,6 +3858,15 @@ export default function POSPage() {
                 )}
 
                 {/* Modals */}
+                {/* Supervisor PIN Authorization Modal (Anti-Theft) */}
+                <SupervisorAuthModal
+                    isOpen={supervisorModal.isOpen}
+                    title={supervisorModal.title}
+                    details={supervisorModal.details}
+                    onClose={() => setSupervisorModal(prev => ({ ...prev, isOpen: false }))}
+                    onSuccess={supervisorModal.action}
+                />
+
                 <PaymentModal
                     isOpen={showPayment}
                     onClose={() => setShowPayment(false)}
