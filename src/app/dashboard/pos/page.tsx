@@ -948,7 +948,601 @@ const HoldOrderModal = ({
     );
 };
 
+// ==============================================================================
+// 1. SPLIT BILL MODAL (EQUAL SHARE OR ITEMIZED SELECTION)
+// ==============================================================================
+interface SplitBillModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    cart: CartItem[];
+    total: number;
+    tableNo?: string;
+    invoiceNo: string;
+    onCompleteSplitShare: (shareNo: number, totalShares: number, amount: number, method: string, mpesaRef?: string, guestName?: string) => Promise<void>;
+    onCompleteItemizedSplit: (selectedItems: CartItem[], method: string, amount: number, mpesaRef?: string, guestName?: string) => Promise<void>;
+}
+
+const SplitBillModal = ({
+    isOpen,
+    onClose,
+    cart,
+    total,
+    tableNo,
+    invoiceNo,
+    onCompleteSplitShare,
+    onCompleteItemizedSplit
+}: SplitBillModalProps) => {
+    const [splitMode, setSplitMode] = useState<'equal' | 'itemized'>('equal');
+    const [numGuests, setNumGuests] = useState<number>(2);
+    const [paidShares, setPaidShares] = useState<Record<number, { method: string; amount: number; ref?: string; name?: string }>>({});
+    const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
+    const [itemizedMethod, setItemizedMethod] = useState('cash');
+    const [itemizedRef, setItemizedRef] = useState('');
+    const [itemizedGuestName, setItemizedGuestName] = useState('');
+
+    if (!isOpen) return null;
+
+    const shareAmount = Math.round(total / numGuests);
+    const totalPaidSoFar = Object.values(paidShares).reduce((s, p) => s + p.amount, 0);
+    const remainingBalance = Math.max(0, total - totalPaidSoFar);
+
+    // Itemized total
+    const selectedItemsTotal = cart
+        .filter(item => selectedItemIds.includes(item.id))
+        .reduce((sum, item) => sum + (item.price * item.qty), 0);
+
+    const handlePayShare = async (shareIndex: number, method: string) => {
+        const guestName = prompt("Enter Guest #" + shareIndex + " Name (Optional):", "Guest " + shareIndex) || ("Guest " + shareIndex);
+        let mpesaRef = '';
+        if (method === 'mpesa') {
+            mpesaRef = prompt('Enter M-Pesa Confirmation Code (e.g. QHK82910):', '') || ("MP-" + Date.now().toString().slice(-6));
+        }
+        await onCompleteSplitShare(shareIndex, numGuests, shareAmount, method, mpesaRef, guestName);
+        setPaidShares(prev => ({
+            ...prev,
+            [shareIndex]: { method, amount: shareAmount, ref: mpesaRef, name: guestName }
+        }));
+    };
+
+    const handlePayItemized = async () => {
+        if (selectedItemIds.length === 0) {
+            alert('Please select at least one item to pay for!');
+            return;
+        }
+        const itemsToPay = cart.filter(item => selectedItemIds.includes(item.id));
+        await onCompleteItemizedSplit(itemsToPay, itemizedMethod, selectedItemsTotal, itemizedRef, itemizedGuestName);
+        setSelectedItemIds([]);
+        setItemizedRef('');
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-xl w-full shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] flex flex-col">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center justify-center font-bold text-lg">
+                            ✂️
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-black text-slate-900">Split Dining Bill</h2>
+                            <p className="text-xs text-slate-500">
+                                {tableNo ? ("Table " + tableNo) : 'Active Cart'} • Invoice {invoiceNo}
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={onClose}
+                        className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold"
+                    >
+                        ✕
+                    </button>
+                </div>
+
+                {/* Total & Remaining Strip */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-slate-900 to-indigo-950 text-white flex items-center justify-between">
+                    <div>
+                        <p className="text-[10px] font-bold uppercase text-slate-400">Total Check Amount</p>
+                        <p className="text-2xl font-black font-mono">Ksh {total.toLocaleString()}</p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[10px] font-bold uppercase text-amber-400">Remaining Balance</p>
+                        <p className="text-2xl font-black font-mono text-amber-400">Ksh {remainingBalance.toLocaleString()}</p>
+                    </div>
+                </div>
+
+                {/* Mode Selector */}
+                <div className="grid grid-cols-2 gap-2 bg-slate-100 p-1 rounded-2xl">
+                    <button
+                        type="button"
+                        onClick={() => setSplitMode('equal')}
+                        className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                            splitMode === 'equal' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                    >
+                        👥 Equal Shares Split
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setSplitMode('itemized')}
+                        className={`py-2 rounded-xl text-xs font-bold transition-all ${
+                            splitMode === 'itemized' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                    >
+                        🍽️ Itemized Dish Split
+                    </button>
+                </div>
+
+                {/* Mode A: Equal Shares */}
+                {splitMode === 'equal' && (
+                    <div className="space-y-4 overflow-y-auto flex-1 pr-1">
+                        <div>
+                            <label className="text-xs font-bold uppercase text-slate-500 block mb-1.5">Number of Guests</label>
+                            <div className="flex items-center gap-2">
+                                {[2, 3, 4, 5, 6].map(n => (
+                                    <button
+                                        key={n}
+                                        type="button"
+                                        onClick={() => setNumGuests(n)}
+                                        className={`flex-1 py-2 rounded-xl text-xs font-black border transition-all ${
+                                            numGuests === n
+                                                ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                                                : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        {n} Guests
+                                    </button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-indigo-700 font-bold mt-2">
+                                Each Guest pays: <strong className="font-mono text-sm">Ksh {shareAmount.toLocaleString()}</strong>
+                            </p>
+                        </div>
+
+                        {/* Guest Share Cards */}
+                        <div className="space-y-2">
+                            {Array.from({ length: numGuests }, (_, i) => i + 1).map(shareIdx => {
+                                const isPaid = !!paidShares[shareIdx];
+                                const paidInfo = paidShares[shareIdx];
+
+                                return (
+                                    <div
+                                        key={shareIdx}
+                                        className={`p-3.5 rounded-2xl border flex items-center justify-between gap-3 transition-all ${
+                                            isPaid
+                                                ? 'bg-emerald-50 border-emerald-300'
+                                                : 'bg-slate-50 border-slate-200'
+                                        }`}
+                                    >
+                                        <div>
+                                            <div className="flex items-center gap-2">
+                                                <span className="font-black text-xs text-slate-900">
+                                                    Share #{shareIdx}: {paidInfo?.name || ("Guest " + shareIdx)}
+                                                </span>
+                                                {isPaid && (
+                                                    <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-600 text-white">
+                                                        ✓ Paid ({paidInfo.method.toUpperCase()})
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs font-mono font-bold text-slate-600 mt-0.5">
+                                                Ksh {shareAmount.toLocaleString()}
+                                                {paidInfo?.ref && (" • Ref: " + paidInfo.ref)}
+                                            </p>
+                                        </div>
+
+                                        {!isPaid ? (
+                                          <div className="flex items-center gap-1.5">
+                                              <button
+                                                  type="button"
+                                                  onClick={() => handlePayShare(shareIdx, 'mpesa')}
+                                                  className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-sm"
+                                              >
+                                                  M-Pesa
+                                              </button>
+                                              <button
+                                                  type="button"
+                                                  onClick={() => handlePayShare(shareIdx, 'cash')}
+                                                  className="px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold"
+                                              >
+                                                  Cash
+                                              </button>
+                                              <button
+                                                  type="button"
+                                                  onClick={() => handlePayShare(shareIdx, 'card')}
+                                                  className="px-2.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold"
+                                              >
+                                                  Card
+                                              </button>
+                                          </div>
+                                        ) : (
+                                          <span className="text-xs font-bold text-emerald-700">Receipt Printed ✓</span>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                )}
+
+                {/* Mode B: Itemized Dish Split */}
+                {splitMode === 'itemized' && (
+                    <div className="space-y-4 overflow-y-auto flex-1 pr-1">
+                        <p className="text-xs text-slate-500">
+                            Check the specific dishes this guest is paying for right now:
+                        </p>
+
+                        <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                            {cart.map(item => {
+                                const isSelected = selectedItemIds.includes(item.id);
+                                return (
+                                    <div
+                                        key={item.id}
+                                        onClick={() => {
+                                            if (isSelected) {
+                                                setSelectedItemIds(prev => prev.filter(id => id !== item.id));
+                                            } else {
+                                                setSelectedItemIds(prev => [...prev, item.id]);
+                                            }
+                                        }}
+                                        className={`p-2.5 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
+                                            isSelected ? 'bg-indigo-50 border-indigo-300' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                readOnly
+                                                className="w-4 h-4 rounded text-indigo-600"
+                                            />
+                                            <span className="text-xs font-bold text-slate-900">
+                                                {item.qty}x {item.name}
+                                            </span>
+                                        </div>
+                                        <span className="font-mono font-black text-xs text-slate-800">
+                                            Ksh {(item.price * item.qty).toLocaleString()}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Selected Subtotal & Payment Action */}
+                        <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-200 space-y-3">
+                            <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-indigo-950">Guest Subtotal to Pay:</span>
+                                <span className="text-lg font-black font-mono text-indigo-950">
+                                    Ksh {selectedItemsTotal.toLocaleString()}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-2">
+                                <input
+                                    type="text"
+                                    placeholder="Guest Name (e.g. John)"
+                                    value={itemizedGuestName}
+                                    onChange={e => setItemizedGuestName(e.target.value)}
+                                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs"
+                                />
+                                <select
+                                    value={itemizedMethod}
+                                    onChange={e => setItemizedMethod(e.target.value)}
+                                    className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-bold"
+                                >
+                                    <option value="cash">Cash Till</option>
+                                    <option value="mpesa">M-Pesa</option>
+                                    <option value="card">Card (PDQ)</option>
+                                </select>
+                            </div>
+
+                            {itemizedMethod === 'mpesa' && (
+                                <input
+                                    type="text"
+                                    placeholder="M-Pesa Ref (e.g. QHK829)"
+                                    value={itemizedRef}
+                                    onChange={e => setItemizedRef(e.target.value)}
+                                    className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs"
+                                />
+                            )}
+
+                            <button
+                                type="button"
+                                onClick={handlePayItemized}
+                                disabled={selectedItemIds.length === 0}
+                                className="w-full py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl text-xs font-black shadow-sm"
+                            >
+                                Settle Selected Dishes &amp; Print Slip →
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end">
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="px-5 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black"
+                    >
+                        Done &amp; Return to POS
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ==============================================================================
+// 2. MOVE / TRANSFER TABLE MODAL
+// ==============================================================================
+interface MoveTableModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    currentTable: string;
+    onMoveTable: (newTable: string) => void;
+}
+
+const MoveTableModal = ({ isOpen, onClose, currentTable, onMoveTable }: MoveTableModalProps) => {
+    const [targetTable, setTargetTable] = useState('');
+
+    if (!isOpen) return null;
+
+    const availableTables = [
+        'Table 1', 'Table 2', 'Table 3', 'Table 4', 'Table 5', 'Table 6', 'Table 7 (VIP)', 'Table 8', 'Table 9', 'Table 10',
+        'Gazebo 1', 'Gazebo 2', 'Gazebo 3', 'Terrace 11', 'Terrace 12', 'VIP Lounge', 'Room 101', 'Room 204'
+    ];
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-700 border border-amber-100 flex items-center justify-center font-bold text-lg">
+                            🪑
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-black text-slate-900">Move / Transfer Table</h2>
+                            <p className="text-xs text-slate-500">Currently: {currentTable || 'No table selected'}</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold">✕</button>
+                </div>
+
+                <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 block mb-2">Select Destination Table / Room</label>
+                    <div className="grid grid-cols-3 gap-2 max-h-48 overflow-y-auto pr-1">
+                        {availableTables.map(tbl => (
+                            <button
+                                key={tbl}
+                                type="button"
+                                onClick={() => setTargetTable(tbl)}
+                                className={`p-2.5 rounded-xl text-xs font-bold border transition-all text-center ${
+                                    targetTable === tbl
+                                        ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-sm font-black'
+                                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                                }`}
+                            >
+                                {tbl}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Or Type Custom Table / Room</label>
+                    <input
+                        type="text"
+                        placeholder="e.g. Garden Table 3"
+                        value={targetTable}
+                        onChange={e => setTargetTable(e.target.value)}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold focus:outline-none focus:border-amber-500"
+                    />
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <button onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Cancel</button>
+                    <button
+                        onClick={() => {
+                            if (!targetTable.trim()) { alert('Please select a destination table!'); return; }
+                            onMoveTable(targetTable.trim());
+                            onClose();
+                        }}
+                        className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-slate-950 rounded-xl text-xs font-black shadow-sm"
+                    >
+                        Transfer Order →
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+// ==============================================================================
+// 3. MERGE TABLES MODAL
+// ==============================================================================
+interface MergeTablesModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    runningOrders: any[];
+    onMergeTables: (sourceOrderId: string, targetOrderId: string) => void;
+}
+
+const MergeTablesModal = ({ isOpen, onClose, runningOrders, onMergeTables }: MergeTablesModalProps) => {
+    const [sourceId, setSourceId] = useState('');
+    const [targetId, setTargetId] = useState('');
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-md w-full shadow-2xl border border-slate-100 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-700 border border-indigo-100 flex items-center justify-center font-bold text-lg">
+                            🔀
+                        </div>
+                        <div>
+                            <h2 className="text-lg font-black text-slate-900">Merge Open Tables</h2>
+                            <p className="text-xs text-slate-500">Combine checks from two tables into one master tab</p>
+                        </div>
+                    </div>
+                    <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold">✕</button>
+                </div>
+
+                <div className="space-y-3">
+                    <div>
+                        <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Merge FROM (Table to Close)</label>
+                        <select
+                            value={sourceId}
+                            onChange={e => setSourceId(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none"
+                        >
+                            <option value="">Select Table...</option>
+                            {runningOrders.map(o => (
+                                <option key={o.id} value={o.id}>
+                                    {o.tableNo ? ("Table " + o.tableNo) : o.name} (Ksh {(o.total || 0).toLocaleString()})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    <div>
+                        <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Merge INTO (Target Master Table)</label>
+                        <select
+                            value={targetId}
+                            onChange={e => setTargetId(e.target.value)}
+                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none"
+                        >
+                            <option value="">Select Destination Table...</option>
+                            {runningOrders.filter(o => o.id !== sourceId).map(o => (
+                                <option key={o.id} value={o.id}>
+                                    {o.tableNo ? ("Table " + o.tableNo) : o.name} (Ksh {(o.total || 0).toLocaleString()})
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <button onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Cancel</button>
+                    <button
+                        onClick={() => {
+                            if (!sourceId || !targetId) { alert('Please select both tables to merge!'); return; }
+                            onMergeTables(sourceId, targetId);
+                            onClose();
+                        }}
+                        className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-sm"
+                    >
+                        Merge Tables Now →
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 export default function POSPage() {
+
+    // Realtime / Polling Watchdog for Incoming Safaricom M-Pesa C2B Payments
+    useEffect(() => {
+        const checkIncomingC2B = async () => {
+            try {
+                const { data } = await supabase
+                    .from('c2b_transactions')
+                    .select('*')
+                    .eq('is_linked', false)
+                    .order('id', { ascending: false })
+                    .limit(3);
+                if (data && data.length > 0) {
+                    setIncomingC2BTxs(data);
+                }
+            } catch {
+                // ignore
+            }
+        };
+        checkIncomingC2B();
+        const c2bInterval = setInterval(checkIncomingC2B, 5000);
+        return () => clearInterval(c2bInterval);
+    }, []);
+
+    // Split Bill Handler for Equal Shares
+    const handleCompleteSplitShare = async (shareNo: number, totalShares: number, amount: number, method: string, mpesaRef?: string, guestName?: string) => {
+        const clientLabel = 'Split Table (' + (guestName ? guestName : 'Guest ' + shareNo) + ' - Share ' + shareNo + '/' + totalShares + ')';
+        await saveSaleToDatabase(method, amount, mpesaRef, clientLabel);
+        toast.success('Share #' + shareNo + ' of ' + totalShares + ' (Ksh ' + amount.toLocaleString() + ') recorded via ' + method.toUpperCase() + '!');
+        try {
+            await loadCompanyInfo();
+            const receiptData = createReceiptData(
+                invoiceNo + '-' + shareNo,
+                cart.map(i => ({ ...i, price: Math.round(i.price / totalShares) })),
+                method,
+                amount,
+                selectedWaiterName || 'Cashier',
+                {
+                    tableNo,
+                    customerName: guestName || ('Guest ' + shareNo),
+                    mpesaReceipt: mpesaRef,
+                    isPaid: true
+                }
+            );
+            const html = await generateReceiptHTML(receiptData);
+            await executeDirectPrint(html, { printerRole: 'customer' });
+        } catch (e) {
+            console.error('Error printing split slip:', e);
+        }
+    };
+
+    // Split Bill Handler for Itemized Dish Selection
+    const handleCompleteItemizedSplit = async (selectedItems: CartItem[], method: string, amount: number, mpesaRef?: string, guestName?: string) => {
+        const selectedIds = selectedItems.map(i => i.id);
+        const clientLabel = 'Itemized Split (' + (guestName ? guestName : 'Diner') + ')';
+        await saveSaleToDatabase(method, amount, mpesaRef, clientLabel);
+        try {
+            await loadCompanyInfo();
+            const receiptData = createReceiptData(
+                invoiceNo + '-S',
+                selectedItems.map(i => ({ name: i.name, qty: i.qty, price: i.price, notes: i.notes })),
+                method,
+                amount,
+                selectedWaiterName || 'Cashier',
+                {
+                    tableNo,
+                    customerName: guestName || 'Diner',
+                    mpesaReceipt: mpesaRef,
+                    isPaid: true
+                }
+            );
+            const html = await generateReceiptHTML(receiptData);
+            await executeDirectPrint(html, { printerRole: 'customer' });
+        } catch (e) {
+            console.error('Error printing itemized slip:', e);
+        }
+        setCart(prev => prev.filter(i => !selectedIds.includes(i.id)));
+        toast.success('Itemized payment of Ksh ' + amount.toLocaleString() + ' settled! Remaining items kept on table.');
+    };
+
+    // Move Table Handler
+    const handleMoveTableAction = (newTable: string) => {
+        setTableNo(newTable);
+        toast.success('Order moved to ' + newTable + '! 🪑');
+    };
+
+    // Merge Tables Handler
+    const handleMergeTablesAction = (sourceId: string, targetId: string) => {
+        const sourceOrder = runningOrders.find(o => o.id === sourceId);
+        const targetOrder = runningOrders.find(o => o.id === targetId);
+        if (sourceOrder && targetOrder) {
+            const mergedItems = [...targetOrder.items, ...sourceOrder.items];
+            const mergedTotal = targetOrder.total + sourceOrder.total;
+            setRunningOrders(prev => prev.filter(o => o.id !== sourceId).map(o => {
+                if (o.id === targetId) {
+                    return { ...o, items: mergedItems, total: mergedTotal, name: targetOrder.name + ' + ' + sourceOrder.name };
+                }
+                return o;
+            }));
+            toast.success('Successfully merged tables! 🔀');
+        }
+    };
+
     const [products, setProducts] = useState<Product[]>([]);
     const [categories, setCategories] = useState<string[]>(['All']);
     const [isLoadingProducts, setIsLoadingProducts] = useState(true);
@@ -956,6 +1550,14 @@ export default function POSPage() {
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
     const [showPayment, setShowPayment] = useState(false);
+
+    // Split Bill & Table Transfer States
+    const [showSplitModal, setShowSplitModal] = useState(false);
+    const [showMoveTableModal, setShowMoveTableModal] = useState(false);
+    const [showMergeModal, setShowMergeModal] = useState(false);
+    const [incomingC2BTxs, setIncomingC2BTxs] = useState<any[]>([]);
+    const [dismissedC2BIds, setDismissedC2BIds] = useState<number[]>([]);
+
     const [showNotesModal, setShowNotesModal] = useState(false);
     const [showHoldModal, setShowHoldModal] = useState(false);
     const [showRunningOrders, setShowRunningOrders] = useState(false);

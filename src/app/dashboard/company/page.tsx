@@ -64,7 +64,7 @@ export default function CompanyPage() {
     const [settings, setSettings] = useState<OrganisationSettings>(defaultSettings);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [activeTab, setActiveTab] = useState<'general' | 'location' | 'receipt' | 'system'>('general');
+    const [activeTab, setActiveTab] = useState<'general' | 'location' | 'receipt' | 'system' | 'mpesa'>('general');
 
     const loadSettings = useCallback(async () => {
         setIsLoading(true);
