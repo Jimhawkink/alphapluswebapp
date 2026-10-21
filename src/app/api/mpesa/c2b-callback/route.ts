@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, c2bSupabase } from '@/lib/supabase';
 
-// Safaricom Daraja C2B Confirmation Webhook
+// Safaricom Daraja C2B Confirmation Webhook Listener
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -17,8 +17,10 @@ export async function POST(request: NextRequest) {
       .join(' ')
       .trim() || body.customer_name || 'M-Pesa Customer';
 
+    const client = c2bSupabase || supabase;
+
     // 1. Insert into c2b_transactions table
-    const { data, error } = await supabase
+    const { data, error } = await client
       .from('c2b_transactions')
       .insert({
         mpesa_receipt: mpesaReceipt,
@@ -30,12 +32,12 @@ export async function POST(request: NextRequest) {
         transaction_time: new Date().toISOString(),
       })
       .select()
-      .single();
+      .maybeSingle();
 
     if (error) {
       console.error('Error recording C2B transaction to Supabase:', error);
     } else {
-      console.log('C2B transaction saved to Supabase c2b_transactions ID:', data?.id);
+      console.log('✅ C2B transaction saved to Supabase c2b_transactions ID:', data?.id);
     }
 
     // 2. Return standard Safaricom Daraja confirmation response
@@ -58,7 +60,7 @@ export async function GET() {
   return NextResponse.json({
     status: 'active',
     endpoint: '/api/mpesa/c2b-callback',
-    system: 'AlphaPlus Enterprise M-Pesa C2B Webhook',
+    system: 'AlphaPlus Enterprise M-Pesa C2B Webhook Listener',
     timestamp: new Date().toISOString(),
   });
 }

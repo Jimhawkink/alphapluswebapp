@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase, c2bSupabase } from '@/lib/supabase';
 import {
     savePendingSale,
     getNextReceiptNumber,
@@ -1768,25 +1768,69 @@ export default function POSPage() {
 
     // Realtime / Polling Watchdog for Incoming Safaricom M-Pesa C2B Payments
     useEffect(() => {
+        let lastNotifiedId = 0;
         const checkIncomingC2B = async () => {
             try {
-                const { data } = await supabase
+                const client = c2bSupabase || supabase;
+                const { data } = await client
                     .from('c2b_transactions')
                     .select('*')
                     .eq('is_linked', false)
                     .order('id', { ascending: false })
-                    .limit(3);
+                    .limit(5);
+
                 if (data && data.length > 0) {
                     setIncomingC2BTxs(data);
+                    const newest = data[0];
+                    if (newest && newest.id > lastNotifiedId) {
+                        lastNotifiedId = newest.id;
+                        toast.success(`📱 M-Pesa Received: Ksh ${Number(newest.amount).toLocaleString()} from ${newest.customer_name || 'Customer'}!`, {
+                            duration: 7000,
+                            icon: '💰'
+                        });
+                    }
+                } else {
+                    setIncomingC2BTxs([]);
                 }
             } catch {
                 // ignore
             }
         };
         checkIncomingC2B();
-        const c2bInterval = setInterval(checkIncomingC2B, 5000);
+        const c2bInterval = setInterval(checkIncomingC2B, 3000);
         return () => clearInterval(c2bInterval);
     }, []);
+
+    // Attach C2B payment to current bill
+    const handleAttachC2BToBill = async (tx: any) => {
+        try {
+            const client = c2bSupabase || supabase;
+            await client
+                .from('c2b_transactions')
+                .update({
+                    is_linked: true,
+                    linked_at: new Date().toISOString()
+                })
+                .eq('id', tx.id);
+
+            setIncomingC2BTxs(prev => prev.filter(t => t.id !== tx.id));
+            toast.success(`Attached M-Pesa ${tx.mpesa_receipt} (Ksh ${Number(tx.amount).toLocaleString()}) to current bill! ✅`);
+
+            if (cart.length > 0) {
+                await completeSale(
+                    'mpesa',
+                    Number(tx.amount) || total,
+                    tx.mpesa_receipt,
+                    tx.customer_name
+                );
+            } else {
+                toast('M-Pesa payment verified. Add dishes to cart to finalize bill.', { icon: 'ℹ️' });
+            }
+        } catch (err) {
+            console.error('Error attaching C2B transaction:', err);
+            toast.error('Failed to attach M-Pesa transaction');
+        }
+    };
 
     // Split Bill Handler for Equal Shares
     const handleCompleteSplitShare = async (shareNo: number, totalShares: number, amount: number, method: string, mpesaRef?: string, guestName?: string) => {
@@ -3854,6 +3898,45 @@ export default function POSPage() {
                                 </div>
                             )}
                         </div>
+                    </div>
+                )}
+
+                {/* Floating Real-Time Safaricom M-Pesa C2B Toast Watchdog */}
+                {incomingC2BTxs.filter(t => !dismissedC2BIds.includes(t.id)).length > 0 && (
+                    <div className="fixed top-20 right-6 z-[999] max-w-md w-full space-y-2 pointer-events-auto animate-in slide-in-from-top-4 duration-200">
+                        {incomingC2BTxs.filter(t => !dismissedC2BIds.includes(t.id)).map(tx => (
+                            <div key={tx.id} className="p-4 bg-gradient-to-r from-emerald-600 via-teal-700 to-green-800 text-white rounded-3xl shadow-2xl border-2 border-white/50 flex items-center justify-between gap-3 backdrop-blur-xl">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-2xl font-bold animate-bounce shadow-inner">
+                                        📱
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-[10px] font-black uppercase tracking-wider bg-black/25 px-2 py-0.5 rounded-full">
+                                                C2B M-Pesa Received
+                                            </span>
+                                            <span className="text-[11px] font-mono font-bold text-emerald-200">{tx.mpesa_receipt}</span>
+                                        </div>
+                                        <p className="text-2xl font-black mt-0.5 font-mono">Ksh {Number(tx.amount).toLocaleString()}</p>
+                                        <p className="text-xs text-emerald-100 truncate">From: <strong>{tx.customer_name || 'Customer'}</strong></p>
+                                    </div>
+                                </div>
+                                <div className="flex flex-col gap-1.5 shrink-0">
+                                    <button
+                                        onClick={() => handleAttachC2BToBill(tx)}
+                                        className="px-3.5 py-2 bg-white hover:bg-emerald-50 active:bg-emerald-100 text-emerald-950 rounded-xl text-xs font-black shadow-md transition-all whitespace-nowrap"
+                                    >
+                                        Attach to Bill →
+                                    </button>
+                                    <button
+                                        onClick={() => setDismissedC2BIds(prev => [...prev, tx.id])}
+                                        className="text-[11px] text-white/70 hover:text-white text-center font-semibold"
+                                    >
+                                        Dismiss
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
 
