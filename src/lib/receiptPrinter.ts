@@ -238,9 +238,9 @@ export async function saveTaxDisplaySetting(show: boolean): Promise<boolean> {
 
 
 // =========================================================================
-// ULTRA PREMIUM CUSTOMER RECEIPT & BILL GENERATOR
-// Highly styled, elegant boutique hotel/restaurant thermal receipt
-// Compatible with 80mm & 58mm thermal printers and on-screen previews
+// COMPACT THERMAL CUSTOMER RECEIPT & BILL GENERATOR
+// Lightweight, concise height, thin ultra-dashed dividers, zero thick black banners
+// Crisp normal font weights, fully responsive for 80mm & 58mm thermal printers
 // Fully honors the showTaxInfo toggle (show/hide Kenya tax breakdown)
 // =========================================================================
 
@@ -251,14 +251,14 @@ export async function generateCustomerBillHTML(
 ): Promise<string> {
   const showTax = data.showTaxInfo ?? getTaxDisplaySettingSync();
 
-  // Generate inline QR code as base64 (no external network needed — instant render)
+  // Generate inline QR code as base64 (compact size ~85px)
   let qrDataUrl = '';
   if (data.qrCodeData) {
     try {
       qrDataUrl = await QRCode.toDataURL(data.qrCodeData, {
-        errorCorrectionLevel: 'H',
-        margin: 2,
-        width: 220,
+        errorCorrectionLevel: 'M',
+        margin: 1,
+        width: 140,
         color: { dark: '#000000', light: '#ffffff' }
       });
     } catch (e) {
@@ -276,50 +276,46 @@ export async function generateCustomerBillHTML(
   const levyAmt = data.levyAmount || (netAmt * ((data.levyRate || 2) / 100));
   const totTax = data.totalTax || (vatAmt + levyAmt);
 
-  // Generate item rows
-  const itemRows = data.items.map((item, idx) => {
+  // Generate item rows (compact, thin dashed borders, normal weight)
+  const itemRows = data.items.map((item) => {
     const itemSubtotal = item.total - (item.discount || 0);
     const itemTaxRate = 0.18; // 16% VAT + 2% Levy
     const itemNetAmount = itemSubtotal / (1 + itemTaxRate);
     const itemTaxAmount = itemSubtotal - itemNetAmount;
 
     const itemNotes = item.notes
-      ? `<div style="font-size:8px;color:#d97706;font-style:italic;margin-top:1px;">📝 ${item.notes}</div>`
+      ? `<div style="font-size:7.5px;color:#555;font-style:italic;">* ${item.notes}</div>`
       : '';
     const itemDiscount = item.discount && item.discount > 0
-      ? `<div style="font-size:8px;color:#16a34a;font-weight:700;">-${fmt(item.discount)} OFF</div>`
+      ? `<div style="font-size:7.5px;color:#333;">-${fmt(item.discount)} disc</div>`
       : '';
 
     if (showTax) {
       return `
-        <tr style="border-bottom:1px dashed #d1d5db;">
-          <td style="padding:5px 2px;vertical-align:top;">
-            <div style="font-weight:800;font-size:10px;color:#111827;line-height:1.25;">${item.name}</div>
+        <tr>
+          <td style="padding:2px 1px;vertical-align:top;">
+            <div>${item.name}</div>
             ${itemNotes}
             ${itemDiscount}
           </td>
-          <td style="padding:5px 2px;text-align:center;font-weight:800;font-size:10.5px;vertical-align:top;">
-            <span style="display:inline-block;min-width:18px;background:#f3f4f6;border-radius:3px;padding:1px 3px;">${item.qty}</span>
-          </td>
-          <td style="padding:5px 2px;text-align:right;font-size:10px;color:#4b5563;vertical-align:top;">${item.price.toLocaleString()}</td>
-          <td style="padding:5px 2px;text-align:right;font-size:9px;color:#2563eb;font-weight:600;vertical-align:top;">${Math.round(itemTaxAmount).toLocaleString()}</td>
-          <td style="padding:5px 2px;text-align:right;font-weight:900;font-size:10.5px;color:#111827;vertical-align:top;">${item.total.toLocaleString()}</td>
+          <td style="padding:2px 1px;text-align:center;vertical-align:top;">${item.qty}</td>
+          <td style="padding:2px 1px;text-align:right;vertical-align:top;">${item.price.toLocaleString()}</td>
+          <td style="padding:2px 1px;text-align:right;font-size:8px;vertical-align:top;">${Math.round(itemTaxAmount).toLocaleString()}</td>
+          <td style="padding:2px 1px;text-align:right;vertical-align:top;">${item.total.toLocaleString()}</td>
         </tr>
       `;
     } else {
-      // Clean 4-column layout when tax is hidden (more spacious dish name)
+      // Clean 4-column layout when tax is hidden
       return `
-        <tr style="border-bottom:1px dashed #d1d5db;">
-          <td style="padding:6px 2px;vertical-align:top;">
-            <div style="font-weight:800;font-size:10.5px;color:#111827;line-height:1.25;">${item.name}</div>
+        <tr>
+          <td style="padding:2px 1px;vertical-align:top;">
+            <div>${item.name}</div>
             ${itemNotes}
             ${itemDiscount}
           </td>
-          <td style="padding:6px 2px;text-align:center;font-weight:800;font-size:11px;vertical-align:top;">
-            <span style="display:inline-block;min-width:20px;background:#f3f4f6;border-radius:3px;padding:1px 4px;">${item.qty}</span>
-          </td>
-          <td style="padding:6px 2px;text-align:right;font-size:10.5px;color:#4b5563;vertical-align:top;">${item.price.toLocaleString()}</td>
-          <td style="padding:6px 2px;text-align:right;font-weight:900;font-size:11px;color:#111827;vertical-align:top;">${item.total.toLocaleString()}</td>
+          <td style="padding:2px 1px;text-align:center;vertical-align:top;">${item.qty}</td>
+          <td style="padding:2px 1px;text-align:right;vertical-align:top;">${item.price.toLocaleString()}</td>
+          <td style="padding:2px 1px;text-align:right;vertical-align:top;">${item.total.toLocaleString()}</td>
         </tr>
       `;
     }
@@ -330,7 +326,7 @@ export async function generateCustomerBillHTML(
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>${isPaid ? 'Official Receipt' : 'Customer Bill'} - ${data.invoiceNo}</title>
+  <title>${isPaid ? 'Receipt' : 'Bill'} - ${data.invoiceNo}</title>
   <style>
     @page {
       margin: 0;
@@ -340,452 +336,228 @@ export async function generateCustomerBillHTML(
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      font-weight: normal !important;
       -webkit-print-color-adjust: exact;
       print-color-adjust: exact;
     }
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-      font-size: 10px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 9.5px;
       width: 80mm;
       max-width: 80mm;
-      padding: 3.5mm 3.5mm;
+      padding: 2.5mm 3mm;
       margin: 0 auto;
       background: #ffffff;
       color: #000000;
       line-height: 1.3;
     }
 
-    /* ── Header & Branding ── */
-    .brand-header {
+    /* ── Thin Ultra Dashes ── */
+    .thin-dash {
+      border-top: 1px dashed #555555;
+      margin: 3px 0;
+      width: 100%;
+    }
+
+    /* ── Header Section ── */
+    .header-area {
       text-align: center;
-      padding-bottom: 6px;
-      margin-bottom: 6px;
-      border-bottom: 2px dashed #000;
+      margin-bottom: 3px;
     }
-    .brand-crown {
-      font-size: 20px;
-      line-height: 1;
-      margin-bottom: 2px;
-    }
-    .brand-name {
-      font-size: 15px;
-      font-weight: 900;
-      letter-spacing: 0.5px;
+    .comp-name {
+      font-size: 13px;
       text-transform: uppercase;
-      color: #000;
+      letter-spacing: 0.5px;
     }
-    .brand-slogan {
+    .comp-details {
       font-size: 8.5px;
-      font-style: italic;
-      color: #4b5563;
+      color: #222222;
+      line-height: 1.3;
       margin-top: 1px;
     }
-    .brand-contact {
-      font-size: 9px;
-      color: #374151;
-      margin-top: 3px;
+
+    /* ── Title Banner with Thin Dashes ── */
+    .title-strip {
+      border-top: 1px dashed #555555;
+      border-bottom: 1px dashed #555555;
+      padding: 2.5px 0;
+      text-align: center;
+      font-size: 10px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin: 3px 0;
+    }
+
+    /* ── Metadata Info ── */
+    .info-grid {
+      font-size: 8.5px;
+      margin: 3px 0;
       line-height: 1.35;
     }
-    .kra-pin-pill {
-      display: inline-block;
-      margin-top: 3px;
-      font-size: 9px;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      background: #f3f4f6;
-      border: 1px solid #d1d5db;
-      padding: 1px 6px;
-      border-radius: 4px;
-    }
-
-    /* ── Document Title Banner ── */
-    .title-banner {
-      text-align: center;
-      margin: 6px 0;
-      padding: 6px 4px;
-      border-radius: 5px;
-    }
-    .title-banner.paid {
-      background: #000000;
-      color: #ffffff;
-    }
-    .title-banner.unpaid {
-      background: #fef2f2;
-      border: 1.5px solid #dc2626;
-      color: #dc2626;
-    }
-    .title-banner-text {
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-    }
-    .title-banner-sub {
-      font-size: 8.5px;
-      font-weight: 700;
-      margin-top: 2px;
-      opacity: 0.9;
-    }
-
-    /* ── Metadata Grid ── */
-    .meta-box {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 5px;
-      padding: 6px;
-      margin-bottom: 7px;
-      font-size: 9.5px;
-    }
-    .meta-row {
+    .info-row {
       display: flex;
       justify-content: space-between;
-      padding: 1.5px 0;
-    }
-    .meta-lbl {
-      color: #6b7280;
-      font-weight: 600;
-    }
-    .meta-val {
-      font-weight: 700;
-      color: #111827;
-      text-align: right;
-    }
-    .font-mono {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      padding: 0.5px 0;
     }
 
     /* ── Items Table ── */
     .items-table {
       width: 100%;
       border-collapse: collapse;
-      margin-bottom: 6px;
+      margin: 3px 0;
+      font-size: 9px;
     }
     .items-table th {
-      background: #111827;
-      color: #ffffff;
-      padding: 5px 3px;
+      border-top: 1px dashed #555555;
+      border-bottom: 1px dashed #555555;
+      padding: 3px 1px;
       font-size: 8.5px;
-      font-weight: 800;
-      letter-spacing: 0.4px;
       text-transform: uppercase;
+      background: transparent !important;
+      color: #000000;
     }
     .items-table td {
-      border-bottom: 1px dashed #e5e7eb;
+      padding: 2.5px 1px;
+      vertical-align: top;
+      border-bottom: 1px dashed #e5e5e5;
     }
     .items-table tr:last-child td {
-      border-bottom: 2px solid #000000;
+      border-bottom: none;
     }
 
-    /* ── Totals Ledger ── */
-    .totals-ledger {
-      margin-top: 5px;
-    }
-    .ledger-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 2px 0;
-      font-size: 9.5px;
-    }
-    .ledger-lbl {
-      color: #4b5563;
-      font-weight: 600;
-    }
-    .ledger-val {
-      font-weight: 700;
-      color: #111827;
-    }
-
-    /* ── Tax Breakdown Box (Conditionally Displayed) ── */
-    .tax-box {
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
-      border-radius: 5px;
-      padding: 5px 6px;
-      margin: 6px 0;
-    }
-    .tax-box-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 8.5px;
-      font-weight: 800;
-      color: #1e40af;
-      text-transform: uppercase;
-      border-bottom: 1px solid #dbeafe;
-      padding-bottom: 3px;
-      margin-bottom: 4px;
-    }
-    .tax-box-pill {
-      background: #2563eb;
-      color: #ffffff;
-      font-size: 7.5px;
-      padding: 1px 5px;
-      border-radius: 10px;
-    }
-    .tax-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 8.5px;
-      padding: 1px 0;
-      color: #1e3a8a;
-    }
-    .tax-row-total {
-      border-top: 1px solid #bfdbfe;
-      margin-top: 3px;
-      padding-top: 3px;
-      font-weight: 800;
-      font-size: 9px;
-      color: #1e40af;
-    }
-
-    /* ── Grand Total Ribbon ── */
-    .grand-total-ribbon {
-      background: #000000;
-      color: #ffffff;
-      padding: 8px 10px;
-      border-radius: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin: 7px 0;
-    }
-    .grand-total-label {
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
-    .grand-total-amount {
-      font-size: 17px;
-      font-weight: 900;
-      letter-spacing: -0.5px;
-    }
-
-    /* ── Settlement Box ── */
-    .settlement-card {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 5px;
-      padding: 5px 6px;
-      margin-bottom: 6px;
-      font-size: 9px;
-    }
-    .settlement-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 1.5px 0;
-    }
-    .settlement-change {
-      color: #15803d;
-      font-weight: 800;
-      border-top: 1px dashed #d1d5db;
-      padding-top: 2px;
+    /* ── Totals & Grand Total ── */
+    .totals-box {
+      border-top: 1px dashed #555555;
+      padding-top: 2.5px;
       margin-top: 2px;
-    }
-
-    /* ── M-PESA Code Box ── */
-    .mpesa-badge {
-      border: 1.5px dashed #16a34a;
-      background: #f0fdf4;
-      border-radius: 5px;
-      padding: 6px;
-      text-align: center;
-      margin: 6px 0;
-    }
-    .mpesa-badge-title {
-      color: #15803d;
       font-size: 9px;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
-    .mpesa-code {
-      font-family: ui-monospace, monospace;
-      font-size: 13px;
-      font-weight: 900;
-      color: #111827;
-      letter-spacing: 2px;
+    .total-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 1px 0;
+    }
+    .grand-total-strip {
+      border-top: 1px dashed #555555;
+      border-bottom: 1px dashed #555555;
+      padding: 3.5px 0;
       margin: 3px 0;
-    }
-    .mpesa-sub {
-      font-size: 8px;
-      color: #166534;
+      font-size: 12px;
+      display: flex;
+      justify-content: space-between;
+      text-transform: uppercase;
     }
 
-    /* ── Order Notes ── */
-    .notes-box {
-      background: #fffbeb;
-      border: 1px solid #fde68a;
-      border-radius: 5px;
-      padding: 5px;
-      margin: 6px 0;
-      font-size: 9px;
-      color: #92400e;
+    /* ── Tax Breakdown Section ── */
+    .tax-box {
+      border-top: 1px dashed #777777;
+      padding: 2px 0;
+      margin: 2px 0;
+      font-size: 8px;
+    }
+    .tax-line {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.5px 0;
+    }
+
+    /* ── Payment Info ── */
+    .payment-info {
+      font-size: 8.5px;
+      margin: 2px 0;
+    }
+    .mpesa-strip {
+      border-top: 1px dashed #555555;
+      border-bottom: 1px dashed #555555;
+      padding: 2px 0;
+      margin: 3px 0;
+      text-align: center;
+      font-size: 8.5px;
     }
 
     /* ── QR Code ── */
-    .qr-container {
+    .qr-area {
       text-align: center;
-      padding: 6px;
-      margin: 7px 0;
-      background: #ffffff;
-      border: 1px dashed #9ca3af;
-      border-radius: 6px;
+      margin: 3px 0 2px 0;
     }
-    .qr-img {
-      width: 140px;
-      height: 140px;
-      image-rendering: crisp-edges;
-      image-rendering: pixelated;
+    .qr-code-img {
+      width: 80px;
+      height: 80px;
       margin: 0 auto;
       display: block;
     }
-    .qr-hint {
-      font-size: 8px;
-      color: #4b5563;
+
+    /* ── Footer ── */
+    .footer-note {
+      border-top: 1px dashed #555555;
+      padding-top: 3px;
       margin-top: 3px;
-      font-weight: 600;
-      text-transform: uppercase;
-    }
-
-    /* ── Barcode & Serial ── */
-    .barcode-wrap {
       text-align: center;
-      margin: 6px 0 4px 0;
-      font-family: 'Libre Barcode 39 Text', monospace;
-      font-size: 26px;
-      letter-spacing: 1px;
-    }
-    .barcode-serial {
-      text-align: center;
-      font-family: ui-monospace, monospace;
-      font-size: 9px;
-      font-weight: 700;
-      letter-spacing: 1px;
-      color: #374151;
-    }
-
-    /* ── Hospitality Footer ── */
-    .footer-section {
-      text-align: center;
-      margin-top: 8px;
-      padding-top: 6px;
-      border-top: 2px dashed #000000;
-      font-size: 8.5px;
-      color: #4b5563;
-      line-height: 1.4;
-    }
-    .footer-stars {
-      color: #000;
-      font-size: 11px;
-      letter-spacing: 2px;
-      margin-bottom: 2px;
-    }
-    .footer-thanks {
-      font-weight: 900;
-      font-size: 10px;
-      color: #000;
-      text-transform: uppercase;
-    }
-    .footer-sub {
-      margin-top: 2px;
-    }
-    .tear-line {
-      margin: 7px 0 4px 0;
       font-size: 8px;
-      letter-spacing: 1px;
-      color: #9ca3af;
-    }
-    .footer-credit {
-      font-size: 7.5px;
-      color: #9ca3af;
-      margin-top: 2px;
+      line-height: 1.35;
+      color: #333333;
     }
 
     @media print {
       body {
         width: 80mm;
-        padding: 2mm;
+        padding: 1.5mm 2mm;
       }
     }
   </style>
 </head>
 <body>
 
-  <!-- Brand Header -->
-  <div class="brand-header">
-    <div class="brand-crown">👑</div>
-    <div class="brand-name">${company.name}</div>
-    ${company.slogan ? `<div class="brand-slogan">"${company.slogan}"</div>` : ''}
-    <div class="brand-contact">
-      📍 ${company.address}<br>
-      📞 ${company.phone}${company.email ? ` • ✉️ ${company.email}` : ''}
-      ${showTax && company.pin ? `<br><span class="kra-pin-pill">KRA PIN: ${company.pin}</span>` : ''}
+  <!-- Header -->
+  <div class="header-area">
+    <div class="comp-name">${company.name}</div>
+    <div class="comp-details">
+      ${company.address ? `${company.address}<br>` : ''}
+      TEL: ${company.phone}
+      ${showTax && company.pin ? ` • PIN: ${company.pin}` : ''}
     </div>
   </div>
 
-  <!-- Title Banner -->
-  <div class="title-banner ${isPaid ? 'paid' : 'unpaid'}">
-    <div class="title-banner-text">
-      ${isPaid ? (showTax ? '★ OFFICIAL TAX INVOICE ★' : '★ OFFICIAL CUSTOMER RECEIPT ★') : '★ CUSTOMER BILL ESTIMATE ★'}
-    </div>
-    <div class="title-banner-sub">
-      ${isPaid ? `✓ PAID IN FULL • ${data.paymentMethod.toUpperCase()}` : '⚠ BILL ESTIMATE • PAYMENT PENDING'}
-    </div>
+  <!-- Document Title Strip (Thin Dashes) -->
+  <div class="title-strip">
+    ${isPaid ? (showTax ? 'TAX INVOICE' : 'OFFICIAL RECEIPT') : 'CUSTOMER BILL'}
   </div>
 
-  <!-- Metadata Information Card -->
-  <div class="meta-box">
-    <div class="meta-row">
-      <span class="meta-lbl">INVOICE NO:</span>
-      <span class="meta-val font-mono">${data.invoiceNo}</span>
+  <!-- Receipt Metadata Info -->
+  <div class="info-grid">
+    <div class="info-row">
+      <span>Receipt: ${data.invoiceNo}</span>
+      <span>Date: ${data.date} ${data.time}</span>
     </div>
-    <div class="meta-row">
-      <span class="meta-lbl">DATE & TIME:</span>
-      <span class="meta-val">${data.date} • ${data.time}</span>
+    <div class="info-row">
+      <span>Served by: ${data.cashier}</span>
+      ${data.tableNo ? `<span>Table: ${data.tableNo}</span>` : `<span>Payment: ${data.paymentMethod.toUpperCase()}</span>`}
     </div>
-    <div class="meta-row">
-      <span class="meta-lbl">CASHIER / SERVER:</span>
-      <span class="meta-val">${data.cashier}</span>
-    </div>
-    ${data.tableNo ? `
-    <div class="meta-row">
-      <span class="meta-lbl">TABLE / STATION:</span>
-      <span class="meta-val font-bold">TABLE ${data.tableNo}</span>
-    </div>
-    ` : ''}
     ${data.customerName ? `
-    <div class="meta-row">
-      <span class="meta-lbl">GUEST NAME:</span>
-      <span class="meta-val">${data.customerName}</span>
-    </div>
-    ` : ''}
-    ${data.shiftCode ? `
-    <div class="meta-row">
-      <span class="meta-lbl">SHIFT / TERMINAL:</span>
-      <span class="meta-val font-mono">${data.shiftCode}</span>
+    <div class="info-row">
+      <span>Customer: ${data.customerName}</span>
+      ${data.shiftCode ? `<span>Shift: ${data.shiftCode}</span>` : ''}
     </div>
     ` : ''}
   </div>
 
-  <!-- Itemized Details Table -->
+  <!-- Items Table (Thin Dashes) -->
   <table class="items-table">
     <thead>
       ${showTax ? `
       <tr>
-        <th style="width:42%;text-align:left;">ITEM DESCRIPTION</th>
-        <th style="width:10%;text-align:center;">QTY</th>
-        <th style="width:18%;text-align:right;">PRICE</th>
-        <th style="width:13%;text-align:right;">TAX</th>
-        <th style="width:17%;text-align:right;">TOTAL</th>
+        <th style="width:44%;text-align:left;">Item</th>
+        <th style="width:10%;text-align:center;">Qty</th>
+        <th style="width:18%;text-align:right;">Price</th>
+        <th style="width:12%;text-align:right;">Tax</th>
+        <th style="width:16%;text-align:right;">Amt</th>
       </tr>
       ` : `
       <tr>
-        <th style="width:52%;text-align:left;">ITEM DESCRIPTION</th>
-        <th style="width:12%;text-align:center;">QTY</th>
-        <th style="width:18%;text-align:right;">PRICE</th>
-        <th style="width:18%;text-align:right;">TOTAL</th>
+        <th style="width:52%;text-align:left;">Item</th>
+        <th style="width:12%;text-align:center;">Qty</th>
+        <th style="width:18%;text-align:right;">Price</th>
+        <th style="width:18%;text-align:right;">Amt</th>
       </tr>
       `}
     </thead>
@@ -794,118 +566,95 @@ export async function generateCustomerBillHTML(
     </tbody>
   </table>
 
-  <!-- Totals Section -->
-  <div class="totals-ledger">
-    <div class="ledger-row">
-      <span class="ledger-lbl">Subtotal (${data.items.length} items • ${totalQty} portions):</span>
-      <span class="ledger-val">Ksh ${data.subtotal.toLocaleString()}</span>
+  <!-- Subtotal & Discount -->
+  <div class="totals-box">
+    <div class="total-line">
+      <span>Subtotal (${data.items.length} items, ${totalQty} pcs):</span>
+      <span>Ksh ${data.subtotal.toLocaleString()}</span>
     </div>
     ${data.discount > 0 ? `
-    <div class="ledger-row" style="color:#16a34a;">
-      <span class="ledger-lbl" style="color:#16a34a;font-weight:700;">Special Discount:</span>
-      <span class="ledger-val" style="color:#16a34a;font-weight:800;">- Ksh ${data.discount.toLocaleString()}</span>
+    <div class="total-line">
+      <span>Discount:</span>
+      <span>- Ksh ${data.discount.toLocaleString()}</span>
     </div>
     ` : ''}
   </div>
 
-  <!-- Tax Breakdown Box (Rendered ONLY if showTax is ON) -->
+  <!-- Tax Breakdown (Only if showTax is ON) -->
   ${showTax ? `
   <div class="tax-box">
-    <div class="tax-box-header">
-      <span>📊 KENYA TAX BREAKDOWN (INCLUSIVE)</span>
-      <span class="tax-box-pill">${(data.vatRate || 16) + (data.levyRate || 2)}% TOTAL</span>
-    </div>
-    <div class="tax-row">
-      <span>Net Taxable Base:</span>
+    <div style="text-align:center;margin-bottom:1.5px;font-size:7.5px;">TAX BREAKDOWN (18% INCL)</div>
+    <div class="tax-line">
+      <span>Net Amount:</span>
       <span>Ksh ${fmt(netAmt)}</span>
     </div>
-    <div class="tax-row">
-      <span>VAT (${data.vatRate || 16}%):</span>
+    <div class="tax-line">
+      <span>VAT (16%):</span>
       <span>Ksh ${fmt(vatAmt)}</span>
     </div>
-    <div class="tax-row">
-      <span>Catering / Tourism Levy (${data.levyRate || 2}%):</span>
+    <div class="tax-line">
+      <span>Catering Levy (2%):</span>
       <span>Ksh ${fmt(levyAmt)}</span>
     </div>
-    <div class="tax-row tax-row-total">
-      <span>TOTAL TAX COLLECTED:</span>
+    <div class="tax-line" style="border-top:1px dashed #aaa;margin-top:1px;padding-top:1px;">
+      <span>Total Tax:</span>
       <span>Ksh ${fmt(totTax)}</span>
     </div>
   </div>
   ` : ''}
 
-  <!-- Grand Total Ribbon -->
-  <div class="grand-total-ribbon">
-    <div class="grand-total-label">TOTAL AMOUNT</div>
-    <div class="grand-total-amount">Ksh ${data.total.toLocaleString()}</div>
+  <!-- Grand Total (Thin Dashed Strip) -->
+  <div class="grand-total-strip">
+    <span>TOTAL:</span>
+    <span>Ksh ${data.total.toLocaleString()}</span>
   </div>
 
-  <!-- Payment Status & Settlement Card -->
+  <!-- Settlement / Payment Info -->
   ${isPaid ? `
-  <div class="settlement-card">
-    <div class="settlement-row">
-      <span class="meta-lbl">PAYMENT METHOD:</span>
-      <span class="meta-val font-bold">${data.paymentMethod.toUpperCase()}</span>
+  <div class="payment-info">
+    <div class="total-line">
+      <span>Paid via ${data.paymentMethod.toUpperCase()}:</span>
+      <span>Ksh ${(data.amountPaid || data.total).toLocaleString()}</span>
     </div>
-    ${data.amountPaid ? `
-    <div class="settlement-row">
-      <span class="meta-lbl">AMOUNT TENDERED:</span>
-      <span class="meta-val">Ksh ${data.amountPaid.toLocaleString()}</span>
-    </div>
-    ` : ''}
     ${data.change > 0 ? `
-    <div class="settlement-row settlement-change">
-      <span>CHANGE RETURNED:</span>
+    <div class="total-line">
+      <span>Change Returned:</span>
       <span>Ksh ${data.change.toLocaleString()}</span>
     </div>
     ` : ''}
   </div>
-
-  ${data.paymentMethod.toUpperCase().includes('MPESA') || data.mpesaReceipt ? `
-  <div class="mpesa-badge">
-    <div class="mpesa-badge-title">📱 CONFIRMED M-PESA PAYMENT</div>
-    <div class="mpesa-code">${data.mpesaReceipt || data.verificationHash || 'VERIFIED'}</div>
-    <div class="mpesa-sub">Official Safaricom Lipa na M-Pesa Record</div>
+  ${(data.paymentMethod.toUpperCase().includes('MPESA') || data.mpesaReceipt) ? `
+  <div class="mpesa-strip">
+    M-PESA REF: ${data.mpesaReceipt || data.verificationHash || 'CONFIRMED'}
   </div>
   ` : ''}
   ` : `
-  <div class="title-banner unpaid" style="margin:4px 0 6px 0;padding:5px;">
-    <div style="font-weight:900;font-size:11px;">❌ NOT PAID (PENDING)</div>
-    <div style="font-size:8.5px;margin-top:2px;">Please present this bill at the counter</div>
+  <div class="title-strip" style="font-size:8.5px;margin:2px 0;">
+    *** NOT PAID - PLEASE PAY AT COUNTER ***
   </div>
   `}
 
-  <!-- Order Special Notes -->
+  <!-- Special Order Notes -->
   ${data.orderNotes ? `
-  <div class="notes-box">
-    📝 <strong>Special Order Instructions:</strong> ${data.orderNotes}
+  <div style="font-size:8px;margin:2px 0;font-style:italic;">
+    Note: ${data.orderNotes}
   </div>
   ` : ''}
 
-  <!-- QR Code Verification Card -->
+  <!-- QR Code (Compact 80px) -->
   ${(data.qrCodeData && qrDataUrl) ? `
-  <div class="qr-container">
-    <div style="font-size:8px;font-weight:800;color:#111827;text-transform:uppercase;margin-bottom:3px;">
-      ${isPaid ? '✓ Scan to Verify Authentic Receipt' : '📱 Scan to Pay via M-Pesa Online'}
-    </div>
-    <img src="${qrDataUrl}" alt="Verification QR" class="qr-img" />
-    <div class="qr-hint">${isPaid ? 'VERIFIED • ' + data.invoiceNo : 'TAP OR SCAN TO PAY'}</div>
+  <div class="qr-area">
+    <img src="${qrDataUrl}" alt="QR" class="qr-code-img" />
+    <div style="font-size:7.5px;color:#555;margin-top:1px;">Scan to Verify Receipt</div>
   </div>
   ` : ''}
 
-  <!-- Barcode Section -->
-  <div class="barcode-wrap">*${data.invoiceNo}*</div>
-  <div class="barcode-serial">${data.invoiceNo}</div>
-
-  <!-- Hospitality Footer -->
-  <div class="footer-section">
-    <div class="footer-stars">★ ★ ★ ★ ★</div>
-    <div class="footer-thanks">THANK YOU FOR VISITING US!</div>
-    <div class="footer-sub">We appreciate your patronage and look forward to serving you again.</div>
-    <div style="margin-top:3px;font-size:8px;">${showTax ? 'This document serves as your official tax invoice.' : 'This document serves as your official customer receipt.'}</div>
-    <div style="font-size:8px;">Goods and meals once served are not returnable.</div>
-    <div class="tear-strip">- - - - - - - - - - - - - ✂ Tear Here ✂ - - - - - - - - - - - - -</div>
-    <div class="footer-credit">Alpha Plus Hospitality POS v2.0 • Digital Audit Trail</div>
+  <!-- Footer -->
+  <div class="footer-note">
+    <div>THANK YOU FOR DINING WITH US!</div>
+    <div style="font-size:7.5px;">Goods once sold are not returnable</div>
+    <div style="margin:2px 0;color:#888;">- - - - - - - - - - - - - - - - - - - -</div>
+    <div style="font-size:7px;color:#888;">Alpha Plus POS</div>
   </div>
 
 </body>

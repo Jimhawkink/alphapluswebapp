@@ -452,30 +452,30 @@ const loadTaxes = useCallback(async () => {
                                 </span>
                             </div>
 
-                            <div className="bg-white text-black p-3 rounded-xl shadow-inner text-[10px] leading-tight space-y-1.5 font-sans">
-                                <div className="text-center border-b border-dashed border-gray-400 pb-1.5">
-                                    <p className="font-black text-xs uppercase">ALPHA PLUS RESTAURANT</p>
-                                    <p className="text-[9px] text-gray-500">Main Street, Nairobi • TEL: +254 712 345 678</p>
+                            <div className="bg-white text-black p-3 rounded-xl shadow-inner text-[9.5px] leading-tight space-y-1 font-sans">
+                                <div className="text-center pb-1">
+                                    <p className="text-xs uppercase">ALPHA PLUS RESTAURANT</p>
+                                    <p className="text-[8.5px] text-gray-600">Main Street, Nairobi • TEL: +254 712 345 678</p>
                                     {showTaxOnReceipt && (
-                                        <p className="text-[9px] font-bold text-blue-700 mt-0.5 font-mono">PIN: {kraPin || 'P051234567X'}</p>
+                                        <p className="text-[8.5px] text-gray-700 mt-0.5">PIN: {kraPin || 'P051234567X'}</p>
                                     )}
                                 </div>
 
-                                <div className="text-center font-black text-[9px] uppercase tracking-wider bg-gray-100 py-1 rounded">
-                                    {showTaxOnReceipt ? '★ OFFICIAL TAX INVOICE ★' : '★ OFFICIAL CUSTOMER RECEIPT ★'}
+                                <div className="border-t border-b border-dashed border-gray-500 py-1 text-center text-[9px] uppercase tracking-wider">
+                                    {showTaxOnReceipt ? 'TAX INVOICE' : 'OFFICIAL RECEIPT'}
                                 </div>
 
-                                <div className="flex justify-between text-[9px] text-gray-500">
+                                <div className="flex justify-between text-[8.5px] text-gray-600 py-0.5">
                                     <span>RCP-00042</span>
                                     <span>TABLE 04 • 12:30 PM</span>
                                 </div>
 
-                                <div className="border-t border-b border-gray-200 py-1 space-y-1 text-[9.5px]">
-                                    <div className="flex justify-between font-semibold">
+                                <div className="border-t border-b border-dashed border-gray-400 py-1 space-y-0.5 text-[9px]">
+                                    <div className="flex justify-between">
                                         <span>1x Beef Stew & Ugali</span>
                                         <span>Ksh 350.00</span>
                                     </div>
-                                    <div className="flex justify-between font-semibold">
+                                    <div className="flex justify-between">
                                         <span>1x Fresh Passion Juice</span>
                                         <span>Ksh 100.00</span>
                                     </div>
@@ -483,10 +483,8 @@ const loadTaxes = useCallback(async () => {
 
                                 {/* Tax Breakdown Display */}
                                 {showTaxOnReceipt ? (
-                                    <div className="bg-blue-50 border border-blue-200 rounded p-1.5 text-[8.5px] space-y-0.5 text-blue-900 font-mono">
-                                        <div className="flex justify-between font-bold">
-                                            <span>TAX BREAKDOWN (18% INCL):</span>
-                                        </div>
+                                    <div className="border-t border-dashed border-gray-400 pt-1 text-[8px] space-y-0.5 text-gray-700">
+                                        <div className="text-center text-[7.5px]">TAX BREAKDOWN (18% INCL)</div>
                                         <div className="flex justify-between">
                                             <span>Net Taxable Base:</span>
                                             <span>Ksh 381.36</span>
@@ -501,18 +499,18 @@ const loadTaxes = useCallback(async () => {
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="bg-amber-50 border border-amber-200 rounded p-1 text-[8.5px] text-center text-amber-800 italic">
-                                        (Tax details hidden on customer receipt)
+                                    <div className="text-[8px] text-center text-gray-500 italic py-0.5">
+                                        (Tax details omitted on clean customer receipt)
                                     </div>
                                 )}
 
-                                <div className="bg-black text-white p-2 rounded flex justify-between font-black text-xs">
+                                <div className="border-t border-b border-dashed border-gray-600 py-1 flex justify-between text-xs">
                                     <span>TOTAL:</span>
                                     <span>Ksh 450.00</span>
                                 </div>
 
-                                <div className="text-center text-[8px] text-gray-400 pt-1 border-t border-dashed border-gray-300">
-                                    ★ THANK YOU FOR DINING WITH US! ★
+                                <div className="text-center text-[7.5px] text-gray-500 pt-1 border-t border-dashed border-gray-400">
+                                    THANK YOU FOR VISITING US!
                                 </div>
                             </div>
                         </div>
