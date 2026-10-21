@@ -10,6 +10,11 @@ import {
 } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import {
+    loadPOSPrinterSettings,
+    executeDirectPrint,
+    executeOrderAutoPrintSequence
+} from '@/lib/printerSettings';
+import {
     createReceiptData,
     loadTaxDisplaySetting,
     saveTaxDisplaySetting,
@@ -1928,8 +1933,31 @@ export default function POSPage() {
             const nextKOT = await getNextKOTNumber();
             setCurrentKOTNumber(nextKOT);
 
-            // Show KOT preview
-            setShowKOTPreview(true);
+            // Automatic sequence dispatch based on hotel setting (Both vs Customer Bill Alone vs KOT Alone)
+            const printerPrefs = loadPOSPrinterSettings();
+
+            if (printerPrefs.orderPrintMode !== 'none') {
+                await executeOrderAutoPrintSequence(kotHtmlContent, billHtmlContent, printerPrefs);
+            }
+
+            // Zero-Dialog Silent Mode vs Preview
+            if (printerPrefs.skipPreviewDialog && printerPrefs.orderPrintMode !== 'none') {
+                setShowKOTPreview(false);
+                setShowBillPreview(false);
+                await prepareForNextSale();
+                const modeMsg = printerPrefs.orderPrintMode === 'both'
+                    ? 'KOT & Customer Bill auto-printed in sequence! 🍳🧾'
+                    : printerPrefs.orderPrintMode === 'bill_only'
+                    ? 'Customer Bill auto-printed! 🧾'
+                    : 'KOT sent to kitchen printer! 🍳';
+                toast.success(`${modeMsg} Ready for next order.`);
+            } else {
+                if (printerPrefs.orderPrintMode === 'bill_only') {
+                    setShowBillPreview(true);
+                } else {
+                    setShowKOTPreview(true);
+                }
+            }
         } catch (error: any) {
             console.error('Error saving pending sale:', error);
             // Show detailed error message for debugging
@@ -1941,23 +1969,12 @@ export default function POSPage() {
     };
 
     // Print KOT and then show Customer Bill preview
-    const printKOTNow = () => {
-        // Print KOT
-        const kotWindow = window.open('', '_blank', 'width=350,height=600');
-        if (kotWindow) {
-            kotWindow.document.write(kotHTML);
-            kotWindow.document.close();
-            kotWindow.focus();
-            setTimeout(() => {
-                kotWindow.print();
-                kotWindow.onafterprint = () => kotWindow.close();
-            }, 250);
-        }
-        // Close KOT preview and show Customer Bill preview
+    const printKOTNow = async () => {
+        await executeDirectPrint(kotHTML, { printerRole: 'kitchen' });
         setShowKOTPreview(false);
         setTimeout(() => {
             setShowBillPreview(true);
-        }, 300);
+        }, 250);
     };
 
     // Close KOT without printing, still show Customer Bill
@@ -1993,22 +2010,10 @@ export default function POSPage() {
 
     // Print Customer Bill (unpaid) - After printing, prepare for next sale
     const printBillNow = async () => {
-        const billWindow = window.open('', '_blank', 'width=350,height=600');
-        if (billWindow) {
-            billWindow.document.write(billHTML);
-            billWindow.document.close();
-            billWindow.focus();
-            setTimeout(() => {
-                billWindow.print();
-                billWindow.onafterprint = () => billWindow.close();
-            }, 250);
-        }
+        await executeDirectPrint(billHTML, { printerRole: 'customer' });
         setShowBillPreview(false);
-
-        // After KOT + Bill, clear cart and prepare for next sale
-        // Transaction is already saved as Pending in sendToKitchen
         await prepareForNextSale();
-        toast.success('Ready for next order! 🛒');
+        toast.success('Customer Bill sent to printer! 🧾 Ready for next order.');
     };
 
     // Close Bill without printing - Still prepare for next sale
@@ -2214,21 +2219,23 @@ export default function POSPage() {
         const html = await generateCustomerBillHTML(receiptData, companyInfo, true);
         setReceiptHTML(html);
         setShowPayment(false);
-        setShowReceiptPreview(true);
+        const printerPrefs = loadPOSPrinterSettings();
+        if (printerPrefs.autoPrintReceiptOnPay) {
+            executeDirectPrint(html, { printerRole: 'customer' });
+        }
+
+        if (printerPrefs.skipPreviewDialog && printerPrefs.autoPrintReceiptOnPay) {
+            setShowReceiptPreview(false);
+            clearCart();
+            toast.success('Payment completed & receipt sent to printer! 🧾 Ready for next customer.');
+        } else {
+            setShowReceiptPreview(true);
+        }
     };
 
     // Print receipt
-    const printReceiptNow = () => {
-        const printWindow = window.open('', '_blank', 'width=350,height=600');
-        if (printWindow) {
-            printWindow.document.write(receiptHTML);
-            printWindow.document.close();
-            printWindow.focus();
-            setTimeout(() => {
-                printWindow.print();
-                printWindow.onafterprint = () => printWindow.close();
-            }, 250);
-        }
+    const printReceiptNow = async () => {
+        await executeDirectPrint(receiptHTML, { printerRole: 'customer' });
         setShowReceiptPreview(false);
         clearCart();
     };
@@ -2389,6 +2396,16 @@ export default function POSPage() {
                                     <span className="text-xs text-blue-600">🧾</span>
                                     <span className="text-xs font-bold text-blue-700">{invoiceNo}</span>
                                 </div>
+                                {/* Quick Hardware Printers Shortcut */}
+                                <a
+                                    href="/dashboard/printers"
+                                    target="_blank"
+                                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-semibold transition-colors"
+                                    title="Configure Hardware Thermal Printers & Zero-Dialog Kiosk Mode"
+                                >
+                                    <span>🖨️</span>
+                                    <span className="hidden sm:inline">Printers</span>
+                                </a>
                                 {/* Shift Info - Compact (Admin/Cashier only) */}
                                 {!isWaiterUser && hasActiveShift && shift && (
                                     <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 rounded-lg border border-green-200">

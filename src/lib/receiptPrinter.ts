@@ -73,7 +73,7 @@ export interface CompanyInfo {
 // Default company info - will be loaded from database
 let cachedCompanyInfo: CompanyInfo | null = null;
 
-const defaultCompanyInfo: CompanyInfo = {
+export const defaultCompanyInfo: CompanyInfo = {
   name: 'ALPHA PLUS RESTAURANT',
   address: 'Main Street, Nairobi',
   phone: '+254 712 345 678',
@@ -668,16 +668,16 @@ export async function generateReceiptHTML(data: ReceiptData, company: CompanyInf
 }
 
 // Generate KOT (Kitchen Order Ticket) HTML
+// Compact, thin ultra-dashed dividers, zero bold/black banners, normal font weight
 export function generateKOTHTML(data: KOTData, company: CompanyInfo = defaultCompanyInfo): string {
   const itemRows = data.items.map((item, index) => `
-    <div class="kot-item">
-        <span style="max-width: 70%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${index + 1}. ${item.name}</span>
-        <span class="dots"></span>
-        <div class="qty-box-black">${item.qty}</div>
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;padding:2px 0;">
+      <span style="font-size:10px;max-width:75%;word-break:break-word;">${index + 1}. ${item.name}</span>
+      <span style="font-size:11px;min-width:32px;text-align:right;">[ ${item.qty} ]</span>
     </div>
     ${item.notes ? `
-    <div style="font-size:11px;color:#c00;margin-top:-4px;margin-bottom:4px;padding-left:10px;font-style:italic;">
-      ⚠️ ${item.notes.toUpperCase()}
+    <div style="font-size:8px;color:#333;font-style:italic;padding-left:8px;margin-bottom:2px;">
+      * ${item.notes}
     </div>
     ` : ''}
   `).join('');
@@ -697,169 +697,120 @@ export function generateKOTHTML(data: KOTData, company: CompanyInfo = defaultCom
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+      font-weight: normal !important;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
     }
     body {
-      font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-      font-size: 12px;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-size: 10px;
       width: 80mm;
-      padding: 4mm;
-      background: #fff;
-      color: #000;
+      max-width: 80mm;
+      padding: 2.5mm 3mm;
+      margin: 0 auto;
+      background: #ffffff;
+      color: #000000;
+      line-height: 1.3;
     }
-    .kot-header-black {
-        background-color: #000;
-        color: white;
-        padding: 8px;
-        text-align: center;
-        border-radius: 6px;
-        margin-bottom: 10px;
+    .thin-dash {
+      border-top: 1px dashed #555555;
+      margin: 3px 0;
+      width: 100%;
     }
-    
-    .kot-title {
-        font-size: 18px; 
-        font-weight: 900;
-        text-transform: uppercase;
+    .title-strip {
+      border-top: 1px dashed #555555;
+      border-bottom: 1px dashed #555555;
+      padding: 2.5px 0;
+      text-align: center;
+      font-size: 10.5px;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin: 3px 0;
     }
-    
-    .kot-number {
-         font-size: 16px;
-         font-weight: 700;
-         margin-top: 2px;
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 8.5px;
+      color: #333333;
+      padding: 0.5px 0;
     }
-
-    .badge-takeaway {
-        display: inline-block;
-        background: linear-gradient(to right, #f59e0b, #ea580c);
-        color: white;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-weight: bold;
-        font-size: 12px;
-        text-transform: uppercase;
-        margin-bottom: 8px;
-        text-align: center;
+    .items-container {
+      margin: 4px 0;
     }
-
-    .badge-dinein {
-        display: inline-block;
-        background: linear-gradient(to right, #3b82f6, #2563eb);
-        color: white;
-        padding: 4px 12px;
-        border-radius: 20px;
-        font-weight: bold;
-        font-size: 12px;
-        text-transform: uppercase;
-        margin-bottom: 8px;
-        text-align: center;
+    .notes-box {
+      border: 1px dashed #555555;
+      padding: 3px 5px;
+      margin: 4px 0;
+      font-size: 8.5px;
+      text-align: center;
+      font-style: italic;
     }
-
-    .line-info {
-        border-top: 1px solid #000;
-        border-bottom: 1px solid #000;
-        padding: 5px 0;
-        margin: 10px 0;
-        text-align: center;
-        font-size: 10px;
-        font-weight: 700;
+    .footer-note {
+      text-align: center;
+      font-size: 7.5px;
+      color: #666666;
+      margin-top: 4px;
+      line-height: 1.2;
     }
-
-    .kot-item {
-        display: flex;
-        align-items: flex-end; /* Align dots to bottom */
-        justify-content: space-between;
-        margin-bottom: 8px;
-        font-size: 14px;
-        font-weight: 700;
-    }
-
-    .dots {
-        flex-grow: 1;
-        border-bottom: 2px dotted #000;
-        margin: 0 5px 4px 5px; /* Adjust margin to align with text baseline */
-        height: 1px;
-    }
-
-    .qty-box-black {
-        background: #000;
-        color: #fff;
-        min-width: 26px;
-        height: 26px;
-        padding: 0 4px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-weight: 900;
-        font-size: 16px;
-        border-radius: 4px;
-    }
-    
-    .footer {
-        margin-top: 15px; 
-        padding-top: 5px; 
-        border-top: 2px solid #000; 
-        text-center: center;
-        font-size: 10px;
-        font-weight: bold;
-    }
-
-    .rush-badge {
-       background: #dc2626;
-       color: white;
-       padding: 2px 8px;
-       border-radius: 4px;
-       font-size: 10px;
-       margin-left: 5px;
-       vertical-align: middle;
-       display: inline-block;
-    }
-    
     @media print {
-      body { width: 80mm; }
+      body {
+        width: 80mm;
+        padding: 1.5mm 2mm;
+      }
     }
   </style>
 </head>
 <body>
-  
-  <div class="kot-header-black">
-      <div class="kot-title">
-        K.O.T 👨‍🍳
-        ${data.priority === 'rush' ? '<span class="rush-badge">⚡ RUSH</span>' : ''}
-      </div>
-      <div class="kot-number">#${data.kotNo}</div>
+
+  <!-- Header -->
+  <div style="text-align:center;margin-bottom:2px;">
+    <div style="font-size:12px;text-transform:uppercase;">${company.name}</div>
   </div>
 
-  <div style="text-align: center;">
-      <div class="${data.orderType.toLowerCase().includes('take') ? 'badge-takeaway' : 'badge-dinein'}">
-          ${data.orderType.toLowerCase().includes('take') ? '🛍️' : '🪑'} ${data.orderType.toUpperCase()}
-          ${data.tableNo ? `- TABLE ${data.tableNo}` : ''}
-      </div>
+  <!-- Document Title Strip -->
+  <div class="title-strip">
+    KITCHEN ORDER TICKET (KOT) #${data.kotNo}
+    ${data.priority === 'rush' ? ' • [ RUSH ]' : ''}
   </div>
 
-  <div class="line-info">
-      ${data.orderType.toUpperCase()} | ${data.date} | ${data.time} | ${data.waiter || 'Server'}
+  <!-- Metadata -->
+  <div class="info-row">
+    <span>Order Type: ${data.orderType.toUpperCase()}</span>
+    ${data.tableNo ? `<span>Table: ${data.tableNo}</span>` : ''}
+  </div>
+  <div class="info-row">
+    <span>Server: ${data.waiter || 'Server'}</span>
+    <span>${data.date} ${data.time}</span>
   </div>
 
-  <!-- Items -->
-  <div style="margin-top: 10px;">
-      ${itemRows}
+  <div class="thin-dash"></div>
+
+  <!-- Items List -->
+  <div class="items-container">
+    <div style="display:flex;justify-content:space-between;font-size:8.5px;color:#555;border-bottom:1px dashed #888;padding-bottom:1px;margin-bottom:3px;">
+      <span>Item Description</span>
+      <span>Qty</span>
+    </div>
+    ${itemRows}
   </div>
-  
+
   ${data.orderNotes ? `
-  <div style="margin-top:15px;border:2px dashed #000;padding:5px;font-weight:bold;text-align:center;">
-    📝 ${data.orderNotes.toUpperCase()}
+  <div class="notes-box">
+    Note: ${data.orderNotes}
   </div>
   ` : ''}
 
-  <div class="footer">
-      ${data.date} | ${data.time}<br>
-      <span style="font-size: 9px; color: #666; font-weight: normal; text-transform: uppercase;">
-        ${company.name}
-      </span>
+  <div class="thin-dash"></div>
+
+  <!-- Footer -->
+  <div class="footer-note">
+    <div>*** KITCHEN EXPEDITE COPY ***</div>
+    <div>Alpha Plus POS • ${data.date} ${data.time}</div>
   </div>
 
 </body>
 </html>
-`;
+  `;
 }
 
 // Print function - opens print dialog

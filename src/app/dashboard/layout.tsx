@@ -130,6 +130,13 @@ const Icons = {
             <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
         </svg>
     ),
+    printer: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+            <rect x="6" y="14" width="12" height="8"/>
+        </svg>
+    ),
     bell: (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
@@ -254,6 +261,7 @@ const buildMenu = (): MenuSection[] => [
             { name: 'Dashboard', icon: Icons.dashboard, href: '/dashboard', badge: null },
             { name: 'Point of Sale', icon: Icons.pos, href: '/dashboard/pos', badge: 'LIVE' },
             { name: 'Kitchen Display', icon: Icons.kitchen, href: '/dashboard/kitchen', badge: 'KDS' },
+            { name: 'Hardware Printers', icon: Icons.printer, href: '/dashboard/printers', badge: 'PRINTER' },
             { name: 'Stores Management', icon: Icons.store, href: '/dashboard/stores', badge: 'STORES' },
             { name: 'Cashier Checkout', icon: Icons.doc, href: '/dashboard/bills', badge: 'EXIT' },
             { name: 'Bill Payment', icon: Icons.money, href: '/dashboard/bill-payment', badge: 'PAY' },
@@ -357,6 +365,15 @@ const buildMenu = (): MenuSection[] => [
                     { name: 'Shifts', icon: Icons.clock, href: '/dashboard/shifts' },
                 ],
             },
+        ],
+    },
+    {
+        category: 'SYSTEM & SETTINGS',
+        items: [
+            { name: 'Hardware Printers', icon: Icons.printer, href: '/dashboard/printers', badge: 'PRINTER' },
+            { name: 'Tax Settings (POS)', icon: Icons.settings, href: '/dashboard/tax-settings', badge: 'KRA' },
+            { name: 'Hotel Tax Settings', icon: Icons.settings, href: '/dashboard/hotel/tax-settings' },
+            { name: 'Hotel Settings', icon: Icons.settings, href: '/dashboard/hotel/settings' },
         ],
     },
 ];
