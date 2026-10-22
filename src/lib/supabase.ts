@@ -7,13 +7,11 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOi
 // Create main Supabase client for hotel data
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// SEPARATE C2B Supabase client (Energy App) - ONLY for C2B transactions
-// C2B Supabase URL
-// C2B Anon Key
+// Live Safaricom Daraja Registered C2B Client
+const c2bSupabaseUrl = 'https://pxcdaivlvltmdifxietb.supabase.co';
+const c2bSupabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4Y2RhaXZsdmx0bWRpZnhpZXRiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjU3NDI3NDIsImV4cCI6MjA4MTMxODc0Mn0.s6nv24s6M83gAcW_nSKCBfcXcqJ_7owwqdObPDT7Ky0';
 
-// Create separate client ONLY for C2B queries
-// C2B Transactions now point to YOUR dedicated hotel project
-export const c2bSupabase = supabase;
+export const c2bSupabase = createClient(c2bSupabaseUrl, c2bSupabaseAnonKey);
 
 // ============================================
 // DATABASE FUNCTIONS

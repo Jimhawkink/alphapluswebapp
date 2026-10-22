@@ -304,27 +304,33 @@ export default function HotelSettingsPage() {
                     {/* Right 5 Cols: Webhook URLs & 1-Click Simulator */}
                     <div className="lg:col-span-5 space-y-5">
                         <div className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-4">
-                            <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
-                                <span>🌐</span> Register URLs with Safaricom
-                            </h2>
-                            <p className="text-xs text-gray-500">
-                                Copy these exact endpoints and paste into your Safaricom Daraja Developer portal under C2B Register URL:
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                                    <span>🌐</span> Safaricom Daraja Live URLs
+                                </h2>
+                                <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-black uppercase flex items-center gap-1.5 shadow-sm">
+                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                    Active &amp; Connected
+                                </span>
+                            </div>
+                            <p className="text-xs text-gray-600 leading-relaxed">
+                                These exact live URLs are <strong>already registered with Safaricom Daraja</strong> and actively receiving real customer payments:
                             </p>
 
                             <div className="space-y-3">
                                 <div>
                                     <label className="text-xs font-bold uppercase text-gray-500 block mb-1">
-                                        Confirmation Webhook URL (Receives Payments)
+                                        Live Confirmation Webhook URL
                                     </label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
                                             readOnly
-                                            value={confirmationUrl}
-                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-gray-800"
+                                            value="https://pxcdaivlvltmdifxietb.supabase.co/functions/v1/c2b-callback"
+                                            className="w-full p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-mono text-emerald-900 font-bold"
                                         />
                                         <button
-                                            onClick={() => handleCopy(confirmationUrl, 'Confirmation URL')}
+                                            onClick={() => handleCopy('https://pxcdaivlvltmdifxietb.supabase.co/functions/v1/c2b-callback', 'Confirmation URL')}
                                             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-sm"
                                         >
                                             Copy
@@ -334,22 +340,31 @@ export default function HotelSettingsPage() {
 
                                 <div>
                                     <label className="text-xs font-bold uppercase text-gray-500 block mb-1">
-                                        Validation Webhook URL (Validates Account)
+                                        Live Validation Webhook URL
                                     </label>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
                                             readOnly
-                                            value={validationUrl}
-                                            className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-mono text-gray-800"
+                                            value="https://pxcdaivlvltmdifxietb.supabase.co/functions/v1/c2b-callback"
+                                            className="w-full p-2.5 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-mono text-emerald-900 font-bold"
                                         />
                                         <button
-                                            onClick={() => handleCopy(validationUrl, 'Validation URL')}
+                                            onClick={() => handleCopy('https://pxcdaivlvltmdifxietb.supabase.co/functions/v1/c2b-callback', 'Validation URL')}
                                             className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-sm"
                                         >
                                             Copy
                                         </button>
                                     </div>
+                                </div>
+
+                                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-2xl text-[11px] text-emerald-800 space-y-1">
+                                    <p className="font-bold flex items-center gap-1">
+                                        <span>✓</span> Daraja Status: Completed &amp; Active
+                                    </p>
+                                    <p className="text-gray-600">
+                                        Whenever a payment occurs, it is captured instantly and alerts your POS cashier screens in real-time.
+                                    </p>
                                 </div>
                             </div>
                         </div>
