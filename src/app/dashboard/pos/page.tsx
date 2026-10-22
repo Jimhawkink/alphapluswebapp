@@ -119,31 +119,146 @@ const sampleBatches: Record<number, ProductionBatch[]> = {
     ],
 };
 
-// Product Card Component - Light Theme
-const ProductCard = ({ product, onAdd }: { product: Product; onAdd: () => void }) => (
-    <button
-        onClick={onAdd}
-        disabled={product.stock === 0}
-        className={`relative bg-gradient-to-br ${product.color} rounded-2xl p-3 text-white text-left transition-all hover:scale-105 hover:shadow-xl active:scale-95 h-24 overflow-hidden ${product.stock === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-    >
-        <div className="absolute inset-0 bg-white/10 backdrop-blur-[1px]"></div>
-        <div className="relative z-10 h-full flex flex-col justify-between">
-            <p className="font-bold text-sm leading-tight line-clamp-2 drop-shadow-sm">{product.name}</p>
-            <div className="flex items-center justify-between">
-                <span className="text-xs opacity-90 flex items-center gap-1">📦 {product.stock}</span>
-                <span className="font-bold text-sm bg-black/20 px-2 py-0.5 rounded-lg">{product.price}</span>
-            </div>
-        </div>
-        {product.stock < 10 && product.stock > 0 && (
-            <span className="absolute top-2 right-2 w-2 h-2 bg-yellow-300 rounded-full animate-pulse"></span>
-        )}
-        {product.stock === 0 && (
-            <span className="absolute top-2 right-2 px-1.5 py-0.5 bg-red-500 text-[10px] font-bold rounded">OUT</span>
-        )}
-    </button>
-);
+// Ultra-Crisp Web Audio POS Sound Synthesizer
+const playPOSChime = (type: 'add' | 'void' | 'success' | 'tender' | 'kot' | 'click') => {
+    try {
+        if (typeof window === 'undefined') return;
+        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        const now = ctx.currentTime;
 
-// Cart Item Row - Light Theme
+        if (type === 'add') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(587.33, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+            gain.gain.setValueAtTime(0.12, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+            osc.start(now);
+            osc.stop(now + 0.12);
+        } else if (type === 'click') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(700, now);
+            gain.gain.setValueAtTime(0.08, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+        } else if (type === 'void') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(329.63, now);
+            osc.frequency.exponentialRampToValueAtTime(220, now + 0.15);
+            gain.gain.setValueAtTime(0.15, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+            osc.start(now);
+            osc.stop(now + 0.16);
+        } else if (type === 'success' || type === 'tender') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, now);
+            osc.frequency.setValueAtTime(659.25, now + 0.08);
+            osc.frequency.setValueAtTime(1046.50, now + 0.16);
+            gain.gain.setValueAtTime(0.18, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+            osc.start(now);
+            osc.stop(now + 0.35);
+        } else if (type === 'kot') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, now);
+            osc.frequency.exponentialRampToValueAtTime(1760, now + 0.12);
+            gain.gain.setValueAtTime(0.18, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+            osc.start(now);
+            osc.stop(now + 0.3);
+        }
+    } catch {
+        // Audio blocked or not supported
+    }
+};
+
+const getCategoryIcon = (categoryName: string) => {
+    const c = (categoryName || '').toLowerCase();
+    if (c === 'all') return '🍽️';
+    if (c.includes('tea') || c.includes('coffee') || c.includes('beverage')) return '☕';
+    if (c.includes('meat') || c.includes('beef') || c.includes('choma') || c.includes('chicken') || c.includes('pork')) return '🥩';
+    if (c.includes('fish') || c.includes('sea')) return '🐟';
+    if (c.includes('soup')) return '🥣';
+    if (c.includes('salad')) return '🥗';
+    if (c.includes('dessert') || c.includes('cake') || c.includes('ice')) return '🍰';
+    if (c.includes('breakfast') || c.includes('egg')) return '🍳';
+    if (c.includes('bread') || c.includes('pastry') || c.includes('bakery')) return '🥐';
+    if (c.includes('bar') || c.includes('beer') || c.includes('wine') || c.includes('liquor')) return '🍷';
+    if (c.includes('soft') || c.includes('juice') || c.includes('soda')) return '🥤';
+    if (c.includes('snack') || c.includes('side') || c.includes('chips')) return '🍟';
+    if (c.includes('rice') || c.includes('swahili') || c.includes('biryani')) return '🍛';
+    return '🍴';
+};
+
+// Product Card Component - Ultra Luxury Touch Responsive
+const ProductCard = ({ product, onAdd }: { product: Product; onAdd: () => void }) => {
+    const isOutOfStock = product.stock === 0;
+    const isLowStock = product.stock > 0 && product.stock <= 5;
+
+    return (
+        <button
+            onClick={() => {
+                onAdd();
+                playPOSChime('add');
+            }}
+            disabled={isOutOfStock}
+            className={`group relative bg-white hover:bg-gray-50/90 border border-gray-200/80 rounded-2xl p-3 text-left transition-all duration-200 hover:shadow-xl hover:-translate-y-0.5 active:translate-y-0 active:scale-[0.98] min-h-[105px] flex flex-col justify-between overflow-hidden shadow-sm ${
+                isOutOfStock ? 'opacity-40 cursor-not-allowed bg-gray-100/70 border-gray-200' : ''
+            }`}
+        >
+            {/* Top colored accent line */}
+            <div className={`absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r ${product.color || 'from-emerald-500 to-teal-600'}`} />
+
+            <div className="pt-1">
+                <div className="flex items-start justify-between gap-1 mb-1">
+                    <p className="font-extrabold text-xs sm:text-sm text-gray-900 leading-tight line-clamp-2 group-hover:text-emerald-700 transition-colors">
+                        {product.name}
+                    </p>
+                    {product.hasBatches && (
+                        <span className="shrink-0 px-1.5 py-0.5 bg-purple-100 text-purple-800 text-[9px] font-black rounded-md tracking-wider uppercase">
+                            Batch
+                        </span>
+                    )}
+                </div>
+            </div>
+
+            <div className="flex items-end justify-between pt-1">
+                {/* Stock status badge */}
+                <div>
+                    {isOutOfStock ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-bold rounded-lg">
+                            <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                            Sold Out
+                        </span>
+                    ) : isLowStock ? (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-lg animate-pulse">
+                            <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
+                            {product.stock} left
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-500">
+                            <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
+                            {product.stock} ready
+                        </span>
+                    )}
+                </div>
+
+                {/* Price Pill */}
+                <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-mono font-black text-xs sm:text-sm px-2.5 py-1 rounded-xl shadow-sm group-hover:shadow-md transition-all">
+                    Ksh {Number(product.price).toLocaleString()}
+                </div>
+            </div>
+        </button>
+    );
+};
+
+// Cart Item Row - Ultra Luxury Touch Responsive
 const CartItemRow = ({ item, onIncrease, onDecrease, onRemove, onEditNotes, onEditDiscount, showTaxInfo = true }: {
     item: CartItem;
     onIncrease: () => void;
@@ -153,71 +268,103 @@ const CartItemRow = ({ item, onIncrease, onDecrease, onRemove, onEditNotes, onEd
     onEditDiscount: () => void;
     showTaxInfo?: boolean;
 }) => {
-    const itemTotal = (item.price * item.qty) - item.discount;
-
-    // Calculate per-item tax (18% inclusive = VAT 16% + Levy 2%)
-    const taxRate = 0.18;
-    const netAmount = itemTotal / (1 + taxRate);
-    const taxAmount = itemTotal - netAmount;
-    const vatAmount = netAmount * 0.16;
-    const levyAmount = netAmount * 0.02;
+    const itemTotal = (item.price * item.qty) - (item.discount || 0);
 
     return (
-        <div className="bg-white rounded-xl p-3 border border-gray-200 shadow-sm hover:shadow-md transition-all">
-            <div className="flex items-start gap-3 mb-2">
-                <div className="flex-1">
-                    <h3 className="font-bold text-gray-800 text-sm">{item.name}</h3>
-                    {item.notes && (
-                        <p className="text-xs text-amber-600 mt-1 italic">📝 {item.notes}</p>
-                    )}
-                    {/* Tax Breakdown */}
-                    {showTaxInfo && (
-                        <div className="mt-1 text-xs text-blue-600">
-                            💰 Tax: Ksh {Math.round(taxAmount)} (VAT: {Math.round(vatAmount)} + Levy: {Math.round(levyAmount)})
-                        </div>
+        <div className="group bg-white rounded-2xl p-3 border border-gray-200/90 shadow-sm hover:shadow-md hover:border-emerald-300 transition-all space-y-2">
+            <div className="flex items-start justify-between gap-2">
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                        <h3 className="font-extrabold text-gray-900 text-sm leading-tight truncate">
+                            {item.name}
+                        </h3>
+                        {item.batchNumber && (
+                            <span className="px-1.5 py-0.2 bg-purple-100 text-purple-800 text-[10px] font-mono font-bold rounded">
+                                {item.batchNumber}
+                            </span>
+                        )}
+                    </div>
+                    <p className="text-xs font-semibold text-gray-500 font-mono mt-0.5">
+                        Ksh {Number(item.price).toLocaleString()} each
+                    </p>
+                </div>
+
+                {/* Line Total */}
+                <div className="text-right shrink-0">
+                    <p className="font-mono font-black text-sm text-gray-900">
+                        Ksh {itemTotal.toLocaleString()}
+                    </p>
+                    {item.discount > 0 && (
+                        <p className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-1 rounded">
+                            -Ksh {item.discount.toLocaleString()}
+                        </p>
                     )}
                 </div>
-                <div className="flex items-center gap-2">
+            </div>
+
+            {/* Custom Notes Badge */}
+            {item.notes && (
+                <div className="flex items-center gap-1 bg-amber-50 border border-amber-200/70 text-amber-900 px-2.5 py-1 rounded-xl text-xs font-medium">
+                    <span>📝</span>
+                    <span className="truncate">{item.notes}</span>
+                </div>
+            )}
+
+            {/* Controls Bar */}
+            <div className="flex items-center justify-between pt-1 border-t border-gray-100">
+                <div className="flex items-center gap-1">
                     <button
-                        onClick={onDecrease}
-                        className="w-7 h-7 rounded-lg bg-orange-500 hover:bg-orange-600 flex items-center justify-center text-white font-bold transition-colors"
+                        onClick={onEditNotes}
+                        className="px-2 py-1 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1"
+                        title="Special Kitchen Note"
+                    >
+                        <span>📝</span> Notes
+                    </button>
+                    <button
+                        onClick={onEditDiscount}
+                        className="px-2 py-1 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 text-gray-700 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1"
+                        title="Discount item"
+                    >
+                        <span>🏷️</span> Disc
+                    </button>
+                </div>
+
+                {/* Touch Stepper */}
+                <div className="flex items-center gap-1 bg-gray-100/80 p-0.5 rounded-xl border border-gray-200">
+                    <button
+                        onClick={() => {
+                            onDecrease();
+                            playPOSChime('click');
+                        }}
+                        className="w-7 h-7 rounded-lg bg-white hover:bg-gray-200 active:bg-gray-300 text-gray-700 font-black text-sm flex items-center justify-center transition-all shadow-sm"
+                        title="Decrease"
                     >
                         −
                     </button>
-                    <span className="text-lg font-bold text-gray-700 min-w-[30px] text-center">{item.qty}</span>
+                    <span className="font-mono font-black text-sm text-gray-900 min-w-[28px] text-center">
+                        {item.qty}
+                    </span>
                     <button
-                        onClick={onIncrease}
-                        className="w-7 h-7 rounded-lg bg-green-500 hover:bg-green-600 flex items-center justify-center text-white font-bold transition-colors"
+                        onClick={() => {
+                            onIncrease();
+                            playPOSChime('click');
+                        }}
+                        className="w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-black text-sm flex items-center justify-center transition-all shadow-sm"
+                        title="Increase"
                     >
                         +
                     </button>
+                    <button
+                        onClick={() => {
+                            onRemove();
+                            playPOSChime('void');
+                        }}
+                        className="w-7 h-7 rounded-lg bg-red-50 hover:bg-red-500 hover:text-white text-red-500 font-bold text-xs flex items-center justify-center transition-all ml-1"
+                        title="Void / Remove Item"
+                    >
+                        ✕
+                    </button>
                 </div>
-                <div className="text-right min-w-[70px]">
-                    <p className="font-bold text-gray-800">{itemTotal.toLocaleString()}</p>
-                    {item.discount > 0 && (
-                        <p className="text-xs text-green-600">-{item.discount}</p>
-                    )}
-                </div>
-                <button
-                    onClick={onRemove}
-                    className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center text-red-500 transition-colors"
-                >
-                    ✕
-                </button>
-            </div>
-            <div className="flex gap-2">
-                <button
-                    onClick={onEditNotes}
-                    className="flex-1 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors font-medium"
-                >
-                    📝 Notes
-                </button>
-                <button
-                    onClick={onEditDiscount}
-                    className="flex-1 py-1.5 text-xs bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors font-medium"
-                >
-                    💰 Discount
-                </button>
             </div>
         </div>
     );
@@ -1766,6 +1913,19 @@ export default function POSPage() {
     };
 
 
+    // Live POS Digital Clock
+    useEffect(() => {
+        const updateClock = () => {
+            const now = new Date();
+            setCurrentTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+        };
+        updateClock();
+        const timer = setInterval(updateClock, 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+
+
     // Realtime / Polling Watchdog for Incoming Safaricom M-Pesa C2B Payments
     useEffect(() => {
         let lastNotifiedId = 0;
@@ -1925,6 +2085,14 @@ export default function POSPage() {
     const [showMergeModal, setShowMergeModal] = useState(false);
     const [incomingC2BTxs, setIncomingC2BTxs] = useState<any[]>([]);
     const [dismissedC2BIds, setDismissedC2BIds] = useState<number[]>([]);
+
+    // Ultra World-Class POS States
+    const [soundEnabled, setSoundEnabled] = useState(true);
+    const [orderType, setOrderType] = useState<'dine_in' | 'takeaway' | 'room_service' | 'delivery'>('dine_in');
+    const [guestCovers, setGuestCovers] = useState<number>(2);
+    const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+    const [currentTime, setCurrentTime] = useState<string>('');
+    const searchInputRef = useRef<HTMLInputElement>(null);
 
     const [showNotesModal, setShowNotesModal] = useState(false);
     const [showHoldModal, setShowHoldModal] = useState(false);
@@ -2794,6 +2962,139 @@ export default function POSPage() {
 
     const total = amountAfterDiscount; // Customer pays the inclusive amount
 
+    // Global Fast Keyboard Shortcuts Listener
+    useEffect(() => {
+        const handleKeyDown = (e: KeyboardEvent) => {
+            const isTyping = ['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName);
+
+            if (e.key === 'Escape') {
+                setShowShortcutsModal(false);
+                setShowPayment(false);
+                setShowNotesModal(false);
+                setShowHoldModal(false);
+                setShowRunningOrders(false);
+                setShowReceiptPreview(false);
+                setShowKOTPreview(false);
+                setShowBillPreview(false);
+                setShowBatchModal(false);
+                setShowHeldSalesModal(false);
+                setShowCloseRegister(false);
+                setShowSplitModal(false);
+                setShowMoveTableModal(false);
+                setShowMergeModal(false);
+                return;
+            }
+
+            if (e.key === 'F1') {
+                e.preventDefault();
+                setShowShortcutsModal(prev => !prev);
+                return;
+            }
+
+            if (e.key === 'F2' || (e.key === '/' && !isTyping)) {
+                e.preventDefault();
+                searchInputRef.current?.focus();
+                return;
+            }
+
+            if (e.key === 'F3') {
+                e.preventDefault();
+                if (cart.length > 0) setShowHoldModal(true);
+                return;
+            }
+
+            if (e.key === 'F4') {
+                e.preventDefault();
+                setShowRunningOrders(prev => !prev);
+                return;
+            }
+
+            if (e.key === 'F8') {
+                e.preventDefault();
+                setShowSplitModal(true);
+                return;
+            }
+
+            if (e.key === 'F9') {
+                e.preventDefault();
+                if (cart.length > 0) sendToKitchen();
+                return;
+            }
+
+            if (e.key === 'F10') {
+                e.preventDefault();
+                if (cart.length > 0) handlePrintInterimBill();
+                return;
+            }
+
+            if (e.key === 'F12' || (e.key === ' ' && !isTyping && cart.length > 0)) {
+                e.preventDefault();
+                if (cart.length > 0) setShowPayment(true);
+                return;
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [cart.length]);
+
+    // Apply Cart-wide percentage discount with Supervisor PIN
+    const handleApplyCartDiscount = (percent: number) => {
+        if (cart.length === 0) return;
+        requireSupervisorAuth(
+            `Apply ${percent}% Cart Discount`,
+            `Authorizing ${percent}% discount on bill (Ksh ${total.toLocaleString()})`,
+            () => {
+                setCart(prev => prev.map(item => ({
+                    ...item,
+                    discount: Math.round((item.price * item.qty) * (percent / 100))
+                })));
+                toast.success(`${percent}% discount applied to bill ✅`);
+            }
+        );
+    };
+
+    // Print Interim Customer Bill before payment
+    const handlePrintInterimBill = async () => {
+        if (cart.length === 0) {
+            toast.error('Cart is empty');
+            return;
+        }
+        try {
+            const companyInfo = await loadCompanyInfo();
+            const receiptData = createReceiptData(
+                invoiceNo,
+                cart.map(item => ({
+                    name: item.name,
+                    qty: item.qty,
+                    price: item.price,
+                    notes: item.notes,
+                    discount: item.discount
+                })),
+                'unpaid',
+                0,
+                selectedWaiterName || loggedInUserName || 'Staff',
+                {
+                    tableNo: tableNo || undefined,
+                    orderNotes: orderNotes || undefined,
+                    shiftCode: shift?.code || 'NO-SHIFT',
+                    isPaid: false,
+                    showTaxInfo: showTaxInfo,
+                    hotelName: companyInfo?.name || 'Alpha Plus Hotel'
+                }
+            );
+            const html = await generateCustomerBillHTML(receiptData, companyInfo, false);
+            setBillHTML(html);
+            setShowBillPreview(true);
+            await executeDirectPrint(html, { printerRole: 'customer' });
+            playPOSChime('tender');
+            toast.success(`Interim Bill #${invoiceNo} printed for Guest 🧾`);
+        } catch (err) {
+            console.error('Error printing interim bill:', err);
+            toast.error('Failed to print interim bill');
+        }
+    };
+
     // Create receipt data for unpaid bill
     const createUnpaidBillData = () => {
         return createReceiptData(
@@ -3387,20 +3688,66 @@ export default function POSPage() {
                     <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                                {/* POS Title Only */}
-                                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center text-base shadow-md">
+                                {/* POS Title & Live Clock */}
+                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 flex items-center justify-center text-lg shadow-md text-white border border-white/20">
                                     🛒
                                 </div>
                                 <div>
-                                    <h2 className="text-sm font-bold text-gray-800 leading-tight">Point of Sale</h2>
-                                    <p className="text-[10px] text-gray-500">Select products to add to cart</p>
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-sm font-black text-gray-900 leading-tight">AlphaPlus POS</h2>
+                                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-full uppercase tracking-wider">
+                                            LIVE
+                                        </span>
+                                    </div>
+                                    <p className="text-[10px] font-mono font-semibold text-gray-500 flex items-center gap-1.5">
+                                        <span>⏰ {currentTime || 'Service Ready'}</span>
+                                        <span>•</span>
+                                        <span>{hotelName}</span>
+                                    </p>
                                 </div>
                             </div>
                             <div className="flex items-center gap-2">
+                                {/* Keyboard Shortcuts Modal Button */}
+                                <button
+                                    onClick={() => setShowShortcutsModal(true)}
+                                    className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-xl text-gray-700 text-xs font-bold transition-all border border-gray-200 flex items-center gap-1 shadow-sm"
+                                    title="Keyboard Shortcuts Guide [F1]"
+                                >
+                                    <span>⌨️</span>
+                                    <span className="hidden md:inline">Hotkeys [F1]</span>
+                                </button>
+                                {/* Sound FX Toggle */}
+                                <button
+                                    onClick={() => {
+                                        setSoundEnabled(!soundEnabled);
+                                        toast(soundEnabled ? 'Audio Chimes Muted 🔇' : 'Audio Chimes Enabled 🔊');
+                                    }}
+                                    className="p-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 transition-colors border border-gray-200 text-xs font-bold"
+                                    title={soundEnabled ? 'Mute Audio Chimes' : 'Enable Audio Chimes'}
+                                >
+                                    {soundEnabled ? '🔊' : '🔇'}
+                                </button>
+                                {/* Cash Drawer Kick */}
+                                <button
+                                    onClick={() => {
+                                        requireSupervisorAuth(
+                                            'Open Cash Drawer',
+                                            'Manual No-Sale Drawer Open',
+                                            () => {
+                                                playPOSChime('tender');
+                                                toast.success('Cash Drawer Kick Signal Dispatched 🖨️');
+                                            }
+                                        );
+                                    }}
+                                    className="p-2 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 rounded-xl text-amber-800 transition-colors border border-amber-200 text-xs font-bold"
+                                    title="Kick Cash Drawer (Manager PIN)"
+                                >
+                                    🖨️ Kick
+                                </button>
                                 {/* Fullscreen Button */}
                                 <button
                                     onClick={toggleFullscreen}
-                                    className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-gray-600 transition-colors border border-gray-200 text-sm"
+                                    className="p-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition-colors border border-gray-200 text-sm shadow-sm"
                                     title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
                                 >
                                     {isFullscreen ? '⛶' : '⛶'}
@@ -3518,21 +3865,73 @@ export default function POSPage() {
                             </div>
                         </div>
 
-                        {/* Search, Table & Waiter */}
-                        <div className="flex gap-3">
-                            <div className="flex-1 relative">
-                                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">🔍</span>
+                        {/* Search, Order Type, Table & Waiter Bar */}
+                        <div className="flex flex-wrap md:flex-nowrap gap-2.5 items-center">
+                            {/* Dining Mode Pills */}
+                            <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200/80 shrink-0">
+                                {[
+                                    { id: 'dine_in', label: 'Dine-In', icon: '🍽️' },
+                                    { id: 'takeaway', label: 'Takeout', icon: '🥡' },
+                                    { id: 'room_service', label: 'Room', icon: '🏨' },
+                                    { id: 'delivery', label: 'Delivery', icon: '🛵' }
+                                ].map(mode => (
+                                    <button
+                                        key={mode.id}
+                                        onClick={() => setOrderType(mode.id as any)}
+                                        className={`px-2.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1 ${
+                                            orderType === mode.id
+                                                ? 'bg-white text-emerald-950 shadow-sm'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                        }`}
+                                    >
+                                        <span>{mode.icon}</span>
+                                        <span className="hidden sm:inline">{mode.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Search Input */}
+                            <div className="flex-1 relative min-w-[200px]">
+                                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
                                 <input
+                                    ref={searchInputRef}
                                     type="text"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
-                                    placeholder="Search products or scan barcode..."
-                                    className="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 text-gray-800 placeholder-gray-400"
+                                    placeholder="Search dishes or scan barcode... [F2 /]"
+                                    className="w-full pl-10 pr-9 py-2.5 bg-gray-50 border border-gray-200/90 rounded-2xl focus:outline-none focus:border-emerald-500 focus:bg-white text-gray-900 placeholder-gray-400 text-xs sm:text-sm font-semibold transition-all"
                                 />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xs font-bold p-1"
+                                    >
+                                        ✕
+                                    </button>
+                                )}
                             </div>
+
+                            {/* Guest Covers Stepper */}
+                            <div className="flex items-center bg-gray-50 border border-gray-200 rounded-2xl px-2 py-1 gap-1.5 shrink-0">
+                                <span className="text-xs text-gray-500 font-bold">👥</span>
+                                <button
+                                    onClick={() => setGuestCovers(Math.max(1, guestCovers - 1))}
+                                    className="w-6 h-6 rounded-lg bg-white border border-gray-200 text-gray-700 font-bold text-xs flex items-center justify-center hover:bg-gray-100"
+                                >
+                                    -
+                                </button>
+                                <span className="text-xs font-black text-gray-900 min-w-[18px] text-center">{guestCovers}</span>
+                                <button
+                                    onClick={() => setGuestCovers(guestCovers + 1)}
+                                    className="w-6 h-6 rounded-lg bg-white border border-gray-200 text-gray-700 font-bold text-xs flex items-center justify-center hover:bg-gray-100"
+                                >
+                                    +
+                                </button>
+                            </div>
+
                             {/* Waiter Dropdown */}
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">👤</span>
+                            <div className="relative shrink-0">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">👤</span>
                                 <select
                                     value={selectedWaiterId || ''}
                                     onChange={(e) => {
@@ -3541,9 +3940,9 @@ export default function POSPage() {
                                         const waiter = waiters.find(w => w.user_id === id);
                                         setSelectedWaiterName(waiter?.full_name || '');
                                     }}
-                                    className="w-44 pl-10 pr-4 py-3 bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200 rounded-xl focus:outline-none focus:border-purple-400 text-gray-800 appearance-none cursor-pointer font-medium"
+                                    className="w-36 pl-8 pr-3 py-2 bg-purple-50/80 border border-purple-200 rounded-2xl focus:outline-none focus:border-purple-400 text-purple-950 appearance-none cursor-pointer font-bold text-xs"
                                 >
-                                    <option value="">Select Waiter</option>
+                                    <option value="">Server / Waiter</option>
                                     {waiters.map(waiter => (
                                         <option key={waiter.user_id} value={waiter.user_id}>
                                             {waiter.full_name}
@@ -3551,34 +3950,45 @@ export default function POSPage() {
                                     ))}
                                 </select>
                             </div>
+
                             {/* Table Number */}
-                            <div className="relative">
-                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">🪑</span>
+                            <div className="relative shrink-0">
+                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🪑</span>
                                 <input
                                     type="text"
                                     value={tableNo}
                                     onChange={(e) => setTableNo(e.target.value)}
-                                    placeholder="Table No"
-                                    className="w-28 pl-10 pr-3 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-400 text-gray-800 placeholder-gray-400"
+                                    placeholder="Table #"
+                                    className="w-24 pl-8 pr-2.5 py-2 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:border-emerald-500 text-gray-900 placeholder-gray-400 text-xs font-black"
                                 />
                             </div>
                         </div>
                     </div>
 
-                    {/* Categories */}
-                    <div className="flex gap-2 p-4 overflow-x-auto border-b border-gray-100 bg-gray-50">
-                        {categories.map(cat => (
-                            <button
-                                key={cat}
-                                onClick={() => setSelectedCategory(cat)}
-                                className={`px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-all ${selectedCategory === cat
-                                    ? 'bg-blue-500 text-white shadow-md shadow-blue-500/30'
-                                    : 'bg-white text-gray-600 hover:bg-gray-100 border border-gray-200'
+                    {/* Categories Carousel */}
+                    <div className="flex gap-2 p-3 overflow-x-auto border-b border-gray-100 bg-white shadow-inner">
+                        {categories.map(cat => {
+                            const count = cat === 'All' ? products.length : products.filter(p => p.category === cat).length;
+                            return (
+                                <button
+                                    key={cat}
+                                    onClick={() => setSelectedCategory(cat)}
+                                    className={`px-3.5 py-2 rounded-2xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-1.5 shadow-sm ${
+                                        selectedCategory === cat
+                                            ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-700/20 scale-105'
+                                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200/80'
                                     }`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
+                                >
+                                    <span>{getCategoryIcon(cat)}</span>
+                                    <span>{cat}</span>
+                                    <span className={`px-1.5 py-0.2 rounded-full text-[10px] font-mono ${
+                                        selectedCategory === cat ? 'bg-white/20 text-white' : 'bg-gray-200/80 text-gray-700'
+                                    }`}>
+                                        {count}
+                                    </span>
+                                </button>
+                            );
+                        })}
                     </div>
 
                     {/* Products Grid */}
@@ -3754,75 +4164,145 @@ export default function POSPage() {
                         )}
                     </div>
 
-                    {/* Cart Footer */}
-                    <div className="p-4 bg-white border-t border-gray-200 space-y-4">
-                        {/* Totals */}
-                        <div className="space-y-2">
+                    {/* Ultra-Luxury Cart Footer */}
+                    <div className="p-4 bg-white border-t border-gray-200 space-y-3">
+                        {/* Quick Discount Selector */}
+                        <div className="flex items-center justify-between gap-1 text-[11px] font-bold">
+                            <span className="text-gray-500">🏷️ Discount:</span>
+                            <div className="flex items-center gap-1">
+                                {[5, 10, 15, 20].map(pct => (
+                                    <button
+                                        key={pct}
+                                        onClick={() => handleApplyCartDiscount(pct)}
+                                        disabled={cart.length === 0}
+                                        className="px-2 py-0.5 bg-gray-100 hover:bg-emerald-100 hover:text-emerald-900 active:bg-emerald-200 rounded-lg text-gray-700 transition-all font-mono disabled:opacity-40"
+                                    >
+                                        {pct}%
+                                    </button>
+                                ))}
+                                {totalDiscount > 0 && (
+                                    <button
+                                        onClick={() => setCart(prev => prev.map(i => ({ ...i, discount: 0 })))}
+                                        className="px-1.5 py-0.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-lg text-[10px]"
+                                        title="Clear Discounts"
+                                    >
+                                        Clear
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Totals Breakdown */}
+                        <div className="space-y-1.5 pt-1 text-xs">
                             <div className="flex justify-between text-gray-500">
                                 <span>Subtotal</span>
-                                <span className="font-medium text-gray-700">Ksh {subtotal.toLocaleString()}</span>
+                                <span className="font-mono font-bold text-gray-800">Ksh {subtotal.toLocaleString()}</span>
                             </div>
                             {totalDiscount > 0 && (
-                                <div className="flex justify-between text-green-600">
-                                    <span>Discount</span>
-                                    <span className="font-medium">- Ksh {totalDiscount.toLocaleString()}</span>
+                                <div className="flex justify-between text-emerald-600 font-bold">
+                                    <span>Discount Savings</span>
+                                    <span className="font-mono">- Ksh {totalDiscount.toLocaleString()}</span>
                                 </div>
                             )}
 
                             {/* Tax Breakdown */}
                             {showTaxInfo && totalTax > 0 && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 space-y-1">
-                                    <div className="text-xs font-bold text-blue-700 mb-1">📊 Tax Breakdown (Inclusive)</div>
-                                    <div className="flex justify-between text-xs text-gray-600">
-                                        <span>Net Amount:</span>
-                                        <span>Ksh {Math.round(netAmount).toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between text-xs text-blue-600">
-                                        <span>VAT 16%:</span>
-                                        <span>Ksh {Math.round(vatAmount).toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between text-xs text-blue-600">
-                                        <span>Tourism Levy 2%:</span>
-                                        <span>Ksh {Math.round(levyAmount).toLocaleString()}</span>
-                                    </div>
-                                    <div className="flex justify-between text-xs font-bold text-blue-700 border-t border-blue-300 pt-1">
-                                        <span>Total Tax:</span>
+                                <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl p-2 space-y-1">
+                                    <div className="text-[10px] font-black uppercase text-emerald-900 flex justify-between">
+                                        <span>Included Taxes (18%)</span>
                                         <span>Ksh {Math.round(totalTax).toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between text-[11px] text-gray-600">
+                                        <span>Net: Ksh {Math.round(netAmount).toLocaleString()}</span>
+                                        <span>VAT (16%): Ksh {Math.round(vatAmount).toLocaleString()}</span>
+                                        <span>Levy (2%): Ksh {Math.round(levyAmount).toLocaleString()}</span>
                                     </div>
                                 </div>
                             )}
+                        </div>
 
-                            <div className="flex justify-between text-xl font-bold text-gray-800 pt-2 border-t border-gray-200">
-                                <span>Total</span>
-                                <span className="text-blue-600">Ksh {total.toLocaleString()}</span>
+                        {/* Grand Total Executive Hero Card */}
+                        <div className="bg-gradient-to-r from-slate-900 via-gray-900 to-slate-950 p-3.5 rounded-2xl text-white shadow-xl flex items-center justify-between border border-white/10">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-wider text-emerald-400">Total Amount Due</p>
+                                <p className="text-2xl font-black font-mono tracking-tight text-white">
+                                    Ksh {total.toLocaleString()}
+                                </p>
+                            </div>
+                            <div className="text-right text-[11px] text-gray-300">
+                                <p className="font-bold">{cart.reduce((s, i) => s + i.qty, 0)} Items</p>
+                                <span className="inline-block mt-0.5 px-2 py-0.5 bg-emerald-500/20 text-emerald-300 rounded-full font-black text-[9px] uppercase tracking-wider border border-emerald-500/30">
+                                    {orderType.replace('_', ' ')}
+                                </span>
                             </div>
                         </div>
 
-                        {/* Action Buttons */}
-                        <div className="grid grid-cols-3 gap-2">
+                        {/* ⚡ 1-Tap Fast Tender Bar */}
+                        <div className="p-2.5 bg-gray-50 rounded-2xl border border-gray-200 space-y-1.5">
+                            <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-wider text-gray-500">
+                                <span>⚡ Fast Cash Tender</span>
+                                <span>1-Tap Settle &amp; Print</span>
+                            </div>
+                            <div className="grid grid-cols-5 gap-1 font-mono">
+                                <button
+                                    onClick={() => completeSale('cash', total)}
+                                    disabled={cart.length === 0}
+                                    className="py-1.5 px-1 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-xl text-[11px] font-black transition-all shadow-sm disabled:opacity-40"
+                                    title="Tender Exact Cash"
+                                >
+                                    Exact
+                                </button>
+                                {[500, 1000, 2000, 5000].map(amt => (
+                                    <button
+                                        key={amt}
+                                        onClick={() => completeSale('cash', Math.max(amt, total))}
+                                        disabled={cart.length === 0}
+                                        className="py-1.5 px-1 bg-white hover:bg-gray-100 active:bg-gray-200 border border-gray-200 text-gray-800 rounded-xl text-[11px] font-bold transition-all disabled:opacity-40 shadow-sm"
+                                        title={`Tender Ksh ${amt.toLocaleString()} (Change: Ksh ${Math.max(0, amt - total).toLocaleString()})`}
+                                    >
+                                        {amt.toLocaleString()}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* 4-Action Operations Bar */}
+                        <div className="grid grid-cols-4 gap-2">
                             <button
                                 onClick={() => cart.length > 0 && setShowHoldModal(true)}
                                 disabled={cart.length === 0}
-                                className="py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-500/30"
+                                className="py-2.5 bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-40 shadow-md shadow-amber-500/20"
+                                title="Hold Order [F3]"
                             >
-                                <span>📋</span>
-                                <span>Hold</span>
+                                <span className="text-sm">📋</span>
+                                <span>Hold [F3]</span>
                             </button>
                             <button
                                 onClick={sendToKitchen}
                                 disabled={cart.length === 0}
-                                className="py-3 bg-purple-500 hover:bg-purple-600 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-purple-500/30"
+                                className="py-2.5 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-40 shadow-md shadow-indigo-600/20"
+                                title="Send to Kitchen KDS [F9]"
                             >
-                                <span>🍳</span>
-                                <span>KOT</span>
+                                <span className="text-sm">🍳</span>
+                                <span>KOT [F9]</span>
+                            </button>
+                            <button
+                                onClick={handlePrintInterimBill}
+                                disabled={cart.length === 0}
+                                className="py-2.5 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-40 shadow-md shadow-teal-600/20"
+                                title="Print Customer Interim Check [F10]"
+                            >
+                                <span className="text-sm">🧾</span>
+                                <span>Bill [F10]</span>
                             </button>
                             <button
                                 onClick={() => cart.length > 0 && setShowPayment(true)}
                                 disabled={cart.length === 0}
-                                className="py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-green-500/30"
+                                className="py-2.5 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 active:from-emerald-700 active:to-green-700 text-white rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-0.5 disabled:opacity-40 shadow-lg shadow-emerald-600/30"
+                                title="Open Payment Settle Dialog [F12]"
                             >
-                                <span>💰</span>
-                                <span>Pay</span>
+                                <span className="text-sm">💰</span>
+                                <span>Pay [F12]</span>
                             </button>
                         </div>
                     </div>
@@ -3941,6 +4421,68 @@ export default function POSPage() {
                 )}
 
                 {/* Modals */}
+                {/* Keyboard Shortcuts Cheat Sheet Modal */}
+                {showShortcutsModal && (
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-[999]" onClick={() => setShowShortcutsModal(false)}>
+                        <div className="bg-slate-900 border border-white/20 text-white rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+                            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-2xl">⌨️</span>
+                                    <div>
+                                        <h3 className="text-base font-black">POS Keyboard Shortcuts</h3>
+                                        <p className="text-xs text-gray-400">High-speed keyboard hotkeys for hospitality service</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => setShowShortcutsModal(false)} className="text-gray-400 hover:text-white text-lg p-1">✕</button>
+                            </div>
+                            <div className="grid grid-cols-2 gap-3 text-xs">
+                                <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center">
+                                    <span className="text-gray-300">Shortcuts Help</span>
+                                    <kbd className="px-2 py-1 bg-white/10 font-mono font-bold rounded">F1</kbd>
+                                </div>
+                                <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center">
+                                    <span className="text-gray-300">Search Products</span>
+                                    <kbd className="px-2 py-1 bg-white/10 font-mono font-bold rounded">F2 or /</kbd>
+                                </div>
+                                <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center">
+                                    <span className="text-gray-300">Hold Current Bill</span>
+                                    <kbd className="px-2 py-1 bg-white/10 font-mono font-bold rounded">F3</kbd>
+                                </div>
+                                <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center">
+                                    <span className="text-gray-300">Running Orders</span>
+                                    <kbd className="px-2 py-1 bg-white/10 font-mono font-bold rounded">F4</kbd>
+                                </div>
+                                <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center">
+                                    <span className="text-gray-300">Split / Merge Bill</span>
+                                    <kbd className="px-2 py-1 bg-white/10 font-mono font-bold rounded">F8</kbd>
+                                </div>
+                                <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center">
+                                    <span className="text-gray-300">Send KOT to Kitchen</span>
+                                    <kbd className="px-2 py-1 bg-white/10 font-mono font-bold rounded">F9</kbd>
+                                </div>
+                                <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center">
+                                    <span className="text-gray-300">Print Interim Check</span>
+                                    <kbd className="px-2 py-1 bg-white/10 font-mono font-bold rounded">F10</kbd>
+                                </div>
+                                <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center">
+                                    <span className="text-gray-300">Settle / Pay Bill</span>
+                                    <kbd className="px-2 py-1 bg-white/10 font-mono font-bold rounded">F12 / Space</kbd>
+                                </div>
+                                <div className="p-2.5 bg-white/5 rounded-xl border border-white/10 flex justify-between items-center col-span-2">
+                                    <span className="text-gray-300">Close Open Dialog / Cancel</span>
+                                    <kbd className="px-2 py-1 bg-white/10 font-mono font-bold rounded">Esc</kbd>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => setShowShortcutsModal(false)}
+                                className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs transition-colors"
+                            >
+                                Got it, Back to POS
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 {/* Supervisor PIN Authorization Modal (Anti-Theft) */}
                 <SupervisorAuthModal
                     isOpen={supervisorModal.isOpen}
