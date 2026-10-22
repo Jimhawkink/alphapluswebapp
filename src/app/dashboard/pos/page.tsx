@@ -3681,42 +3681,49 @@ export default function POSPage() {
                 </div>
             )}
 
-            <div className={`flex h-[calc(100vh-64px)] -m-6 bg-gray-50 ${isFullscreen ? 'fixed inset-0 z-50 h-screen m-0' : ''}`}>
-                {/* Left Side - Products */}
-                <div className="flex-1 flex flex-col bg-white">
+            <div className={`flex w-full h-[calc(100vh-64px)] max-h-screen overflow-hidden bg-gray-100 ${isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen m-0' : '-m-6'}`}>
+                {/* Left Side - Products & Command Center */}
+                <div className="flex-1 min-w-0 flex flex-col bg-white overflow-hidden h-full">
                     {/* Header */}
                     <div className="p-3 border-b border-gray-200 bg-gradient-to-r from-white to-gray-50">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                                {/* POS Title & Live Clock */}
-                                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-600 via-teal-700 to-slate-900 flex items-center justify-center text-lg shadow-md text-white border border-white/20">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                            {/* POS Title & Live Cockpit Status */}
+                            <div className="flex items-center gap-2.5 shrink-0">
+                                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-slate-900 flex items-center justify-center text-xl shadow-md text-white border-2 border-white/40">
                                     🛒
                                 </div>
                                 <div>
                                     <div className="flex items-center gap-2">
-                                        <h2 className="text-sm font-black text-gray-900 leading-tight">AlphaPlus POS</h2>
-                                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-black rounded-full uppercase tracking-wider">
+                                        <h1 className="text-base sm:text-lg font-black text-gray-900 tracking-tight leading-none">
+                                            AlphaPlus <span className="text-emerald-600 font-extrabold">POS</span>
+                                        </h1>
+                                        <span className="px-2 py-0.5 bg-emerald-500 text-white text-[10px] font-black rounded-full uppercase tracking-wider shadow-sm animate-pulse">
                                             LIVE
                                         </span>
                                     </div>
-                                    <p className="text-[10px] font-mono font-semibold text-gray-500 flex items-center gap-1.5">
-                                        <span>⏰ {currentTime || 'Service Ready'}</span>
+                                    <div className="flex items-center gap-1.5 mt-1 text-[11px] font-bold text-gray-500">
+                                        <span className="text-emerald-700 font-mono font-black flex items-center gap-1">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping inline-block" />
+                                            {currentTime || '09:30 AM'}
+                                        </span>
                                         <span>•</span>
-                                        <span>{hotelName}</span>
-                                    </p>
+                                        <span className="truncate max-w-[120px] font-bold text-gray-700">{hotelName}</span>
+                                    </div>
                                 </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                {/* Keyboard Shortcuts Modal Button */}
+
+                            {/* Essential Top Tools & Cashier Badges */}
+                            <div className="flex items-center gap-1.5 shrink-0">
+                                {/* Hotkeys Guide */}
                                 <button
                                     onClick={() => setShowShortcutsModal(true)}
                                     className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-xl text-gray-700 text-xs font-bold transition-all border border-gray-200 flex items-center gap-1 shadow-sm"
-                                    title="Keyboard Shortcuts Guide [F1]"
+                                    title="Keyboard Shortcuts [F1]"
                                 >
                                     <span>⌨️</span>
-                                    <span className="hidden md:inline">Hotkeys [F1]</span>
+                                    <span className="hidden sm:inline">Hotkeys [F1]</span>
                                 </button>
-                                {/* Sound FX Toggle */}
+                                {/* Sound FX */}
                                 <button
                                     onClick={() => {
                                         setSoundEnabled(!soundEnabled);
@@ -3739,33 +3746,25 @@ export default function POSPage() {
                                             }
                                         );
                                     }}
-                                    className="p-2 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 rounded-xl text-amber-800 transition-colors border border-amber-200 text-xs font-bold"
+                                    className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 active:bg-amber-200 rounded-xl text-amber-900 transition-colors border border-amber-200 text-xs font-bold flex items-center gap-1"
                                     title="Kick Cash Drawer (Manager PIN)"
                                 >
-                                    🖨️ Kick
+                                    <span>🖨️</span>
+                                    <span className="hidden sm:inline">Kick</span>
                                 </button>
-                                {/* Fullscreen Button */}
+                                {/* Fullscreen */}
                                 <button
                                     onClick={toggleFullscreen}
                                     className="p-2 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-600 transition-colors border border-gray-200 text-sm shadow-sm"
                                     title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
                                 >
-                                    {isFullscreen ? '⛶' : '⛶'}
+                                    ⛶
                                 </button>
-                                {/* Quick Action Buttons — greyed out for waiters */}
-                                <a href={isWaiterUser ? '#' : '/dashboard'} className={`p-2 bg-gray-100 hover:bg-indigo-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Dashboard">📊</a>
-                                <a href={isWaiterUser ? '#' : '/dashboard/products'} className={`p-2 bg-gray-100 hover:bg-orange-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Dish Products">🍽️</a>
-                                <a href={isWaiterUser ? '#' : '/dashboard/recipe'} className={`p-2 bg-gray-100 hover:bg-amber-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Recipe">📝</a>
-                                <a href={isWaiterUser ? '#' : '/dashboard/sales'} className={`p-2 bg-gray-100 hover:bg-green-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Today's Sales">💰</a>
-                                <a href={isWaiterUser ? '#' : '/dashboard/shift-reports'} className={`p-2 bg-gray-100 hover:bg-blue-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Register Reports">🧾</a>
-                                <a href={isWaiterUser ? '#' : '/dashboard/dish-stock'} className={`p-2 bg-gray-100 hover:bg-teal-100 rounded-lg text-sm transition-colors border border-gray-200 ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : ''}`} title="Available Stock">📦</a>
-                                {/* My Bills — Available to ALL users */}
-                                <a href="/dashboard/my-bills" className="p-2 bg-gray-100 hover:bg-purple-100 rounded-lg text-sm transition-colors border border-gray-200" title="My Bills">🧑‍💼</a>
-                                {/* Low Stock Notification Bell */}
+                                {/* Low Stock Alert Bell */}
                                 <div className="relative">
                                     <button
                                         onClick={() => setShowLowStockDropdown(!showLowStockDropdown)}
-                                        className="p-2 bg-gray-100 hover:bg-red-100 rounded-lg text-sm transition-colors border border-gray-200 relative"
+                                        className="p-2 bg-gray-100 hover:bg-red-100 rounded-xl text-sm transition-colors border border-gray-200 relative"
                                         title={`${lowStockProducts.length} products low on stock`}
                                     >
                                         🔔
@@ -3777,12 +3776,12 @@ export default function POSPage() {
                                     </button>
                                     {/* Low Stock Dropdown */}
                                     {showLowStockDropdown && (
-                                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 max-h-[400px] overflow-hidden flex flex-col">
-                                            <div className="p-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-t-xl">
+                                        <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-2xl shadow-2xl border border-gray-200 z-50 max-h-[400px] overflow-hidden flex flex-col">
+                                            <div className="p-3 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-t-2xl">
                                                 <h3 className="text-sm font-bold">⚠️ Low Stock Alert</h3>
-                                                <p className="text-[10px] opacity-80">{lowStockProducts.length} product{lowStockProducts.length !== 1 ? 's' : ''} below 10 units</p>
+                                                <p className="text-[10px] opacity-80">{lowStockProducts.length} products below 10 units</p>
                                             </div>
-                                            <div className="flex-1 overflow-y-auto max-h-[300px]">
+                                            <div className="flex-1 overflow-y-auto max-h-[280px]">
                                                 {lowStockProducts.length === 0 ? (
                                                     <div className="p-6 text-center text-gray-400">
                                                         <span className="text-3xl block mb-2">✅</span>
@@ -3805,43 +3804,24 @@ export default function POSPage() {
                                         </div>
                                     )}
                                 </div>
-                                {/* Waiter Bill Stats */}
-                                <a href="/dashboard/my-bills" className="flex items-center gap-1.5 px-2 py-1.5 bg-green-50 hover:bg-green-100 rounded-lg border border-green-200 transition-colors" title="Paid Bills">
-                                    <span className="text-[10px]">✅</span>
-                                    <span className="text-[10px] font-bold text-green-700">{waiterPaidCount}</span>
-                                </a>
-                                <a href="/dashboard/my-bills" className="flex items-center gap-1.5 px-2 py-1.5 bg-orange-50 hover:bg-orange-100 rounded-lg border border-orange-200 transition-colors" title="Unpaid Bills">
-                                    <span className="text-[10px]">⏳</span>
-                                    <span className="text-[10px] font-bold text-orange-700">{waiterUnpaidCount}</span>
-                                </a>
-                                {/* Invoice - Compact */}
-                                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-50 rounded-lg border border-blue-200">
+                                {/* Invoice Pill */}
+                                <div className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 rounded-xl border border-blue-200">
                                     <span className="text-xs text-blue-600">🧾</span>
-                                    <span className="text-xs font-bold text-blue-700">{invoiceNo}</span>
+                                    <span className="text-xs font-bold font-mono text-blue-800">{invoiceNo}</span>
                                 </div>
-                                {/* Quick Hardware Printers Shortcut */}
-                                <a
-                                    href="/dashboard/printers"
-                                    target="_blank"
-                                    className="flex items-center gap-1.5 px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 rounded-lg border border-indigo-200 text-indigo-700 text-xs font-semibold transition-colors"
-                                    title="Configure Hardware Thermal Printers & Zero-Dialog Kiosk Mode"
-                                >
-                                    <span>🖨️</span>
-                                    <span className="hidden sm:inline">Printers</span>
-                                </a>
-                                {/* Shift Info - Compact (Admin/Cashier only) */}
+                                {/* Shift Status Pill */}
                                 {!isWaiterUser && hasActiveShift && shift && (
-                                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-green-50 rounded-lg border border-green-200">
-                                        <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-                                        <span className="text-xs font-semibold text-green-700">{shift.name}</span>
+                                    <div className="flex items-center gap-1 px-2.5 py-1.5 bg-green-50 rounded-xl border border-green-200">
+                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                                        <span className="text-xs font-bold text-green-800 hidden sm:inline">{shift.name}</span>
                                     </div>
                                 )}
-                                {/* Close Register - Admin/Cashier only */}
+                                {/* Close Register */}
                                 {!isWaiterUser && hasActiveShift && (
                                     <button
                                         onClick={handleCloseRegister}
                                         disabled={isLoadingRegister}
-                                        className="px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50"
+                                        className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50 shadow-sm"
                                     >
                                         🔴 Close
                                     </button>
@@ -3849,13 +3829,13 @@ export default function POSPage() {
                                 {/* Waiter Indicator + Logout */}
                                 {isWaiterUser && (
                                     <>
-                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 rounded-lg border border-purple-200">
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 rounded-xl border border-purple-200">
                                             <span className="text-xs">👤</span>
-                                            <span className="text-xs font-semibold text-purple-700">{loggedInUserName}</span>
+                                            <span className="text-xs font-bold text-purple-700">{loggedInUserName}</span>
                                         </div>
                                         <button
                                             onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }}
-                                            className="px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-lg text-xs font-bold transition-colors flex items-center gap-1"
+                                            className="px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
                                             title="Logout"
                                         >
                                             🚪 Logout
@@ -3993,7 +3973,7 @@ export default function POSPage() {
 
                     {/* Products Grid */}
                     <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
-                        <div className="grid grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-3">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5">
                             {filteredProducts.map(product => (
                                 <ProductCard
                                     key={product.id}
@@ -4005,53 +3985,150 @@ export default function POSPage() {
                     </div>
 
                     {/* Original Quick Action Buttons — same order, greyed out for waiters */}
-                    <div className="px-3 pb-3 pt-1 bg-gradient-to-r from-gray-100 via-white to-gray-100">
-                        <div className="grid grid-cols-8 gap-2">
-                            <a href={isWaiterUser ? '#' : '/dashboard/bill-payment'} className={`group p-3 bg-gradient-to-br from-orange-500 via-orange-600 to-red-600 rounded-xl text-white text-center transition-all cursor-pointer ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:shadow-lg hover:shadow-orange-500/40 hover:scale-105'}`}>
-                                <span className="text-lg block">💰</span>
-                                <span className="text-[10px] font-bold">Receive Payment</span>
+                    {/* Super Hot Premium Executive Command Bar */}
+                    <div className="p-2 sm:p-2.5 bg-gradient-to-r from-slate-900 via-gray-900 to-slate-950 border-t border-white/10 shadow-2xl shrink-0">
+                        <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+                            {/* 1. Receive Payment - Super Hot Flame Button */}
+                            <a
+                                href={isWaiterUser ? '#' : '/dashboard/bill-payment'}
+                                onClick={() => playPOSChime('click')}
+                                className={`group relative p-2.5 bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-orange-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden ${
+                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-orange-500/50 hover:brightness-110 active:scale-95'
+                                }`}
+                            >
+                                <span className="absolute top-1 right-1.5 px-1 py-0.2 bg-black/30 text-amber-200 text-[8px] font-black rounded-md tracking-wider uppercase">
+                                    🔥 HOT
+                                </span>
+                                <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">💰</span>
+                                <div>
+                                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider block leading-tight">Receive Pay</span>
+                                    <span className="text-[8px] text-amber-100/80 font-bold block">Direct Tender</span>
+                                </div>
                             </a>
-                            <a href="/dashboard/my-bills" className="group p-3 bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 rounded-xl text-white text-center hover:shadow-lg hover:shadow-blue-500/40 transition-all hover:scale-105 cursor-pointer">
-                                <span className="text-lg block group-hover:animate-bounce">📋</span>
-                                <span className="text-[10px] font-bold">My Bills</span>
+
+                            {/* 2. My Bills - Sapphire Royal Button */}
+                            <a
+                                href="/dashboard/my-bills"
+                                onClick={() => playPOSChime('click')}
+                                className="group relative p-2.5 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 rounded-2xl text-white text-center hover:scale-105 hover:shadow-indigo-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/30 shadow-lg shadow-indigo-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden"
+                            >
+                                {waiterUnpaidCount > 0 && (
+                                    <span className="absolute top-1 right-1.5 px-1.5 py-0.2 bg-amber-400 text-slate-900 text-[9px] font-black rounded-full animate-bounce">
+                                        {waiterUnpaidCount}
+                                    </span>
+                                )}
+                                <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">📋</span>
+                                <div>
+                                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider block leading-tight">My Bills</span>
+                                    <span className="text-[8px] text-blue-100/80 font-bold block">{waiterPaidCount} Paid · {waiterUnpaidCount} Open</span>
+                                </div>
                             </a>
-                            <a href={isWaiterUser ? '#' : '/dashboard/sales'} className={`group p-3 bg-gradient-to-br from-green-500 via-emerald-500 to-teal-600 rounded-xl text-white text-center transition-all cursor-pointer ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:shadow-lg hover:shadow-green-500/40 hover:scale-105'}`}>
-                                <span className="text-lg block">📊</span>
-                                <span className="text-[10px] font-bold">Day Sales</span>
+
+                            {/* 3. Day Sales - Emerald Mint Button */}
+                            <a
+                                href={isWaiterUser ? '#' : '/dashboard/sales'}
+                                onClick={() => playPOSChime('click')}
+                                className={`group relative p-2.5 bg-gradient-to-br from-emerald-500 via-teal-600 to-green-700 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-emerald-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden ${
+                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-emerald-500/50 hover:brightness-110 active:scale-95'
+                                }`}
+                            >
+                                <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">📊</span>
+                                <div>
+                                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider block leading-tight">Day Sales</span>
+                                    <span className="text-[8px] text-emerald-100/80 font-bold block">Live Shifts</span>
+                                </div>
                             </a>
-                            <button disabled={isWaiterUser} className={`group p-3 bg-gradient-to-br from-purple-500 via-purple-600 to-pink-600 rounded-xl text-white text-center transition-all ${isWaiterUser ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-lg hover:shadow-purple-500/40 hover:scale-105'}`}>
-                                <span className="text-lg block">🔄</span>
-                                <span className="text-[10px] font-bold">Merge Bill</span>
-                            </button>
-                            <button disabled={isWaiterUser} className={`group p-3 bg-gradient-to-br from-teal-500 via-cyan-500 to-blue-500 rounded-xl text-white text-center transition-all ${isWaiterUser ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-lg hover:shadow-teal-500/40 hover:scale-105'}`}>
-                                <span className="text-lg block">📈</span>
-                                <span className="text-[10px] font-bold">Sales Summary</span>
-                            </button>
-                            <a href={isWaiterUser ? '#' : '/dashboard/bills?status=Pending'} className={`group p-3 bg-gradient-to-br from-amber-500 via-orange-500 to-yellow-500 rounded-xl text-white text-center transition-all cursor-pointer ${isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:shadow-lg hover:shadow-amber-500/40 hover:scale-105'}`}>
-                                <span className="text-lg block">⏳</span>
-                                <span className="text-[10px] font-bold">Pending Bills</span>
+
+                            {/* 4. Merge Bill - Neon Fuchsia Button */}
+                            <a
+                                href={isWaiterUser ? '#' : '/dashboard/split-merge-receipts'}
+                                onClick={() => playPOSChime('click')}
+                                className={`group relative p-2.5 bg-gradient-to-br from-purple-600 via-fuchsia-600 to-pink-600 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-fuchsia-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden ${
+                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-fuchsia-500/50 hover:brightness-110 active:scale-95'
+                                }`}
+                            >
+                                <span className="absolute top-1 right-1.5 px-1 py-0.2 bg-black/30 text-pink-200 text-[8px] font-black rounded-md tracking-wider uppercase">
+                                    STUDIO
+                                </span>
+                                <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">🔄</span>
+                                <div>
+                                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider block leading-tight">Merge Bills</span>
+                                    <span className="text-[8px] text-purple-100/80 font-bold block">Split &amp; Merge</span>
+                                </div>
                             </a>
-                            <button onClick={() => {
-                                if (cart.length === 0) return;
-                                requireSupervisorAuth(
-                                    'Clear Entire Order',
-                                    `Cancel running order with ${cart.length} items (Ksh ${total.toLocaleString()})`,
-                                    () => clearCart()
-                                );
-                            }} className="group p-3 bg-gradient-to-br from-gray-500 via-gray-600 to-slate-700 rounded-xl text-white text-center hover:shadow-lg hover:shadow-gray-500/40 transition-all hover:scale-105">
-                                <span className="text-lg block group-hover:animate-bounce">🗑️</span>
-                                <span className="text-[10px] font-bold">Clear</span>
+
+                            {/* 5. Sales Summary - Cyan Sapphire Button */}
+                            <a
+                                href={isWaiterUser ? '#' : '/dashboard/reports/pos'}
+                                onClick={() => playPOSChime('click')}
+                                className={`group relative p-2.5 bg-gradient-to-br from-cyan-500 via-teal-600 to-blue-700 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-cyan-600/30 flex flex-col items-center justify-between min-h-[68px] overflow-hidden ${
+                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-cyan-500/50 hover:brightness-110 active:scale-95'
+                                }`}
+                            >
+                                <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">📈</span>
+                                <div>
+                                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider block leading-tight">Summary</span>
+                                    <span className="text-[8px] text-cyan-100/80 font-bold block">Analytics</span>
+                                </div>
+                            </a>
+
+                            {/* 6. Pending Bills - Amber Gold Button */}
+                            <a
+                                href={isWaiterUser ? '#' : '/dashboard/bills?status=Pending'}
+                                onClick={() => playPOSChime('click')}
+                                className={`group relative p-2.5 bg-gradient-to-br from-amber-500 via-yellow-600 to-orange-600 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-amber-600/30 flex flex-col items-center justify-between min-h-[68px] overflow-hidden ${
+                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-amber-500/50 hover:brightness-110 active:scale-95'
+                                }`}
+                            >
+                                <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">⏳</span>
+                                <div>
+                                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider block leading-tight">Pending</span>
+                                    <span className="text-[8px] text-amber-100/80 font-bold block">Unsettled</span>
+                                </div>
+                            </a>
+
+                            {/* 7. Clear - Sleek Carbon Slate Button with Supervisor PIN */}
+                            <button
+                                onClick={() => {
+                                    if (cart.length === 0) return;
+                                    requireSupervisorAuth(
+                                        'Clear Entire Order',
+                                        `Cancel running order with ${cart.length} items (Ksh ${total.toLocaleString()})`,
+                                        () => {
+                                            clearCart();
+                                            playPOSChime('void');
+                                        }
+                                    );
+                                }}
+                                className="group relative p-2.5 bg-gradient-to-br from-slate-700 via-gray-800 to-zinc-900 rounded-2xl text-white text-center hover:scale-105 hover:shadow-slate-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/20 shadow-lg flex flex-col items-center justify-between min-h-[68px] overflow-hidden"
+                            >
+                                <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">🗑️</span>
+                                <div>
+                                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider block leading-tight">Clear Cart</span>
+                                    <span className="text-[8px] text-gray-300 font-bold block">PIN Secured</span>
+                                </div>
                             </button>
-                            <button disabled={isWaiterUser} className={`group p-3 bg-gradient-to-br from-rose-500 via-red-500 to-pink-600 rounded-xl text-white text-center transition-all ${isWaiterUser ? 'opacity-40 cursor-not-allowed grayscale' : 'hover:shadow-lg hover:shadow-rose-500/40 hover:scale-105'}`}>
-                                <span className="text-lg block">🏁</span>
-                                <span className="text-[10px] font-bold">Closing Stock</span>
-                            </button>
+
+                            {/* 8. Closing Stock / Shift Reconciliation - Ruby Rose Button */}
+                            <a
+                                href={isWaiterUser ? '#' : '/dashboard/shift-reports'}
+                                onClick={() => playPOSChime('click')}
+                                className={`group relative p-2.5 bg-gradient-to-br from-rose-600 via-red-600 to-pink-700 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-rose-600/30 flex flex-col items-center justify-between min-h-[68px] overflow-hidden ${
+                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-rose-500/50 hover:brightness-110 active:scale-95'
+                                }`}
+                            >
+                                <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">🏁</span>
+                                <div>
+                                    <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider block leading-tight">EOD Stock</span>
+                                    <span className="text-[8px] text-rose-100/80 font-bold block">Close Audit</span>
+                                </div>
+                            </a>
                         </div>
                     </div>
                 </div>
 
-                {/* Right Side - Cart */}
-                <div className="w-[420px] bg-white border-l border-gray-200 flex flex-col shadow-xl">
+                {/* Right Side - Cart (100% visible on any screen) */}
+                <div className="w-[330px] sm:w-[350px] md:w-[370px] lg:w-[390px] xl:w-[420px] shrink-0 bg-white border-l border-gray-200 flex flex-col shadow-2xl h-full overflow-hidden z-20">
                     {/* Cart Header */}
                     <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-white">
                         <div className="flex items-center justify-between">
