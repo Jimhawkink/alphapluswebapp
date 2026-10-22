@@ -4520,21 +4520,58 @@ export default function POSPage() {
                                         </div>
                                     </div>
 
-                                    {/* Big Glowing Proceed to Payment Button */}
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            if (cart.length === 0) {
-                                                toast.error('Your cart is empty! Add products first.');
-                                                return;
-                                            }
-                                            setShowPayment(true);
-                                        }}
-                                        className="w-full py-3.5 bg-[#00e676] hover:bg-[#00c853] active:scale-[0.99] text-black font-black text-sm sm:text-base rounded-xl shadow-[0_0_24px_rgba(0,230,118,0.4)] flex items-center justify-center gap-2 transition-all cursor-pointer tracking-wide"
-                                    >
-                                        <span>💳</span>
-                                        <span>Proceed to Payment &gt;</span>
-                                    </button>
+                                    {/* 4 Super Hot Action Buttons: Hold, KOT, Bill, Pay (Matching Classic Theme Functions) */}
+                                    <div className="grid grid-cols-4 gap-2 pt-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => cart.length > 0 && setShowHoldModal(true)}
+                                            disabled={cart.length === 0}
+                                            className="py-3 bg-amber-950/40 hover:bg-amber-600 active:scale-95 text-amber-300 hover:text-white rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-1 border border-amber-500/30 hover:border-amber-400 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                                            title="Hold Order [F3]"
+                                        >
+                                            <span className="text-base">📋</span>
+                                            <span className="tracking-wide">Hold [F3]</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={sendToKitchen}
+                                            disabled={cart.length === 0}
+                                            className="py-3 bg-indigo-950/40 hover:bg-indigo-600 active:scale-95 text-indigo-300 hover:text-white rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-1 border border-indigo-500/30 hover:border-indigo-400 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                                            title="Send to Kitchen KDS [F9]"
+                                        >
+                                            <span className="text-base">🍳</span>
+                                            <span className="tracking-wide">KOT [F9]</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handlePrintInterimBill}
+                                            disabled={cart.length === 0}
+                                            className="py-3 bg-teal-950/40 hover:bg-teal-600 active:scale-95 text-teal-300 hover:text-white rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-1 border border-teal-500/30 hover:border-teal-400 disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                                            title="Print Customer Interim Check [F10]"
+                                        >
+                                            <span className="text-base">🧾</span>
+                                            <span className="tracking-wide">Bill [F10]</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (cart.length === 0) {
+                                                    toast.error('Your cart is empty! Add products first.');
+                                                    return;
+                                                }
+                                                setShowPayment(true);
+                                            }}
+                                            disabled={cart.length === 0}
+                                            className="py-3 bg-[#00e676] hover:bg-[#00c853] active:scale-95 text-black rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-1 shadow-[0_0_20px_rgba(0,230,118,0.4)] disabled:opacity-40 disabled:cursor-not-allowed border border-[#00e676]"
+                                            title="Open Payment Dialog [F12]"
+                                        >
+                                            <span className="text-base">💳</span>
+                                            <span className="tracking-wide uppercase">Pay [F12]</span>
+                                        </button>
+                                    </div>
 
                                     {/* Quick Tender Tiles: M-Pesa, Cash, Card, Credit, Split */}
                                     <div className="grid grid-cols-5 gap-1.5 pt-1">
