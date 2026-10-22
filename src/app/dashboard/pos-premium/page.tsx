@@ -1108,6 +1108,28 @@ export default function PremiumPOSPage() {
 
     return (
         <div style={S.page}>
+            {/* ── FLOATING THEME SWITCHER — always visible ─── */}
+            <div style={{
+                position: 'fixed', bottom: '24px', right: '360px', zIndex: 999,
+                display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-end'
+            }}>
+                <button
+                    onClick={() => { window.location.href = '/dashboard/pos'; }}
+                    style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        background: 'linear-gradient(135deg, #7c3aed, #6366f1)',
+                        border: '2px solid rgba(139,92,246,0.6)',
+                        borderRadius: '999px', padding: '10px 18px',
+                        color: '#fff', cursor: 'pointer', fontSize: '13px', fontWeight: 900,
+                        boxShadow: '0 0 24px rgba(99,102,241,0.5), 0 4px 20px rgba(0,0,0,0.5)',
+                        letterSpacing: '0.03em', whiteSpace: 'nowrap',
+                        animation: 'floatPulse 3s ease-in-out infinite',
+                    }}
+                >
+                    🎨 Switch to Classic UI
+                </button>
+            </div>
+
             {/* ── TOP HEADER BAR ─────────────────────────────── */}
             <div style={S.topBar}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
@@ -1134,9 +1156,9 @@ export default function PremiumPOSPage() {
                     )}
                     <button onClick={() => setSoundEnabled(s => !s)} title="Toggle Sound" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '6px 10px', color: soundEnabled ? '#00ff78' : 'rgba(255,255,255,0.3)', cursor: 'pointer', fontSize: '14px' }}>{soundEnabled ? '🔊' : '🔇'}</button>
                     <button
-                        onClick={() => router.push('/dashboard/pos')}
-                        title="Switch to Classic UI"
-                        style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(99,102,241,0.12)', border: '1px solid rgba(99,102,241,0.3)', borderRadius: '8px', padding: '6px 12px', color: '#a5b4fc', cursor: 'pointer', fontSize: '11px', fontWeight: 700 }}
+                        onClick={() => { window.location.href = '/dashboard/pos'; }}
+                        title="🎨 Switch to Classic UI"
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg,rgba(99,102,241,0.25),rgba(139,92,246,0.2))', border: '2px solid rgba(99,102,241,0.5)', borderRadius: '10px', padding: '7px 14px', color: '#c4b5fd', cursor: 'pointer', fontSize: '12px', fontWeight: 800, boxShadow: '0 0 12px rgba(99,102,241,0.25)' }}
                     >
                         🎨 Classic UI
                     </button>
@@ -1421,6 +1443,7 @@ export default function PremiumPOSPage() {
             {/* ── CSS Animations ──────────────────────────── */}
             <style>{`
                 @keyframes spin { to { transform: rotate(360deg); } }
+                @keyframes floatPulse { 0%,100% { transform: translateY(0); box-shadow: 0 0 24px rgba(99,102,241,0.5); } 50% { transform: translateY(-4px); box-shadow: 0 0 36px rgba(99,102,241,0.7); } }
                 @keyframes pulse { 0%,100% { opacity:1; box-shadow: 0 0 6px #00ff78; } 50% { opacity:0.5; box-shadow: 0 0 12px #00ff78; } }
                 * { box-sizing: border-box; }
                 ::-webkit-scrollbar { width: 4px; height: 4px; }
