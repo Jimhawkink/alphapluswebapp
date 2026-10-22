@@ -928,8 +928,10 @@ const PaymentModal = ({
     onClose,
     total,
     onComplete,
-    invoiceNo
+    invoiceNo,
+    initialMethod = 'cash'
 }: {
+    initialMethod?: string;
     isOpen: boolean;
     onClose: () => void;
     total: number;
@@ -944,7 +946,8 @@ const PaymentModal = ({
     ) => void;
     invoiceNo: string;
 }) => {
-    const [paymentMethod, setPaymentMethod] = useState('cash');
+    const [paymentMethod, setPaymentMethod] = useState(initialMethod || 'cash');
+    useEffect(() => { if (isOpen && initialMethod) setPaymentMethod(initialMethod); }, [isOpen, initialMethod]);
     const [amountPaid, setAmountPaid] = useState('');
     const [mpesaPhone, setMpesaPhone] = useState('');
     const [mpesaReceipt, setMpesaReceipt] = useState('');
@@ -2056,39 +2059,65 @@ const MergeTablesModal = ({ isOpen, onClose, runningOrders, onMergeTables }: Mer
                     <button onClick={onClose} className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold">✕</button>
                 </div>
 
-                <div className="space-y-3">
-                    <div>
-                        <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Merge FROM (Table to Close)</label>
-                        <select
-                            value={sourceId}
-                            onChange={e => setSourceId(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none"
-                        >
-                            <option value="">Select Table...</option>
-                            {runningOrders.map(o => (
-                                <option key={o.id} value={o.id}>
-                                    {o.tableNo ? ("Table " + o.tableNo) : o.name} (Ksh {(o.total || 0).toLocaleString()})
-                                </option>
-                            ))}
-                        </select>
+                {runningOrders.length === 0 ? (
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center space-y-2">
+                        <span className="text-3xl block">📭</span>
+                        <p className="text-xs font-bold text-slate-700">No open unpaid orders available to merge right now.</p>
+                        <p className="text-[11px] text-slate-500">Hold orders with table numbers, or open the Full Studio to merge past receipts.</p>
+                        <a href="/dashboard/split-merge-receipts" className="inline-block mt-1 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-sm">
+                            Open Split & Merge Studio →
+                        </a>
                     </div>
+                ) : (
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Merge FROM (Table to Close)</label>
+                            <select
+                                value={sourceId}
+                                onChange={e => setSourceId(e.target.value)}
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none"
+                            >
+                                <option value="">Select Table to merge from...</option>
+                                {runningOrders.map(o => {
+                                    const id = String(o.id || o.sale_id);
+                                    const tableLabel = o.table_no ? ('Table ' + o.table_no) : o.tableNo ? ('Table ' + o.tableNo) : (o.customer_name || o.name || o.invoice_no || ('Order #' + id));
+                                    const amt = o.total || o.grand_total || o.total_amount || 0;
+                                    return (
+                                        <option key={id} value={id}>
+                                            {tableLabel} (Ksh {Number(amt).toLocaleString()})
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
 
-                    <div>
-                        <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Merge INTO (Target Master Table)</label>
-                        <select
-                            value={targetId}
-                            onChange={e => setTargetId(e.target.value)}
-                            className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none"
-                        >
-                            <option value="">Select Destination Table...</option>
-                            {runningOrders.filter(o => o.id !== sourceId).map(o => (
-                                <option key={o.id} value={o.id}>
-                                    {o.tableNo ? ("Table " + o.tableNo) : o.name} (Ksh {(o.total || 0).toLocaleString()})
-                                </option>
-                            ))}
-                        </select>
+                        <div>
+                            <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Merge INTO (Target Master Table)</label>
+                            <select
+                                value={targetId}
+                                onChange={e => setTargetId(e.target.value)}
+                                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none"
+                            >
+                                <option value="">Select Destination Master Table...</option>
+                                {runningOrders.filter(o => String(o.id || o.sale_id) !== sourceId).map(o => {
+                                    const id = String(o.id || o.sale_id);
+                                    const tableLabel = o.table_no ? ('Table ' + o.table_no) : o.tableNo ? ('Table ' + o.tableNo) : (o.customer_name || o.name || o.invoice_no || ('Order #' + id));
+                                    const amt = o.total || o.grand_total || o.total_amount || 0;
+                                    return (
+                                        <option key={id} value={id}>
+                                            {tableLabel} (Ksh {Number(amt).toLocaleString()})
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                        </div>
+                        <div className="text-center pt-1">
+                            <a href="/dashboard/split-merge-receipts" className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 underline">
+                                Advanced Receipt Studio: Split, Merge & Reprint Invoices →
+                            </a>
+                        </div>
                     </div>
-                </div>
+                )}
 
                 <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
                     <button onClick={onClose} className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">Cancel</button>
@@ -2274,20 +2303,44 @@ export default function POSPage() {
     };
 
     // Merge Tables Handler
-    const handleMergeTablesAction = (sourceId: string, targetId: string) => {
-        const sourceOrder = runningOrders.find(o => o.id === sourceId);
-        const targetOrder = runningOrders.find(o => o.id === targetId);
-        if (sourceOrder && targetOrder) {
-            const mergedItems = [...targetOrder.items, ...sourceOrder.items];
-            const mergedTotal = targetOrder.total + sourceOrder.total;
-            setRunningOrders(prev => prev.filter(o => o.id !== sourceId).map(o => {
-                if (o.id === targetId) {
-                    return { ...o, items: mergedItems, total: mergedTotal, name: targetOrder.name + ' + ' + sourceOrder.name };
-                }
-                return o;
-            }));
-            toast.success('Successfully merged tables! 🔀');
+    const handleMergeTablesAction = async (sourceId: string, targetId: string) => {
+        const allOrders = unpaidOrders.length > 0 ? unpaidOrders : runningOrders;
+        const sourceOrder = allOrders.find(o => String(o.id || o.sale_id) === String(sourceId));
+        const targetOrder = allOrders.find(o => String(o.id || o.sale_id) === String(targetId));
+
+        if (!sourceOrder || !targetOrder) {
+            toast.error('Please select both tables to merge');
+            return;
         }
+
+        const sourceItems = sourceOrder.items || [];
+        const targetItems = targetOrder.items || [];
+        const mergedItems = [...targetItems, ...sourceItems];
+        const sourceTotal = Number(sourceOrder.total || sourceOrder.grand_total || sourceOrder.total_amount || 0);
+        const targetTotal = Number(targetOrder.total || targetOrder.grand_total || targetOrder.total_amount || 0);
+        const mergedTotal = targetTotal + sourceTotal;
+
+        if (sourceOrder.sale_id && targetOrder.sale_id) {
+            try {
+                await supabase.from('sales').update({ grand_total: mergedTotal, total_amount: mergedTotal }).eq('sale_id', targetOrder.sale_id);
+                await supabase.from('sales_items').update({ sale_id: targetOrder.sale_id }).eq('sale_id', sourceOrder.sale_id);
+                await supabase.from('sales').update({ status: 'Merged' }).eq('sale_id', sourceOrder.sale_id);
+                await loadUnpaidOrders();
+                toast.success('Tables successfully merged! 🔀');
+                return;
+            } catch (err) {
+                console.error('Merge error:', err);
+            }
+        }
+
+        setRunningOrders(prev => prev.filter(o => String(o.id || (o as any).sale_id) !== String(sourceId)).map(o => {
+            if (String(o.id || (o as any).sale_id) === String(targetId)) {
+                return { ...o, items: mergedItems, total: mergedTotal, name: (targetOrder.name || 'Table') + ' + ' + (sourceOrder.name || 'Table') };
+            }
+            return o;
+        }));
+        setUnpaidOrders(prev => prev.filter(o => String(o.sale_id || o.id) !== String(sourceId)));
+        toast.success('Successfully merged tables! 🔀');
     };
 
     const [products, setProducts] = useState<Product[]>([]);
@@ -2314,6 +2367,7 @@ export default function POSPage() {
         toast.success(t === 'cyber' ? '🟢 Cyber Emerald Mode Active' : '☀️ Classic Mode Active');
     };
     const [showPayment, setShowPayment] = useState(false);
+    const [paymentInitialMethod, setPaymentInitialMethod] = useState<'cash' | 'mpesa' | 'card' | 'credit' | 'room'>('cash');
 
     // Split Bill & Table Transfer States
     const [showSplitModal, setShowSplitModal] = useState(false);
@@ -4104,7 +4158,7 @@ export default function POSPage() {
 
                                 <button
                                     type="button"
-                                    onClick={() => setShowMergeModal(true)}
+                                    onClick={() => { loadUnpaidOrders(); setShowMergeModal(true); }}
                                     className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all"
                                     title="Bill Merge / Combine Tables"
                                 >
@@ -4289,7 +4343,7 @@ export default function POSPage() {
 
                                         <button
                                             type="button"
-                                            onClick={() => setShowRunningOrders(true)}
+                                            onClick={() => { loadUnpaidOrders(); setShowRunningOrders(true); }}
                                             className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all"
                                             title="View Running Orders"
                                         >
@@ -4298,7 +4352,7 @@ export default function POSPage() {
                                         </button>
 
                                         <a
-                                            href="/dashboard/reports/daily"
+                                            href="/dashboard/sales"
                                             className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all"
                                             title="Today's Sales"
                                         >
@@ -4308,7 +4362,7 @@ export default function POSPage() {
 
                                         <button
                                             type="button"
-                                            onClick={() => setShowMergeModal(true)}
+                                            onClick={() => { loadUnpaidOrders(); setShowMergeModal(true); }}
                                             className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all"
                                             title="Merge Tables / Combine Receipts"
                                         >
@@ -4562,6 +4616,7 @@ export default function POSPage() {
                                                     toast.error('Your cart is empty! Add products first.');
                                                     return;
                                                 }
+                                                setPaymentInitialMethod('cash');
                                                 setShowPayment(true);
                                             }}
                                             disabled={cart.length === 0}
@@ -4578,7 +4633,8 @@ export default function POSPage() {
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                if (cart.length === 0) return;
+                                                if (cart.length === 0) { toast.error('Please add dishes to cart first'); return; }
+                                                setPaymentInitialMethod('mpesa');
                                                 setShowPayment(true);
                                             }}
                                             className="py-2 bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/60 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all text-gray-300 hover:text-white"
@@ -4591,7 +4647,8 @@ export default function POSPage() {
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                if (cart.length === 0) return;
+                                                if (cart.length === 0) { toast.error('Please add dishes to cart first'); return; }
+                                                setPaymentInitialMethod('cash');
                                                 setShowPayment(true);
                                             }}
                                             className="py-2 bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/60 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all text-gray-300 hover:text-white"
@@ -4604,7 +4661,8 @@ export default function POSPage() {
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                if (cart.length === 0) return;
+                                                if (cart.length === 0) { toast.error('Please add dishes to cart first'); return; }
+                                                setPaymentInitialMethod('card');
                                                 setShowPayment(true);
                                             }}
                                             className="py-2 bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/60 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all text-gray-300 hover:text-white"
@@ -4617,7 +4675,8 @@ export default function POSPage() {
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                if (cart.length === 0) return;
+                                                if (cart.length === 0) { toast.error('Please add dishes to cart first'); return; }
+                                                setPaymentInitialMethod('credit');
                                                 setShowPayment(true);
                                             }}
                                             className="py-2 bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/60 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all text-gray-300 hover:text-white"
@@ -4630,7 +4689,7 @@ export default function POSPage() {
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                if (cart.length === 0) return;
+                                                if (cart.length === 0) { toast.error('Please add dishes to cart first'); return; }
                                                 setShowSplitModal(true);
                                             }}
                                             className="py-2 bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/60 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all text-gray-300 hover:text-white"
@@ -5376,9 +5435,12 @@ export default function POSPage() {
                     </div>
                 </div>
 
+                    </>
+                )}
+
                 {/* Running Orders Sidebar */}
                 {showRunningOrders && (
-                    <div className="fixed inset-0 bg-black/30 z-40" onClick={() => setShowRunningOrders(false)}>
+                    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]" onClick={() => setShowRunningOrders(false)}>
                         <div
                             className="absolute right-0 top-0 h-full w-96 bg-white border-l border-gray-200 p-4 overflow-y-auto shadow-2xl"
                             onClick={e => e.stopPropagation()}
@@ -5566,6 +5628,7 @@ export default function POSPage() {
                     total={total}
                     onComplete={completeSale}
                     invoiceNo={invoiceNo}
+                    initialMethod={paymentInitialMethod}
                 />
 
                 <FoodOrderNotesModal
@@ -5679,9 +5742,34 @@ export default function POSPage() {
                     </div>
                 )}
 
-                
-                    </>
-                )}
+                {/* Move / Transfer Table Modal */}
+                <MoveTableModal
+                    isOpen={showMoveTableModal}
+                    onClose={() => setShowMoveTableModal(false)}
+                    currentTable={tableNo}
+                    onMoveTable={handleMoveTableAction}
+                />
+
+                {/* Merge Tables Modal */}
+                <MergeTablesModal
+                    isOpen={showMergeModal}
+                    onClose={() => setShowMergeModal(false)}
+                    runningOrders={unpaidOrders.length > 0 ? unpaidOrders : runningOrders}
+                    onMergeTables={handleMergeTablesAction}
+                />
+
+                {/* Split Bill Modal */}
+                <SplitBillModal
+                    isOpen={showSplitModal}
+                    onClose={() => setShowSplitModal(false)}
+                    cart={cart}
+                    total={total}
+                    tableNo={tableNo}
+                    invoiceNo={invoiceNo}
+                    onCompleteSplitShare={handleCompleteSplitShare}
+                    onCompleteItemizedSplit={handleCompleteItemizedSplit}
+                />
+
 {/* Paid Receipt Preview */}
                 <ReceiptPreviewModal
                     isOpen={showReceiptPreview}
@@ -5693,7 +5781,7 @@ export default function POSPage() {
 
             {/* Held Sales Modal */}
             {showHeldSalesModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50" onClick={() => setShowHeldSalesModal(false)}>
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]" onClick={() => setShowHeldSalesModal(false)}>
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col overflow-hidden" onClick={e => e.stopPropagation()}>
                         <div className="bg-gradient-to-r from-amber-500 to-orange-500 px-6 py-4 text-white flex items-center justify-between">
                             <div>
@@ -5771,7 +5859,7 @@ export default function POSPage() {
 
             {/* Close Register Modal */}
             {showCloseRegister && closeRegisterData && (
-                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
                     <div className="bg-white rounded-2xl shadow-2xl p-6 w-[480px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
                         <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
                             🔴 Close Register — End of Day Report
