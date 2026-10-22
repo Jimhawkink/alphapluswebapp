@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, c2bSupabase } from '@/lib/supabase';
@@ -3833,6 +3833,13 @@ export default function POSPage() {
                                             <span className="text-xs">👤</span>
                                             <span className="text-xs font-bold text-purple-700">{loggedInUserName}</span>
                                         </div>
+                                        <button
+                                            onClick={() => window.location.href = '/dashboard/pos-premium'}
+                                            className="px-2.5 py-1.5 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1 shadow-sm"
+                                            title="Switch to Premium UI"
+                                        >
+                                            ⚡ Premium UI
+                                        </button>
                                         <button
                                             onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }}
                                             className="px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
