@@ -3619,6 +3619,10 @@ export default function POSPage() {
 
     return (
         <>
+            {/* FLOATING THEME SWITCHER */}
+            <a href="/dashboard/pos-premium" style={{ position: 'fixed', bottom: '100px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg,#7c3aed,#6366f1)', border: '2px solid rgba(167,139,250,0.6)', borderRadius: '999px', padding: '10px 22px', color: '#fff', textDecoration: 'none', fontSize: '13px', fontWeight: 900, boxShadow: '0 0 28px rgba(99,102,241,0.6), 0 4px 20px rgba(0,0,0,0.4)', whiteSpace: 'nowrap' }}>
+                ⚡ Switch to Premium UI
+            </a>
             {/* Register Closed Lockout Modal - Deny proceeding until register is opened */}
             {!isLoadingShift && !hasActiveShift && (
                 <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
