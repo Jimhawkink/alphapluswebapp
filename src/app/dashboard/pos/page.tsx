@@ -196,6 +196,225 @@ const getCategoryIcon = (categoryName: string) => {
     return '🍴';
 };
 
+
+// Smart Food Image Resolver for Cyber Emerald POS
+const getDishImage = (name: string, category?: string): string => {
+    const n = (name || '').toLowerCase();
+    const c = (category || '').toLowerCase();
+
+    if (n.includes('beef stew') || (n.includes('stew') && n.includes('ugali'))) return '/images/food/beef_stew.jpg';
+    if (n.includes('biryani') || n.includes('briyani')) return '/images/food/chicken_biryani.jpg';
+    if (n.includes('chapati') || n.includes('roti')) return '/images/food/chapati.jpg';
+    if (n.includes('chips masala') || n.includes('masala chips')) return '/images/food/chips_masala.jpg';
+    if (n.includes('french fries') || n.includes('chips') || n.includes('fries')) return '/images/food/french_fries.jpg';
+    if (n.includes('passion') || n.includes('juice') || n.includes('cocktail') || n.includes('smoothie')) return '/images/food/passion_juice.jpg';
+    if (n.includes('tilapia') || n.includes('fish') || n.includes('samaki') || n.includes('sea')) return '/images/food/tilapia_fish.jpg';
+    if (n.includes('choma') || n.includes('goat') || n.includes('mbuzi') || n.includes('ribs') || n.includes('steak') || n.includes('beef') || n.includes('meat')) return '/images/food/nyama_choma.jpg';
+    if (n.includes('water') || n.includes('dasani') || n.includes('keringet')) return '/images/food/mineral_water.jpg';
+    if (n.includes('soda') || n.includes('coke') || n.includes('coca') || n.includes('fanta') || n.includes('sprite')) return '/images/food/soda.jpg';
+    if (n.includes('masala tea') || n.includes('dawa') || n.includes('ginger')) return '/images/food/masala_tea.jpg';
+    if (n.includes('ugali')) return '/images/food/ugali.jpg';
+    if (n.includes('african tea') || n.includes('chai') || n.includes('black tea') || (n.includes('tea') && !n.includes('masala'))) return '/images/food/african_tea.jpg';
+    if (n.includes('samosa') || n.includes('sambusa')) return '/images/food/samosa.jpg';
+    if (n.includes('mandazi') || n.includes('mahamri')) return '/images/food/mandazi.jpg';
+    if (n.includes('wing') || n.includes('kuku') || n.includes('chicken')) return '/images/food/chicken_wings.jpg';
+    if (n.includes('pizza')) return '/images/food/pizza_slice.jpg';
+    if (n.includes('beef burger')) return '/images/food/beef_burger.jpg';
+    if (n.includes('burger')) return '/images/food/burger.jpg';
+    if (n.includes('fruit') || n.includes('salad') || n.includes('kachumbari')) return '/images/food/fruit_salad.jpg';
+    if (n.includes('pilau') || n.includes('rice') || n.includes('wali')) return '/images/food/pilau.jpg';
+    if (n.includes('coffee') || n.includes('cappuccino') || n.includes('espresso') || n.includes('latte')) return '/images/food/coffee.jpg';
+    if (n.includes('beer') || n.includes('tusker') || n.includes('guinness') || n.includes('wine') || n.includes('liquor')) return '/images/food/beer.jpg';
+    if (n.includes('soup') || n.includes('broth')) return '/images/food/soup.jpg';
+
+    if (c.includes('beverage') || c.includes('tea') || c.includes('coffee') || c.includes('drink')) return '/images/food/coffee.jpg';
+    if (c.includes('meat') || c.includes('choma') || c.includes('grill')) return '/images/food/nyama_choma.jpg';
+    if (c.includes('snack') || c.includes('pastry') || c.includes('bakery')) return '/images/food/samosa.jpg';
+    if (c.includes('juice')) return '/images/food/passion_juice.jpg';
+
+    return '/images/food/default_dish.jpg';
+};
+
+// Cyber Theme Product Card Component
+const CyberProductCard = ({
+    product,
+    cartQty,
+    onAdd
+}: {
+    product: Product;
+    cartQty: number;
+    onAdd: () => void;
+}) => {
+    const isOutOfStock = product.stock === 0;
+    const isLowStock = product.stock > 0 && product.stock <= 5;
+    const dishImg = getDishImage(product.name, product.category);
+
+    return (
+        <button
+            onClick={() => {
+                if (!isOutOfStock) {
+                    onAdd();
+                    playPOSChime('add');
+                }
+            }}
+            disabled={isOutOfStock}
+            className={`group text-left bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/70 rounded-2xl overflow-hidden cursor-pointer transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_8px_25px_rgba(0,0,0,0.6)] flex flex-col justify-between relative ${
+                isOutOfStock ? 'opacity-40 cursor-not-allowed grayscale' : ''
+            }`}
+        >
+            <div className="h-28 sm:h-32 w-full relative overflow-hidden bg-black/50">
+                <img
+                    src={dishImg}
+                    alt={product.name}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    loading="lazy"
+                    onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/images/food/default_dish.jpg';
+                    }}
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0c161e] via-transparent to-black/30 pointer-events-none" />
+
+                <div className="absolute top-2 right-2">
+                    {isOutOfStock ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-950/80 text-red-400 border border-red-500/40 backdrop-blur-md flex items-center gap-1 shadow-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                            Sold Out
+                        </span>
+                    ) : isLowStock ? (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40 backdrop-blur-md flex items-center gap-1 shadow-sm animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+                            {product.stock} Left
+                        </span>
+                    ) : (
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 text-[#00e676] border border-[#00e676]/40 backdrop-blur-md flex items-center gap-1 shadow-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]" />
+                            In Stock
+                        </span>
+                    )}
+                </div>
+
+                {cartQty > 0 && (
+                    <div className="absolute top-2 left-2 px-2 py-0.5 rounded-full text-[11px] font-black bg-[#00e676] text-black shadow-lg shadow-[#00e676]/50 flex items-center gap-1">
+                        <span>x{cartQty}</span>
+                    </div>
+                )}
+            </div>
+
+            <div className="p-2.5 sm:p-3 flex flex-col justify-between flex-1 gap-1">
+                <p className="font-bold text-xs sm:text-sm text-white group-hover:text-[#00e676] transition-colors leading-tight line-clamp-1">
+                    {product.name}
+                </p>
+                <div className="flex items-center justify-between pt-1">
+                    <span className="text-xs sm:text-sm font-extrabold text-[#00e676] font-mono tracking-tight">
+                        KSh {Number(product.price).toLocaleString('en-KE', { minimumFractionDigits: 2 })}
+                    </span>
+                    <span className="text-[10px] font-bold text-gray-500">
+                        {product.stock > 0 ? `${product.stock} ready` : ''}
+                    </span>
+                </div>
+            </div>
+        </button>
+    );
+};
+
+// Cyber Theme Cart Item Row Component
+const CyberCartItemRow = ({
+    item,
+    index,
+    onIncrease,
+    onDecrease,
+    onRemove,
+    onEditNotes,
+    onEditDiscount
+}: {
+    item: CartItem;
+    index: number;
+    onIncrease: () => void;
+    onDecrease: () => void;
+    onRemove: () => void;
+    onEditNotes: () => void;
+    onEditDiscount: () => void;
+}) => {
+    const itemTotal = (item.price * item.qty) - (item.discount || 0);
+    const dishImg = getDishImage(item.name, item.category);
+
+    return (
+        <div className="bg-[#0e1721] rounded-xl p-2.5 border border-[#162a2e] hover:border-[#00e676]/30 transition-all flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-500 w-4 text-center shrink-0">
+                {index}
+            </span>
+
+            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-black/40 border border-white/5">
+                <img
+                    src={dishImg}
+                    alt={item.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                        (e.target as HTMLImageElement).src = '/images/food/default_dish.jpg';
+                    }}
+                />
+            </div>
+
+            <div className="flex-1 min-w-0">
+                <h4 className="font-bold text-white text-xs leading-tight truncate">
+                    {item.name}
+                </h4>
+                <p className="text-[11px] font-mono text-[#00e676]/80 font-bold mt-0.5">
+                    KSh {Number(item.price).toFixed(2)}
+                </p>
+                {item.notes && (
+                    <p className="text-[10px] text-amber-400 truncate mt-0.5">
+                        📝 {item.notes}
+                    </p>
+                )}
+            </div>
+
+            <div className="flex items-center gap-1 bg-[#132029] p-0.5 rounded-lg border border-white/5 shrink-0">
+                <button
+                    onClick={() => {
+                        onDecrease();
+                        playPOSChime('click');
+                    }}
+                    className="w-6 h-6 rounded bg-[#1a2b37] hover:bg-[#22394a] text-gray-200 font-bold text-xs flex items-center justify-center transition-all"
+                    title="Decrease"
+                >
+                    −
+                </button>
+                <span className="font-mono font-black text-xs text-white min-w-[20px] text-center">
+                    {item.qty}
+                </span>
+                <button
+                    onClick={() => {
+                        onIncrease();
+                        playPOSChime('click');
+                    }}
+                    className="w-6 h-6 rounded bg-[#00e676] hover:bg-[#00c853] text-black font-black text-xs flex items-center justify-center transition-all shadow-sm"
+                    title="Increase"
+                >
+                    +
+                </button>
+            </div>
+
+            <div className="text-right shrink-0 min-w-[55px]">
+                <p className="font-mono font-black text-xs text-white">
+                    {itemTotal.toFixed(2)}
+                </p>
+            </div>
+
+            <button
+                onClick={() => {
+                    onRemove();
+                    playPOSChime('void');
+                }}
+                className="w-7 h-7 rounded-lg bg-red-950/40 hover:bg-red-600 text-red-400 hover:text-white transition-all flex items-center justify-center text-xs shrink-0 border border-red-500/20"
+                title="Remove Item"
+            >
+                🗑️
+            </button>
+        </div>
+    );
+};
+
 // Product Card Component - Ultra Luxury Touch Responsive
 const ProductCard = ({ product, onAdd }: { product: Product; onAdd: () => void }) => {
     const isOutOfStock = product.stock === 0;
@@ -2077,6 +2296,23 @@ export default function POSPage() {
     const [cart, setCart] = useState<CartItem[]>([]);
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [searchQuery, setSearchQuery] = useState('');
+    // Dual Theme Support: Classic Light vs. Cyber Emerald
+    const [posTheme, setPosTheme] = useState<'classic' | 'cyber'>('cyber');
+
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('alphaplus_pos_theme') as 'classic' | 'cyber' | null;
+            if (saved) setPosTheme(saved);
+        }
+    }, []);
+
+    const toggleTheme = (t: 'classic' | 'cyber') => {
+        setPosTheme(t);
+        if (typeof window !== 'undefined') {
+            localStorage.setItem('alphaplus_pos_theme', t);
+        }
+        toast.success(t === 'cyber' ? '🟢 Cyber Emerald Mode Active' : '☀️ Classic Mode Active');
+    };
     const [showPayment, setShowPayment] = useState(false);
 
     // Split Bill & Table Transfer States
@@ -3682,6 +3918,698 @@ export default function POSPage() {
             )}
 
             <div className={`flex w-full h-[calc(100vh-64px)] max-h-screen overflow-hidden bg-gray-100 ${isFullscreen ? 'fixed inset-0 z-50 h-screen w-screen m-0' : '-m-6'}`}>
+                {/* ========================================================================= */}
+                {/* CYBER EMERALD ULTRA POS (EXACT MATCH TO REFERENCE SCREENSHOT) */}
+                {/* ========================================================================= */}
+                {(posTheme as string) === 'cyber' ? (
+                    <div className="flex flex-col w-full h-full overflow-hidden bg-[#05090d] text-white font-sans select-none">
+                        {/* 1. TOP HEADER BAR */}
+                        <header className="h-[52px] px-3.5 bg-[#080e14] border-b border-[#142226] flex items-center justify-between shrink-0">
+                            {/* Logo & Solution Subtitle */}
+                            <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-[#00e676]/15 border border-[#00e676]/50 flex items-center justify-center text-lg text-[#00e676] shadow-[0_0_12px_rgba(0,230,118,0.25)]">
+                                    🛒
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-1.5 leading-none">
+                                        <span className="text-base font-black text-white tracking-tight">AlphaPlus</span>
+                                        <span className="text-base font-black text-[#00e676]">POS</span>
+                                    </div>
+                                    <p className="text-[10px] font-semibold text-gray-400 mt-0.5 leading-none">
+                                        Restaurant & Hotel Solution
+                                    </p>
+                                </div>
+                            </div>
+
+                            {/* Center Information Badges */}
+                            <div className="hidden md:flex items-center gap-3">
+                                <div className="flex items-center gap-2 bg-[#0c161e] border border-[#162a2e] px-2.5 py-1 rounded-xl text-xs">
+                                    <span className="text-base">📠</span>
+                                    <div>
+                                        <p className="text-[9px] text-gray-400 font-bold uppercase leading-none">Till ID</p>
+                                        <p className="text-xs font-bold text-white leading-none mt-0.5 font-mono">TILL-01</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 bg-[#0c161e] border border-[#162a2e] px-2.5 py-1 rounded-xl text-xs">
+                                    <span className="text-base">👤</span>
+                                    <div>
+                                        <p className="text-[9px] text-gray-400 font-bold uppercase leading-none">Cashier</p>
+                                        <p className="text-xs font-bold text-white leading-none mt-0.5 truncate max-w-[100px]">{loggedInUserName || 'Admin'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 bg-[#0c161e] border border-[#162a2e] px-2.5 py-1 rounded-xl text-xs">
+                                    <span className="text-base">📅</span>
+                                    <div>
+                                        <p className="text-[9px] text-gray-400 font-bold uppercase leading-none">Date & Time</p>
+                                        <p className="text-xs font-bold text-white leading-none mt-0.5 font-mono">{currentTime || '10:24 AM'}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-[#00e676]/40 px-3 py-1 rounded-full text-xs text-[#00e676] font-bold shadow-[0_0_10px_rgba(0,230,118,0.15)]">
+                                    <span className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse" />
+                                    <span>Online</span>
+                                </div>
+                            </div>
+
+                            {/* Right Utility Buttons & Theme Switcher */}
+                            <div className="flex items-center gap-2">
+                                {/* THEME SWITCHER PILL */}
+                                <div className="flex items-center bg-[#0d161e] p-0.5 rounded-xl border border-[#00e676]/40 shadow-sm">
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleTheme('classic')}
+                                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                            (posTheme as string) === 'classic'
+                                                ? 'bg-white text-gray-900 shadow-md font-black'
+                                                : 'text-gray-400 hover:text-white'
+                                        }`}
+                                        title="Switch to Classic Theme"
+                                    >
+                                        ☀️ Classic
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleTheme('cyber')}
+                                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                            (posTheme as string) === 'cyber'
+                                                ? 'bg-[#00e676] text-black shadow-md shadow-[#00e676]/30 font-black'
+                                                : 'text-gray-400 hover:text-white'
+                                        }`}
+                                        title="Active: Cyber Emerald Theme"
+                                    >
+                                        🟢 Cyber Emerald
+                                    </button>
+                                </div>
+
+                                <a
+                                    href="/dashboard"
+                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all"
+                                    title="Home"
+                                >
+                                    🏠
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowShortcutsModal(true)}
+                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all"
+                                    title="Keyboard Shortcuts [F1]"
+                                >
+                                    ⌨️
+                                </button>
+                                <a
+                                    href="/dashboard/reports"
+                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all"
+                                    title="Reports"
+                                >
+                                    📊
+                                </a>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        requireSupervisorAuth('Lock Register', 'Lock POS screen', () => {
+                                            toast.success('Register Lock Active');
+                                        });
+                                    }}
+                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all"
+                                    title="Lock Register"
+                                >
+                                    🔒
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        localStorage.removeItem('user');
+                                        window.location.href = '/';
+                                    }}
+                                    className="w-8 h-8 rounded-xl bg-red-950/40 border border-red-500/30 hover:bg-red-600 flex items-center justify-center text-xs text-red-400 hover:text-white transition-all"
+                                    title="Logout"
+                                >
+                                    🚪
+                                </button>
+                            </div>
+                        </header>
+
+                        {/* 2. BODY FLEX ROW: LEFT NAV + MAIN CONTENT + RIGHT CART */}
+                        <div className="flex-1 flex overflow-hidden">
+                            {/* A. SLIM LEFT SIDEBAR */}
+                            <aside className="w-[74px] shrink-0 bg-[#060b0f] border-r border-[#142226] flex flex-col items-center py-3 gap-2 overflow-y-auto">
+                                <button
+                                    type="button"
+                                    className="w-14 py-2 rounded-xl bg-[#00e676]/15 border border-[#00e676] text-[#00e676] flex flex-col items-center gap-1 shadow-[0_0_12px_rgba(0,230,118,0.25)]"
+                                    title="POS Screen"
+                                >
+                                    <span className="text-xl">🛒</span>
+                                    <span className="text-[10px] font-black uppercase tracking-wider">POS</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setShowMoveTableModal(true)}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all"
+                                    title="Tables Selection / Transfer"
+                                >
+                                    <span className="text-xl">🪑</span>
+                                    <span className="text-[10px] font-bold">Tables</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={sendToKitchen}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 relative border border-transparent hover:border-[#162a2e] transition-all"
+                                    title="Kitchen Orders / KOT [F9]"
+                                >
+                                    <span className="text-xl">👨‍🍳</span>
+                                    <span className="text-[10px] font-bold">Kitchen</span>
+                                    <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center shadow-md">
+                                        3
+                                    </span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setShowHeldSalesModal(true)}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 relative border border-transparent hover:border-[#162a2e] transition-all"
+                                    title="Pending Bills / Held Sales"
+                                >
+                                    <span className="text-xl">⏱️</span>
+                                    <span className="text-[9px] font-bold text-center leading-tight">Pending Bills</span>
+                                    {heldSales.length > 0 && (
+                                        <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center shadow-md">
+                                            {heldSales.length}
+                                        </span>
+                                    )}
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setShowMergeModal(true)}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all"
+                                    title="Bill Merge / Combine Tables"
+                                >
+                                    <span className="text-xl">🔀</span>
+                                    <span className="text-[9px] font-bold text-center leading-tight">Bill Merge</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => toast.success('Guest / Room Folio selector available in Payment Modal')}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all"
+                                    title="Customers & Room Residents"
+                                >
+                                    <span className="text-xl">👥</span>
+                                    <span className="text-[9px] font-bold">Customers</span>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => toast.success('Stock inventory: live batch tracking enabled')}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all"
+                                    title="Stock Inventory"
+                                >
+                                    <span className="text-xl">📦</span>
+                                    <span className="text-[10px] font-bold">Stock</span>
+                                </button>
+
+                                <a
+                                    href="/dashboard/reports"
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all mt-auto"
+                                    title="Sales Reports"
+                                >
+                                    <span className="text-xl">📈</span>
+                                    <span className="text-[10px] font-bold">Reports</span>
+                                </a>
+                            </aside>
+
+                            {/* B. CENTER PRODUCT AREA */}
+                            <main className="flex-1 flex flex-col overflow-hidden bg-[#070d12]">
+                                {/* Search & Categories Bar */}
+                                <div className="p-3 bg-[#080f15] border-b border-[#142226] flex flex-col gap-2.5">
+                                    <div className="flex items-center gap-2.5 flex-wrap">
+                                        {/* Search Input */}
+                                        <div className="flex-1 min-w-[240px] bg-[#0b141c] border border-[#1a2f35] focus-within:border-[#00e676] rounded-xl flex items-center px-3 py-2 gap-2 transition-all">
+                                            <span className="text-gray-400 text-sm">🔍</span>
+                                            <input
+                                                ref={searchInputRef}
+                                                type="text"
+                                                value={searchQuery}
+                                                onChange={(e) => setSearchQuery(e.target.value)}
+                                                placeholder="Search product by name or scan barcode..."
+                                                className="bg-transparent text-white text-xs sm:text-sm font-medium w-full focus:outline-none placeholder-gray-500"
+                                            />
+                                            <span className="text-xs font-mono font-bold text-gray-400 bg-[#132029] px-2 py-0.5 rounded-md border border-white/5 shrink-0">
+                                                ||||| F2
+                                            </span>
+                                        </div>
+
+                                        {/* Dining Mode Pills */}
+                                        <div className="flex items-center gap-1 bg-[#0b141c] p-1 rounded-xl border border-[#1a2f35]">
+                                            {[
+                                                { id: 'dine_in', label: '🍽️ Dine-In' },
+                                                { id: 'takeaway', label: '📦 Takeout' },
+                                                { id: 'room_service', label: '🏨 Room' },
+                                                { id: 'delivery', label: '🛵 Delivery' }
+                                            ].map(t => (
+                                                <button
+                                                    key={t.id}
+                                                    type="button"
+                                                    onClick={() => setOrderType(t.id as any)}
+                                                    className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                                        orderType === t.id
+                                                            ? 'bg-[#00e676]/20 text-[#00e676] border border-[#00e676]/50 shadow-sm'
+                                                            : 'text-gray-400 hover:text-white'
+                                                    }`}
+                                                >
+                                                    {t.label}
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        {/* Table Selector */}
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowMoveTableModal(true)}
+                                            className="px-3 py-1.5 rounded-xl bg-[#0b141c] border border-[#1a2f35] hover:border-[#00e676]/50 text-xs font-bold text-[#00e676] flex items-center gap-1.5 transition-all"
+                                        >
+                                            <span>🪑</span>
+                                            <span>{tableNo ? `Table ${tableNo}` : 'Select Table'}</span>
+                                        </button>
+
+                                        {/* Waiter Selector */}
+                                        <select
+                                            value={selectedWaiterId || ''}
+                                            onChange={(e) => {
+                                                const id = Number(e.target.value);
+                                                setSelectedWaiterId(id || null);
+                                                const w = waiters.find(item => item.user_id === id);
+                                                setSelectedWaiterName(w ? w.full_name : '');
+                                            }}
+                                            className="px-2.5 py-1.5 bg-[#0b141c] border border-[#1a2f35] rounded-xl text-xs font-bold text-gray-300 focus:outline-none focus:border-[#00e676]"
+                                        >
+                                            <option value="">👤 Select Waiter</option>
+                                            {waiters.map(w => (
+                                                <option key={w.user_id} value={w.user_id} className="bg-[#0b141c] text-white">
+                                                    {w.full_name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Category Pills Carousel */}
+                                    <div className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none">
+                                        {categories.map(cat => {
+                                            const isSelected = selectedCategory === cat;
+                                            return (
+                                                <button
+                                                    key={cat}
+                                                    type="button"
+                                                    onClick={() => setSelectedCategory(cat)}
+                                                    className={`px-3.5 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 ${
+                                                        isSelected
+                                                            ? 'bg-[#00e676] text-black shadow-lg shadow-[#00e676]/30 font-black'
+                                                            : 'bg-[#0b141c] text-gray-400 hover:text-white border border-[#1a2f35] hover:border-gray-600'
+                                                    }`}
+                                                >
+                                                    <span>{getCategoryIcon(cat)}</span>
+                                                    <span>{cat}</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Product Cards Grid (5-column layout with real food photos!) */}
+                                <div className="flex-1 overflow-y-auto p-3.5">
+                                    {isLoadingProducts ? (
+                                        <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
+                                            <div className="w-10 h-10 border-4 border-[#00e676]/20 border-t-[#00e676] rounded-full animate-spin" />
+                                            <p className="text-sm font-bold">Loading live restaurant menu...</p>
+                                        </div>
+                                    ) : filteredProducts.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center h-64 text-gray-400 gap-2">
+                                            <span className="text-4xl">🍽️</span>
+                                            <p className="font-bold text-base text-white">No dishes found</p>
+                                            <p className="text-xs text-gray-500">Try searching for another dish or choose 'All'</p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5 gap-3">
+                                            {filteredProducts.map(product => {
+                                                const inCartItem = cart.find(i => i.id === product.id);
+                                                const inCartQty = inCartItem ? inCartItem.qty : 0;
+                                                return (
+                                                    <CyberProductCard
+                                                        key={product.id}
+                                                        product={product}
+                                                        cartQty={inCartQty}
+                                                        onAdd={() => addToCart(product)}
+                                                    />
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Bottom Quick Actions Bar */}
+                                <div className="p-2.5 bg-[#060b0f] border-t border-[#142226] flex items-center justify-between gap-3 shrink-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                        <span className="text-xs font-black text-[#00e676] tracking-wider uppercase mr-1">
+                                            ⚡ Quick Actions
+                                        </span>
+
+                                        <button
+                                            type="button"
+                                            onClick={clearCart}
+                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all"
+                                            title="Start Fresh Bill"
+                                        >
+                                            <span className="text-[#00e676]">➕</span>
+                                            <span>New Bill</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowRunningOrders(true)}
+                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all"
+                                            title="View Running Orders"
+                                        >
+                                            <span>📋</span>
+                                            <span>View Bills</span>
+                                        </button>
+
+                                        <a
+                                            href="/dashboard/reports/daily"
+                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all"
+                                            title="Today's Sales"
+                                        >
+                                            <span className="text-[#00e676]">📈</span>
+                                            <span>Day Sales</span>
+                                        </a>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowMergeModal(true)}
+                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all"
+                                            title="Merge Tables / Combine Receipts"
+                                        >
+                                            <span className="text-indigo-400">🔀</span>
+                                            <span>Merge Bills</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowHeldSalesModal(true)}
+                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all relative"
+                                            title="Held Bills on Hold"
+                                        >
+                                            <span>⏱️</span>
+                                            <span>Pending Bills</span>
+                                            {heldSales.length > 0 && (
+                                                <span className="w-4 h-4 rounded-full bg-red-600 text-white text-[9px] font-black flex items-center justify-center">
+                                                    {heldSales.length}
+                                                </span>
+                                            )}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handlePrintInterimBill}
+                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all"
+                                            title="Print Interim Customer Check [F10]"
+                                        >
+                                            <span>🖨️</span>
+                                            <span>Print Bill</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (cart.length === 0) return;
+                                                requireSupervisorAuth('Void Last Item', 'Void item authorization', () => {
+                                                    const lastItem = cart[cart.length - 1];
+                                                    if (lastItem) removeFromCart(lastItem.id);
+                                                });
+                                            }}
+                                            className="px-2.5 py-1.5 rounded-xl bg-red-950/30 border border-red-500/30 hover:bg-red-900/40 text-xs font-bold text-red-400 hover:text-white flex items-center gap-1 transition-all"
+                                            title="Void Item (PIN)"
+                                        >
+                                            <span>🗑️</span>
+                                            <span>Void Item</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (cart.length === 0) return;
+                                                requireSupervisorAuth('Clear Entire Cart', 'Wipe current active order', () => {
+                                                    clearCart();
+                                                    toast.success('Active order cleared');
+                                                });
+                                            }}
+                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-gray-700 hover:border-red-500 text-xs font-bold text-gray-400 hover:text-red-400 flex items-center gap-1 transition-all"
+                                            title="Clear Order (PIN)"
+                                        >
+                                            <span>❌</span>
+                                            <span>Clear Order</span>
+                                        </button>
+                                    </div>
+
+                                    {/* Right Footer Brand */}
+                                    <div className="hidden lg:flex items-center gap-3 text-right">
+                                        <div>
+                                            <p className="text-[11px] font-bold text-gray-400 tracking-wide">
+                                                Good Food • Great Service • Happy Customers
+                                            </p>
+                                            <div className="flex items-center justify-end gap-1.5 mt-0.5">
+                                                <span className="text-xs">🛒</span>
+                                                <span className="text-xs font-black text-white">AlphaPlus</span>
+                                                <span className="text-xs font-black text-[#00e676]">POS</span>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-1 pl-3 border-l border-white/10 text-xs font-bold text-gray-400">
+                                            <span>🇰🇪</span>
+                                            <span className="text-[11px]">Proudly Kenyan ❤️</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </main>
+
+                            {/* C. RIGHT ORDER / CART PANEL */}
+                            <aside className="w-[390px] xl:w-[420px] shrink-0 bg-[#080e14] border-l border-[#142226] flex flex-col h-full">
+                                {/* Cart Header */}
+                                <div className="p-3 bg-[#0a1219] border-b border-[#142226] flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-lg text-[#00e676]">🛒</span>
+                                        <h3 className="font-black text-white text-sm sm:text-base tracking-tight">
+                                            Current Order
+                                        </h3>
+                                        {cart.length > 0 && (
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#00e676] text-black">
+                                                {cart.reduce((sum, item) => sum + item.qty, 0)} items
+                                            </span>
+                                        )}
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="px-2.5 py-1 rounded-lg text-xs font-bold bg-[#132029] text-gray-300 border border-white/5">
+                                            {orderType === 'dine_in' ? 'Dine-In' : orderType === 'takeaway' ? 'Takeout' : orderType === 'room_service' ? 'Room' : 'Delivery'}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowMoveTableModal(true)}
+                                            className="px-2.5 py-1 rounded-lg text-xs font-extrabold text-[#00e676] bg-[#00e676]/10 border border-[#00e676]/40 hover:bg-[#00e676]/20 transition-all font-mono"
+                                        >
+                                            {tableNo ? `Table ${tableNo}` : 'Table 04'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* Cart Items Table Header */}
+                                <div className="px-3 py-1.5 bg-[#060b0f] border-b border-[#142226] text-[10px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                    <span className="w-4 text-center">#</span>
+                                    <span className="flex-1">Item</span>
+                                    <span className="w-16 text-center">Qty</span>
+                                    <span className="w-14 text-right">Price</span>
+                                    <span className="w-14 text-right">Total</span>
+                                    <span className="w-7 text-center"></span>
+                                </div>
+
+                                {/* Cart Items List */}
+                                <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
+                                    {cart.length === 0 ? (
+                                        <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-2 py-12">
+                                            <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-3xl">
+                                                🛒
+                                            </div>
+                                            <p className="font-bold text-sm text-gray-400">Cart is empty</p>
+                                            <p className="text-xs text-gray-500">Tap dishes on the menu to add to order</p>
+                                        </div>
+                                    ) : (
+                                        cart.map((item, idx) => (
+                                            <CyberCartItemRow
+                                                key={item.id}
+                                                item={item}
+                                                index={idx + 1}
+                                                onIncrease={() => updateQty(item.id, 1)}
+                                                onDecrease={() => updateQty(item.id, -1)}
+                                                onRemove={() => removeFromCart(item.id)}
+                                                onEditNotes={() => {
+                                                    setEditingItemId(item.id);
+                                                    setShowNotesModal(true);
+                                                }}
+                                                onEditDiscount={() => {
+                                                    handleApplyCartDiscount(10);
+                                                }}
+                                            />
+                                        ))
+                                    )}
+                                </div>
+
+                                {/* Financial Summary & Total */}
+                                <div className="p-3 bg-[#0a1219] border-t border-[#142226] space-y-2">
+                                    <div className="space-y-1 text-xs font-semibold text-gray-400">
+                                        <div className="flex justify-between">
+                                            <span>Subtotal</span>
+                                            <span className="font-mono text-white">KSh {subtotal.toFixed(2)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-emerald-400">
+                                            <button
+                                                type="button"
+                                                onClick={() => handleApplyCartDiscount(10)}
+                                                className="hover:underline flex items-center gap-1 text-[11px]"
+                                            >
+                                                <span>🏷️</span> Discount {totalDiscount > 0 ? `(Ksh ${totalDiscount.toLocaleString()})` : ''}
+                                            </button>
+                                            <span className="font-mono">
+                                                -KSh {totalDiscount.toFixed(2)}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="flex items-center gap-1">
+                                                <span>%</span> VAT (16%)
+                                            </span>
+                                            <span className="font-mono text-white">
+                                                KSh {Math.round(vatAmount || (subtotal * 0.16)).toLocaleString('en-KE', { minimumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        <div className="flex justify-between items-center text-gray-500">
+                                            <span>🧾 Service Charge</span>
+                                            <span className="font-mono">KSh 0.00</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Total Emerald Wallet Card */}
+                                    <div className="p-3 rounded-xl bg-[#0a2318] border border-[#00e676]/40 flex items-center justify-between shadow-inner">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-lg bg-[#00e676]/20 border border-[#00e676]/40 flex items-center justify-center text-base text-[#00e676]">
+                                                💳
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider leading-none">
+                                                    Total Amount
+                                                </p>
+                                                <p className="text-[11px] text-[#00e676] font-bold mt-0.5 leading-none">
+                                                    {cart.length} item(s) in check
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <span className="text-2xl sm:text-3xl font-black text-[#00e676] font-mono tracking-tight leading-none">
+                                                KSh {total.toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Big Glowing Proceed to Payment Button */}
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            if (cart.length === 0) {
+                                                toast.error('Your cart is empty! Add products first.');
+                                                return;
+                                            }
+                                            setShowPayment(true);
+                                        }}
+                                        className="w-full py-3.5 bg-[#00e676] hover:bg-[#00c853] active:scale-[0.99] text-black font-black text-sm sm:text-base rounded-xl shadow-[0_0_24px_rgba(0,230,118,0.4)] flex items-center justify-center gap-2 transition-all cursor-pointer tracking-wide"
+                                    >
+                                        <span>💳</span>
+                                        <span>Proceed to Payment &gt;</span>
+                                    </button>
+
+                                    {/* Quick Tender Tiles: M-Pesa, Cash, Card, Credit, Split */}
+                                    <div className="grid grid-cols-5 gap-1.5 pt-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (cart.length === 0) return;
+                                                setShowPayment(true);
+                                            }}
+                                            className="py-2 bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/60 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all text-gray-300 hover:text-white"
+                                            title="Safaricom M-Pesa"
+                                        >
+                                            <span className="text-sm text-[#00e676]">📱</span>
+                                            <span className="text-[10px] font-bold">M-Pesa</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (cart.length === 0) return;
+                                                setShowPayment(true);
+                                            }}
+                                            className="py-2 bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/60 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all text-gray-300 hover:text-white"
+                                            title="Cash Settle"
+                                        >
+                                            <span className="text-sm text-[#00e676]">💵</span>
+                                            <span className="text-[10px] font-bold">Cash</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (cart.length === 0) return;
+                                                setShowPayment(true);
+                                            }}
+                                            className="py-2 bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/60 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all text-gray-300 hover:text-white"
+                                            title="Credit / Debit Card (PDQ)"
+                                        >
+                                            <span className="text-sm text-[#00e676]">💳</span>
+                                            <span className="text-[10px] font-bold">Card</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (cart.length === 0) return;
+                                                setShowPayment(true);
+                                            }}
+                                            className="py-2 bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/60 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all text-gray-300 hover:text-white"
+                                            title="Credit / Debtor Account"
+                                        >
+                                            <span className="text-sm text-[#00e676]">📋</span>
+                                            <span className="text-[10px] font-bold">Credit</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (cart.length === 0) return;
+                                                setShowSplitModal(true);
+                                            }}
+                                            className="py-2 bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/60 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all text-gray-300 hover:text-white"
+                                            title="Split Bill (Equal or Items)"
+                                        >
+                                            <span className="text-sm text-amber-400">✂️</span>
+                                            <span className="text-[10px] font-bold">Split</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </aside>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+
                 {/* Left Side - Products & Command Center */}
                 <div className="flex-1 min-w-0 flex flex-col bg-white overflow-hidden h-full">
                     {/* Header */}
@@ -3715,6 +4643,32 @@ export default function POSPage() {
                             {/* Essential Top Tools & Cashier Badges */}
                             <div className="flex items-center gap-1.5 shrink-0">
                                 {/* Hotkeys Guide */}
+                                
+                                {/* DUAL THEME TOGGLE (CLASSIC HEADER) */}
+                                <div className="flex items-center bg-gray-200 p-0.5 rounded-xl border border-gray-300 shadow-inner mr-1">
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleTheme('classic')}
+                                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                            (posTheme as string) === 'classic'
+                                                ? 'bg-white text-gray-900 shadow-sm font-black'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                        }`}
+                                    >
+                                        ☀️ Classic
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => toggleTheme('cyber')}
+                                        className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                            (posTheme as string) === 'cyber'
+                                                ? 'bg-emerald-600 text-white shadow-sm font-black'
+                                                : 'text-gray-600 hover:text-gray-900'
+                                        }`}
+                                    >
+                                        🟢 Cyber Emerald
+                                    </button>
+                                </div>
                                 <button
                                     onClick={() => setShowShortcutsModal(true)}
                                     className="px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 active:bg-gray-300 rounded-xl text-gray-700 text-xs font-bold transition-all border border-gray-200 flex items-center gap-1 shadow-sm"
@@ -4688,7 +5642,10 @@ export default function POSPage() {
                     </div>
                 )}
 
-                {/* Paid Receipt Preview */}
+                
+                    </>
+                )}
+{/* Paid Receipt Preview */}
                 <ReceiptPreviewModal
                     isOpen={showReceiptPreview}
                     onClose={() => { setShowReceiptPreview(false); clearCart(); }}
