@@ -270,54 +270,73 @@ td {
 }
 
 /* ============================================
-   ENSURE TEXT VISIBILITY IN FORMS
+   ENSURE TEXT VISIBILITY IN FORMS & MODALS
    ============================================ */
-.bg-gray-50 input,
-.bg-gray-50 textarea,
-.bg-gray-50 select,
+/* Default for all standard inputs, textareas, selects across all dashboard pages & modals: CRISP DARK SLATE TEXT */
+input,
+textarea,
+select {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+}
+
+input::placeholder,
+textarea::placeholder,
+select::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
+}
+
+/* Modal textboxes, form inputs, and dashboard controls: Force Crisp Dark Text */
 .bg-white input,
+.bg-white select,
 .bg-white textarea,
-.bg-white select {
-  color: #1e293b !important;
+.bg-slate-50 input,
+.bg-slate-50 select,
+.bg-slate-50 textarea,
+.bg-slate-100 input,
+.bg-slate-100 select,
+.bg-slate-100 textarea,
+.bg-gray-50 input,
+.bg-gray-50 select,
+.bg-gray-50 textarea,
+form input,
+form select,
+form textarea,
+[role="dialog"] input,
+[role="dialog"] select,
+[role="dialog"] textarea {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a !important;
 }
 
-/* Fix for any dark text on light backgrounds */
-[class*="bg-gray"] input,
-[class*="bg-white"] input,
-[class*="bg-slate-50"] input,
-[class*="bg-slate-100"] input,
-[class*="bg-slate-200"] input {
-  color: #1e293b !important;
+.bg-white input::placeholder,
+.bg-slate-50 input::placeholder,
+form input::placeholder {
+  color: #64748b !important;
+  -webkit-text-fill-color: #64748b !important;
 }
 
-/* Dark inputs and login textboxes font color override (Pure Crisp White #ffffff) */
+/* ONLY Login Page dark-themed textboxes (Pure Crisp White #ffffff) */
 .login-input,
-input.login-input,
-.dark-input,
-input.text-white,
-[class*="bg-slate-9"] input,
-[class*="bg-slate-8"] input,
-[class*="bg-slate-950"] input,
-[class*="bg-slate-900"] input {
+input.login-input {
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
   caret-color: #ffffff !important;
 }
 
 .login-input::placeholder,
-input.login-input::placeholder,
-.dark-input::placeholder,
-input.text-white::placeholder {
+input.login-input::placeholder {
   color: #94a3b8 !important;
   -webkit-text-fill-color: #94a3b8 !important;
 }
 
-/* Chrome/Safari/Edge autofill override for dark login inputs */
+/* Chrome/Safari/Edge autofill override ONLY for login inputs */
 .login-input:-webkit-autofill,
 .login-input:-webkit-autofill:hover,
 .login-input:-webkit-autofill:focus,
-.login-input:-webkit-autofill:active,
-input.text-white:-webkit-autofill {
+.login-input:-webkit-autofill:active {
   -webkit-text-fill-color: #ffffff !important;
   -webkit-box-shadow: 0 0 0 1000px #020617 inset !important;
   box-shadow: 0 0 0 1000px #020617 inset !important;

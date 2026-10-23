@@ -1000,7 +1000,7 @@ export default function UsersPage() {
                             </div>
                         </div>
 
-                        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto text-slate-900">
                             <div>
                                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                                     <span>👤</span> 1. Personal & Government Identification
