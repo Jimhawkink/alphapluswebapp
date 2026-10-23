@@ -204,8 +204,18 @@ export default function LoginPage() {
             }
             const hashedPassword = await hashPassword(trimmedPass);
             if (data.password_hash === hashedPassword || data.password_hash === trimmedPass || data.pin === trimmedPass) {
-                localStorage.setItem('user', JSON.stringify({ userId: data.user_id, userName: data.user_name, name: data.name, userType: data.user_type, email: data.email, isWaiter: false }));
-                router.push('/dashboard');
+                const isWaiter = data.user_type?.toLowerCase().includes('waiter') || data.is_waiter === true || data.user_type === 'Waitress';
+                try {
+                    sessionStorage.setItem('pos_is_unlocked', 'true');
+                    sessionStorage.removeItem('pos_is_locked');
+                } catch (_) {}
+                localStorage.setItem('user', JSON.stringify({ userId: data.user_id, userName: data.user_name, name: data.name, userType: data.user_type, email: data.email, isWaiter: isWaiter }));
+                if (isWaiter) {
+                    localStorage.setItem('alpha_hotel_selected_waiter', data.name);
+                    router.push('/dashboard/pos');
+                } else {
+                    router.push('/dashboard');
+                }
             } else {
                 setError('Invalid username or password');
             }
@@ -233,6 +243,13 @@ export default function LoginPage() {
             }
 
             const isWaiter = data.user_type?.toLowerCase().includes('waiter') || data.is_waiter === true || data.user_type === 'Waitress';
+            
+            // Mark terminal as unlocked on fresh login so waiter goes directly to POS
+            try {
+                sessionStorage.setItem('pos_is_unlocked', 'true');
+                sessionStorage.removeItem('pos_is_locked');
+            } catch (_) {}
+
             localStorage.setItem('user', JSON.stringify({ 
                 userId: data.user_id, 
                 userName: data.user_name, 
@@ -241,6 +258,7 @@ export default function LoginPage() {
                 email: data.email, 
                 isWaiter: isWaiter 
             }));
+            localStorage.setItem('alpha_hotel_selected_waiter', data.name);
             router.push('/dashboard/pos');
         } catch { setError('Connection error. Please try again.'); }
         setIsLoading(false);

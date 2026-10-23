@@ -2453,15 +2453,12 @@ export default function POSPage() {
     const [loggedInUserName, setLoggedInUserName] = useState<string>(() => {
         if (typeof window === 'undefined') return '';
         try {
+            if (sessionStorage.getItem('pos_is_locked') === 'true') {
+                return ''; // Locked terminal
+            }
             const u = localStorage.getItem('user');
             if (u) {
                 const p = JSON.parse(u);
-                const isW = p.isWaiter === true || 
-                            (p.userType || '').toLowerCase().includes('waiter') || 
-                            (p.userType || '').toLowerCase() === 'waitress';
-                if (isW) {
-                    return ''; // For waiters, NEVER restore last user on load/refresh — force PIN!
-                }
                 return p.name || '';
             }
         } catch (_) {}
@@ -2551,15 +2548,13 @@ export default function POSPage() {
     const [isPosLocked, setIsPosLocked] = useState<boolean>(() => {
         if (typeof window === 'undefined') return false;
         try {
-            const u = localStorage.getItem('user');
-            if (u) {
-                const p = JSON.parse(u);
-                const isW = p.isWaiter === true || 
-                            (p.userType || '').toLowerCase().includes('waiter') || 
-                            (p.userType || '').toLowerCase() === 'waitress';
-                if (isW) {
-                    return true; // Waiters ALWAYS start locked on refresh/load!
-                }
+            // Only lock if explicitly locked by an auto-lock event or manual lock
+            if (sessionStorage.getItem('pos_is_locked') === 'true') {
+                return true;
+            }
+            // If freshly logged in or actively unlocked in this session:
+            if (sessionStorage.getItem('pos_is_unlocked') === 'true') {
+                return false;
             }
         } catch (_) {}
         return false;
@@ -2627,6 +2622,10 @@ export default function POSPage() {
 
             localStorage.setItem('user', JSON.stringify(updatedSession));
             localStorage.setItem('alpha_hotel_selected_waiter', data.name);
+            try {
+                sessionStorage.setItem('pos_is_unlocked', 'true');
+                sessionStorage.removeItem('pos_is_locked');
+            } catch (_) {}
 
             setLoggedInUserName(data.name);
             setUserRole(data.user_type);
@@ -2683,6 +2682,10 @@ export default function POSPage() {
                 setSelectedWaiterName('');
                 setSelectedWaiterId(null);
                 localStorage.removeItem('alpha_hotel_selected_waiter');
+                try {
+                    sessionStorage.setItem('pos_is_locked', 'true');
+                    sessionStorage.removeItem('pos_is_unlocked');
+                } catch (_) {}
                 setIsPosLocked(true);
                 playPOSChime('error');
             } else {
@@ -2715,8 +2718,32 @@ export default function POSPage() {
 
     // Waiter/Staff selection state
     const [waiters, setWaiters] = useState<Array<{ user_id: number; full_name: string; role: string }>>([]);
-    const [selectedWaiterId, setSelectedWaiterId] = useState<number | null>(null);
-    const [selectedWaiterName, setSelectedWaiterName] = useState<string>('');
+    const [selectedWaiterId, setSelectedWaiterId] = useState<number | null>(() => {
+        if (typeof window === 'undefined') return null;
+        try {
+            if (sessionStorage.getItem('pos_is_locked') === 'true') return null;
+            const u = localStorage.getItem('user');
+            if (u) {
+                const p = JSON.parse(u);
+                return p.userId || null;
+            }
+        } catch (_) {}
+        return null;
+    });
+    const [selectedWaiterName, setSelectedWaiterName] = useState<string>(() => {
+        if (typeof window === 'undefined') return '';
+        try {
+            if (sessionStorage.getItem('pos_is_locked') === 'true') return '';
+            const sw = localStorage.getItem('alpha_hotel_selected_waiter');
+            if (sw) return sw;
+            const u = localStorage.getItem('user');
+            if (u) {
+                const p = JSON.parse(u);
+                return p.name || '';
+            }
+        } catch (_) {}
+        return '';
+    });
 
     // Hotel/Company Name from database
     const [hotelName, setHotelName] = useState<string>('Your Hotel');
@@ -2880,6 +2907,10 @@ export default function POSPage() {
                 setSelectedWaiterName('');
                 setSelectedWaiterId(null);
                 localStorage.removeItem('alpha_hotel_selected_waiter');
+                try {
+                    sessionStorage.setItem('pos_is_locked', 'true');
+                    sessionStorage.removeItem('pos_is_unlocked');
+                } catch (_) {}
                 setIsPosLocked(true);
             }, 600);
         }
@@ -3361,15 +3392,31 @@ export default function POSPage() {
                                (parsed.userType || '').toLowerCase() === 'waitress';
                 setIsWaiterUser(waiter);
                 setUserRole(parsed.userType || 'Admin');
+                const isExplicitlyLocked = typeof window !== 'undefined' && sessionStorage.getItem('pos_is_locked') === 'true';
+
                 if (waiter) {
-                    // For waiters, strictly lock terminal on page load/refresh & require fresh PIN
-                    setIsPosLocked(true);
-                    setLoggedInUserName('');
-                    setSelectedWaiterName('');
-                    setSelectedWaiterId(null);
-                    localStorage.removeItem('alpha_hotel_selected_waiter');
+                    if (isExplicitlyLocked) {
+                        // Truly locked (e.g. waiter clicked Switch Waiter, sale completed, idle timeout, hold sale, or refreshed while locked)
+                        setIsPosLocked(true);
+                        setLoggedInUserName('');
+                        setSelectedWaiterName('');
+                        setSelectedWaiterId(null);
+                        localStorage.removeItem('alpha_hotel_selected_waiter');
+                    } else {
+                        // First time login from login screen or unlocked session!
+                        setIsPosLocked(false);
+                        setLoggedInUserName(parsed.name || '');
+                        setSelectedWaiterName(parsed.name || '');
+                        setSelectedWaiterId(parsed.userId || null);
+                        localStorage.setItem('alpha_hotel_selected_waiter', parsed.name || '');
+                    }
                 } else {
-                    setLoggedInUserName(parsed.name || '');
+                    if (isExplicitlyLocked) {
+                        setIsPosLocked(true);
+                    } else {
+                        setIsPosLocked(false);
+                        setLoggedInUserName(parsed.name || '');
+                    }
                 }
             }
         } catch (_) {}
@@ -3823,6 +3870,10 @@ export default function POSPage() {
                     setSelectedWaiterName('');
                     setSelectedWaiterId(null);
                     localStorage.removeItem('alpha_hotel_selected_waiter');
+                    try {
+                        sessionStorage.setItem('pos_is_locked', 'true');
+                        sessionStorage.removeItem('pos_is_unlocked');
+                    } catch (_) {}
                     setIsPosLocked(true);
                 }, 1000);
             }
@@ -4222,6 +4273,10 @@ export default function POSPage() {
                 setSelectedWaiterName('');
                 setSelectedWaiterId(null);
                 localStorage.removeItem('alpha_hotel_selected_waiter');
+                try {
+                    sessionStorage.setItem('pos_is_locked', 'true');
+                    sessionStorage.removeItem('pos_is_unlocked');
+                } catch (_) {}
                 setIsPosLocked(true);
             }, 1200);
         }
@@ -5340,6 +5395,10 @@ export default function POSPage() {
                                                 setSelectedWaiterName('');
                                                 setSelectedWaiterId(null);
                                                 localStorage.removeItem('alpha_hotel_selected_waiter');
+                                                try {
+                                                    sessionStorage.setItem('pos_is_locked', 'true');
+                                                    sessionStorage.removeItem('pos_is_unlocked');
+                                                } catch (_) {}
                                                 setIsPosLocked(true);
                                             }}
                                             className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
@@ -5349,7 +5408,12 @@ export default function POSPage() {
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }}
+                                            onClick={() => { 
+                                                localStorage.removeItem('user'); 
+                                                localStorage.removeItem('alpha_hotel_selected_waiter');
+                                                try { sessionStorage.clear(); } catch (_) {}
+                                                window.location.href = '/'; 
+                                            }}
                                             className="px-2 py-1.5 bg-slate-800 hover:bg-rose-900/60 hover:border-rose-500/50 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all border border-white/10 cursor-pointer"
                                             title="Full Logout to Main Login"
                                         >
@@ -5362,6 +5426,10 @@ export default function POSPage() {
                                         onClick={() => {
                                             setLockPin('');
                                             setLockError('');
+                                            try {
+                                                sessionStorage.setItem('pos_is_locked', 'true');
+                                                sessionStorage.removeItem('pos_is_unlocked');
+                                            } catch (_) {}
                                             setIsPosLocked(true);
                                         }}
                                         className="px-2.5 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all border border-white/10 flex items-center gap-1 cursor-pointer"
