@@ -98,6 +98,7 @@ interface CloseShiftData {
     totalCard: number;
     totalCredit: number;
     totalExpenses: number;
+    totalAdvances?: number;
     totalCostPrice: number;
     grossProfit: number;
     netSales: number;
@@ -3106,34 +3107,57 @@ export default function POSPage() {
             const today = shift?.shiftDate || new Date().toISOString().split('T')[0];
             const shiftId = shift?.id;
 
-            // 1. Fetch sales belonging to this shift or date
-            let sales: any[] = [];
+            // 1. Fetch sales belonging to this shift or date comprehensively
+            const salesMap = new Map<number, any>();
+
             if (shiftId) {
                 const { data: shiftSales } = await supabase
                     .from('sales')
                     .select('*')
-                    .eq('shift_id', shiftId);
-                if (shiftSales && shiftSales.length > 0) {
-                    sales = shiftSales;
+                    .eq('shift_id', shiftId)
+                    .neq('status', 'Cancelled')
+                    .neq('status', 'Merged');
+                if (shiftSales) {
+                    shiftSales.forEach(s => salesMap.set(s.sale_id, s));
                 }
             }
-            if (sales.length === 0) {
-                const { data: dateSales } = await supabase
-                    .from('sales')
-                    .select('*')
-                    .eq('sale_date', today);
-                sales = dateSales || [];
+
+            // Also check sales on today's date to catch any sales during the shift window
+            const { data: dateSales } = await supabase
+                .from('sales')
+                .select('*')
+                .eq('sale_date', today)
+                .neq('status', 'Cancelled')
+                .neq('status', 'Merged');
+
+            if (dateSales) {
+                dateSales.forEach(s => {
+                    if (s.shift_id === shiftId) {
+                        salesMap.set(s.sale_id, s);
+                    } else if (!s.shift_id || s.shift_id === 0) {
+                        const saleT = s.sale_time || (s.sale_datetime ? new Date(s.sale_datetime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null);
+                        if (!saleT || !shift?.startTime || saleT >= shift.startTime) {
+                            salesMap.set(s.sale_id, s);
+                        }
+                    }
+                });
             }
 
-            const totalSales = sales.reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+            const sales = Array.from(salesMap.values());
+
+            const getAmount = (r: any): number => {
+                return Number(r.total_amount) || Number(r.grand_total) || Number(r.amount_paid) || Number(r.subtotal) || 0;
+            };
+
+            const totalSales = sales.reduce((s, r) => s + getAmount(r), 0);
             const totalCash = sales.filter(r => (r.payment_method || '').toLowerCase().includes('cash'))
-                .reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+                .reduce((s, r) => s + getAmount(r), 0);
             const totalMpesa = sales.filter(r => (r.payment_method || '').toLowerCase().includes('mpesa'))
-                .reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
-            const totalCard = sales.filter(r => (r.payment_method || '').toLowerCase().includes('card') || (r.payment_method || '').toLowerCase().includes('visa'))
-                .reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+                .reduce((s, r) => s + getAmount(r), 0);
+            const totalCard = sales.filter(r => (r.payment_method || '').toLowerCase().includes('card') || (r.payment_method || '').toLowerCase().includes('visa') || (r.payment_method || '').toLowerCase().includes('pdq'))
+                .reduce((s, r) => s + getAmount(r), 0);
             const totalCredit = sales.filter(r => (r.payment_method || '').toLowerCase().includes('credit') || (r.payment_method || '').toLowerCase().includes('room'))
-                .reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+                .reduce((s, r) => s + getAmount(r), 0);
 
             // 2. Fetch expenses
             let totalExpenses = 0;
@@ -3222,17 +3246,46 @@ export default function POSPage() {
         const variance = actualCash - closeRegisterData.expectedTillCash;
 
         if (shift) {
-            try {
-                await supabase.from('shifts').update({
+            const fullPayload: any = {
+                end_time: closeRegisterData.closingTime,
+                closing_cash: actualCash,
+                actual_cash: actualCash,
+                expected_cash: closeRegisterData.expectedTillCash,
+                cash_variance: variance,
+                total_sales: closeRegisterData.totalSales,
+                total_expenses: closeRegisterData.totalExpenses,
+                total_vouchers: closeRegisterData.totalAdvances || 0,
+                net_sales: closeRegisterData.netSales,
+                mpesa_sales: closeRegisterData.totalMpesa,
+                cash_sales: closeRegisterData.totalCash,
+                card_sales: closeRegisterData.totalCard,
+                credit_sales: closeRegisterData.totalCredit,
+                profit: closeRegisterData.netProfit,
+                status: 'Closed',
+                closed_by: loggedInUserName || 'Cashier'
+            };
+
+            let { error: shiftErr } = await supabase
+                .from('shifts')
+                .update(fullPayload)
+                .eq('shift_id', shift.id);
+
+            if (shiftErr && shiftErr.message?.includes('schema cache')) {
+                console.warn('Columns missing in shifts table, saving with base columns while awaiting migration:', shiftErr.message);
+                const corePayload = {
                     end_time: closeRegisterData.closingTime,
                     closing_cash: actualCash,
+                    actual_cash: actualCash,
+                    cash_variance: variance,
                     total_sales: closeRegisterData.totalSales,
-                    total_expenses: closeRegisterData.totalExpenses,
-                    net_sales: closeRegisterData.netSales,
                     status: 'Closed',
                     closed_by: loggedInUserName || 'Cashier'
-                }).eq('shift_id', shift.id);
-            } catch (_) {}
+                };
+                await supabase
+                    .from('shifts')
+                    .update(corePayload)
+                    .eq('shift_id', shift.id);
+            }
 
             try {
                 await supabase.from('shift_instances').update({

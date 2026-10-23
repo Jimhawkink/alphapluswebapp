@@ -16,10 +16,19 @@ interface Shift {
   end_time: string | null;
   opening_cash: number;
   closing_cash: number | null;
+  actual_cash?: number | null;
+  expected_cash?: number | null;
+  cash_variance?: number | null;
   total_sales: number;
-  total_expenses: number;
-  total_vouchers: number;
-  net_sales: number;
+  total_expenses?: number;
+  total_vouchers?: number;
+  net_sales?: number;
+  mpesa_sales?: number;
+  cash_sales?: number;
+  card_sales?: number;
+  credit_sales?: number;
+  profit?: number;
+  notes?: string;
   status: string;
   opened_by: string;
   closed_by: string | null;
@@ -221,14 +230,14 @@ export default function MasterHospitalityShiftsPage() {
       try {
         const { data: orgSettings } = await supabase
           .from('organisation_settings')
-          .select('key, value');
+          .select('setting_key, setting_value');
         if (orgSettings && Array.isArray(orgSettings)) {
-          orgSettings.forEach(s => {
-            if (s.key === 'day_shift_start' && s.value) setDayShiftStart(s.value);
-            if (s.key === 'day_shift_end' && s.value) setDayShiftEnd(s.value);
-            if (s.key === 'night_shift_start' && s.value) setNightShiftStart(s.value);
-            if (s.key === 'night_shift_end' && s.value) setNightShiftEnd(s.value);
-            if (s.key === 'default_opening_float' && s.value) setOpeningCashInput(Number(s.value) || 5000);
+          orgSettings.forEach((s: any) => {
+            if (s.setting_key === 'day_shift_start' && s.setting_value) setDayShiftStart(s.setting_value);
+            if (s.setting_key === 'day_shift_end' && s.setting_value) setDayShiftEnd(s.setting_value);
+            if (s.setting_key === 'night_shift_start' && s.setting_value) setNightShiftStart(s.setting_value);
+            if (s.setting_key === 'night_shift_end' && s.setting_value) setNightShiftEnd(s.setting_value);
+            if (s.setting_key === 'default_opening_float' && s.setting_value) setOpeningCashInput(Number(s.setting_value) || 5000);
           });
         }
       } catch (settingsErr) {
@@ -258,18 +267,35 @@ export default function MasterHospitalityShiftsPage() {
       // 3. If there is an active shift, load its sales, expenses, and advances
       if (openShift) {
         const startISO = new Date(`${openShift.shift_date}T${openShift.start_time || '00:00:00'}`).toISOString();
+        const shiftDate = openShift.shift_date;
 
         const [
-          { data: salesData },
+          { data: byShiftIdSales },
+          { data: byDateSales },
           { data: expData },
           { data: advData }
         ] = await Promise.all([
-          supabase.from('sales').select('*').eq('shift_id', openShift.shift_id),
-          supabase.from('expenses').select('*').gte('created_at', startISO),
-          supabase.from('salary_advances').select('*').gte('created_at', startISO),
+          supabase.from('sales').select('*').eq('shift_id', openShift.shift_id).neq('status', 'Cancelled').neq('status', 'Merged'),
+          supabase.from('sales').select('*').eq('sale_date', shiftDate).neq('status', 'Cancelled').neq('status', 'Merged'),
+          supabase.from('expenses').select('*').or(`expense_date.eq.${shiftDate},created_at.gte.${startISO}`),
+          supabase.from('salary_advances').select('*').or(`advance_date.eq.${shiftDate},created_at.gte.${startISO}`),
         ]);
 
-        setShiftSales(salesData || []);
+        // Merge sales by unique sale_id so no sales are missed or double counted
+        const salesMap = new Map<number, SaleRecord>();
+        (byShiftIdSales || []).forEach((s: any) => salesMap.set(s.sale_id, s));
+        (byDateSales || []).forEach((s: any) => {
+          if (s.shift_id === openShift.shift_id) {
+            salesMap.set(s.sale_id, s);
+          } else if (!s.shift_id || s.shift_id === 0) {
+            const saleT = s.sale_time || (s.sale_datetime ? new Date(s.sale_datetime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : null);
+            if (!saleT || !openShift.start_time || saleT >= openShift.start_time) {
+              salesMap.set(s.sale_id, s);
+            }
+          }
+        });
+
+        setShiftSales(Array.from(salesMap.values()));
         setShiftExpenses(expData || []);
         setShiftAdvances(advData || []);
       }
@@ -293,27 +319,18 @@ export default function MasterHospitalityShiftsPage() {
     let totalSalesAmt = 0;
 
     shiftSales.forEach(s => {
-      const amt = Number(s.total_amount) || 0;
+      const amt = Number((s as any).total_amount) || Number((s as any).grand_total) || Number((s as any).amount_paid) || Number((s as any).subtotal) || 0;
       totalSalesAmt += amt;
-      const m = (s.payment_method || '').toUpperCase();
+      const m = ((s.payment_method || (s as any).payment_mode || '')).toUpperCase();
       if (m.includes('MPESA') || m.includes('M-PESA')) mpesa += amt;
       else if (m.includes('CASH')) cash += amt;
-      else if (m.includes('CARD') || m.includes('VISA')) card += amt;
+      else if (m.includes('CARD') || m.includes('VISA') || m.includes('PDQ')) card += amt;
       else credit += amt;
     });
 
-    // Realistic fallback if DB is brand new
-    if (totalSalesAmt === 0 && currentShift) {
-      totalSalesAmt = 85800;
-      mpesa = 55770;
-      cash = 18018;
-      card = 8580;
-      credit = 3432;
-    }
-
-    const expensesSum = shiftExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0) || 4200;
-    const advancesSum = shiftAdvances.reduce((acc, a) => acc + (Number(a.amount) || 0), 0) || 1500;
-    const openingFloat = Number(currentShift?.opening_cash) || 15000;
+    const expensesSum = shiftExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+    const advancesSum = shiftAdvances.reduce((acc, a) => acc + (Number(a.amount) || 0), 0);
+    const openingFloat = Number(currentShift?.opening_cash) || 0;
 
     // In a hospitality cash drawer, expected physical cash in till = opening float + cash sales - petty cash expenses - staff cash advances
     const expectedTillCash = openingFloat + cash - expensesSum - advancesSum;
@@ -330,7 +347,7 @@ export default function MasterHospitalityShiftsPage() {
       openingFloat,
       expectedTillCash,
       netTurnover,
-      orderCount: shiftSales.length > 0 ? shiftSales.length : 42,
+      orderCount: shiftSales.length,
     };
   }, [shiftSales, shiftExpenses, shiftAdvances, currentShift]);
 
@@ -415,26 +432,58 @@ export default function MasterHospitalityShiftsPage() {
     const user = userData ? JSON.parse(userData) : null;
 
     const closingCash = Number(closingCashInput) || 0;
+    const variance = closingCash - liveStats.expectedTillCash;
     const net = liveStats.netTurnover;
 
-    const { error } = await supabase
+    // Full comprehensive payload with all analytical shift metrics
+    const fullPayload: any = {
+      end_time: new Date().toTimeString().split(' ')[0],
+      closing_cash: closingCash,
+      actual_cash: closingCash,
+      expected_cash: liveStats.expectedTillCash,
+      cash_variance: variance,
+      total_sales: liveStats.totalSales,
+      total_expenses: liveStats.expensesTotal,
+      total_vouchers: liveStats.advancesTotal,
+      net_sales: net,
+      mpesa_sales: liveStats.mpesaSales,
+      cash_sales: liveStats.cashSales,
+      card_sales: liveStats.cardSales,
+      credit_sales: liveStats.creditSales,
+      profit: net,
+      notes: handoverNotes || null,
+      status: 'Closed',
+      closed_by: user?.name || 'Duty Manager',
+    };
+
+    let { error } = await supabase
       .from('shifts')
-      .update({
-        end_time: new Date().toTimeString().split(' ')[0],
-        closing_cash: closingCash,
-        total_sales: liveStats.totalSales,
-        total_expenses: liveStats.expensesTotal,
-        total_vouchers: liveStats.advancesTotal,
-        net_sales: net,
-        status: 'Closed',
-        closed_by: user?.name || 'Duty Manager',
-      })
+      .update(fullPayload)
       .eq('shift_id', currentShift.shift_id);
+
+    // If Supabase schema cache hasn't loaded extended columns yet, fall back to core columns seamlessly
+    if (error && error.message?.includes('schema cache')) {
+      console.warn('Extended columns missing in shifts table, saving with base columns while awaiting migration:', error.message);
+      const corePayload = {
+        end_time: fullPayload.end_time,
+        closing_cash: closingCash,
+        actual_cash: closingCash,
+        cash_variance: variance,
+        total_sales: liveStats.totalSales,
+        status: 'Closed',
+        closed_by: fullPayload.closed_by,
+      };
+      const res = await supabase
+        .from('shifts')
+        .update(corePayload)
+        .eq('shift_id', currentShift.shift_id);
+      error = res.error;
+    }
 
     if (error) {
       toast.error('Failed to close shift: ' + error.message);
     } else {
-      toast.success('Shift closed and Z-Report generated!');
+      toast.success('Shift closed and Z-Report generated! 🔒');
       setShowEndModal(false);
       loadShifts();
       printThermalZReport(currentShift, liveStats, closingCash, user?.name || 'Duty Manager');
@@ -1031,7 +1080,7 @@ body { font-family: 'Courier New', monospace; width: 76mm; padding: 3mm 2.5mm; f
                 <th className="pb-3 px-2">Cashier</th>
                 <th className="pb-3 px-2 text-right">Float</th>
                 <th className="pb-3 px-2 text-right">Gross Sales</th>
-                <th className="pb-3 px-2 text-right">Net Sales</th>
+                <th className="pb-3 px-2 text-right">Variance</th>
                 <th className="pb-3 px-2 text-right">Till Cash</th>
                 <th className="pb-3 px-2 text-center">Status</th>
                 <th className="pb-3 px-2 text-right">Actions</th>
@@ -1046,9 +1095,17 @@ body { font-family: 'Courier New', monospace; width: 76mm; padding: 3mm 2.5mm; f
                   <td className="py-3 px-2 text-slate-700">{s.opened_by}</td>
                   <td className="py-3 px-2 text-right font-mono text-slate-600">Ksh {(s.opening_cash || 0).toLocaleString()}</td>
                   <td className="py-3 px-2 text-right font-mono font-bold text-slate-900">Ksh {(s.total_sales || 0).toLocaleString()}</td>
-                  <td className="py-3 px-2 text-right font-mono font-black text-emerald-800">Ksh {(s.net_sales || 0).toLocaleString()}</td>
+                  <td className="py-3 px-2 text-right font-mono font-bold">
+                    {s.cash_variance !== null && s.cash_variance !== undefined ? (
+                      <span className={s.cash_variance === 0 ? 'text-emerald-700' : s.cash_variance > 0 ? 'text-sky-700' : 'text-rose-700'}>
+                        {s.cash_variance > 0 ? '+' : ''}Ksh {s.cash_variance.toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">-</span>
+                    )}
+                  </td>
                   <td className="py-3 px-2 text-right font-mono text-slate-800">
-                    {s.closing_cash !== null ? `Ksh ${s.closing_cash.toLocaleString()}` : 'Open'}
+                    {s.closing_cash !== null ? `Ksh ${s.closing_cash.toLocaleString()}` : (s.actual_cash !== null && s.actual_cash !== undefined ? `Ksh ${s.actual_cash.toLocaleString()}` : 'Open')}
                   </td>
                   <td className="py-3 px-2 text-center">
                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
@@ -1198,102 +1255,252 @@ body { font-family: 'Courier New', monospace; width: 76mm; padding: 3mm 2.5mm; f
       {/* 7. MODAL: CLOSE SHIFT & RECONCILE Z-REPORT                            */}
       {/* ==================================================================== */}
       {showEndModal && currentShift && (
-        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-lg w-full border border-slate-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center font-bold">
-                  🔒
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">Close Shift &amp; Cash Drawer Reconciliation</h3>
-                  <p className="text-xs text-slate-500">Perform final till cash count &amp; print audit Z-Report</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowEndModal(false)}
-                className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 hover:text-slate-800 flex items-center justify-center font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Quick summary strip */}
-            <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200 space-y-2 text-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-slate-600">Expected Physical Cash in Drawer:</span>
-                <span className="font-mono font-black text-slate-900 text-sm">
-                  Ksh {liveStats.expectedTillCash.toLocaleString()}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-slate-500 text-[11px]">
-                <span>Calculation breakdown:</span>
-                <span>Float ({liveStats.openingFloat.toLocaleString()}) + Cash ({liveStats.cashSales.toLocaleString()}) - Exp ({liveStats.expensesTotal.toLocaleString()})</span>
-              </div>
-            </div>
-
-            <div className="space-y-3">
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-5">
+          <div className="bg-white rounded-3xl p-6 sm:p-7 max-w-3xl w-full border border-slate-200 shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150 max-h-[92vh] overflow-y-auto text-slate-800">
+            {/* Header Banner */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
               <div>
-                <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Actual Counted Cash in Till (Ksh)</label>
-                <input
-                  type="number"
-                  value={closingCashInput}
-                  onChange={e => setClosingCashInput(Number(e.target.value))}
-                  className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-base font-black text-slate-900 focus:outline-none focus:border-slate-400"
-                />
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1 ${
+                    currentShift.shift_type.toLowerCase().includes('night')
+                      ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                      : 'bg-amber-100 text-amber-900 border border-amber-200'
+                  }`}>
+                    <span>{currentShift.shift_type.toLowerCase().includes('night') ? '🌙' : '☀️'}</span>
+                    <span>{currentShift.shift_type}</span>
+                  </span>
+                  <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                    #SH-{currentShift.shift_id}
+                  </span>
+                  <span className="text-xs text-slate-400">•</span>
+                  <span className="text-xs font-bold text-slate-600">
+                    Opened by: <strong className="text-slate-900">{currentShift.opened_by}</strong>
+                  </span>
+                </div>
+                <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <span>🔒</span> Close Shift &amp; Cash Till Reconciliation
+                </h3>
               </div>
 
-              {/* Variance display */}
-              {(() => {
-                const diff = Number(closingCashInput) - liveStats.expectedTillCash;
-                const isBalanced = diff === 0;
-                const isOver = diff > 0;
-                return (
-                  <div
-                    className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
-                      isBalanced
-                        ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
-                        : isOver
-                        ? 'bg-sky-50 border-sky-200 text-sky-800'
-                        : 'bg-rose-50 border-rose-200 text-rose-800'
-                    }`}
-                  >
-                    <span className="font-bold">
-                      {isBalanced ? '✓ Drawer Exactly Balanced' : isOver ? '⚠️ Till Cash Overage' : '⚠️ Till Cash Shortage'}
+              {/* Running Duration Pill */}
+              <div className="text-left sm:text-right bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 shrink-0">
+                <p className="text-[10px] font-bold uppercase text-slate-500">Shift Running Duration</p>
+                <p className="text-sm font-black font-mono text-emerald-700">
+                  ⏱️ {shiftDuration || '00:00:00'} ({currentShift.start_time} - now)
+                </p>
+              </div>
+            </div>
+
+            {/* 4 Hero KPI Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/90 shadow-sm">
+                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">💰 Opening Float</p>
+                <p className="text-lg font-black font-mono text-slate-900 mt-1">
+                  Ksh {liveStats.openingFloat.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-slate-500 mt-0.5">Starting till cash</p>
+              </div>
+
+              <div className="p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200 shadow-sm">
+                <p className="text-[11px] font-bold text-blue-800 uppercase tracking-wider">📊 Gross Revenue</p>
+                <p className="text-lg font-black font-mono text-blue-950 mt-1">
+                  Ksh {liveStats.totalSales.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-blue-700 mt-0.5">{liveStats.orderCount} orders in shift</p>
+              </div>
+
+              <div className="p-3.5 bg-rose-50/80 rounded-2xl border border-rose-200 shadow-sm">
+                <p className="text-[11px] font-bold text-rose-800 uppercase tracking-wider">🔴 Total Expenses</p>
+                <p className="text-lg font-black font-mono text-rose-700 mt-1">
+                  -Ksh {(liveStats.expensesTotal + liveStats.advancesTotal).toLocaleString()}
+                </p>
+                <p className="text-[10px] text-rose-600 mt-0.5">Petty cash &amp; advances</p>
+              </div>
+
+              <div className="p-3.5 bg-emerald-50/80 rounded-2xl border border-emerald-200 shadow-sm">
+                <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">🟢 Net Revenue</p>
+                <p className="text-lg font-black font-mono text-emerald-950 mt-1">
+                  Ksh {liveStats.netTurnover.toLocaleString()}
+                </p>
+                <p className="text-[10px] text-emerald-700 mt-0.5">Total sales - expenses</p>
+              </div>
+            </div>
+
+            {/* 2-Column Analytical Breakdown */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Left Column: Payment Channels */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider flex items-center justify-between">
+                  <span>Payment Channels Audit</span>
+                  <span className="font-mono text-slate-500 font-bold">{liveStats.orderCount} Trx</span>
+                </h4>
+
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/80">
+                    <span className="font-bold text-emerald-800 flex items-center gap-1.5">
+                      <span>📱</span> M-Pesa (C2B)
                     </span>
-                    <span className="font-mono font-black">
-                      {isBalanced ? 'Ksh 0.00 Variance' : `${isOver ? '+' : ''}Ksh ${diff.toLocaleString()}`}
+                    <span className="font-mono font-black text-slate-900">
+                      Ksh {liveStats.mpesaSales.toLocaleString()}
                     </span>
                   </div>
-                );
-              })()}
 
-              <div>
-                <label className="text-xs font-bold uppercase text-slate-500 block mb-1">Handover Notes / Discrepancy Reason</label>
-                <textarea
-                  rows={2}
-                  value={handoverNotes}
-                  onChange={e => setHandoverNotes(e.target.value)}
-                  placeholder="Optional handover comments or reasons for variance..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-slate-400"
-                />
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/80">
+                    <span className="font-bold text-slate-800 flex items-center gap-1.5">
+                      <span>💵</span> Cash Drawer
+                    </span>
+                    <span className="font-mono font-black text-slate-900">
+                      Ksh {liveStats.cashSales.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/80">
+                    <span className="font-bold text-indigo-800 flex items-center gap-1.5">
+                      <span>💳</span> PDQ / Cards
+                    </span>
+                    <span className="font-mono font-black text-slate-900">
+                      Ksh {liveStats.cardSales.toLocaleString()}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-slate-200/80">
+                    <span className="font-bold text-amber-800 flex items-center gap-1.5">
+                      <span>🏨</span> Room / Credit
+                    </span>
+                    <span className="font-mono font-black text-slate-900">
+                      Ksh {liveStats.creditSales.toLocaleString()}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-xs font-black">
+                  <span>Gross Turnover:</span>
+                  <span className="font-mono text-slate-900 text-sm">Ksh {liveStats.totalSales.toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Right Column: Physical Till Count & Variance */}
+              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black uppercase text-slate-700 tracking-wider">
+                    Till Drawer Reconciliation
+                  </h4>
+                  <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                    Active Audit
+                  </span>
+                </div>
+
+                {/* Expected Till Cash Strip */}
+                <div className="p-3 rounded-xl bg-white border border-slate-200/80 space-y-1 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="text-slate-600 font-medium">Expected Physical Till Cash:</span>
+                    <span className="font-mono font-black text-slate-900 text-base">
+                      Ksh {liveStats.expectedTillCash.toLocaleString()}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-slate-400">
+                    Float ({liveStats.openingFloat.toLocaleString()}) + Cash Sales ({liveStats.cashSales.toLocaleString()}) - Expenses ({liveStats.expensesTotal.toLocaleString()}) - Advances ({liveStats.advancesTotal.toLocaleString()})
+                  </p>
+                </div>
+
+                {/* Actual Counted Input */}
+                <div>
+                  <label className="text-[11px] font-bold uppercase text-slate-600 block mb-1">
+                    Actual Counted Cash In Till (Ksh)
+                  </label>
+                  <input
+                    type="number"
+                    value={closingCashInput}
+                    onChange={e => setClosingCashInput(Number(e.target.value))}
+                    className="w-full px-4 py-2.5 bg-white border-2 border-slate-300 rounded-xl font-mono text-lg font-black text-slate-900 focus:outline-none focus:border-slate-600 transition-colors"
+                  />
+                  {/* Quick helper buttons */}
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    <button
+                      type="button"
+                      onClick={() => setClosingCashInput(liveStats.expectedTillCash)}
+                      className="px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-[10px] font-black text-emerald-800 border border-emerald-200 transition-colors"
+                    >
+                      ✓ Match Expected
+                    </button>
+                    {[500, 1000, 2000, 5000].map(add => (
+                      <button
+                        key={add}
+                        type="button"
+                        onClick={() => setClosingCashInput(prev => Number(prev) + add)}
+                        className="px-2 py-1 rounded-lg bg-white hover:bg-slate-100 text-[10px] font-mono font-bold text-slate-700 border border-slate-200 transition-colors"
+                      >
+                        +{add.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Live Variance Calculation */}
+                {(() => {
+                  const diff = Number(closingCashInput) - liveStats.expectedTillCash;
+                  const isBalanced = diff === 0;
+                  const isOver = diff > 0;
+                  return (
+                    <div
+                      className={`p-3 rounded-xl border text-xs flex items-center justify-between font-bold ${
+                        isBalanced
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : isOver
+                          ? 'bg-sky-50 border-sky-200 text-sky-800'
+                          : 'bg-rose-50 border-rose-200 text-rose-800'
+                      }`}
+                    >
+                      <span>
+                        {isBalanced ? '✓ Drawer Exactly Balanced' : isOver ? '⚠️ Till Cash Overage' : '⚠️ Till Cash Shortage'}
+                      </span>
+                      <span className="font-mono font-black text-sm">
+                        {isBalanced ? 'Ksh 0.00 Variance' : `${isOver ? '+' : ''}Ksh ${diff.toLocaleString()}`}
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                {/* Handover notes */}
+                <div>
+                  <label className="text-[11px] font-bold uppercase text-slate-600 block mb-1">
+                    Handover Notes / Variance Explanation
+                  </label>
+                  <textarea
+                    rows={2}
+                    value={handoverNotes}
+                    onChange={e => setHandoverNotes(e.target.value)}
+                    placeholder="Optional handover comments or reasons for drawer variance..."
+                    className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs focus:outline-none focus:border-slate-600"
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-end gap-2.5">
               <button
                 type="button"
                 onClick={() => setShowEndModal(false)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100"
+                className="w-full sm:w-auto px-5 py-2.5 border border-slate-300 text-slate-600 hover:text-slate-900 rounded-xl font-bold text-xs hover:bg-slate-50 transition-colors"
               >
-                Cancel
+                Cancel / Keep Open
+              </button>
+              <button
+                type="button"
+                onClick={() => printThermalZReport(currentShift, liveStats, Number(closingCashInput) || liveStats.expectedTillCash, currentShift.opened_by || 'Cashier')}
+                className="w-full sm:w-auto px-5 py-2.5 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
+              >
+                <span>🖨️</span>
+                <span>Print Thermal Z-Report</span>
               </button>
               <button
                 type="button"
                 onClick={handleEndShift}
-                className="px-5 py-2 rounded-xl text-xs font-black bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
+                className="w-full sm:w-auto px-6 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-black text-xs transition-all shadow-sm flex items-center justify-center gap-1.5"
               >
-                Close Shift &amp; Print Z-Report →
+                <span>🔒</span>
+                <span>Close Shift &amp; Reconcile Drawer →</span>
               </button>
             </div>
           </div>
@@ -1357,20 +1564,24 @@ body { font-family: 'Courier New', monospace; width: 76mm; padding: 3mm 2.5mm; f
                 <p className="text-[10px] text-emerald-600 mt-0.5">Turnover revenue</p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-rose-50/60 border border-rose-100">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-rose-700">Expenses &amp; Adv</p>
-                <p className="text-lg font-black font-mono text-rose-950 mt-1">
-                  - Ksh {((inspectShift.total_expenses || 0) + (inspectShift.total_vouchers || 0)).toLocaleString()}
+              <div className="p-3.5 rounded-2xl bg-sky-50/60 border border-sky-100">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-sky-700">Till Drawer Cash</p>
+                <p className="text-lg font-black font-mono text-sky-950 mt-1">
+                  Ksh {(inspectShift.closing_cash ?? inspectShift.actual_cash ?? 0).toLocaleString()}
                 </p>
-                <p className="text-[10px] text-rose-600 mt-0.5">Petty deductions</p>
+                <p className="text-[10px] text-sky-600 mt-0.5">Counted drawer</p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-indigo-50/60 border border-indigo-100">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Net Sales</p>
-                <p className="text-lg font-black font-mono text-indigo-950 mt-1">
-                  Ksh {(inspectShift.net_sales || ((inspectShift.total_sales || 0) - (inspectShift.total_expenses || 0))).toLocaleString()}
+              <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-600">Drawer Variance</p>
+                <p className={`text-lg font-black font-mono mt-1 ${
+                  (inspectShift.cash_variance || 0) === 0 ? 'text-emerald-700' : (inspectShift.cash_variance || 0) > 0 ? 'text-sky-700' : 'text-rose-700'
+                }`}>
+                  {inspectShift.cash_variance !== null && inspectShift.cash_variance !== undefined
+                    ? `${inspectShift.cash_variance > 0 ? '+' : ''}Ksh ${inspectShift.cash_variance.toLocaleString()}`
+                    : 'Balanced'}
                 </p>
-                <p className="text-[10px] text-indigo-600 mt-0.5">Realized net</p>
+                <p className="text-[10px] text-slate-400 mt-0.5">Over / Short status</p>
               </div>
             </div>
 
@@ -1414,17 +1625,21 @@ body { font-family: 'Courier New', monospace; width: 76mm; padding: 3mm 2.5mm; f
                   <span className="font-mono font-bold text-slate-900">Ksh {(inspectShift.total_sales || 0).toLocaleString()}</span>
                 </div>
                 <div className="flex items-center justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-600">Petty Cash Deductions (Expenses):</span>
-                  <span className="font-mono font-bold text-rose-700">- Ksh {(inspectShift.total_expenses || 0).toLocaleString()}</span>
-                </div>
-                <div className="flex items-center justify-between py-1 border-b border-slate-200/60">
-                  <span className="text-slate-600">Staff Emergency Advances / Vouchers:</span>
-                  <span className="font-mono font-bold text-amber-700">- Ksh {(inspectShift.total_vouchers || 0).toLocaleString()}</span>
+                  <span className="text-slate-600">Actual Counted Physical Drawer Cash:</span>
+                  <span className="font-mono font-bold text-slate-900">
+                    {inspectShift.closing_cash !== null ? `Ksh ${inspectShift.closing_cash.toLocaleString()}` : (inspectShift.actual_cash !== null && inspectShift.actual_cash !== undefined ? `Ksh ${inspectShift.actual_cash.toLocaleString()}` : 'Still In Progress')}
+                  </span>
                 </div>
                 <div className="flex items-center justify-between py-1 font-bold">
-                  <span className="text-slate-800">Actual Counted Physical Drawer Cash:</span>
-                  <span className="font-mono text-sm text-slate-900">
-                    {inspectShift.closing_cash !== null ? `Ksh ${inspectShift.closing_cash.toLocaleString()}` : 'Still In Progress'}
+                  <span className="text-slate-800">Drawer Cash Variance / Discrepancy:</span>
+                  <span className="font-mono text-sm">
+                    {inspectShift.cash_variance !== null && inspectShift.cash_variance !== undefined ? (
+                      <span className={inspectShift.cash_variance === 0 ? 'text-emerald-700' : inspectShift.cash_variance > 0 ? 'text-sky-700' : 'text-rose-700'}>
+                        {inspectShift.cash_variance === 0 ? '✓ Balanced (Ksh 0.00)' : `${inspectShift.cash_variance > 0 ? '⚠️ Overage: +' : '⚠️ Shortage: '}Ksh ${inspectShift.cash_variance.toLocaleString()}`}
+                      </span>
+                    ) : (
+                      <span className="text-slate-400">In Progress</span>
+                    )}
                   </span>
                 </div>
               </div>
@@ -1452,16 +1667,16 @@ body { font-family: 'Courier New', monospace; width: 76mm; padding: 3mm 2.5mm; f
                 onClick={() => printThermalZReport(inspectShift, {
                   orderCount: 38,
                   totalSales: inspectShift.total_sales || 0,
-                  expensesTotal: inspectShift.total_expenses || 0,
-                  advancesTotal: inspectShift.total_vouchers || 0,
-                  netTurnover: inspectShift.net_sales || ((inspectShift.total_sales || 0) - (inspectShift.total_expenses || 0)),
+                  expensesTotal: 0,
+                  advancesTotal: 0,
+                  netTurnover: inspectShift.total_sales || 0,
                   mpesaSales: Math.round((inspectShift.total_sales || 0) * 0.65),
                   cashSales: Math.round((inspectShift.total_sales || 0) * 0.25),
                   cardSales: Math.round((inspectShift.total_sales || 0) * 0.10),
                   creditSales: 0,
                   openingFloat: inspectShift.opening_cash || 0,
-                  expectedTillCash: inspectShift.closing_cash || inspectShift.opening_cash || 0,
-                }, inspectShift.closing_cash || (inspectShift.opening_cash || 0), inspectShift.closed_by || 'Admin')}
+                  expectedTillCash: (inspectShift.closing_cash || inspectShift.actual_cash || inspectShift.opening_cash || 0) - (inspectShift.cash_variance || 0),
+                }, inspectShift.closing_cash || inspectShift.actual_cash || (inspectShift.opening_cash || 0), inspectShift.closed_by || 'Admin')}
                 className="px-5 py-2 rounded-xl text-xs font-black bg-slate-900 hover:bg-slate-800 text-white shadow-sm flex items-center gap-1.5 transition-all active:scale-95"
               >
                 <span>🖨️</span>
