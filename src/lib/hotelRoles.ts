@@ -58,13 +58,25 @@ export const PERMISSIONS_LIST: PermissionDefinition[] = [
     // 1. RESTAURANT POS & TABLE FLOOR (/dashboard/pos, my-bills, etc.)
     // ═══════════════════════════════════════════════════════════════════
     { key: 'pos_view_terminal', label: 'Access POS Terminal Screen', subFunction: 'Open POS Register', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🖥️', description: 'Access main restaurant dining floor & touch POS screen', pagePath: '/dashboard/pos' },
+    { key: 'pos_home_dashboard', label: 'Exit to Home Dashboard (🏠 Button)', subFunction: 'Home Dashboard Exit', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🏠', description: 'Navigate back to Hotel Management Main Dashboard from POS top header', pagePath: '/dashboard/pos' },
+    { key: 'pos_reports_view', label: 'Access POS Reports (📊 Header Button)', subFunction: 'Reports Header Button', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '📊', description: 'Open sales & POS revenue reports summary from POS top header', pagePath: '/dashboard/pos' },
+    { key: 'pos_shortcuts_view', label: 'Keyboard Shortcuts (⌨️ Button)', subFunction: 'Shortcuts Modal', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '⌨️', description: 'Open quick keyboard shortcuts guide [F1] from top header', pagePath: '/dashboard/pos' },
+    { key: 'pos_lock_register', label: 'Lock POS Terminal (🔒 Button)', subFunction: 'Lock Screen Button', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🔒', description: 'Temporarily lock POS screen requiring supervisor authorization to unlock', pagePath: '/dashboard/pos' },
+    { key: 'pos_close_register', label: 'Close Cashier Shift / Register', subFunction: 'Close Register Button', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🏁', description: 'Close active register shift, enter cash counts, and generate Z-Report', pagePath: '/dashboard/pos' },
+    { key: 'pos_receive_payment', label: 'Receive Payment (💰 Direct Tender Button)', subFunction: 'Receive Pay Quick Action', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '💰', description: 'Open direct tender portal to receive payments for pending orders', pagePath: '/dashboard/pos' },
+    { key: 'pos_view_my_bills', label: 'Access "My Bills" & Waiter Orders (📋 Button)', subFunction: 'My Bills Tab', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '📋', description: 'View waiter open orders, pending tickets, and settled receipts', pagePath: '/dashboard/my-bills' },
+    { key: 'pos_day_sales', label: 'Day Sales Button (📊 Shifts & Sales)', subFunction: 'Day Sales Command Bar', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '📊', description: 'Inspect daily shift gross sales and live tender totals from command bar', pagePath: '/dashboard/pos' },
+    { key: 'pos_merge_bills', label: 'Merge Bills Studio (🔄 Split & Merge Button)', subFunction: 'Merge Bills Command Bar', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🔄', description: 'Launch split & merge studio to combine or separate guest invoices', pagePath: '/dashboard/pos' },
+    { key: 'pos_sales_summary', label: 'Sales Summary Analytics (📈 Summary Button)', subFunction: 'Summary Command Bar', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '📈', description: 'View itemized sales breakdown and hourly sales curves from command bar', pagePath: '/dashboard/pos' },
+    { key: 'pos_pending_bills', label: 'Master Pending Bills (⏳ Pending Button)', subFunction: 'Pending Bills Command Bar', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '⏳', description: 'Inspect all open unpaid dining bills and tables across all waiters', pagePath: '/dashboard/pos' },
+    { key: 'pos_clear_cart', label: 'Clear Cart Button (🗑️ Void Order)', subFunction: 'Clear Cart Action', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🗑️', description: 'Cancel running cart order with supervisor PIN protection', pagePath: '/dashboard/pos' },
+    { key: 'pos_shift_reconciliation', label: 'EOD Stock Audit (🏁 EOD Stock Button)', subFunction: 'EOD Stock Command Bar', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🏁', description: 'Access end-of-day kitchen stock and shift reconciliation reports', pagePath: '/dashboard/pos' },
     { key: 'pos_select_tables', label: 'Select Dining Tables & Rooms', subFunction: 'Table Floor Map', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🪑', description: 'Open tables, view occupancy status and assign party seating', pagePath: '/dashboard/pos' },
     { key: 'pos_take_orders', label: 'Add Items & Build Orders', subFunction: 'Menu Cart', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '📝', description: 'Add dishes and drinks to cart, adjust quantities and portion size', pagePath: '/dashboard/pos' },
     { key: 'pos_send_kot', label: 'Send KOT to Kitchen Printer', subFunction: 'KOT Dispatch', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🍳', description: 'Dispatch Kitchen Order Ticket directly to kitchen thermal printers', pagePath: '/dashboard/pos' },
     { key: 'pos_reprint_kot', label: 'Reprint KOT Tickets', subFunction: 'KOT Reprint', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🖨️', description: 'Reprint duplicate kitchen order tickets for cooks or runners', pagePath: '/dashboard/pos' },
     { key: 'pos_order_notes', label: 'Kitchen Notes & Modifiers', subFunction: 'Food Notes Modal', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🏷️', description: 'Add preparation modifiers (e.g., "Well Done", "No Salt", "Extra Gravy")', pagePath: '/dashboard/pos' },
     { key: 'pos_customer_bill_print', label: 'Print Pro-Forma Customer Bill', subFunction: 'Bill Print', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🧾', description: 'Print dining bill for guest review before payment collection', pagePath: '/dashboard/pos' },
-    { key: 'pos_view_my_bills', label: 'Access "My Bills" & Waiter Orders', subFunction: 'My Bills Tab', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '📋', description: 'View waiter open orders, pending tickets, and settled receipts', pagePath: '/dashboard/my-bills' },
     { key: 'pos_split_bill', label: 'Split Table Bills (Equal / Itemized)', subFunction: 'Split Bill Modal', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '✂️', description: 'Split single table order into multiple separate bills for individual guests', pagePath: '/dashboard/split-merge-receipts' },
     { key: 'pos_merge_tables', label: 'Merge Multiple Table Orders', subFunction: 'Merge Tables Modal', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🔗', description: 'Combine orders from two or more tables into a single master check', pagePath: '/dashboard/pos' },
     { key: 'pos_transfer_table', label: 'Move / Transfer Running Table', subFunction: 'Move Table Modal', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🔄', description: 'Transfer order from Table A to Table B or change waiter assignment', pagePath: '/dashboard/pos' },
@@ -75,6 +87,7 @@ export const PERMISSIONS_LIST: PermissionDefinition[] = [
     { key: 'pos_cancel_order', label: 'Cancel Entire Bill / Order', subFunction: 'Void Order Modal', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '❌', description: 'Void complete table order and cancel all registered KOT tickets', pagePath: '/dashboard/pos' },
     { key: 'pos_batch_selection', label: 'Select Production Batch', subFunction: 'Batch Selection Modal', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '📦', description: 'Link POS sales line to specific manufacturing batch number', pagePath: '/dashboard/pos' },
     { key: 'pos_payment_tender', label: 'Tender Payment & Print Receipt', subFunction: 'Payment Modal', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '💳', description: 'Complete transaction using Cash, M-Pesa STK, M-Pesa C2B Till, or PDQ Card', pagePath: '/dashboard/pos' },
+    { key: 'pos_tender_cash', label: '1-Tap Fast Cash Tender (Exact / 500 / 1000)', subFunction: 'Fast Cash Buttons', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '💵', description: 'Settle order instantly with 1-tap exact cash tender tiles', pagePath: '/dashboard/pos' },
     { key: 'pos_reprint_receipt', label: 'Reprint Past Sales Receipts', subFunction: 'Receipt Preview Modal', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🖨️', description: 'Reprint previously finalized sales receipts from receipt archive', pagePath: '/dashboard/pos' },
 
     // ═══════════════════════════════════════════════════════════════════
@@ -344,21 +357,35 @@ export const PRESET_HOTEL_ROLES: HotelRole[] = [
         is_system: true,
         permissions: {
             pos_view_terminal: true,
+            pos_home_dashboard: false,
+            pos_reports_view: false,
+            pos_shortcuts_view: true,
+            pos_lock_register: false,
+            pos_close_register: false,
+            pos_receive_payment: false,
+            pos_view_my_bills: true,
+            pos_day_sales: false,
+            pos_merge_bills: false,
+            pos_sales_summary: false,
+            pos_pending_bills: false,
+            pos_clear_cart: false,
+            pos_shift_reconciliation: false,
             pos_select_tables: true,
             pos_take_orders: true,
             pos_send_kot: true,
             pos_reprint_kot: false,
             pos_order_notes: true,
             pos_customer_bill_print: true,
-            pos_view_my_bills: true,
             pos_split_bill: false,
             pos_merge_tables: false,
             pos_transfer_table: false,
             pos_hold_recall_order: true,
             pos_item_discounts: false,
+            pos_price_override: false,
             pos_void_item: false,
             pos_cancel_order: false,
             pos_payment_tender: false,
+            pos_tender_cash: false,
             pos_reprint_receipt: false,
             catalog_products_view: true,
         },
@@ -591,4 +618,41 @@ export function getRoleMeta(roleName: string) {
         default:
             return { emoji: '👤', color: 'from-slate-600 to-slate-700', badge: 'bg-slate-100 text-slate-700 border-slate-200', department: 'General', description: 'Staff member' };
     }
+}
+
+export function hasRolePermission(roleName: string, permissionKey: string): boolean {
+    if (typeof window === 'undefined') return true;
+    const lowerRole = (roleName || '').trim().toLowerCase();
+    if (!lowerRole) return false;
+    if (lowerRole === 'super admin' || lowerRole === 'admin') return true;
+
+    const roles = getLocalHotelRoles();
+    const match = roles.find(r => 
+        r.role_name.toLowerCase() === lowerRole || 
+        r.role_id.toLowerCase() === lowerRole ||
+        (lowerRole.includes('waiter') && r.role_id === 'waiter') ||
+        (lowerRole.includes('cashier') && r.role_id === 'cashier')
+    );
+    if (match) {
+        if (match.is_super_admin) return true;
+        if (match.permissions && typeof match.permissions[permissionKey] === 'boolean') {
+            return match.permissions[permissionKey];
+        }
+    }
+
+    const preset = PRESET_HOTEL_ROLES.find(r => 
+        r.role_name.toLowerCase() === lowerRole || 
+        r.role_id.toLowerCase() === lowerRole ||
+        (lowerRole.includes('waiter') && r.role_id === 'waiter') ||
+        (lowerRole.includes('cashier') && r.role_id === 'cashier')
+    );
+    if (preset?.permissions && typeof preset.permissions[permissionKey] === 'boolean') {
+        return preset.permissions[permissionKey];
+    }
+
+    if (lowerRole.includes('waiter') || lowerRole === 'waitress') {
+        return false;
+    }
+
+    return true;
 }

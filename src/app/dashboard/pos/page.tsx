@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase, c2bSupabase } from '@/lib/supabase';
@@ -9,6 +9,7 @@ import {
     getFoodOrderNotes
 } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import { hasRolePermission } from '@/lib/hotelRoles';
 import {
     loadPOSPrinterSettings,
     executeDirectPrint,
@@ -120,7 +121,7 @@ const sampleBatches: Record<number, ProductionBatch[]> = {
 };
 
 // Ultra-Crisp Web Audio POS Sound Synthesizer
-const playPOSChime = (type: 'add' | 'void' | 'success' | 'tender' | 'kot' | 'click') => {
+const playPOSChime = (type: 'add' | 'void' | 'success' | 'tender' | 'kot' | 'click' | 'error') => {
     try {
         if (typeof window === 'undefined') return;
         const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -147,7 +148,7 @@ const playPOSChime = (type: 'add' | 'void' | 'success' | 'tender' | 'kot' | 'cli
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
             osc.start(now);
             osc.stop(now + 0.05);
-        } else if (type === 'void') {
+        } else if (type === 'void' || type === 'error') {
             osc.type = 'triangle';
             osc.frequency.setValueAtTime(329.63, now);
             osc.frequency.exponentialRampToValueAtTime(220, now + 0.15);
@@ -2428,9 +2429,212 @@ export default function POSPage() {
     const [isWaiterUser, setIsWaiterUser] = useState(false);
     const [userRole, setUserRole] = useState<string>('Admin');
     const [loggedInUserName, setLoggedInUserName] = useState<string>('');
+    // Premium Toast Alert for Restricted Access (Dark Slate / Black Background)
+    const showAccessDeniedToast = useCallback((featureName: string) => {
+        playPOSChime('error');
+        toast.custom((t) => (
+            <div
+                className={`${
+                    t.visible ? 'animate-in fade-in zoom-in-95' : 'animate-out fade-out zoom-out-95'
+                } max-w-sm w-full bg-slate-950 text-white px-4 py-3 rounded-2xl shadow-2xl border border-white/20 flex items-center gap-3 backdrop-blur-xl pointer-events-auto`}
+            >
+                <div className="w-9 h-9 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-lg shrink-0">
+                    🔒
+                </div>
+                <div className="flex-1 min-w-0">
+                    <p className="text-xs font-black tracking-wide text-rose-400 uppercase">Access Not Allowed</p>
+                    <p className="text-[11px] text-slate-300 font-medium truncate">
+                        "${featureName}" is restricted for your role (${userRole || 'Staff'})
+                    </p>
+                </div>
+            </div>
+        ), { duration: 3500 });
+    }, [userRole]);
+
+    // Check Granular Role Permission without greying out buttons
+    const verifyPosAccess = useCallback((permissionKey: string, featureLabel: string): boolean => {
+        const lower = (userRole || '').trim().toLowerCase();
+        if (lower === 'super admin' || lower === 'admin') {
+            return true;
+        }
+        const permitted = hasRolePermission(userRole, permissionKey);
+        if (!permitted) {
+            showAccessDeniedToast(featureLabel);
+            return false;
+        }
+        return true;
+    }, [userRole, showAccessDeniedToast]);
+
 
     // Batch Selection State
     const [showBatchModal, setShowBatchModal] = useState(false);
+    
+    // ─── WAITER FAST PIN LOCK & SECURITY SYSTEM ───
+    const [autoLockTimeoutSeconds, setAutoLockTimeoutSeconds] = useState<number>(30);
+    const [autoLockOnKotEnabled, setAutoLockOnKotEnabled] = useState<boolean>(true);
+
+    // Dynamically Load Waiter Auto-Lock Preferences from Hotel Settings
+    useEffect(() => {
+        try {
+            const savedSec = localStorage.getItem('waiter_autolock_seconds');
+            if (savedSec !== null) {
+                setAutoLockTimeoutSeconds(parseInt(savedSec, 10) || 0);
+            }
+            const savedKot = localStorage.getItem('waiter_autolock_on_kot');
+            if (savedKot !== null) {
+                setAutoLockOnKotEnabled(savedKot === 'true');
+            }
+
+            (async () => {
+                try {
+                    const { data } = await supabase
+                        .from('organisation_settings')
+                        .select('setting_key, setting_value')
+                        .in('setting_key', ['waiter_autolock_seconds', 'waiter_autolock_on_kot']);
+                    if (data && data.length > 0) {
+                        data.forEach((s: { setting_key: string; setting_value: string }) => {
+                            if (s.setting_key === 'waiter_autolock_seconds') {
+                                const parsed = parseInt(s.setting_value, 10);
+                                if (!isNaN(parsed)) setAutoLockTimeoutSeconds(parsed);
+                            }
+                            if (s.setting_key === 'waiter_autolock_on_kot') {
+                                setAutoLockOnKotEnabled(s.setting_value === 'true');
+                            }
+                        });
+                    }
+                } catch (_) {}
+            })();
+        } catch (_) {}
+    }, []);
+    const [isPosLocked, setIsPosLocked] = useState<boolean>(false);
+    const [lockPin, setLockPin] = useState<string>('');
+    const [lockError, setLockError] = useState<string>('');
+    const [isLockVerifying, setIsLockVerifying] = useState<boolean>(false);
+    const [lastActivityTimestamp, setLastActivityTimestamp] = useState<number>(Date.now());
+    const [idleCountdown, setIdleCountdown] = useState<number | null>(null);
+
+    // Fast Unlock Handler using 6-Digit PIN
+    const unlockTerminalWithPin = useCallback(async (enteredPin: string) => {
+        if (enteredPin.length < 4 || enteredPin.length > 6) return;
+        setIsLockVerifying(true);
+        setLockError('');
+        try {
+            const { data, error: dbError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('pin', enteredPin)
+                .eq('active', true)
+                .maybeSingle();
+
+            if (dbError || !data) {
+                playPOSChime('error');
+                setLockError('Invalid 6-Digit PIN. Please try again.');
+                setLockPin('');
+                setIsLockVerifying(false);
+                return;
+            }
+
+            const isWaiter = data.user_type?.toLowerCase().includes('waiter') || data.is_waiter === true || data.user_type === 'Waitress';
+            
+            // If previous cart had items and a DIFFERENT waiter logs in, auto-preserve it safely into Held Sales
+            if (cart.length > 0 && loggedInUserName && loggedInUserName !== data.name) {
+                const autoHeldId = `HOLD-${Date.now()}`;
+                const cartSubtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+                const cartDiscount = cart.reduce((sum, item) => sum + (item.discount || 0), 0);
+                const runningCartTotal = cartSubtotal - cartDiscount;
+                const autoHeldSale: HeldSale = {
+                    id: autoHeldId,
+                    cart: [...cart],
+                    invoiceNo,
+                    heldAt: new Date().toISOString(),
+                    total: runningCartTotal,
+                    itemCount: cart.length,
+                    tableNo: tableNo || undefined,
+                    customerName: `Auto-Preserved (${loggedInUserName})`,
+                };
+                setHeldSales(prev => [...prev, autoHeldSale]);
+                setCart([]);
+                setOrderNotes('');
+                setTableNo('');
+                toast(`Preserved previous cart for ${loggedInUserName} in Held Sales.`, { icon: '📋' });
+            }
+
+            const updatedSession = {
+                userId: data.user_id,
+                userName: data.user_name,
+                name: data.name,
+                userType: data.user_type,
+                email: data.email,
+                isWaiter: isWaiter
+            };
+
+            localStorage.setItem('user', JSON.stringify(updatedSession));
+            localStorage.setItem('alpha_hotel_selected_waiter', data.name);
+
+            setLoggedInUserName(data.name);
+            setUserRole(data.user_type);
+            setIsWaiterUser(isWaiter);
+            setSelectedWaiterName(data.name);
+            setSelectedWaiterId(data.user_id);
+
+            setIsPosLocked(false);
+            setLockPin('');
+            setLockError('');
+            setLastActivityTimestamp(Date.now());
+            setIdleCountdown(null);
+
+            playPOSChime('tender');
+            toast.success(`👋 Welcome back, ${data.name}! Terminal Ready.`, {
+                icon: '✨',
+                duration: 3000,
+                style: { background: '#020617', color: '#fff', border: '1px solid #10b981' }
+            });
+        } catch {
+            setLockError('Connection error. Please try again.');
+        } finally {
+            setIsLockVerifying(false);
+        }
+    }, [cart, loggedInUserName, invoiceNo, tableNo, playPOSChime]);
+
+    // ─── WAITER INACTIVITY AUTO-LOCK (CONFIGURABLE SECONDS FROM SETTINGS) ───
+    useEffect(() => {
+        // Only applies to Waiters, and only when timeout > 0 (0 disables auto-lock)
+        if (!isWaiterUser || isPosLocked || autoLockTimeoutSeconds <= 0) {
+            setIdleCountdown(null);
+            return;
+        }
+
+        const handleUserActivity = () => {
+            setLastActivityTimestamp(Date.now());
+            setIdleCountdown(null);
+        };
+
+        const activityEvents = ['mousedown', 'mousemove', 'keydown', 'touchstart', 'scroll'];
+        activityEvents.forEach(evt => window.addEventListener(evt, handleUserActivity, { passive: true }));
+
+        const checkIdleInterval = setInterval(() => {
+            const idleElapsedSeconds = Math.floor((Date.now() - lastActivityTimestamp) / 1000);
+            const remaining = autoLockTimeoutSeconds - idleElapsedSeconds;
+
+            if (remaining <= 5 && remaining > 0) {
+                setIdleCountdown(remaining);
+            } else if (remaining <= 0) {
+                setIdleCountdown(null);
+                setLockPin('');
+                setLockError('');
+                setIsPosLocked(true);
+                playPOSChime('error');
+            } else {
+                setIdleCountdown(null);
+            }
+        }, 1000);
+
+        return () => {
+            clearInterval(checkIdleInterval);
+            activityEvents.forEach(evt => window.removeEventListener(evt, handleUserActivity));
+        };
+    }, [isWaiterUser, isPosLocked, lastActivityTimestamp, autoLockTimeoutSeconds, playPOSChime]);
+
     const [pendingProduct, setPendingProduct] = useState<Product | null>(null);
     const [productBatches, setProductBatches] = useState<ProductionBatch[]>([]);
 
@@ -2606,6 +2810,14 @@ export default function POSPage() {
         setHeldSales(prev => [...prev, held]);
         clearCart();
         toast.success(`Sale held (${held.itemCount} items — Ksh ${held.total.toLocaleString()})`);
+        // 🔒 Auto-lock for waiters on hold
+        if (isWaiterUser) {
+            setTimeout(() => {
+                setLockPin('');
+                setLockError('');
+                setIsPosLocked(true);
+            }, 600);
+        }
     };
 
     // Recall a held sale
@@ -3346,7 +3558,7 @@ export default function POSPage() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [cart.length]);
+    }, [cart.length, isPosLocked, lockPin, unlockTerminalWithPin]);
 
     // Apply Cart-wide percentage discount with Supervisor PIN
     const handleApplyCartDiscount = (percent: number) => {
@@ -3531,6 +3743,14 @@ export default function POSPage() {
                 ? 'Customer Bill sent to printer! 🧾'
                 : 'KOT sent to kitchen! 🍳';
             toast.success(`${modeMsg}`);
+            // 🔒 AUTO-LOCK: Immediately lock terminal for waiters so next waiter MUST authenticate
+            if (isWaiterUser && autoLockOnKotEnabled) {
+                setTimeout(() => {
+                    setLockPin('');
+                    setLockError('');
+                    setIsPosLocked(true);
+                }, 1000);
+            }
         } catch (error: any) {
             console.error('Error saving pending sale:', error);
             // Show detailed error message for debugging
@@ -3918,6 +4138,14 @@ export default function POSPage() {
         setShowReceiptPreview(false);
         clearCart();
         toast.success(isRoom ? 'Room charged successfully! Receipt generated 🏨' : 'Payment complete! Receipt sent to printer. 🧾');
+        // 🔒 Auto-lock for waiters on payment tender
+        if (isWaiterUser) {
+            setTimeout(() => {
+                setLockPin('');
+                setLockError('');
+                setIsPosLocked(true);
+            }, 1200);
+        }
     };
 
     // Print receipt
@@ -4077,36 +4305,48 @@ export default function POSPage() {
                                     </button>
                                 </div>
 
-                                <a
-                                    href="/dashboard"
-                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all"
-                                    title="Home"
-                                >
-                                    🏠
-                                </a>
                                 <button
                                     type="button"
-                                    onClick={() => setShowShortcutsModal(true)}
-                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all"
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_home_dashboard', 'Home Dashboard')) return;
+                                        window.location.href = '/dashboard';
+                                    }}
+                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all cursor-pointer"
+                                    title="Home Dashboard"
+                                >
+                                    🏠
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_shortcuts_view', 'Keyboard Shortcuts')) return;
+                                        setShowShortcutsModal(true);
+                                    }}
+                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all cursor-pointer"
                                     title="Keyboard Shortcuts [F1]"
                                 >
                                     ⌨️
                                 </button>
-                                <a
-                                    href="/dashboard/reports"
-                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all"
-                                    title="Reports"
-                                >
-                                    📊
-                                </a>
                                 <button
                                     type="button"
                                     onClick={() => {
+                                        if (!verifyPosAccess('pos_reports_view', 'Sales Reports')) return;
+                                        window.location.href = '/dashboard/reports';
+                                    }}
+                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all cursor-pointer"
+                                    title="Reports"
+                                >
+                                    📊
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_lock_register', 'Lock Register')) return;
                                         requireSupervisorAuth('Lock Register', 'Lock POS screen', () => {
                                             toast.success('Register Lock Active');
                                         });
                                     }}
-                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all"
+                                    className="w-8 h-8 rounded-xl bg-[#0d161e] border border-[#162a2e] hover:border-[#00e676]/50 flex items-center justify-center text-xs text-gray-300 hover:text-white transition-all cursor-pointer"
                                     title="Lock Register"
                                 >
                                     🔒
@@ -4632,6 +4872,7 @@ export default function POSPage() {
                                         <button
                                             type="button"
                                             onClick={() => {
+                                                if (!verifyPosAccess('pos_payment_tender', 'Payment Settlement')) return;
                                                 if (cart.length === 0) {
                                                     toast.error('Your cart is empty! Add products first.');
                                                     return;
@@ -4640,7 +4881,7 @@ export default function POSPage() {
                                                 setShowPayment(true);
                                             }}
                                             disabled={cart.length === 0}
-                                            className="py-3 bg-[#00e676] hover:bg-[#00c853] active:scale-95 text-black rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-1 shadow-[0_0_20px_rgba(0,230,118,0.4)] disabled:opacity-40 disabled:cursor-not-allowed border border-[#00e676]"
+                                            className="py-3 bg-[#00e676] hover:bg-[#00c853] active:scale-95 text-black rounded-xl text-xs font-black transition-all flex flex-col items-center justify-center gap-1 shadow-[0_0_20px_rgba(0,230,118,0.4)] disabled:opacity-40 disabled:cursor-not-allowed border border-[#00e676] cursor-pointer"
                                             title="Open Payment Dialog [F12]"
                                         >
                                             <span className="text-base">💳</span>
@@ -4653,6 +4894,7 @@ export default function POSPage() {
                                         <button
                                             type="button"
                                             onClick={() => {
+                                                if (!verifyPosAccess('pos_payment_tender', 'M-Pesa Payment')) return;
                                                 if (cart.length === 0) { toast.error('Please add dishes to cart first'); return; }
                                                 setPaymentInitialMethod('mpesa');
                                                 setShowPayment(true);
@@ -4667,6 +4909,7 @@ export default function POSPage() {
                                         <button
                                             type="button"
                                             onClick={() => {
+                                                if (!verifyPosAccess('pos_payment_tender', 'Cash Settlement')) return;
                                                 if (cart.length === 0) { toast.error('Please add dishes to cart first'); return; }
                                                 setPaymentInitialMethod('cash');
                                                 setShowPayment(true);
@@ -4887,30 +5130,61 @@ export default function POSPage() {
                                     </div>
                                 )}
                                 {/* Close Register */}
-                                {!isWaiterUser && hasActiveShift && (
+                                {hasActiveShift && (
                                     <button
-                                        onClick={handleCloseRegister}
+                                        onClick={() => {
+                                            if (!verifyPosAccess('pos_close_register', 'Close Cashier Register')) return;
+                                            handleCloseRegister();
+                                        }}
                                         disabled={isLoadingRegister}
-                                        className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50 shadow-sm"
+                                        className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50 shadow-sm cursor-pointer"
+                                        title="Close Cashier Shift"
                                     >
                                         🔴 Close
                                     </button>
                                 )}
-                                {/* Waiter Indicator + Logout */}
-                                {isWaiterUser && (
-                                    <>
-                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-50 rounded-xl border border-purple-200">
+                                {/* Waiter / Staff Active Session Pill & Fast Switch */}
+                                {isWaiterUser ? (
+                                    <div className="flex items-center gap-1.5">
+                                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-purple-950/40 border border-purple-500/30 rounded-xl text-purple-200 shadow-sm">
+                                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
                                             <span className="text-xs">👤</span>
-                                            <span className="text-xs font-bold text-purple-700">{loggedInUserName}</span>
+                                            <span className="text-xs font-black tracking-wide">{loggedInUserName || selectedWaiterName || 'Waiter'}</span>
                                         </div>
                                         <button
-                                            onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }}
-                                            className="px-2.5 py-1.5 bg-red-500 hover:bg-red-600 text-white rounded-xl text-xs font-bold transition-colors flex items-center gap-1 shadow-sm"
-                                            title="Logout"
+                                            type="button"
+                                            onClick={() => {
+                                                setLockPin('');
+                                                setLockError('');
+                                                setIsPosLocked(true);
+                                            }}
+                                            className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
+                                            title="Lock Terminal & Switch Waiter [F4]"
                                         >
-                                            🚪 Logout
+                                            🔒 Switch Waiter
                                         </button>
-                                    </>
+                                        <button
+                                            type="button"
+                                            onClick={() => { localStorage.removeItem('user'); window.location.href = '/'; }}
+                                            className="px-2 py-1.5 bg-slate-800 hover:bg-rose-900/60 hover:border-rose-500/50 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all border border-white/10 cursor-pointer"
+                                            title="Full Logout to Main Login"
+                                        >
+                                            🚪
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setLockPin('');
+                                            setLockError('');
+                                            setIsPosLocked(true);
+                                        }}
+                                        className="px-2.5 py-1.5 bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-bold transition-all border border-white/10 flex items-center gap-1 cursor-pointer"
+                                        title="Quick Lock Terminal [F4]"
+                                    >
+                                        🔒 Lock Screen
+                                    </button>
                                 )}
                             </div>
                         </div>
@@ -5060,11 +5334,14 @@ export default function POSPage() {
                         <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-8 gap-2">
                             {/* 1. Receive Payment - Super Hot Flame Button */}
                             <a
-                                href={isWaiterUser ? '#' : '/dashboard/bill-payment'}
-                                onClick={() => playPOSChime('click')}
-                                className={`group relative p-2.5 bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-orange-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden ${
-                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-orange-500/50 hover:brightness-110 active:scale-95'
-                                }`}
+                                href="/dashboard/bill-payment"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    playPOSChime('click');
+                                    if (!verifyPosAccess('pos_receive_payment', 'Receive Payment')) return;
+                                    window.location.href = '/dashboard/bill-payment';
+                                }}
+                                className="group relative p-2.5 bg-gradient-to-br from-amber-500 via-orange-600 to-red-600 rounded-2xl text-white text-center hover:scale-105 hover:shadow-orange-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/30 shadow-lg shadow-orange-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden cursor-pointer"
                             >
                                 <span className="absolute top-1 right-1.5 px-1 py-0.2 bg-black/30 text-amber-200 text-[8px] font-black rounded-md tracking-wider uppercase">
                                     🔥 HOT
@@ -5079,8 +5356,13 @@ export default function POSPage() {
                             {/* 2. My Bills - Sapphire Royal Button */}
                             <a
                                 href="/dashboard/my-bills"
-                                onClick={() => playPOSChime('click')}
-                                className="group relative p-2.5 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 rounded-2xl text-white text-center hover:scale-105 hover:shadow-indigo-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/30 shadow-lg shadow-indigo-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    playPOSChime('click');
+                                    if (!verifyPosAccess('pos_view_my_bills', 'My Bills')) return;
+                                    window.location.href = '/dashboard/my-bills';
+                                }}
+                                className="group relative p-2.5 bg-gradient-to-br from-blue-600 via-indigo-600 to-violet-700 rounded-2xl text-white text-center hover:scale-105 hover:shadow-indigo-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/30 shadow-lg shadow-indigo-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden cursor-pointer"
                             >
                                 {waiterUnpaidCount > 0 && (
                                     <span className="absolute top-1 right-1.5 px-1.5 py-0.2 bg-amber-400 text-slate-900 text-[9px] font-black rounded-full animate-bounce">
@@ -5096,11 +5378,14 @@ export default function POSPage() {
 
                             {/* 3. Day Sales - Emerald Mint Button */}
                             <a
-                                href={isWaiterUser ? '#' : '/dashboard/sales'}
-                                onClick={() => playPOSChime('click')}
-                                className={`group relative p-2.5 bg-gradient-to-br from-emerald-500 via-teal-600 to-green-700 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-emerald-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden ${
-                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-emerald-500/50 hover:brightness-110 active:scale-95'
-                                }`}
+                                href="/dashboard/sales"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    playPOSChime('click');
+                                    if (!verifyPosAccess('pos_day_sales', 'Day Sales')) return;
+                                    window.location.href = '/dashboard/sales';
+                                }}
+                                className="group relative p-2.5 bg-gradient-to-br from-emerald-500 via-teal-600 to-green-700 rounded-2xl text-white text-center hover:scale-105 hover:shadow-emerald-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/30 shadow-lg shadow-emerald-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden cursor-pointer"
                             >
                                 <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">📊</span>
                                 <div>
@@ -5111,11 +5396,14 @@ export default function POSPage() {
 
                             {/* 4. Merge Bill - Neon Fuchsia Button */}
                             <a
-                                href={isWaiterUser ? '#' : '/dashboard/split-merge-receipts'}
-                                onClick={() => playPOSChime('click')}
-                                className={`group relative p-2.5 bg-gradient-to-br from-purple-600 via-fuchsia-600 to-pink-600 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-fuchsia-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden ${
-                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-fuchsia-500/50 hover:brightness-110 active:scale-95'
-                                }`}
+                                href="/dashboard/split-merge-receipts"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    playPOSChime('click');
+                                    if (!verifyPosAccess('pos_merge_bills', 'Merge Bills Studio')) return;
+                                    window.location.href = '/dashboard/split-merge-receipts';
+                                }}
+                                className="group relative p-2.5 bg-gradient-to-br from-purple-600 via-fuchsia-600 to-pink-600 rounded-2xl text-white text-center hover:scale-105 hover:shadow-fuchsia-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/30 shadow-lg shadow-fuchsia-600/30 flex flex-col items-center justify-between min-h-[66px] overflow-hidden cursor-pointer"
                             >
                                 <span className="absolute top-1 right-1.5 px-1 py-0.2 bg-black/30 text-pink-200 text-[8px] font-black rounded-md tracking-wider uppercase">
                                     STUDIO
@@ -5129,11 +5417,14 @@ export default function POSPage() {
 
                             {/* 5. Sales Summary - Cyan Sapphire Button */}
                             <a
-                                href={isWaiterUser ? '#' : '/dashboard/reports/pos'}
-                                onClick={() => playPOSChime('click')}
-                                className={`group relative p-2.5 bg-gradient-to-br from-cyan-500 via-teal-600 to-blue-700 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-cyan-600/30 flex flex-col items-center justify-between min-h-[68px] overflow-hidden ${
-                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-cyan-500/50 hover:brightness-110 active:scale-95'
-                                }`}
+                                href="/dashboard/reports/pos"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    playPOSChime('click');
+                                    if (!verifyPosAccess('pos_sales_summary', 'Sales Summary Analytics')) return;
+                                    window.location.href = '/dashboard/reports/pos';
+                                }}
+                                className="group relative p-2.5 bg-gradient-to-br from-cyan-500 via-teal-600 to-blue-700 rounded-2xl text-white text-center hover:scale-105 hover:shadow-cyan-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/30 shadow-lg shadow-cyan-600/30 flex flex-col items-center justify-between min-h-[68px] overflow-hidden cursor-pointer"
                             >
                                 <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">📈</span>
                                 <div>
@@ -5144,11 +5435,14 @@ export default function POSPage() {
 
                             {/* 6. Pending Bills - Amber Gold Button */}
                             <a
-                                href={isWaiterUser ? '#' : '/dashboard/bills?status=Pending'}
-                                onClick={() => playPOSChime('click')}
-                                className={`group relative p-2.5 bg-gradient-to-br from-amber-500 via-yellow-600 to-orange-600 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-amber-600/30 flex flex-col items-center justify-between min-h-[68px] overflow-hidden ${
-                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-amber-500/50 hover:brightness-110 active:scale-95'
-                                }`}
+                                href="/dashboard/bills?status=Pending"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    playPOSChime('click');
+                                    if (!verifyPosAccess('pos_pending_bills', 'Master Pending Bills')) return;
+                                    window.location.href = '/dashboard/bills?status=Pending';
+                                }}
+                                className="group relative p-2.5 bg-gradient-to-br from-amber-500 via-yellow-600 to-orange-600 rounded-2xl text-white text-center hover:scale-105 hover:shadow-amber-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/30 shadow-lg shadow-amber-600/30 flex flex-col items-center justify-between min-h-[68px] overflow-hidden cursor-pointer"
                             >
                                 <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">⏳</span>
                                 <div>
@@ -5160,6 +5454,7 @@ export default function POSPage() {
                             {/* 7. Clear - Sleek Carbon Slate Button with Supervisor PIN */}
                             <button
                                 onClick={() => {
+                                    if (!verifyPosAccess('pos_clear_cart', 'Clear Entire Cart')) return;
                                     if (cart.length === 0) return;
                                     requireSupervisorAuth(
                                         'Clear Entire Order',
@@ -5170,7 +5465,7 @@ export default function POSPage() {
                                         }
                                     );
                                 }}
-                                className="group relative p-2.5 bg-gradient-to-br from-slate-700 via-gray-800 to-zinc-900 rounded-2xl text-white text-center hover:scale-105 hover:shadow-slate-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/20 shadow-lg flex flex-col items-center justify-between min-h-[68px] overflow-hidden"
+                                className="group relative p-2.5 bg-gradient-to-br from-slate-700 via-gray-800 to-zinc-900 rounded-2xl text-white text-center hover:scale-105 hover:shadow-slate-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/20 shadow-lg flex flex-col items-center justify-between min-h-[68px] overflow-hidden cursor-pointer"
                             >
                                 <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">🗑️</span>
                                 <div>
@@ -5181,11 +5476,14 @@ export default function POSPage() {
 
                             {/* 8. Closing Stock / Shift Reconciliation - Ruby Rose Button */}
                             <a
-                                href={isWaiterUser ? '#' : '/dashboard/shift-reports'}
-                                onClick={() => playPOSChime('click')}
-                                className={`group relative p-2.5 bg-gradient-to-br from-rose-600 via-red-600 to-pink-700 rounded-2xl text-white text-center transition-all duration-200 border border-white/30 shadow-lg shadow-rose-600/30 flex flex-col items-center justify-between min-h-[68px] overflow-hidden ${
-                                    isWaiterUser ? 'opacity-40 pointer-events-none grayscale' : 'hover:scale-105 hover:shadow-rose-500/50 hover:brightness-110 active:scale-95'
-                                }`}
+                                href="/dashboard/shift-reports"
+                                onClick={(e) => {
+                                    e.preventDefault();
+                                    playPOSChime('click');
+                                    if (!verifyPosAccess('pos_shift_reconciliation', 'EOD Stock Audit')) return;
+                                    window.location.href = '/dashboard/shift-reports';
+                                }}
+                                className="group relative p-2.5 bg-gradient-to-br from-rose-600 via-red-600 to-pink-700 rounded-2xl text-white text-center hover:scale-105 hover:shadow-rose-500/50 hover:brightness-110 active:scale-95 transition-all duration-200 border border-white/30 shadow-lg shadow-rose-600/30 flex flex-col items-center justify-between min-h-[68px] overflow-hidden cursor-pointer"
                             >
                                 <span className="text-xl sm:text-2xl block transition-transform group-hover:scale-110">🏁</span>
                                 <div>
@@ -5392,7 +5690,10 @@ export default function POSPage() {
                             </div>
                             <div className="grid grid-cols-5 gap-1 font-mono">
                                 <button
-                                    onClick={() => completeSale('cash', total)}
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_tender_cash', 'Fast Cash Settlement')) return;
+                                        completeSale('cash', total);
+                                    }}
                                     disabled={cart.length === 0}
                                     className="py-1.5 px-1 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white rounded-xl text-[11px] font-black transition-all shadow-sm disabled:opacity-40"
                                     title="Tender Exact Cash"
@@ -5402,7 +5703,10 @@ export default function POSPage() {
                                 {[500, 1000, 2000, 5000].map(amt => (
                                     <button
                                         key={amt}
-                                        onClick={() => completeSale('cash', Math.max(amt, total))}
+                                        onClick={() => {
+                                            if (!verifyPosAccess('pos_tender_cash', 'Fast Cash Settlement')) return;
+                                            completeSale('cash', Math.max(amt, total));
+                                        }}
                                         disabled={cart.length === 0}
                                         className="py-1.5 px-1 bg-white hover:bg-gray-100 active:bg-gray-200 border border-gray-200 text-gray-800 rounded-xl text-[11px] font-bold transition-all disabled:opacity-40 shadow-sm"
                                         title={`Tender Ksh ${amt.toLocaleString()} (Change: Ksh ${Math.max(0, amt - total).toLocaleString()})`}
@@ -5961,6 +6265,140 @@ export default function POSPage() {
                             >
                                 ✅ Close & Save
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
+            {/* ─── INACTIVITY WARNING TOAST BANNER (5 SECONDS COUNTDOWN) ─── */}
+            {idleCountdown !== null && !isPosLocked && (
+                <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[99998] bg-rose-950 text-white px-5 py-3 rounded-2xl shadow-2xl border-2 border-rose-500 flex items-center gap-3 backdrop-blur-xl animate-bounce">
+                    <span className="text-xl">⚠️</span>
+                    <div>
+                        <p className="text-xs font-black tracking-wide text-rose-300 uppercase">Inactivity Auto-Lock Warning</p>
+                        <p className="text-[11px] text-slate-200 font-medium">
+                            Locking in <span className="font-black text-rose-400 text-sm">{idleCountdown}s</span>... Touch screen or move mouse to keep session active.
+                        </p>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── FAST WAITER 6-PIN LOCK SCREEN MODAL ─── */}
+            {isPosLocked && (
+                <div className="fixed inset-0 z-[99999] bg-slate-950/95 backdrop-blur-2xl flex items-center justify-center p-4 select-none animate-in fade-in duration-200">
+                    <div className="relative w-full max-w-sm bg-gradient-to-b from-slate-900 via-slate-950 to-black border border-white/15 rounded-3xl p-6 sm:p-7 shadow-2xl shadow-black text-center overflow-hidden">
+                        {/* Ambient Emerald Glow */}
+                        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-48 h-48 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
+
+                        {/* Hotel Branding Header */}
+                        <div className="mb-4">
+                            <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-950/60 border border-emerald-500/40 rounded-full text-[10px] font-black uppercase tracking-widest text-emerald-300">
+                                🏨 {hotelName || 'AlphaPlus Hotel & Restaurant'}
+                            </span>
+                            <div className="mt-3 flex items-center justify-center">
+                                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 border border-amber-500/40 flex items-center justify-center text-3xl shadow-inner">
+                                    🔒
+                                </div>
+                            </div>
+                            <h3 className="text-lg font-black text-white tracking-wide mt-2">
+                                POS Floor Locked
+                            </h3>
+                            <p className="text-[11px] text-slate-400 font-medium">
+                                Enter your <span className="text-amber-300 font-bold">6-Digit Waiter PIN</span> to start your order
+                            </p>
+                        </div>
+
+                        {/* Previous Waiter Info Badge */}
+                        {loggedInUserName && (
+                            <div className="mb-4 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-[11px] text-slate-300 flex items-center justify-between">
+                                <span className="text-slate-500 font-bold uppercase text-[9px]">Last User</span>
+                                <span className="font-black text-amber-300 truncate max-w-[180px]">
+                                    {loggedInUserName} ({userRole || 'Staff'})
+                                </span>
+                            </div>
+                        )}
+
+                        {/* 6-Digit PIN Indicator Dots */}
+                        <div className="flex justify-center items-center gap-3.5 my-4">
+                            {[0, 1, 2, 3, 4, 5].map(idx => (
+                                <div
+                                    key={idx}
+                                    className={`w-3.5 h-3.5 rounded-full transition-all duration-200 ${
+                                        idx < lockPin.length
+                                            ? 'bg-emerald-400 scale-125 shadow-[0_0_12px_rgba(52,211,153,0.9)] border-2 border-emerald-200'
+                                            : 'bg-slate-800 border border-white/20'
+                                    }`}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Error Message */}
+                        {lockError ? (
+                            <div className="text-xs font-bold text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl py-1.5 px-3 mb-3 animate-shake">
+                                ⚠️ {lockError}
+                            </div>
+                        ) : isLockVerifying ? (
+                            <div className="text-xs font-bold text-emerald-400 py-1.5 mb-3 flex items-center justify-center gap-2">
+                                <span className="w-3 h-3 rounded-full border-2 border-emerald-400 border-t-transparent animate-spin"></span>
+                                Verifying Waiter PIN...
+                            </div>
+                        ) : (
+                            <div className="h-7 mb-1 text-[10px] text-slate-500">
+                                ⌨️ Physical keypad supported [0-9, Backspace, Esc]
+                            </div>
+                        )}
+
+                        {/* Numeric Keypad Grid */}
+                        <div className="grid grid-cols-3 gap-2.5 max-w-[280px] mx-auto">
+                            {['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'].map(btn => (
+                                <button
+                                    key={btn}
+                                    type="button"
+                                    disabled={isLockVerifying}
+                                    onClick={() => {
+                                        if (btn === 'C') {
+                                            setLockPin('');
+                                            setLockError('');
+                                        } else if (btn === '⌫') {
+                                            setLockPin(prev => prev.slice(0, -1));
+                                            setLockError('');
+                                        } else {
+                                            if (lockPin.length < 6) {
+                                                const next = lockPin + btn;
+                                                setLockPin(next);
+                                                setLockError('');
+                                                if (next.length === 6) {
+                                                    unlockTerminalWithPin(next);
+                                                }
+                                            }
+                                        }
+                                    }}
+                                    className={`h-12 rounded-2xl text-lg font-black transition-all active:scale-90 flex items-center justify-center cursor-pointer ${
+                                        btn === 'C'
+                                            ? 'bg-rose-950/50 hover:bg-rose-900 border border-rose-500/30 text-rose-300'
+                                            : btn === '⌫'
+                                            ? 'bg-amber-950/50 hover:bg-amber-900 border border-amber-500/30 text-amber-300'
+                                            : 'bg-white/5 hover:bg-white/15 border border-white/10 text-white hover:border-emerald-500/50 hover:shadow-[0_0_12px_rgba(16,185,129,0.2)]'
+                                    }`}
+                                >
+                                    {btn}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Bottom Full Login / Manager Link */}
+                        <div className="mt-5 pt-3 border-t border-white/10 flex items-center justify-between text-[11px]">
+                            <a
+                                href="/"
+                                onClick={() => localStorage.removeItem('user')}
+                                className="text-slate-400 hover:text-white transition-colors flex items-center gap-1 font-bold"
+                            >
+                                🚪 Manager Login / Exit
+                            </a>
+                            <span className="text-[10px] text-slate-500 font-mono">
+                                POS-LOCK v3
+                            </span>
                         </div>
                     </div>
                 </div>

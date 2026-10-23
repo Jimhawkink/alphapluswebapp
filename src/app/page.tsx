@@ -288,20 +288,7 @@ export default function LoginPage() {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [loginMode, pin]);
 
-    // Fast-Fill Helper for Demo / Testing
-    const handleFastFillAdmin = () => {
-        setUsername('admin');
-        setPassword('admin123');
-        setError('');
-    };
 
-    const handleFastFillWaiter = () => {
-        setPin('123456');
-        setError('');
-        setTimeout(() => {
-            submitWaiterPin('123456');
-        }, 120);
-    };
 
     // Keyboard Caps Lock Handler
     const handleKeyEvent = (e: React.KeyboardEvent) => {
@@ -522,17 +509,10 @@ export default function LoginPage() {
                     {loginMode === 'admin' && (
                         <form onSubmit={handleAdminLogin} className="space-y-4">
                             <div>
-                                <div className="flex items-center justify-between mb-1">
-                                    <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                                <div className="mb-1">
+                                    <label className="text-[11px] font-bold text-slate-300 uppercase tracking-wider block">
                                         Username or Staff ID
                                     </label>
-                                    <button
-                                        type="button"
-                                        onClick={handleFastFillAdmin}
-                                        className="text-[10px] text-blue-400 font-bold hover:underline"
-                                    >
-                                        ⚡ Fast Fill: admin
-                                    </button>
                                 </div>
                                 <div className="relative">
                                     <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm">👤</span>
@@ -628,17 +608,10 @@ export default function LoginPage() {
                     {/* MODE 2: WAITER QUICK PIN TOUCHPAD */}
                     {loginMode === 'waiter' && (
                         <div className="space-y-3">
-                            <div className="flex items-center justify-between">
+                            <div className="text-center">
                                 <p className="text-xs text-slate-300 font-bold uppercase tracking-wider">
                                     Enter 6-Digit Server PIN
                                 </p>
-                                <button
-                                    type="button"
-                                    onClick={handleFastFillWaiter}
-                                    className="text-[10px] text-amber-400 font-bold hover:underline"
-                                >
-                                    ⚡ Fast Fill: 123456
-                                </button>
                             </div>
 
                             {/* PIN Display Slots */}

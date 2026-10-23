@@ -24,6 +24,8 @@ export default function HotelSettingsPage() {
     const [supervisorPin, setSupervisorPin] = useState('1234');
     const [roomServiceSurcharge, setRoomServiceSurcharge] = useState(0);
     const [lateCheckoutGraceMinutes, setLateCheckoutGraceMinutes] = useState(60);
+    const [waiterAutoLockSeconds, setWaiterAutoLockSeconds] = useState<number>(30);
+    const [waiterAutoLockOnKot, setWaiterAutoLockOnKot] = useState<boolean>(true);
 
     const baseUrl = typeof window !== 'undefined'
         ? `${window.location.protocol}//${window.location.host}`
@@ -56,6 +58,12 @@ export default function HotelSettingsPage() {
         const savedCheckOut = localStorage.getItem('hotel_checkout_time');
         if (savedCheckOut) setCheckOutTime(savedCheckOut);
 
+        const savedWaitSec = localStorage.getItem('waiter_autolock_seconds');
+        if (savedWaitSec !== null) setWaiterAutoLockSeconds(parseInt(savedWaitSec, 10) || 0);
+
+        const savedWaitKot = localStorage.getItem('waiter_autolock_on_kot');
+        if (savedWaitKot !== null) setWaiterAutoLockOnKot(savedWaitKot === 'true');
+
         // Fetch from Supabase organisation_settings
         (async () => {
             try {
@@ -69,6 +77,11 @@ export default function HotelSettingsPage() {
                         if (item.setting_key === 'supervisor_pin') setSupervisorPin(item.setting_value);
                         if (item.setting_key === 'hotel_checkin_time') setCheckInTime(item.setting_value);
                         if (item.setting_key === 'hotel_checkout_time') setCheckOutTime(item.setting_value);
+                        if (item.setting_key === 'waiter_autolock_seconds') {
+                            const parsed = parseInt(item.setting_value, 10);
+                            if (!isNaN(parsed)) setWaiterAutoLockSeconds(parsed);
+                        }
+                        if (item.setting_key === 'waiter_autolock_on_kot') setWaiterAutoLockOnKot(item.setting_value === 'true');
                     });
                 }
             } catch (err) {
@@ -91,6 +104,8 @@ export default function HotelSettingsPage() {
             localStorage.setItem('hotel_checkin_time', checkInTime);
             localStorage.setItem('hotel_checkout_time', checkOutTime);
             localStorage.setItem('hotel_night_audit_time', nightAuditTime);
+            localStorage.setItem('waiter_autolock_seconds', String(waiterAutoLockSeconds));
+            localStorage.setItem('waiter_autolock_on_kot', String(waiterAutoLockOnKot));
 
             // Upsert into Supabase organisation_settings
             const settingsToSave = [
@@ -98,7 +113,9 @@ export default function HotelSettingsPage() {
                 { setting_key: 'mpesa_c2b_type', setting_value: shortcodeType },
                 { setting_key: 'supervisor_pin', setting_value: supervisorPin },
                 { setting_key: 'hotel_checkin_time', setting_value: checkInTime },
-                { setting_key: 'hotel_checkout_time', setting_value: checkOutTime }
+                { setting_key: 'hotel_checkout_time', setting_value: checkOutTime },
+                { setting_key: 'waiter_autolock_seconds', setting_value: String(waiterAutoLockSeconds) },
+                { setting_key: 'waiter_autolock_on_kot', setting_value: String(waiterAutoLockOnKot) }
             ];
 
             for (const s of settingsToSave) {
@@ -441,6 +458,93 @@ export default function HotelSettingsPage() {
                             <p className="text-[11px] text-gray-400">Automatic room rate folio posting time</p>
                         </div>
                     </div>
+
+                    
+                    {/* Waiter POS Security & Auto-Lock Section (Strictly Waiters) */}
+                    <div className="p-6 bg-gradient-to-br from-purple-50/80 via-indigo-50/50 to-white border-2 border-purple-200/80 rounded-3xl shadow-sm space-y-4">
+                        <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-purple-100">
+                            <div className="flex items-center gap-2.5">
+                                <span className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center text-xl shadow-md shadow-purple-600/20">
+                                    🔒
+                                </span>
+                                <div>
+                                    <h3 className="text-base font-black text-purple-950">
+                                        Waiter POS Auto-Lock &amp; Cross-Punching Security
+                                    </h3>
+                                    <p className="text-xs text-purple-700">
+                                        Compels every waiter to use their own account (Strictly Waiters — Admins &amp; Cashiers are unaffected)
+                                    </p>
+                                </div>
+                            </div>
+                            <span className="px-3 py-1 bg-purple-200/80 text-purple-900 rounded-full text-[11px] font-black uppercase tracking-wider">
+                                Waiters Only
+                            </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+                            {/* 1. Inactivity Seconds */}
+                            <div className="p-4 bg-white rounded-2xl border border-purple-100 shadow-sm space-y-2">
+                                <label className="text-xs font-bold uppercase text-purple-950 block">
+                                    ⏱️ Waiter Inactivity Auto-Lock Seconds (0 to Disable)
+                                </label>
+                                <p className="text-[11px] text-gray-500 leading-snug">
+                                    If a waiter steps away, terminal auto-locks to the 6-Digit PIN pad after this idle period.
+                                </p>
+                                <div className="flex items-center gap-2 pt-1">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        max="600"
+                                        step="5"
+                                        value={waiterAutoLockSeconds}
+                                        onChange={(e) => setWaiterAutoLockSeconds(Math.max(0, parseInt(e.target.value) || 0))}
+                                        className="w-28 p-3 bg-purple-50/50 border-2 border-purple-300 rounded-xl text-xl font-black font-mono text-center text-purple-950 focus:outline-none focus:border-purple-600"
+                                    />
+                                    <span className="text-xs font-black text-purple-900">seconds</span>
+                                </div>
+                                <div className="flex flex-wrap gap-1.5 pt-1">
+                                    {[15, 30, 45, 60, 90, 0].map((s) => (
+                                        <button
+                                            key={s}
+                                            type="button"
+                                            onClick={() => setWaiterAutoLockSeconds(s)}
+                                            className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                                                waiterAutoLockSeconds === s
+                                                    ? 'bg-purple-600 text-white shadow-sm'
+                                                    : 'bg-purple-100/60 text-purple-800 hover:bg-purple-200'
+                                            }`}
+                                        >
+                                            {s === 0 ? 'Disabled' : `${s}s`}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* 2. Lock on KOT */}
+                            <div className="p-4 bg-white rounded-2xl border border-purple-100 shadow-sm flex flex-col justify-between">
+                                <div>
+                                    <label className="text-xs font-bold uppercase text-purple-950 block mb-1">
+                                        ⚡ Auto-Lock Screen Immediately on KOT Dispatch
+                                    </label>
+                                    <p className="text-[11px] text-gray-500 leading-snug mb-3">
+                                        As soon as a waiter hits "Send to Kitchen" (KOT), the terminal immediately locks to the 6-Digit PIN pad so the next waiter walking up must type their own PIN.
+                                    </p>
+                                </div>
+                                <label className="flex items-center gap-3 p-3 bg-purple-50/60 rounded-xl border border-purple-200 cursor-pointer select-none hover:bg-purple-100/50 transition-colors">
+                                    <input
+                                        type="checkbox"
+                                        checked={waiterAutoLockOnKot}
+                                        onChange={(e) => setWaiterAutoLockOnKot(e.target.checked)}
+                                        className="w-5 h-5 text-purple-600 rounded border-purple-300 focus:ring-purple-500"
+                                    />
+                                    <span className="text-xs font-black text-purple-950">
+                                        {waiterAutoLockOnKot ? 'Active: Auto-lock after every KOT order' : 'Inactive: Leave terminal open after KOT'}
+                                    </span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
                         <div className="p-5 bg-amber-50/70 border border-amber-200 rounded-3xl space-y-2">
