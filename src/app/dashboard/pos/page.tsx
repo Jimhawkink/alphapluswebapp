@@ -2174,11 +2174,31 @@ export default function POSPage() {
 
 
 
-    // Realtime / Polling Watchdog for Incoming Safaricom M-Pesa C2B Payments
+    // Realtime / Polling Watchdog for Incoming Safaricom M-Pesa C2B Payments (Cashier & Admin only - Waiters do not settle or receive M-Pesa toasts)
     useEffect(() => {
         let lastNotifiedId = 0;
         const checkIncomingC2B = async () => {
             try {
+                // Check if the current logged in user is a waiter
+                let isWaiter = false;
+                try {
+                    const userData = localStorage.getItem('user');
+                    if (userData) {
+                        const parsed = JSON.parse(userData);
+                        isWaiter = parsed.isWaiter === true || 
+                                   (parsed.userType || '').toLowerCase() === 'waiter' || 
+                                   (parsed.role || '').toLowerCase() === 'waiter';
+                    }
+                } catch {
+                    // ignore
+                }
+
+                // Waiter users DO NOT settle payments; suppress M-Pesa toast alerts completely for waiters
+                if (isWaiter) {
+                    setIncomingC2BTxs([]);
+                    return;
+                }
+
                 const client = c2bSupabase || supabase;
                 const { data } = await client
                     .from('c2b_transactions')
@@ -5511,8 +5531,8 @@ export default function POSPage() {
                     </div>
                 )}
 
-                {/* Floating Real-Time Safaricom M-Pesa C2B Toast Watchdog */}
-                {incomingC2BTxs.filter(t => !dismissedC2BIds.includes(t.id)).length > 0 && (
+                {/* Floating Real-Time Safaricom M-Pesa C2B Toast Watchdog (Cashier & Admin only, hidden for Waiters) */}
+                {!isWaiterUser && incomingC2BTxs.filter(t => !dismissedC2BIds.includes(t.id)).length > 0 && (
                     <div className="fixed top-20 right-6 z-[999] max-w-md w-full space-y-2 pointer-events-auto animate-in slide-in-from-top-4 duration-200">
                         {incomingC2BTxs.filter(t => !dismissedC2BIds.includes(t.id)).map(tx => (
                             <div key={tx.id} className="p-4 bg-gradient-to-r from-emerald-600 via-teal-700 to-green-800 text-white rounded-3xl shadow-2xl border-2 border-white/50 flex items-center justify-between gap-3 backdrop-blur-xl">

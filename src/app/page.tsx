@@ -446,7 +446,8 @@ export default function LoginPage() {
                                     value={licenseKey}
                                     onChange={e => setLicenseKey(e.target.value.toUpperCase())}
                                     placeholder="ENTER KEY: APS-XXXX..."
-                                    className="flex-1 px-3 py-2 bg-slate-950 border border-amber-400/40 rounded-xl font-mono text-xs text-white uppercase focus:outline-none"
+                                    style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff', caretColor: '#ffffff' }}
+                                    className="login-input flex-1 px-3 py-2 bg-slate-950 border border-amber-400/40 rounded-xl font-mono text-xs text-white uppercase focus:outline-none caret-white"
                                 />
                                 <button
                                     onClick={activateLicense}
@@ -483,7 +484,8 @@ export default function LoginPage() {
                                         onChange={e => setUsername(e.target.value)}
                                         placeholder="admin or manager"
                                         required
-                                        className="w-full pl-10 pr-4 py-3 bg-slate-950/70 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                                        style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff', caretColor: '#ffffff' }}
+                                        className="login-input w-full pl-10 pr-4 py-3 bg-slate-950/70 border border-white/10 rounded-xl text-sm text-white font-medium placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all caret-white"
                                     />
                                 </div>
                             </div>
@@ -509,7 +511,8 @@ export default function LoginPage() {
                                         onKeyUp={handleKeyEvent}
                                         placeholder="••••••••••••"
                                         required
-                                        className="w-full pl-10 pr-11 py-3 bg-slate-950/70 border border-white/10 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono"
+                                        style={{ color: '#ffffff', WebkitTextFillColor: '#ffffff', caretColor: '#ffffff' }}
+                                        className="login-input w-full pl-10 pr-11 py-3 bg-slate-950/70 border border-white/10 rounded-xl text-sm text-white font-medium placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all font-mono caret-white"
                                     />
                                     <button
                                         type="button"

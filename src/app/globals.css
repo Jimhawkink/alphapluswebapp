@@ -284,8 +284,45 @@ td {
 /* Fix for any dark text on light backgrounds */
 [class*="bg-gray"] input,
 [class*="bg-white"] input,
-[class*="bg-slate"] input {
+[class*="bg-slate-50"] input,
+[class*="bg-slate-100"] input,
+[class*="bg-slate-200"] input {
   color: #1e293b !important;
+}
+
+/* Dark inputs and login textboxes font color override (Pure Crisp White #ffffff) */
+.login-input,
+input.login-input,
+.dark-input,
+input.text-white,
+[class*="bg-slate-9"] input,
+[class*="bg-slate-8"] input,
+[class*="bg-slate-950"] input,
+[class*="bg-slate-900"] input {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+}
+
+.login-input::placeholder,
+input.login-input::placeholder,
+.dark-input::placeholder,
+input.text-white::placeholder {
+  color: #94a3b8 !important;
+  -webkit-text-fill-color: #94a3b8 !important;
+}
+
+/* Chrome/Safari/Edge autofill override for dark login inputs */
+.login-input:-webkit-autofill,
+.login-input:-webkit-autofill:hover,
+.login-input:-webkit-autofill:focus,
+.login-input:-webkit-autofill:active,
+input.text-white:-webkit-autofill {
+  -webkit-text-fill-color: #ffffff !important;
+  -webkit-box-shadow: 0 0 0 1000px #020617 inset !important;
+  box-shadow: 0 0 0 1000px #020617 inset !important;
+  caret-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
 }
 
 /* ============================================
