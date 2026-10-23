@@ -214,12 +214,33 @@ export default function LoginPage() {
     };
 
     const submitWaiterPin = async (pinToVerify: string) => {
-        if (pinToVerify.length !== 6) { setError('Please enter 6-digit PIN'); return; }
+        if (pinToVerify.length < 4 || pinToVerify.length > 6) { setError('Please enter your 4 to 6-digit PIN'); return; }
         setIsLoading(true); setError('');
         try {
-            const { data, error: dbError } = await supabase.from('users').select('*').eq('pin', pinToVerify).eq('active', true).eq('user_type', 'Waiter').maybeSingle();
-            if (dbError || !data) { setError('Invalid PIN'); setIsLoading(false); setPin(''); setShowPin(false); return; }
-            localStorage.setItem('user', JSON.stringify({ userId: data.user_id, userName: data.user_name, name: data.name, userType: data.user_type, email: data.email, isWaiter: true }));
+            const { data, error: dbError } = await supabase
+                .from('users')
+                .select('*')
+                .eq('pin', pinToVerify)
+                .eq('active', true)
+                .maybeSingle();
+
+            if (dbError || !data) { 
+                setError('Invalid PIN. Please check your 6-digit PIN or consult manager.'); 
+                setIsLoading(false); 
+                setPin(''); 
+                setShowPin(false); 
+                return; 
+            }
+
+            const isWaiter = data.user_type?.toLowerCase().includes('waiter') || data.is_waiter === true || data.user_type === 'Waitress';
+            localStorage.setItem('user', JSON.stringify({ 
+                userId: data.user_id, 
+                userName: data.user_name, 
+                name: data.name, 
+                userType: data.user_type, 
+                email: data.email, 
+                isWaiter: isWaiter 
+            }));
             router.push('/dashboard/pos');
         } catch { setError('Connection error. Please try again.'); }
         setIsLoading(false);
@@ -686,7 +707,7 @@ export default function LoginPage() {
                                 <button
                                     type="button"
                                     onClick={handleWaiterLogin}
-                                    disabled={isLoading || pin.length !== 6}
+                                    disabled={isLoading || pin.length < 4}
                                     className="h-11 sm:h-12 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs sm:text-sm tracking-wide transition-all shadow-lg shadow-amber-500/25 flex items-center justify-center gap-1 disabled:opacity-40"
                                 >
                                     {isLoading ? (

@@ -196,12 +196,12 @@ export default function UsersPage() {
         setShowDetailModal(true);
     };
 
-    // Auto-generate random 4-digit PIN
+    // Auto-generate random 6-digit PIN
     const handleGenerateRandomPin = () => {
-        const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+        const randomPin = Math.floor(100000 + Math.random() * 900000).toString();
         setFormData(prev => ({ ...prev, pin: randomPin }));
         setShowPin(true);
-        toast.success(`Generated 4-digit PIN: ${randomPin}`);
+        toast.success(`Generated 6-digit Waiter PIN: ${randomPin}`);
     };
 
     // Save Staff (Insert / Update)
@@ -213,13 +213,13 @@ export default function UsersPage() {
             return;
         }
 
-        if (!editingUser && !formData.password && !['Cashier', 'Waiter'].includes(formData.user_type)) {
+        if (!editingUser && !formData.password && !formData.user_type.toLowerCase().includes('waiter') && !formData.user_type.toLowerCase().includes('cashier')) {
             toast.error('Password is required for administrative and front desk staff.');
             return;
         }
 
-        if (formData.pin && ![4, 6].includes(formData.pin.length)) {
-            toast.error('POS Quick PIN must be exactly 4 or 6 digits.');
+        if (formData.pin && (formData.pin.length < 4 || formData.pin.length > 6)) {
+            toast.error('POS Quick PIN must be between 4 and 6 digits (6 digits recommended).');
             return;
         }
 
@@ -1175,15 +1175,15 @@ export default function UsersPage() {
                                     <div>
                                         <div className="flex items-center justify-between mb-1.5">
                                             <label className="text-xs font-semibold text-slate-700">
-                                                POS Terminal PIN (4 or 6 digits)
+                                                Waiter Quick PIN (6 Digits)
                                             </label>
                                             <div className="flex items-center gap-2">
                                                 <button
                                                     type="button"
                                                     onClick={handleGenerateRandomPin}
-                                                    className="text-[11px] text-emerald-600 hover:text-emerald-700 font-medium"
+                                                    className="text-[11px] text-emerald-600 hover:text-emerald-700 font-bold"
                                                 >
-                                                    🎲 Auto PIN
+                                                    🎲 Auto 6-Digit PIN
                                                 </button>
                                                 <button
                                                     type="button"
@@ -1198,7 +1198,7 @@ export default function UsersPage() {
                                             type={showPin ? 'text' : 'password'}
                                             value={formData.pin}
                                             onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                                            placeholder="e.g. 1234"
+                                            placeholder="e.g. 123456"
                                             maxLength={6}
                                             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 text-sm font-mono tracking-widest"
                                         />
