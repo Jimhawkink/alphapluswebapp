@@ -14,7 +14,6 @@ import {
     PRESET_HOTEL_ROLES,
     getLocalHotelRoles,
     saveLocalHotelRoles,
-    getRoleMeta,
 } from '@/lib/hotelRoles';
 
 export default function UserRolesPage() {
@@ -31,6 +30,7 @@ export default function UserRolesPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingRole, setEditingRole] = useState<HotelRole | null>(null);
     const [isSaving, setIsSaving] = useState(false);
+    const [permissionSearch, setPermissionSearch] = useState('');
 
     // Form state
     const [formData, setFormData] = useState<HotelRole>({
@@ -49,11 +49,9 @@ export default function UserRolesPage() {
     const loadData = useCallback(async () => {
         setIsLoading(true);
         try {
-            // 1. Load roles from local storage / presets
             const loadedRoles = getLocalHotelRoles();
             setRoles(loadedRoles);
 
-            // 2. Fetch staff distribution across roles from Supabase
             const { data: usersData, error } = await supabase
                 .from('users')
                 .select('user_type, active');
@@ -84,16 +82,17 @@ export default function UserRolesPage() {
             role_name: '',
             department: 'Food & Beverage',
             description: '',
-            color_gradient: 'from-blue-500 to-indigo-600',
+            color_gradient: 'from-blue-600 to-indigo-600',
             badge_color: 'bg-blue-100 text-blue-800 border-blue-200',
             emoji: '🏷️',
             is_system: false,
             permissions: {
-                pos_access: true,
-                take_orders: true,
+                pos_view_terminal: true,
+                pos_take_orders: true,
             },
         });
         setEditingRole(null);
+        setPermissionSearch('');
         setShowModal(true);
     };
 
@@ -109,6 +108,7 @@ export default function UserRolesPage() {
             permissions: { ...(role.permissions || {}) },
         });
         setEditingRole(role);
+        setPermissionSearch('');
         setShowModal(true);
     };
 
@@ -126,16 +126,14 @@ export default function UserRolesPage() {
         try {
             let updatedRoles: HotelRole[];
             if (editingRole) {
-                // Update
                 updatedRoles = roles.map(r => r.role_id === editingRole.role_id ? {
                     ...formData,
                     role_id: editingRole.role_id,
                     role_name: formData.role_name.trim(),
                     updated_at: new Date().toISOString(),
                 } : r);
-                toast.success(`Role "${formData.role_name}" updated successfully! ✅`);
+                toast.success(`Role "${formData.role_name}" updated! ✅`);
             } else {
-                // Check if name already exists
                 if (roles.some(r => r.role_name.toLowerCase() === formData.role_name.trim().toLowerCase())) {
                     toast.error(`A role named "${formData.role_name}" already exists.`);
                     setIsSaving(false);
@@ -149,10 +147,9 @@ export default function UserRolesPage() {
                     created_at: new Date().toISOString(),
                 };
                 updatedRoles = [...roles, newRole];
-                toast.success(`Role "${newRole.role_name}" created successfully! 🎉`);
+                toast.success(`Role "${newRole.role_name}" created! 🎉`);
             }
 
-            // Save to localStorage and notify app
             saveLocalHotelRoles(updatedRoles);
             setRoles(updatedRoles);
             setShowModal(false);
@@ -167,17 +164,17 @@ export default function UserRolesPage() {
     // Delete Role
     const handleDeleteRole = (role: HotelRole) => {
         if (role.is_super_admin || role.role_name === 'Super Admin') {
-            toast.error('Cannot delete the Super Admin system role.');
+            toast.error('Cannot delete the root Super Admin role.');
             return;
         }
 
         const assignedStaff = staffCounts[role.role_name] || 0;
         if (assignedStaff > 0) {
-            toast.error(`Cannot delete role "${role.role_name}" because ${assignedStaff} staff members are currently assigned to it. Reassign staff first.`);
+            toast.error(`Cannot delete role "${role.role_name}" because ${assignedStaff} staff members are assigned to it. Reassign staff first.`);
             return;
         }
 
-        if (!confirm(`Are you sure you want to permanently delete the "${role.role_name}" role?`)) {
+        if (!confirm(`Are you sure you want to delete "${role.role_name}"?`)) {
             return;
         }
 
@@ -189,7 +186,7 @@ export default function UserRolesPage() {
 
     // Reset to Standard Hotel Roles
     const handleResetDefaults = () => {
-        if (!confirm('Reset all roles to standard Kenya hotel presets? Any custom roles will be refreshed.')) {
+        if (!confirm('Reset all roles to standard Kenya hotel presets?')) {
             return;
         }
         saveLocalHotelRoles(PRESET_HOTEL_ROLES);
@@ -197,8 +194,8 @@ export default function UserRolesPage() {
         toast.success('Restored default Kenyan hotel roles!');
     };
 
-    // Quick Permission Templates
-    const applyPermissionTemplate = (type: 'all' | 'none' | 'pos' | 'supervisor') => {
+    // Quick Templates
+    const applyPermissionTemplate = (type: 'all' | 'none' | 'pos' | 'supervisor' | 'frontdesk') => {
         const nextPerms: Record<string, boolean> = {};
 
         if (type === 'all') {
@@ -207,11 +204,15 @@ export default function UserRolesPage() {
             PERMISSIONS_LIST.forEach(p => { nextPerms[p.key] = false; });
         } else if (type === 'pos') {
             PERMISSIONS_LIST.forEach(p => {
-                nextPerms[p.key] = ['pos_access', 'take_orders', 'receive_payments', 'open_close_shifts'].includes(p.key);
+                nextPerms[p.key] = p.module === 'pos' || p.key === 'cashier_open_register' || p.key === 'cashier_close_z_report';
             });
         } else if (type === 'supervisor') {
             PERMISSIONS_LIST.forEach(p => {
-                nextPerms[p.key] = p.module === 'pos' || p.key === 'view_financial_reports' || p.key === 'cash_drops_expenses';
+                nextPerms[p.key] = p.module === 'pos' || p.module === 'cashier' || p.key === 'reports_daily_sales_view';
+            });
+        } else if (type === 'frontdesk') {
+            PERMISSIONS_LIST.forEach(p => {
+                nextPerms[p.key] = p.module === 'hotel' || p.key === 'pos_view_terminal' || p.key === 'pos_payment_tender';
             });
         }
 
@@ -227,53 +228,60 @@ export default function UserRolesPage() {
         });
     }, [roles, selectedDepartment]);
 
-    // Permissions grouped by module
+    // Group permissions by module
     const groupedPermissions = useMemo(() => {
         const map: Record<string, PermissionDefinition[]> = {};
         PERMISSION_MODULES.forEach(m => {
-            map[m.id] = PERMISSIONS_LIST.filter(p => p.module === m.id);
+            map[m.id] = PERMISSIONS_LIST.filter(p => {
+                const inModule = p.module === m.id;
+                if (!inModule) return false;
+                if (!permissionSearch.trim()) return true;
+                const q = permissionSearch.toLowerCase();
+                return p.label.toLowerCase().includes(q) ||
+                    p.subFunction.toLowerCase().includes(q) ||
+                    p.description.toLowerCase().includes(q) ||
+                    p.pagePath.toLowerCase().includes(q);
+            });
         });
         return map;
-    }, []);
+    }, [permissionSearch]);
 
     return (
-        <div className="min-h-screen bg-slate-50/70 p-4 md:p-8 text-slate-800">
-            {/* Top Bar / Branding */}
-            <div className="mb-6">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <span className="text-3xl md:text-4xl">🛡️</span>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-                                        Hotel Roles & Access Control (RBAC)
-                                    </h1>
-                                    <span className="hidden sm:inline-block px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold">
-                                        SECURITY MATRIX
-                                    </span>
-                                </div>
-                                <p className="text-slate-500 text-sm mt-1">
-                                    Define hotel permissions across POS terminals, PMS room folios, kitchen KDS, stock registers & financial closing.
-                                </p>
+        <div className="w-full max-w-full space-y-6 pb-12 overflow-x-hidden text-slate-800">
+            {/* ─── Top Bar / Header ─── */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm">
+                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                        <span className="text-3xl md:text-4xl flex-shrink-0">🛡️</span>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+                                    Hotel Roles & Access Control (RBAC)
+                                </h1>
+                                <span className="px-2.5 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-semibold">
+                                    GRANULAR SECURITY
+                                </span>
                             </div>
+                            <p className="text-slate-500 text-xs md:text-sm mt-0.5 truncate">
+                                Granular permissions across POS buttons, hotel PMS folios, kitchen KDS, stock registers & financial closing.
+                            </p>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Action Buttons (flex-wrap ensures no right clipping!) */}
+                    <div className="flex flex-wrap items-center gap-2">
                         <Link
                             href="/dashboard/users"
-                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-2xl border border-slate-200 shadow-sm hover:shadow transition-all text-sm"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-2xl border border-slate-200 shadow-sm transition-all text-xs md:text-sm"
                             title="Back to Personnel Directory"
                         >
-                            <span className="text-lg">👥</span>
+                            <span className="text-base">👥</span>
                             <span>Staff Directory</span>
                         </Link>
 
                         <button
                             onClick={handleResetDefaults}
-                            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-600 font-medium rounded-2xl border border-slate-200 shadow-sm transition-all text-sm"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-600 font-medium rounded-2xl border border-slate-200 shadow-sm transition-all text-xs md:text-sm"
                             title="Reset Standard Roles"
                         >
                             <span>🔄</span>
@@ -282,36 +290,35 @@ export default function UserRolesPage() {
 
                         <button
                             onClick={openAddModal}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-2xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-sm"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-2xl shadow-md shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all text-xs md:text-sm"
                         >
-                            <span className="text-lg">➕</span>
+                            <span className="text-base">➕</span>
                             <span>Create Custom Role</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* Quick Executive Overview Banner (Clean Bright White) */}
-            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm mb-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-2xl flex-shrink-0">
+            {/* ─── Tabs Switcher & Information Banner ─── */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-start md:items-center justify-between gap-4 w-full min-w-0">
+                <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-11 h-11 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl flex-shrink-0">
                         💡
                     </div>
-                    <div>
+                    <div className="min-w-0">
                         <h3 className="font-bold text-slate-900 text-sm md:text-base">
-                            Role-Based Authorization System
+                            Granular Sub-Function Permission Matrix ({PERMISSIONS_LIST.length} Privileges Audited)
                         </h3>
-                        <p className="text-slate-500 text-xs mt-0.5">
-                            Hotel staff inherit permissions strictly from their assigned role. Changes made here apply instantly to all assigned personnel.
+                        <p className="text-slate-500 text-xs mt-0.5 truncate">
+                            Each button, modal, receipt printer and approval PIN can be toggled ON or OFF per hotel role.
                         </p>
                     </div>
                 </div>
 
-                {/* View Switcher Tabs */}
-                <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl self-stretch md:self-auto justify-center">
+                <div className="flex items-center gap-1.5 bg-slate-100 p-1.5 rounded-2xl self-stretch md:self-auto justify-center flex-shrink-0">
                     <button
                         onClick={() => setActiveTab('cards')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'cards'
+                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'cards'
                             ? 'bg-white text-blue-600 shadow-sm'
                             : 'text-slate-600 hover:text-slate-900'
                             }`}
@@ -321,55 +328,57 @@ export default function UserRolesPage() {
                     </button>
                     <button
                         onClick={() => setActiveTab('matrix')}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'matrix'
+                        className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${activeTab === 'matrix'
                             ? 'bg-white text-blue-600 shadow-sm'
                             : 'text-slate-600 hover:text-slate-900'
                             }`}
                     >
                         <span>📋</span>
-                        <span>Permission Matrix</span>
+                        <span>Full Matrix Table</span>
                     </button>
                 </div>
             </div>
 
-            {/* Department Filter Chips */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-6 scrollbar-none">
-                <button
-                    onClick={() => setSelectedDepartment('All')}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${selectedDepartment === 'All'
-                        ? 'bg-slate-900 text-white shadow-sm'
-                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                        }`}
-                >
-                    🏢 All Departments ({roles.length})
-                </button>
-                {HOTEL_DEPARTMENTS.filter(d => d.id !== 'all').map(dept => {
-                    const count = roles.filter(r => r.department === dept.name).length;
-                    const isActive = selectedDepartment === dept.name;
-                    return (
-                        <button
-                            key={dept.id}
-                            onClick={() => setSelectedDepartment(dept.name)}
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${isActive
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                                }`}
-                        >
-                            <span>{dept.icon}</span>
-                            <span>{dept.name}</span>
-                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                {count}
-                            </span>
-                        </button>
-                    );
-                })}
+            {/* ─── Department Filter Chips ─── */}
+            <div className="w-full max-w-full overflow-x-auto pb-1 scrollbar-none">
+                <div className="flex items-center gap-2 whitespace-nowrap">
+                    <button
+                        onClick={() => setSelectedDepartment('All')}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${selectedDepartment === 'All'
+                            ? 'bg-slate-900 text-white shadow-sm'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                            }`}
+                    >
+                        🏢 All Departments ({roles.length})
+                    </button>
+                    {HOTEL_DEPARTMENTS.filter(d => d.id !== 'all').map(dept => {
+                        const count = roles.filter(r => r.department === dept.name).length;
+                        const isActive = selectedDepartment === dept.name;
+                        return (
+                            <button
+                                key={dept.id}
+                                onClick={() => setSelectedDepartment(dept.name)}
+                                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${isActive
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                                    }`}
+                            >
+                                <span>{dept.icon}</span>
+                                <span>{dept.name}</span>
+                                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
             {/* ═══════════════════════════════════════════════════════════════ */}
-            {/* VIEW 1: ROLES CARDS GRID                                        */}
+            {/* VIEW 1: ROLES CARDS GRID (Fits viewport with no clipping!)     */}
             {/* ═══════════════════════════════════════════════════════════════ */}
             {activeTab === 'cards' && (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 w-full min-w-0">
                     {filteredRoles.map((role) => {
                         const assignedStaffCount = staffCounts[role.role_name] || 0;
                         const permsCount = Object.values(role.permissions || {}).filter(Boolean).length;
@@ -378,25 +387,25 @@ export default function UserRolesPage() {
                         return (
                             <div
                                 key={role.role_id}
-                                className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between hover:-translate-y-0.5"
+                                className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between hover:-translate-y-0.5 min-w-0"
                             >
                                 {/* Role Header Banner */}
                                 <div className={`p-5 bg-gradient-to-r ${role.color_gradient} text-white`}>
                                     <div className="flex items-start justify-between gap-3">
-                                        <div className="flex items-center gap-3">
-                                            <span className="text-3xl">{role.emoji}</span>
-                                            <div>
-                                                <h3 className="font-bold text-lg flex items-center gap-2 leading-tight">
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <span className="text-3xl flex-shrink-0">{role.emoji}</span>
+                                            <div className="min-w-0">
+                                                <h3 className="font-bold text-lg flex items-center gap-2 leading-tight truncate">
                                                     {role.role_name}
                                                 </h3>
-                                                <p className="text-white/80 text-xs mt-0.5 font-medium">
+                                                <p className="text-white/80 text-xs mt-0.5 font-medium truncate">
                                                     {role.department}
                                                 </p>
                                             </div>
                                         </div>
 
                                         {role.is_super_admin && (
-                                            <span className="px-2 py-0.5 bg-white/20 backdrop-blur-sm text-white rounded-full text-[10px] font-bold tracking-wider uppercase border border-white/30">
+                                            <span className="px-2 py-0.5 bg-white/20 backdrop-blur-sm text-white rounded-full text-[10px] font-bold tracking-wider uppercase border border-white/30 flex-shrink-0">
                                                 PROTECTED
                                             </span>
                                         )}
@@ -404,7 +413,7 @@ export default function UserRolesPage() {
                                 </div>
 
                                 {/* Body Description & Staff Metrics */}
-                                <div className="p-5 flex-1 space-y-4">
+                                <div className="p-5 flex-1 space-y-4 min-w-0">
                                     <p className="text-slate-600 text-xs line-clamp-2 leading-relaxed">
                                         {role.description || 'Custom hotel role defining specific system permissions.'}
                                     </p>
@@ -413,12 +422,11 @@ export default function UserRolesPage() {
                                     <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between">
                                         <div>
                                             <span className="text-[11px] font-semibold text-slate-400 block uppercase tracking-wider">Assigned Staff</span>
-                                            <span className="text-lg font-bold text-slate-900">
+                                            <span className="text-base md:text-lg font-bold text-slate-900">
                                                 {assignedStaffCount} Personnel
                                             </span>
                                         </div>
 
-                                        {/* Direct Link to Staff page filtered by this role */}
                                         <Link
                                             href={`/dashboard/users?role=${encodeURIComponent(role.role_name)}`}
                                             className="px-3 py-1.5 bg-white hover:bg-slate-100 text-blue-600 border border-slate-200 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1"
@@ -433,7 +441,7 @@ export default function UserRolesPage() {
                                     <div>
                                         <div className="flex items-center justify-between text-xs mb-1.5">
                                             <span className="font-semibold text-slate-700">Access Coverage</span>
-                                            <span className="font-bold text-indigo-700">{permsCount} / {totalPerms} rights</span>
+                                            <span className="font-bold text-indigo-700">{permsCount} / {totalPerms} sub-functions</span>
                                         </div>
                                         <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
                                             <div
@@ -447,13 +455,13 @@ export default function UserRolesPage() {
                                     <div className="space-y-1.5 pt-1">
                                         <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Module Privileges</span>
                                         <div className="grid grid-cols-2 gap-1.5">
-                                            {PERMISSION_MODULES.map(mod => {
-                                                const modPerms = groupedPermissions[mod.id] || [];
+                                            {PERMISSION_MODULES.slice(0, 6).map(mod => {
+                                                const modPerms = PERMISSIONS_LIST.filter(p => p.module === mod.id);
                                                 const hasAny = modPerms.some(p => role.permissions?.[p.key]);
                                                 return (
                                                     <div
                                                         key={mod.id}
-                                                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-medium border ${hasAny
+                                                        className={`flex items-center gap-1 px-2 py-1 rounded-xl text-[11px] font-medium border truncate ${hasAny
                                                             ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
                                                             : 'bg-slate-50 text-slate-400 border-slate-200/60 opacity-60'
                                                             }`}
@@ -498,42 +506,41 @@ export default function UserRolesPage() {
             )}
 
             {/* ═══════════════════════════════════════════════════════════════ */}
-            {/* VIEW 2: FULL PERMISSION MATRIX TABLE                            */}
+            {/* VIEW 2: FULL PERMISSION MATRIX TABLE (Protected from cutoff!)   */}
             {/* ═══════════════════════════════════════════════════════════════ */}
             {activeTab === 'matrix' && (
-                <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-                    {/* Matrix Module Filter Bar */}
+                <div className="w-full max-w-full overflow-hidden bg-white rounded-3xl border border-slate-200/80 shadow-sm">
                     <div className="p-4 bg-slate-50/80 border-b border-slate-200 flex items-center justify-between flex-wrap gap-2">
                         <div className="flex items-center gap-2">
                             <span className="text-xs font-bold text-slate-500 uppercase">Module Filter:</span>
                             <select
                                 value={matrixModuleFilter}
                                 onChange={(e) => setMatrixModuleFilter(e.target.value)}
-                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-500"
+                                className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-blue-500 cursor-pointer"
                             >
-                                <option value="all">🌐 All Hospitality Modules</option>
+                                <option value="all">🌐 All Hospitality Modules ({PERMISSIONS_LIST.length} Privileges)</option>
                                 {PERMISSION_MODULES.map(m => (
                                     <option key={m.id} value={m.id}>{m.icon} {m.name}</option>
                                 ))}
                             </select>
                         </div>
                         <p className="text-xs text-slate-500">
-                            Showing access rights for all {roles.length} hotel roles
+                            Showing rights for all {roles.length} roles
                         </p>
                     </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                    <div className="w-full overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[900px]">
                             <thead>
                                 <tr className="bg-slate-100/80 border-b border-slate-200 text-slate-700 text-xs font-bold">
                                     <th className="px-5 py-4 w-72 sticky left-0 bg-slate-100 z-10">
-                                        Hotel System Privilege
+                                        Hotel System Sub-Function
                                     </th>
                                     {roles.map((role) => (
-                                        <th key={role.role_id} className="px-3 py-4 text-center min-w-[110px]">
+                                        <th key={role.role_id} className="px-3 py-4 text-center min-w-[100px]">
                                             <div className="flex flex-col items-center gap-1">
                                                 <span className="text-lg">{role.emoji}</span>
-                                                <span className="text-xs font-bold text-slate-800 truncate max-w-[100px]">
+                                                <span className="text-xs font-bold text-slate-800 truncate max-w-[90px]">
                                                     {role.role_name}
                                                 </span>
                                             </div>
@@ -545,10 +552,9 @@ export default function UserRolesPage() {
                                 {PERMISSION_MODULES
                                     .filter(mod => matrixModuleFilter === 'all' || matrixModuleFilter === mod.id)
                                     .map(mod => {
-                                        const permsInMod = groupedPermissions[mod.id] || [];
+                                        const permsInMod = PERMISSIONS_LIST.filter(p => p.module === mod.id);
                                         return (
                                             <div key={mod.id} style={{ display: 'contents' }}>
-                                                {/* Module Section Header Row */}
                                                 <tr className="bg-slate-50/90 font-bold text-slate-800">
                                                     <td
                                                         colSpan={roles.length + 1}
@@ -559,7 +565,6 @@ export default function UserRolesPage() {
                                                     </td>
                                                 </tr>
 
-                                                {/* Permission Items Rows */}
                                                 {permsInMod.map(perm => (
                                                     <tr key={perm.key} className="hover:bg-slate-50/50 transition-colors">
                                                         <td className="px-5 py-3 sticky left-0 bg-white z-10 border-r border-slate-100">
@@ -567,9 +572,14 @@ export default function UserRolesPage() {
                                                                 <span>{perm.icon}</span>
                                                                 <span>{perm.label}</span>
                                                             </div>
-                                                            <p className="text-[11px] text-slate-400 pl-6">
-                                                                {perm.description}
-                                                            </p>
+                                                            <div className="flex items-center gap-2 pl-6 mt-0.5">
+                                                                <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-500 font-mono">
+                                                                    {perm.pagePath}
+                                                                </span>
+                                                                <span className="text-[11px] text-slate-400 truncate">
+                                                                    {perm.description}
+                                                                </span>
+                                                            </div>
                                                         </td>
                                                         {roles.map(role => {
                                                             const hasAccess = role.is_super_admin || !!role.permissions?.[perm.key];
@@ -598,20 +608,20 @@ export default function UserRolesPage() {
             )}
 
             {/* ═══════════════════════════════════════════════════════════════ */}
-            {/* CREATE / EDIT CUSTOM ROLE MODAL                                 */}
+            {/* CREATE / EDIT CUSTOM ROLE MODAL (Audited Sub-Functions)        */}
             {/* ═══════════════════════════════════════════════════════════════ */}
             {showModal && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-3xl overflow-hidden border border-slate-200 my-8">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-4xl overflow-hidden border border-slate-200 my-8">
                         {/* Header */}
                         <div className={`p-6 bg-gradient-to-r ${formData.color_gradient} text-white`}>
                             <div className="flex items-center justify-between">
                                 <div>
                                     <h2 className="text-xl font-bold flex items-center gap-2">
-                                        <span>{editingRole ? '✏️ Edit Hotel Role Permissions' : '➕ Create Custom Hotel Role'}</span>
+                                        <span>{editingRole ? '✏️ Edit Granular Hotel Role Permissions' : '➕ Create Custom Hotel Role'}</span>
                                     </h2>
                                     <p className="text-white/80 text-xs mt-0.5">
-                                        Configure title, department and toggle granular rights across 6 hospitality modules
+                                        Configure title, department and toggle {PERMISSIONS_LIST.length} granular rights across all 10 modules
                                     </p>
                                 </div>
                                 <button
@@ -624,10 +634,9 @@ export default function UserRolesPage() {
                         </div>
 
                         {/* Modal Body */}
-                        <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[75vh] overflow-y-auto">
+                        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
                             {/* Basic Role Identity */}
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {/* Role Name */}
                                 <div className="md:col-span-2">
                                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                         Role Title <span className="text-rose-500">*</span>
@@ -637,12 +646,11 @@ export default function UserRolesPage() {
                                         value={formData.role_name}
                                         onChange={(e) => setFormData({ ...formData, role_name: e.target.value })}
                                         placeholder="e.g. Banquet Supervisor, Night Manager"
-                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 text-sm font-semibold"
+                                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white text-sm font-semibold"
                                         required
                                     />
                                 </div>
 
-                                {/* Emoji Picker */}
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                         Role Icon Emoji
@@ -657,9 +665,11 @@ export default function UserRolesPage() {
                                         <option value="🍽️">🍽️ Waiter / Dining</option>
                                         <option value="💰">💰 Cashier / Till</option>
                                         <option value="👨‍🍳">👨‍🍳 Kitchen Chef</option>
+                                        <option value="🥩">🥩 Master Butcher</option>
                                         <option value="🧹">🧹 Housekeeping</option>
                                         <option value="📦">📦 Storekeeper</option>
                                         <option value="🌙">🌙 Night Auditor</option>
+                                        <option value="💵">💵 Accountant</option>
                                         <option value="💼">💼 Management</option>
                                         <option value="🛡️">🛡️ Security</option>
                                     </select>
@@ -667,7 +677,6 @@ export default function UserRolesPage() {
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {/* Department */}
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                         Department Assignment
@@ -683,7 +692,6 @@ export default function UserRolesPage() {
                                     </select>
                                 </div>
 
-                                {/* Theme Accent */}
                                 <div>
                                     <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                         Card Color Theme
@@ -694,19 +702,18 @@ export default function UserRolesPage() {
                                         className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 text-sm cursor-pointer"
                                     >
                                         <option value="from-blue-600 to-indigo-600">🔷 Blue & Indigo</option>
-                                        <option value="from-emerald-500 to-teal-600">🟢 Emerald & Teal</option>
+                                        <option value="from-emerald-600 to-teal-700">🟢 Emerald & Teal</option>
                                         <option value="from-amber-500 to-orange-600">🟠 Amber & Orange</option>
-                                        <option value="from-rose-500 to-pink-600">🔴 Rose & Pink</option>
+                                        <option value="from-rose-600 to-red-700">🔴 Rose & Crimson</option>
                                         <option value="from-purple-600 to-pink-600">🟣 Purple & Magenta</option>
                                         <option value="from-slate-700 to-slate-900">⚫ Slate & Charcoal</option>
                                     </select>
                                 </div>
                             </div>
 
-                            {/* Description */}
                             <div>
                                 <label className="block text-xs font-semibold text-slate-700 mb-1.5">
-                                    Role Description & Operational Scope
+                                    Role Description & Operational Duties
                                 </label>
                                 <textarea
                                     value={formData.description}
@@ -717,30 +724,37 @@ export default function UserRolesPage() {
                                 />
                             </div>
 
-                            {/* Quick Presets Toolbar */}
-                            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex items-center justify-between flex-wrap gap-2">
-                                <span className="text-xs font-bold text-slate-500 uppercase">Quick Rights Templates:</span>
-                                <div className="flex items-center gap-1.5">
+                            {/* Quick Presets & Search Toolbar */}
+                            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-[11px] font-bold text-slate-500 uppercase mr-1">Templates:</span>
                                     <button
                                         type="button"
                                         onClick={() => applyPermissionTemplate('all')}
                                         className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-all"
                                     >
-                                        Full Access (All)
+                                        Full Access
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => applyPermissionTemplate('pos')}
                                         className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-all"
                                     >
-                                        Standard POS Cashier
+                                        POS Cashier
                                     </button>
                                     <button
                                         type="button"
                                         onClick={() => applyPermissionTemplate('supervisor')}
                                         className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-all"
                                     >
-                                        F&B Supervisor
+                                        Supervisor
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => applyPermissionTemplate('frontdesk')}
+                                        className="px-2.5 py-1 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-all"
+                                    >
+                                        Front Desk
                                     </button>
                                     <button
                                         type="button"
@@ -750,16 +764,37 @@ export default function UserRolesPage() {
                                         Clear All
                                     </button>
                                 </div>
+
+                                <div className="relative w-full md:w-56">
+                                    <input
+                                        type="text"
+                                        placeholder="🔎 Filter rights..."
+                                        value={permissionSearch}
+                                        onChange={(e) => setPermissionSearch(e.target.value)}
+                                        className="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-blue-500"
+                                    />
+                                    {permissionSearch && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setPermissionSearch('')}
+                                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-slate-400"
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                </div>
                             </div>
 
                             {/* Granular Permission Toggles grouped by Module */}
                             <div className="space-y-4">
                                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-                                    <span>🔐</span> Granular Permission Matrix (Toggle to Authorize)
+                                    <span>🔐</span> Individual Function Privileges (Check to Authorize)
                                 </h3>
 
                                 {PERMISSION_MODULES.map(mod => {
                                     const modPerms = groupedPermissions[mod.id] || [];
+                                    if (modPerms.length === 0) return null;
+
                                     const allEnabledInMod = modPerms.every(p => formData.permissions?.[p.key]);
 
                                     const toggleAllInMod = () => {
@@ -772,12 +807,14 @@ export default function UserRolesPage() {
 
                                     return (
                                         <div key={mod.id} className="p-4 bg-slate-50/70 rounded-2xl border border-slate-200/80">
-                                            {/* Module Header */}
                                             <div className="flex items-center justify-between mb-3">
                                                 <div className="flex items-center gap-2">
                                                     <span className="text-lg">{mod.icon}</span>
                                                     <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
                                                         {mod.name}
+                                                    </span>
+                                                    <span className="text-[10px] text-slate-400 px-1.5 py-0.2 bg-white rounded-full border border-slate-200">
+                                                        {modPerms.length}
                                                     </span>
                                                 </div>
                                                 <button
@@ -789,7 +826,6 @@ export default function UserRolesPage() {
                                                 </button>
                                             </div>
 
-                                            {/* Checkboxes Grid */}
                                             <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                                 {modPerms.map(perm => {
                                                     const isChecked = !!formData.permissions?.[perm.key];
@@ -813,16 +849,19 @@ export default function UserRolesPage() {
                                                                         },
                                                                     }));
                                                                 }}
-                                                                className="w-4 h-4 mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                                                                className="w-4 h-4 mt-0.5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 flex-shrink-0"
                                                             />
                                                             <div className="flex-1 min-w-0">
                                                                 <p className="text-xs font-bold leading-tight flex items-center gap-1.5">
                                                                     <span>{perm.icon}</span>
-                                                                    <span>{perm.label}</span>
+                                                                    <span className="truncate">{perm.label}</span>
                                                                 </p>
                                                                 <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">
                                                                     {perm.description}
                                                                 </p>
+                                                                <span className="text-[10px] font-mono text-slate-400 mt-0.5 inline-block">
+                                                                    {perm.pagePath}
+                                                                </span>
                                                             </div>
                                                         </label>
                                                     );
@@ -833,7 +872,6 @@ export default function UserRolesPage() {
                                 })}
                             </div>
 
-                            {/* Actions */}
                             <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
                                 <button
                                     type="button"

@@ -101,7 +101,7 @@ export default function UsersPage() {
             setUsers(data || []);
         } catch (err: any) {
             console.error('Error loading users:', err);
-            toast.error('Failed to load hotel personnel. Please verify database connection.');
+            toast.error('Failed to load hotel personnel.');
         } finally {
             setIsLoading(false);
         }
@@ -111,13 +111,11 @@ export default function UsersPage() {
         loadRolesList();
         loadUsers();
 
-        // Listen for live role updates
         const handleRoleUpdate = () => loadRolesList();
         window.addEventListener('alphaplus_roles_updated', handleRoleUpdate);
         return () => window.removeEventListener('alphaplus_roles_updated', handleRoleUpdate);
     }, [loadRolesList, loadUsers]);
 
-    // Update filter if URL changes
     useEffect(() => {
         if (roleParam) {
             setFilterRole(roleParam);
@@ -165,7 +163,7 @@ export default function UsersPage() {
     // Open Edit Staff Modal
     const openEditModal = (user: User) => {
         if (user.is_super_admin) {
-            toast.error('🔒 Super Admin account is protected from manual modifications.');
+            toast.error('🔒 Super Admin root account is protected.');
             return;
         }
 
@@ -229,7 +227,6 @@ export default function UsersPage() {
 
         try {
             if (editingUser) {
-                // Update
                 const updatePayload: Record<string, any> = {
                     user_name: formData.user_name.trim(),
                     name: formData.name.trim(),
@@ -254,9 +251,8 @@ export default function UsersPage() {
                     .eq('user_id', editingUser.user_id);
 
                 if (error) throw error;
-                toast.success(`Staff member "${formData.name}" updated successfully! ✅`);
+                toast.success(`Staff member "${formData.name}" updated! ✅`);
             } else {
-                // Insert
                 const passwordToHash = formData.password.trim() || formData.pin.trim() || '1234';
                 const passwordHash = await hashPassword(passwordToHash);
 
@@ -283,7 +279,6 @@ export default function UsersPage() {
 
                 if (error) throw error;
 
-                // Set proper user_code
                 if (data?.user_id) {
                     const finalCode = `US-${String(data.user_id).padStart(4, '0')}`;
                     await supabase
@@ -292,7 +287,7 @@ export default function UsersPage() {
                         .eq('user_id', data.user_id);
                 }
 
-                toast.success(`New staff member "${formData.name}" created successfully! 🎉`);
+                toast.success(`Staff member "${formData.name}" registered! 🎉`);
             }
 
             setShowModal(false);
@@ -309,7 +304,7 @@ export default function UsersPage() {
     // Toggle Active Status
     const toggleUserStatus = async (user: User) => {
         if (user.is_super_admin) {
-            toast.error('Cannot suspend or deactivate the Super Admin account.');
+            toast.error('Cannot suspend the Super Admin account.');
             return;
         }
 
@@ -322,11 +317,11 @@ export default function UsersPage() {
 
             if (error) throw error;
 
-            toast.success(nextActive ? `✅ ${user.name} is now ACTIVE` : `⏸️ ${user.name} has been DEACTIVATED`);
+            toast.success(nextActive ? `✅ ${user.name} is now ACTIVE` : `⏸️ ${user.name} is now INACTIVE`);
             setUsers(prev => prev.map(u => u.user_id === user.user_id ? { ...u, active: nextActive } : u));
         } catch (err: any) {
             console.error('Status toggle error:', err);
-            toast.error('Failed to update staff status.');
+            toast.error('Failed to update status.');
         }
     };
 
@@ -337,7 +332,7 @@ export default function UsersPage() {
             return;
         }
 
-        if (!confirm(`Are you sure you want to permanently remove "${user.name}" (${user.user_code}) from hotel staff?`)) {
+        if (!confirm(`Are you sure you want to permanently remove "${user.name}" (${user.user_code}) from staff?`)) {
             return;
         }
 
@@ -389,11 +384,6 @@ export default function UsersPage() {
         toast.success('Staff roster exported to CSV 📥');
     };
 
-    // Print Staff Roster
-    const handlePrintRoster = () => {
-        window.print();
-    };
-
     // Filter and Sort Users
     const filteredUsers = useMemo(() => {
         return users
@@ -426,7 +416,6 @@ export default function UsersPage() {
                 if (sortBy === 'name') return a.name.localeCompare(b.name);
                 if (sortBy === 'code') return (a.user_code || '').localeCompare(b.user_code || '');
                 if (sortBy === 'salary') return (Number(b.salary_amount) || 0) - (Number(a.salary_amount) || 0);
-                // default: recent
                 return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
             });
     }, [users, searchQuery, filterRole, filterDepartment, filterStatus, sortBy]);
@@ -436,7 +425,7 @@ export default function UsersPage() {
         const total = users.length;
         const active = users.filter(u => u.active).length;
         const foh = users.filter(u => ['Cashier', 'Waiter', 'Waitress', 'Supervisor', 'Front Desk Agent'].includes(u.user_type)).length;
-        const boh = users.filter(u => ['Head Chef', 'Chef', 'Cook', 'Housekeeping Supervisor', 'Storekeeper'].includes(u.user_type)).length;
+        const boh = users.filter(u => ['Head Chef', 'Chef', 'Cook', 'Housekeeping Supervisor', 'Storekeeper', 'Master Butcher'].includes(u.user_type)).length;
         const totalPayroll = users
             .filter(u => u.active)
             .reduce((sum, u) => sum + (Number(u.salary_amount) || 0), 0);
@@ -452,46 +441,44 @@ export default function UsersPage() {
     }, [users]);
 
     return (
-        <div className="min-h-screen bg-slate-50/70 p-4 md:p-8 text-slate-800">
-            {/* Top Bar / Branding */}
-            <div className="mb-6">
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div>
-                        <div className="flex items-center gap-3">
-                            <span className="text-3xl md:text-4xl">🏨</span>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
-                                        Hotel Personnel & Staff Directory
-                                    </h1>
-                                    <span className="hidden sm:inline-block px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-semibold">
-                                        KENYA HOSPITALITY
-                                    </span>
-                                </div>
-                                <p className="text-slate-500 text-sm mt-1">
-                                    Manage hotel staff credentials, POS till access PINs, roles, department rosters & monthly payroll.
-                                </p>
+        <div className="w-full max-w-full space-y-6 pb-12 overflow-x-hidden text-slate-800">
+            {/* ─── Top Bar / Header ─── */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm">
+                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                        <span className="text-3xl md:text-4xl flex-shrink-0">🏨</span>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+                                    Hotel Personnel & Staff Directory
+                                </h1>
+                                <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-semibold">
+                                    KENYA HOSPITALITY
+                                </span>
                             </div>
+                            <p className="text-slate-500 text-xs md:text-sm mt-0.5 truncate">
+                                Manage hotel staff credentials, POS till PINs, roles, department rosters & monthly payroll.
+                            </p>
                         </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="flex flex-wrap items-center gap-2.5">
+                    {/* Action Buttons (flex-wrap ensures no right clipping!) */}
+                    <div className="flex flex-wrap items-center gap-2">
                         <Link
                             href="/dashboard/user-roles"
-                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-2xl border border-slate-200 shadow-sm hover:shadow transition-all text-sm"
+                            className="inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-2xl border border-slate-200 shadow-sm transition-all text-xs md:text-sm"
                             title="Manage Security & Permissions Matrix"
                         >
-                            <span className="text-lg">🛡️</span>
+                            <span className="text-base">🛡️</span>
                             <span>Roles & Permissions</span>
-                            <span className="ml-1 px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full">
+                            <span className="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full">
                                 {roles.length}
                             </span>
                         </Link>
 
                         <button
                             onClick={exportRosterCSV}
-                            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-2xl border border-slate-200 shadow-sm transition-all text-sm"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-2xl border border-slate-200 shadow-sm transition-all text-xs md:text-sm"
                             title="Export Roster to Excel/CSV"
                         >
                             <span>📥</span>
@@ -499,8 +486,8 @@ export default function UsersPage() {
                         </button>
 
                         <button
-                            onClick={handlePrintRoster}
-                            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-2xl border border-slate-200 shadow-sm transition-all text-sm"
+                            onClick={() => window.print()}
+                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-2xl border border-slate-200 shadow-sm transition-all text-xs md:text-sm"
                             title="Print Staff Roster"
                         >
                             <span>🖨️</span>
@@ -509,124 +496,126 @@ export default function UsersPage() {
 
                         <button
                             onClick={openAddModal}
-                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-2xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-sm"
+                            className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-2xl shadow-md shadow-blue-500/20 hover:scale-[1.02] active:scale-[0.98] transition-all text-xs md:text-sm"
                         >
-                            <span className="text-lg">➕</span>
+                            <span className="text-base">➕</span>
                             <span>Add Hotel Staff</span>
                         </button>
                     </div>
                 </div>
             </div>
 
-            {/* KPI Stat Cards (Bright White with Crisp Accents) */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 mb-6">
-                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+            {/* ─── KPI Stat Cards (Responsive Grid that fits viewport) ─── */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 w-full min-w-0">
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Staff</span>
-                        <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-base">👥</span>
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Total Staff</span>
+                        <span className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm flex-shrink-0">👥</span>
                     </div>
-                    <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.total}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Registered personnel</p>
+                    <p className="text-xl md:text-2xl font-bold text-slate-900 mt-2">{metrics.total}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">Registered workforce</p>
                 </div>
 
-                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active On-Duty</span>
-                        <span className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-base">✅</span>
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Active On-Duty</span>
+                        <span className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm flex-shrink-0">✅</span>
                     </div>
-                    <p className="text-2xl font-bold text-emerald-600 mt-2">{metrics.active}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">{metrics.total > 0 ? Math.round((metrics.active / metrics.total) * 100) : 0}% workforce active</p>
+                    <p className="text-xl md:text-2xl font-bold text-emerald-600 mt-2">{metrics.active}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">{metrics.total > 0 ? Math.round((metrics.active / metrics.total) * 100) : 0}% active</p>
                 </div>
 
-                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Front of House</span>
-                        <span className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-base">🍽️</span>
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Front of House</span>
+                        <span className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm flex-shrink-0">🍽️</span>
                     </div>
-                    <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.foh}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Cashiers, Waiters, F&B</p>
+                    <p className="text-xl md:text-2xl font-bold text-slate-900 mt-2">{metrics.foh}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">Cashiers, Waiters, F&B</p>
                 </div>
 
-                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Back of House</span>
-                        <span className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-base">👨‍🍳</span>
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Back of House</span>
+                        <span className="w-7 h-7 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-sm flex-shrink-0">👨‍🍳</span>
                     </div>
-                    <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.boh}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Chefs, Housekeeping, Store</p>
+                    <p className="text-xl md:text-2xl font-bold text-slate-900 mt-2">{metrics.boh}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">Kitchen, Housekeeping</p>
                 </div>
 
-                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Inactive / Leave</span>
-                        <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-base">⏸️</span>
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Off-Duty / Leave</span>
+                        <span className="w-7 h-7 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-sm flex-shrink-0">⏸️</span>
                     </div>
-                    <p className="text-2xl font-bold text-slate-500 mt-2">{metrics.inactive}</p>
-                    <p className="text-xs text-slate-400 mt-0.5">Off duty or suspended</p>
+                    <p className="text-xl md:text-2xl font-bold text-slate-500 mt-2">{metrics.inactive}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">Inactive personnel</p>
                 </div>
 
-                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
                     <div className="flex items-center justify-between">
-                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Payroll Total</span>
-                        <span className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-base">💵</span>
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Monthly Payroll</span>
+                        <span className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm flex-shrink-0">💵</span>
                     </div>
-                    <p className="text-xl font-bold text-indigo-700 mt-2 truncate">
+                    <p className="text-lg md:text-xl font-bold text-indigo-700 mt-2 truncate">
                         KES {metrics.totalPayroll.toLocaleString()}
                     </p>
-                    <p className="text-xs text-slate-400 mt-0.5">Active monthly commitment</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">Active monthly commitment</p>
                 </div>
             </div>
 
-            {/* Quick Role Shortcut Chips */}
-            <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 scrollbar-none">
-                <button
-                    onClick={() => setFilterRole('All')}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${filterRole === 'All'
-                        ? 'bg-slate-900 text-white shadow-sm'
-                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                        }`}
-                >
-                    🏷️ All Roles ({users.length})
-                </button>
-                {roles.map(role => {
-                    const count = users.filter(u => u.user_type === role.role_name).length;
-                    const isActive = filterRole === role.role_name;
-                    return (
-                        <button
-                            key={role.role_id}
-                            onClick={() => setFilterRole(role.role_name)}
-                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${isActive
-                                ? 'bg-blue-600 text-white shadow-sm'
-                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
-                                }`}
-                        >
-                            <span>{role.emoji}</span>
-                            <span>{role.role_name}</span>
-                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                {count}
-                            </span>
-                        </button>
-                    );
-                })}
+            {/* ─── Role Filter Chips (Safe horizontal scroll) ─── */}
+            <div className="w-full max-w-full overflow-x-auto pb-1 scrollbar-none">
+                <div className="flex items-center gap-2 whitespace-nowrap">
+                    <button
+                        onClick={() => setFilterRole('All')}
+                        className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all ${filterRole === 'All'
+                            ? 'bg-slate-900 text-white shadow-sm'
+                            : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                            }`}
+                    >
+                        🏷️ All Roles ({users.length})
+                    </button>
+                    {roles.map(role => {
+                        const count = users.filter(u => u.user_type === role.role_name).length;
+                        const isActive = filterRole === role.role_name;
+                        return (
+                            <button
+                                key={role.role_id}
+                                onClick={() => setFilterRole(role.role_name)}
+                                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${isActive
+                                    ? 'bg-blue-600 text-white shadow-sm'
+                                    : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                                    }`}
+                            >
+                                <span>{role.emoji}</span>
+                                <span>{role.role_name}</span>
+                                <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                    {count}
+                                </span>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
 
-            {/* Search & Filter Toolbar */}
-            <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm mb-6">
+            {/* ─── Search & Filter Toolbar ─── */}
+            <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm w-full min-w-0">
                 <div className="flex flex-col md:flex-row gap-3">
                     {/* Search Input */}
-                    <div className="flex-1 relative">
+                    <div className="flex-1 relative min-w-0">
                         <input
                             type="text"
                             placeholder="🔍 Search staff by name, username, staff code (US-...), phone or national ID..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-4 py-2.5 pl-10 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                            className="w-full px-4 py-2.5 pl-10 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white text-xs md:text-sm"
                         />
                         <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">🔎</span>
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery('')}
-                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm"
+                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
                             >
                                 ✕
                             </button>
@@ -637,7 +626,7 @@ export default function UsersPage() {
                     <select
                         value={filterDepartment}
                         onChange={(e) => setFilterDepartment(e.target.value)}
-                        className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 focus:outline-none focus:border-blue-500 text-sm cursor-pointer"
+                        className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 focus:outline-none focus:border-blue-500 text-xs md:text-sm cursor-pointer"
                     >
                         {HOTEL_DEPARTMENTS.map(dept => (
                             <option key={dept.id} value={dept.id === 'all' ? 'All' : dept.name}>
@@ -650,7 +639,7 @@ export default function UsersPage() {
                     <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
-                        className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 focus:outline-none focus:border-blue-500 text-sm cursor-pointer"
+                        className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 focus:outline-none focus:border-blue-500 text-xs md:text-sm cursor-pointer"
                     >
                         <option value="All">📊 All Status</option>
                         <option value="Active">✅ Active On-Duty</option>
@@ -661,7 +650,7 @@ export default function UsersPage() {
                     <select
                         value={sortBy}
                         onChange={(e) => setSortBy(e.target.value as any)}
-                        className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 focus:outline-none focus:border-blue-500 text-sm cursor-pointer"
+                        className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 focus:outline-none focus:border-blue-500 text-xs md:text-sm cursor-pointer"
                     >
                         <option value="recent">⏱️ Recently Added</option>
                         <option value="name">🔤 Name (A - Z)</option>
@@ -670,7 +659,7 @@ export default function UsersPage() {
                     </select>
 
                     {/* View Switcher & Refresh */}
-                    <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl">
+                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-2xl self-start md:self-auto">
                         <button
                             onClick={() => setViewMode('table')}
                             className={`p-2 rounded-xl transition-all ${viewMode === 'table' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
@@ -685,31 +674,29 @@ export default function UsersPage() {
                         >
                             📇
                         </button>
+                        <button
+                            onClick={loadUsers}
+                            className="p-2 text-slate-500 hover:text-slate-700 transition-all"
+                            title="Reload"
+                        >
+                            🔄
+                        </button>
                     </div>
-
-                    <button
-                        onClick={loadUsers}
-                        className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition-all flex items-center justify-center"
-                        title="Reload from Database"
-                    >
-                        🔄
-                    </button>
                 </div>
             </div>
 
-            {/* Content Area: Table vs Cards */}
+            {/* ─── Content Area: Table vs Cards ─── */}
             {isLoading ? (
                 <div className="bg-white rounded-3xl p-16 border border-slate-200/80 shadow-sm flex flex-col items-center justify-center text-center">
                     <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
                     <p className="text-slate-700 font-semibold mt-4">Loading Hotel Personnel...</p>
-                    <p className="text-slate-400 text-xs mt-1">Retrieving staff records, credentials & payroll details</p>
                 </div>
             ) : filteredUsers.length === 0 ? (
                 <div className="bg-white rounded-3xl p-16 border border-slate-200/80 shadow-sm flex flex-col items-center justify-center text-center">
                     <span className="text-5xl mb-3">📭</span>
                     <h3 className="text-lg font-bold text-slate-800">No Hotel Staff Found</h3>
                     <p className="text-slate-500 text-sm max-w-md mt-1">
-                        No personnel matched your current search filters. Try clearing filters or create a new staff profile.
+                        No personnel matched your search filters. Clear filters or create a new staff profile.
                     </p>
                     <button
                         onClick={openAddModal}
@@ -719,17 +706,17 @@ export default function UsersPage() {
                     </button>
                 </div>
             ) : viewMode === 'table' ? (
-                /* ─── TABLE VIEW ─── */
-                <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
+                /* ─── TABLE VIEW (With full horizontal scroll protection) ─── */
+                <div className="w-full max-w-full overflow-hidden bg-white rounded-3xl border border-slate-200/80 shadow-sm">
+                    <div className="w-full overflow-x-auto">
+                        <table className="w-full text-left border-collapse min-w-[760px]">
                             <thead>
                                 <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 text-xs font-semibold uppercase tracking-wider">
                                     <th className="px-5 py-4">👤 Staff Member</th>
                                     <th className="px-4 py-4">🎭 Role & Department</th>
-                                    <th className="px-4 py-4 hidden md:table-cell">📱 Contact & ID</th>
-                                    <th className="px-4 py-4 hidden lg:table-cell">🔐 Access / PIN</th>
-                                    <th className="px-4 py-4 hidden sm:table-cell">💵 Compensation</th>
+                                    <th className="px-4 py-4">📱 Contact & ID</th>
+                                    <th className="px-4 py-4">🔐 Access / PIN</th>
+                                    <th className="px-4 py-4">💵 Compensation</th>
                                     <th className="px-4 py-4 text-center">📊 Status</th>
                                     <th className="px-5 py-4 text-right">⚙️ Actions</th>
                                 </tr>
@@ -778,7 +765,7 @@ export default function UsersPage() {
                                             </td>
 
                                             {/* Contact & ID */}
-                                            <td className="px-4 py-4 hidden md:table-cell">
+                                            <td className="px-4 py-4">
                                                 <div className="space-y-0.5">
                                                     {user.phone ? (
                                                         <a
@@ -797,7 +784,7 @@ export default function UsersPage() {
                                                         </p>
                                                     )}
                                                     {user.email && (
-                                                        <p className="text-[11px] text-slate-400 truncate max-w-[180px] flex items-center gap-1">
+                                                        <p className="text-[11px] text-slate-400 truncate max-w-[150px] flex items-center gap-1">
                                                             <span>📧</span> {user.email}
                                                         </p>
                                                     )}
@@ -805,7 +792,7 @@ export default function UsersPage() {
                                             </td>
 
                                             {/* Access & PIN */}
-                                            <td className="px-4 py-4 hidden lg:table-cell">
+                                            <td className="px-4 py-4">
                                                 <div className="space-y-1">
                                                     <div className="flex items-center gap-1.5">
                                                         <span className="text-xs">🔢 PIN:</span>
@@ -826,7 +813,7 @@ export default function UsersPage() {
                                             </td>
 
                                             {/* Compensation */}
-                                            <td className="px-4 py-4 hidden sm:table-cell">
+                                            <td className="px-4 py-4">
                                                 <div>
                                                     <p className="font-bold text-slate-800 text-sm">
                                                         KES {Number(user.salary_amount || 0).toLocaleString()}
@@ -896,28 +883,26 @@ export default function UsersPage() {
                 </div>
             ) : (
                 /* ─── VISUAL STAFF IDENTITY CARDS VIEW ─── */
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 w-full min-w-0">
                     {filteredUsers.map((user) => {
                         const roleMeta = getRoleMeta(user.user_type);
                         return (
                             <div
                                 key={user.user_id}
-                                className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between hover:-translate-y-0.5 cursor-pointer"
+                                className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between hover:-translate-y-0.5 cursor-pointer min-w-0"
                                 onClick={() => openDetailModal(user)}
                             >
-                                {/* Role Gradient Header Accent */}
                                 <div className={`h-3 bg-gradient-to-r ${roleMeta.color}`}></div>
 
-                                <div className="p-5 flex-1">
-                                    {/* Avatar & Header */}
+                                <div className="p-5 flex-1 min-w-0">
                                     <div className="flex items-start justify-between gap-3 mb-3">
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-white shadow bg-gradient-to-br ${roleMeta.color} text-xl flex-shrink-0`}>
+                                        <div className={`w-13 h-13 rounded-2xl flex items-center justify-center font-bold text-white shadow bg-gradient-to-br ${roleMeta.color} text-xl flex-shrink-0`}>
                                             {user.name ? user.name.charAt(0).toUpperCase() : '?'}
                                         </div>
-                                        <div className="text-right">
+                                        <div className="text-right min-w-0">
                                             <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${roleMeta.badge}`}>
                                                 <span>{roleMeta.emoji}</span>
-                                                <span>{user.user_type}</span>
+                                                <span className="truncate">{user.user_type}</span>
                                             </span>
                                             <p className="text-[11px] text-slate-400 mt-1 font-mono">
                                                 {user.user_code || `US-${String(user.user_id).padStart(4, '0')}`}
@@ -925,19 +910,17 @@ export default function UsersPage() {
                                         </div>
                                     </div>
 
-                                    {/* Name & Username */}
                                     <h4 className="text-base font-bold text-slate-900 truncate">
                                         {user.name}
                                     </h4>
-                                    <p className="text-xs text-slate-400 mb-3">
+                                    <p className="text-xs text-slate-400 mb-3 truncate">
                                         @{user.user_name} • <span className="text-slate-600 font-medium">{roleMeta.department}</span>
                                     </p>
 
-                                    {/* Contact Details */}
                                     <div className="space-y-1.5 py-2 border-y border-slate-100 text-xs text-slate-600">
                                         <div className="flex items-center justify-between">
                                             <span className="text-slate-400">📱 Mobile:</span>
-                                            <span className="font-medium text-slate-800">{user.phone || 'Not provided'}</span>
+                                            <span className="font-medium text-slate-800">{user.phone || 'Not set'}</span>
                                         </div>
                                         <div className="flex items-center justify-between">
                                             <span className="text-slate-400">🪪 ID No:</span>
@@ -954,7 +937,6 @@ export default function UsersPage() {
                                     </div>
                                 </div>
 
-                                {/* Footer Actions */}
                                 <div className="px-5 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
                                     <button
                                         onClick={() => toggleUserStatus(user)}
@@ -995,13 +977,10 @@ export default function UsersPage() {
                 </div>
             )}
 
-            {/* ═══════════════════════════════════════════════════════════════ */}
-            {/* ADD / EDIT STAFF MODAL (Bright White, Super Detailed)           */}
-            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* ─── ADD / EDIT STAFF MODAL ─── */}
             {showModal && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 my-8">
-                        {/* Header */}
                         <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-6 py-5 text-white">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -1021,15 +1000,12 @@ export default function UsersPage() {
                             </div>
                         </div>
 
-                        {/* Modal Body */}
                         <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
-                            {/* SECTION 1: Personal & Identification */}
                             <div>
                                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                                     <span>👤</span> 1. Personal & Government Identification
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Full Name */}
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             Official Full Name <span className="text-rose-500">*</span>
@@ -1038,13 +1014,11 @@ export default function UsersPage() {
                                             type="text"
                                             value={formData.name}
                                             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                            placeholder="e.g. Samuel Mwangi Kiprotich"
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                                            placeholder="e.g. Samuel Mwangi"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white text-sm"
                                             required
                                         />
                                     </div>
-
-                                    {/* Username */}
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             System Login Username <span className="text-rose-500">*</span>
@@ -1054,12 +1028,10 @@ export default function UsersPage() {
                                             value={formData.user_name}
                                             onChange={(e) => setFormData({ ...formData, user_name: e.target.value.toLowerCase().replace(/\s+/g, '') })}
                                             placeholder="e.g. samuel.m"
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm font-mono"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white text-sm font-mono"
                                             required
                                         />
                                     </div>
-
-                                    {/* Staff Code */}
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             Staff Code (System Assigned)
@@ -1071,8 +1043,6 @@ export default function UsersPage() {
                                             className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-mono text-sm cursor-not-allowed"
                                         />
                                     </div>
-
-                                    {/* National ID */}
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             Kenyan National ID / Passport Number
@@ -1082,19 +1052,17 @@ export default function UsersPage() {
                                             value={formData.national_id}
                                             onChange={(e) => setFormData({ ...formData, national_id: e.target.value })}
                                             placeholder="e.g. 29384751"
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white text-sm"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECTION 2: Contact Details */}
                             <div>
                                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                                     <span>📱</span> 2. Contact & Communications
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Mobile / M-Pesa Phone */}
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             Mobile Phone / M-Pesa Number
@@ -1104,11 +1072,9 @@ export default function UsersPage() {
                                             value={formData.phone}
                                             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                                             placeholder="0712 345 678"
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white text-sm"
                                         />
                                     </div>
-
-                                    {/* Email */}
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             Official Email Address
@@ -1118,13 +1084,12 @@ export default function UsersPage() {
                                             value={formData.email}
                                             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                             placeholder="staff@hotel.co.ke"
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white text-sm"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECTION 3: Role & Department Assignment */}
                             <div>
                                 <div className="flex items-center justify-between mb-3">
                                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -1132,14 +1097,12 @@ export default function UsersPage() {
                                     </h3>
                                     <Link
                                         href="/dashboard/user-roles"
-                                        target="_blank"
-                                        className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
+                                        className="text-xs text-blue-600 hover:text-blue-700 font-semibold"
                                     >
                                         ⚡ Customize Roles
                                     </Link>
                                 </div>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Role Selector */}
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             Assigned Hotel Role <span className="text-rose-500">*</span>
@@ -1155,7 +1118,7 @@ export default function UsersPage() {
                                                     department: roleObj?.department || formData.department,
                                                 });
                                             }}
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm cursor-pointer"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 text-sm cursor-pointer"
                                         >
                                             {roles.map(r => (
                                                 <option key={r.role_id} value={r.role_name}>
@@ -1164,8 +1127,6 @@ export default function UsersPage() {
                                             ))}
                                         </select>
                                     </div>
-
-                                    {/* Department Selector */}
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             Hospitality Department
@@ -1173,7 +1134,7 @@ export default function UsersPage() {
                                         <select
                                             value={formData.department}
                                             onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm cursor-pointer"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 text-sm cursor-pointer"
                                         >
                                             {HOTEL_DEPARTMENTS.filter(d => d.id !== 'all').map(d => (
                                                 <option key={d.id} value={d.name}>
@@ -1185,13 +1146,11 @@ export default function UsersPage() {
                                 </div>
                             </div>
 
-                            {/* SECTION 4: Credentials & POS PIN */}
                             <div>
                                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                                     <span>🔐</span> 4. System Login & POS Quick Access PIN
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Password */}
                                     <div>
                                         <div className="flex items-center justify-between mb-1.5">
                                             <label className="text-xs font-semibold text-slate-700">
@@ -1210,11 +1169,9 @@ export default function UsersPage() {
                                             value={formData.password}
                                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                                             placeholder={editingUser ? 'Leave blank to keep current' : 'Min. 6 characters'}
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 text-sm"
                                         />
                                     </div>
-
-                                    {/* POS Quick PIN */}
                                     <div>
                                         <div className="flex items-center justify-between mb-1.5">
                                             <label className="text-xs font-semibold text-slate-700">
@@ -1241,21 +1198,19 @@ export default function UsersPage() {
                                             type={showPin ? 'text' : 'password'}
                                             value={formData.pin}
                                             onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                                            placeholder="e.g. 1234 (Fast cashier login)"
+                                            placeholder="e.g. 1234"
                                             maxLength={6}
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm font-mono tracking-widest"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 text-sm font-mono tracking-widest"
                                         />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECTION 5: Payroll & Compensation */}
                             <div>
                                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
                                     <span>💵</span> 5. Compensation & Payroll (Kenya Shillings)
                                 </h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Salary Type */}
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             Payment Frequency
@@ -1263,14 +1218,12 @@ export default function UsersPage() {
                                         <select
                                             value={formData.salary_type}
                                             onChange={(e) => setFormData({ ...formData, salary_type: e.target.value as any })}
-                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm cursor-pointer"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 text-sm cursor-pointer"
                                         >
                                             <option value="Monthly">📅 Monthly Salary</option>
                                             <option value="Weekly">📆 Weekly Wage</option>
                                         </select>
                                     </div>
-
-                                    {/* Salary Amount */}
                                     <div>
                                         <label className="block text-xs font-semibold text-slate-700 mb-1.5">
                                             Gross Amount (KES)
@@ -1283,14 +1236,13 @@ export default function UsersPage() {
                                                 onChange={(e) => setFormData({ ...formData, salary_amount: parseFloat(e.target.value) || 0 })}
                                                 placeholder="0.00"
                                                 min="0"
-                                                className="w-full px-4 py-2.5 pl-14 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm font-semibold"
+                                                className="w-full px-4 py-2.5 pl-14 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 text-sm font-semibold"
                                             />
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Active Status Checkbox */}
                             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
                                 <label className="flex items-center gap-3 cursor-pointer">
                                     <input
@@ -1310,7 +1262,6 @@ export default function UsersPage() {
                                 </label>
                             </div>
 
-                            {/* Actions */}
                             <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
                                 <button
                                     type="button"
@@ -1341,13 +1292,10 @@ export default function UsersPage() {
                 </div>
             )}
 
-            {/* ═══════════════════════════════════════════════════════════════ */}
-            {/* VIEW STAFF DETAIL PROFILE MODAL                                 */}
-            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* ─── VIEW STAFF DETAIL PROFILE MODAL ─── */}
             {showDetailModal && selectedUser && (
                 <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
-                        {/* Profile Banner */}
                         {(() => {
                             const roleMeta = getRoleMeta(selectedUser.user_type);
                             return (
@@ -1375,7 +1323,6 @@ export default function UsersPage() {
                                         </div>
                                     </div>
 
-                                    {/* Detail Specs */}
                                     <div className="p-6 space-y-4">
                                         <div className="grid grid-cols-2 gap-3 text-sm">
                                             <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">

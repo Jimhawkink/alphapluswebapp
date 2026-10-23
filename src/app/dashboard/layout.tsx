@@ -452,7 +452,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <SettingsProvider>
-            <div className="min-h-screen bg-[#f0f5f4] flex font-sans">
+            <div className="min-h-screen bg-[#f0f5f4] flex font-sans w-full max-w-full overflow-x-hidden">
 
                 {/* ── SIDEBAR ── */}
                 {!isWaiter && (
