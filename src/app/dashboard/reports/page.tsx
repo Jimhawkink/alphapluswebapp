@@ -271,7 +271,6 @@ interface C2BTransactionRecord {
 export default function MasterReportsPage() {
     // ─── STATE MANAGEMENT ───────────────────────────────────────────────────────
     const [activeTab, setActiveTab] = useState<ReportTab>('overview');
-    const [departmentFilter, setDepartmentFilter] = useState<'all' | 'pos' | 'hotel' | 'kitchen'>('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [datePreset, setDatePreset] = useState<DatePreset>('all');
     
@@ -286,7 +285,6 @@ export default function MasterReportsPage() {
     // Data states
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [lastSyncTime, setLastSyncTime] = useState<string>('');
     const [autoRefresh, setAutoRefresh] = useState(false);
 
     // Records
@@ -294,7 +292,6 @@ export default function MasterReportsPage() {
     const [salesItems, setSalesItems] = useState<SaleItemRecord[]>([]);
     const [shifts, setShifts] = useState<ShiftRecord[]>([]);
     const [shiftExpenses, setShiftExpenses] = useState<ShiftExpense[]>([]);
-    const [shiftDrops, setShiftDrops] = useState<ShiftCashDrop[]>([]);
     const [products, setProducts] = useState<ProductRecord[]>([]);
     const [kitchenOrders, setKitchenOrders] = useState<KitchenOrderRecord[]>([]);
     const [hotelSales, setHotelSales] = useState<HotelSaleRecord[]>([]);
@@ -306,10 +303,6 @@ export default function MasterReportsPage() {
     const [spoilages, setSpoilages] = useState<DishSpoilageRecord[]>([]);
     const [batches, setBatches] = useState<ProductionBatchRecord[]>([]);
     const [c2bList, setC2bList] = useState<C2BTransactionRecord[]>([]);
-
-    // Drilldown Modals
-    const [selectedShiftForModal, setSelectedShiftForModal] = useState<ShiftRecord | null>(null);
-    const [selectedWaiterForModal, setSelectedWaiterForModal] = useState<string | null>(null);
 
     // ─── PRESET DATE CHANGER ───────────────────────────────────────────────────
     const applyDatePreset = (preset: DatePreset) => {
@@ -354,8 +347,6 @@ export default function MasterReportsPage() {
     const fetchMasterReports = useCallback(async () => {
         try {
             setRefreshing(true);
-            const fromIso = `${dateFrom}T00:00:00`;
-            const toIso = `${dateTo}T23:59:59`;
 
             // 1. Fetch Sales
             const { data: salesData, error: salesErr } = await supabase
@@ -388,18 +379,12 @@ export default function MasterReportsPage() {
                 .order('shift_date', { ascending: false });
             setShifts((shiftsData || []) as ShiftRecord[]);
 
-            // 4. Fetch Shift Expenses & Drops
+            // 4. Fetch Shift Expenses
             const { data: expData } = await supabase
                 .from('shift_expenses')
                 .select('*')
                 .order('recorded_at', { ascending: false });
             setShiftExpenses((expData || []) as ShiftExpense[]);
-
-            const { data: dropsData } = await supabase
-                .from('shift_cash_drops')
-                .select('*')
-                .order('drop_time', { ascending: false });
-            setShiftDrops((dropsData || []) as ShiftCashDrop[]);
 
             // 5. Fetch Products Catalog
             const { data: prodsData } = await supabase
@@ -478,7 +463,6 @@ export default function MasterReportsPage() {
                 .limit(100);
             setC2bList((c2bData || []) as C2BTransactionRecord[]);
 
-            setLastSyncTime(new Date().toLocaleTimeString());
         } catch (err: any) {
             console.error('Error in master report fetch:', err);
             toast.error('Sync issue: ' + (err.message || 'Check connection'));
@@ -648,9 +632,7 @@ export default function MasterReportsPage() {
         list.sort((a, b) => b.totalRevenue - a.totalRevenue);
 
         const top10 = list.slice(0, 10);
-        const slow10 = list.filter(p => p.qtySold > 0).slice(-10);
-
-        return { list, top10, slow10 };
+        return { list, top10 };
     }, [products, salesItems, searchQuery]);
 
     // ─── TAB 3: WAITER & STAFF PERFORMANCE ────────────────────────────────────
@@ -708,7 +690,6 @@ export default function MasterReportsPage() {
     // ─── TAB 4: SHIFTS AUDIT & Z-REPORTS ───────────────────────────────────────
     const shiftReportsList = useMemo(() => {
         return shifts.map(sh => {
-            // Find sales during shift if shift_id matched
             const shiftSales = sales.filter(s => s.shift_id === sh.shift_id);
             const calculatedSales = shiftSales.reduce((acc, s) => acc + (Number(s.total_amount) || 0), 0);
             const actualSales = sh.total_sales > 0 ? sh.total_sales : calculatedSales;
@@ -753,7 +734,6 @@ export default function MasterReportsPage() {
             avgCheck: t.ordersCount > 0 ? (t.revenue / t.ordersCount) : 0,
         })).sort((a, b) => b.revenue - a.revenue);
 
-        // KOT Speed Stats
         const totalKots = kitchenOrders.length;
         const pendingKots = kitchenOrders.filter(k => k.status === 'Pending').length;
         const servedKots = kitchenOrders.filter(k => k.status === 'Served' || k.served_at).length;
@@ -767,7 +747,6 @@ export default function MasterReportsPage() {
         let vatAmountTotal = 0;
         let levyTaxableBase = 0;
         let levyAmountTotal = 0;
-        let zeroRatedAmount = 0;
 
         sales.forEach(s => {
             const tot = Number(s.total_amount) || 0;
@@ -786,7 +765,6 @@ export default function MasterReportsPage() {
             vatAmountTotal,
             levyTaxableBase,
             levyAmountTotal,
-            zeroRatedAmount,
             totalFiscalized: sales.length,
         };
     }, [sales]);
@@ -827,8 +805,6 @@ export default function MasterReportsPage() {
             totalSpoilageLoss,
             totalBatchesProduced,
             totalBatchProductionCost,
-            spoilagesCount: spoilages.length,
-            batchesCount: batches.length,
         };
     }, [spoilages, batches]);
 
@@ -877,7 +853,7 @@ export default function MasterReportsPage() {
         let filename = `AlphaPlus_${activeTab}_report_${dateFrom}_to_${dateTo}.csv`;
 
         if (activeTab === 'overview' || activeTab === 'tax') {
-            headers = ['Receipt No', 'Date', 'Time', 'Customer', 'Waiter', 'Payment Method', 'Net Amount', 'VAT (16%)', 'Levy (2%)', 'Total (KES)', 'Status', 'KRA Hash'];
+            headers = ['Receipt No', 'Date', 'Time', 'Customer', 'Waiter', 'Payment Method', 'Net Amount', 'VAT (16%)', 'Levy (2%)', 'Total (KES)', 'Status'];
             rows = sales.map(s => [
                 s.receipt_no,
                 s.sale_date,
@@ -890,7 +866,6 @@ export default function MasterReportsPage() {
                 (s.levy_amount || 0).toFixed(2),
                 (s.total_amount || 0).toFixed(2),
                 s.status,
-                s.verification_hash || '—',
             ]);
         } else if (activeTab === 'items') {
             headers = ['Product Code', 'Dish Name', 'Category', 'Qty Sold', 'Unit Price', 'Unit Cost', 'Total Revenue', 'Total Cost', 'Gross Profit', 'Margin %'];
@@ -948,43 +923,6 @@ export default function MasterReportsPage() {
                 b.total_amount.toFixed(2),
                 b.status,
             ]);
-        } else if (activeTab === 'inventory') {
-            headers = ['Spoilage ID', 'Date', 'Product', 'Quantity', 'Unit Cost', 'Loss Amount', 'Type', 'Reason', 'Recorded By'];
-            rows = spoilages.map(sp => [
-                sp.spoilage_id.toString(),
-                sp.spoilage_date,
-                `"${sp.product_name}"`,
-                sp.quantity.toString(),
-                sp.unit_cost.toFixed(2),
-                sp.total_loss.toFixed(2),
-                sp.spoilage_type,
-                `"${sp.reason || 'None'}"`,
-                `"${sp.recorded_by || 'Staff'}"`,
-            ]);
-        } else if (activeTab === 'purchases') {
-            headers = ['Purchase No', 'Date', 'Supplier', 'Invoice No', 'Sub Total', 'VAT', 'Grand Total', 'Status', 'Payment'];
-            rows = purchases.map(p => [
-                p.purchase_no,
-                p.purchase_date,
-                `"${p.supplier_name || 'Supplier'}"`,
-                p.supplier_invoice || '—',
-                p.sub_total.toFixed(2),
-                p.vat.toFixed(2),
-                p.grand_total.toFixed(2),
-                p.status,
-                p.payment_status,
-            ]);
-        } else if (activeTab === 'mpesa') {
-            headers = ['Receipt No', 'Phone', 'Customer', 'Amount (KES)', 'Time', 'Linked Sale ID', 'Match Status'];
-            rows = c2bList.map(c => [
-                c.mpesa_receipt,
-                c.phone || '—',
-                `"${c.customer_name || 'Customer'}"`,
-                c.amount.toFixed(2),
-                c.transaction_time,
-                c.linked_sale_id ? c.linked_sale_id.toString() : '—',
-                c.is_linked ? 'Matched' : 'Unclaimed',
-            ]);
         } else {
             headers = ['Table / Section', 'Orders Count', 'Total Sales (KES)', 'Average Check'];
             rows = tableAndKotStats.tableList.map(t => [
@@ -1006,114 +944,224 @@ export default function MasterReportsPage() {
         toast.success(`Exported ${activeTab.toUpperCase()} CSV successfully!`);
     };
 
-    // ─── NATIVE PRINT ACTION ───────────────────────────────────────────────────
     const handlePrint = () => {
         window.print();
     };
 
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-100 p-3 md:p-6 space-y-6">
+        <div className="space-y-6 pb-12 text-slate-800">
             <Toaster position="top-right" />
 
-            {/* ─── PRINT CSS STYLING ─── */}
-            <style jsx global>{`
-                @media print {
-                    body {
-                        background: #ffffff !important;
-                        color: #000000 !important;
-                    }
-                    .no-print {
-                        display: none !important;
-                    }
-                    .print-only {
-                        display: block !important;
-                    }
-                    .print-clean {
-                        border: 1px solid #cbd5e1 !important;
-                        box-shadow: none !important;
-                        background: #ffffff !important;
-                        color: #000000 !important;
-                    }
-                }
-            `}</style>
-
-            {/* ─── HEADER & REAL-TIME CONTROLS ─── */}
-            <div className="no-print bg-slate-950/80 backdrop-blur-md border border-slate-800 rounded-3xl p-4 md:p-6 shadow-2xl">
-                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3.5">
-                        <div className="w-13 h-13 rounded-2xl bg-gradient-to-br from-indigo-500 via-purple-600 to-pink-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 text-2xl font-black">
-                            📊
-                        </div>
-                        <div>
-                            <div className="flex items-center gap-2.5 flex-wrap">
-                                <h1 className="text-xl md:text-2xl font-black tracking-tight text-white flex items-center gap-2">
-                                    AlphaPlus Master Reports & Analytics
+            {/* ─── Top Bar / Header matching Users Page ─── */}
+            <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm">
+                <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                        <span className="text-3xl md:text-4xl flex-shrink-0">📊</span>
+                        <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <h1 className="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">
+                                    Hotel & POS Master Reports Hub
                                 </h1>
-                                <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                                    LIVE DB V2.4
+                                <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-semibold">
+                                    LIVE ANALYTICS
                                 </span>
                             </div>
-                            <p className="text-xs text-slate-400 mt-1 font-medium">
-                                Comprehensive POS Ledger, Hotel PMS, KRA eTIMS Tax, Shifts Z-Reports, Waiters & Inventory Costing
+                            <p className="text-slate-500 text-xs md:text-sm mt-0.5 truncate">
+                                Real-time sales turnover, item profitability, waiter audits, cash shifts & KRA fiscal reports.
                             </p>
                         </div>
                     </div>
 
-                    {/* Top Right Actions */}
-                    <div className="flex items-center gap-2 flex-wrap self-stretch lg:self-auto justify-end">
-                        {/* Auto-Refresh Toggle */}
+                    {/* Action Buttons matching Users Page */}
+                    <div className="flex flex-wrap items-center gap-2">
                         <button
                             type="button"
                             onClick={() => setAutoRefresh(!autoRefresh)}
-                            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all flex items-center gap-1.5 ${
+                            className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-2xl border text-xs md:text-sm transition-all cursor-pointer ${
                                 autoRefresh 
-                                    ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300' 
-                                    : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white'
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700 font-semibold' 
+                                    : 'bg-white hover:bg-slate-50 text-slate-700 font-medium border-slate-200 shadow-sm'
                             }`}
                             title="Auto sync every 30s"
                         >
-                            <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-emerald-400 animate-ping' : 'bg-slate-500'}`} />
-                            <span>{autoRefresh ? 'Live (30s)' : 'Auto: Off'}</span>
+                            <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-emerald-500 animate-ping' : 'bg-slate-400'}`} />
+                            <span>{autoRefresh ? 'Auto Sync (30s)' : 'Auto: Off'}</span>
                         </button>
 
-                        {/* Live Sync Button */}
                         <button
                             type="button"
                             onClick={fetchMasterReports}
                             disabled={refreshing}
-                            className="px-4 py-2 rounded-xl text-xs font-black bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-2xl border border-slate-200 shadow-sm transition-all text-xs md:text-sm cursor-pointer disabled:opacity-50"
                         >
                             <span className={refreshing ? 'animate-spin' : ''}>🔄</span>
                             <span>{refreshing ? 'Syncing...' : 'Sync Live'}</span>
                         </button>
 
-                        {/* Export CSV */}
                         <button
                             type="button"
                             onClick={exportCSV}
-                            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-2xl border border-slate-200 shadow-sm transition-all text-xs md:text-sm cursor-pointer"
                         >
                             <span>📥</span>
                             <span>Export CSV</span>
                         </button>
 
-                        {/* Print Report */}
                         <button
                             type="button"
                             onClick={handlePrint}
-                            className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                            className="inline-flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-2xl border border-slate-200 shadow-sm transition-all text-xs md:text-sm cursor-pointer"
                         >
                             <span>🖨️</span>
-                            <span>Print Report</span>
+                            <span>Print</span>
                         </button>
                     </div>
                 </div>
 
-                {/* ─── DATE PRESETS & CUSTOM RANGE PICKER ─── */}
-                <div className="mt-5 pt-4 border-t border-slate-800/80 flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4">
+                {/* Sub-Reports Quick Links */}
+                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap text-xs">
+                    <span className="text-slate-400 font-semibold">Specialized Modules:</span>
+                    <Link href="/dashboard/reports/dish-report" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
+                        🍲 Dish Movement & Valuation
+                    </Link>
+                    <Link href="/dashboard/reports/pos" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
+                        🧾 Shift Cash Summaries
+                    </Link>
+                    <Link href="/dashboard/reports/recipe-report" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
+                        📋 Recipe Costing
+                    </Link>
+                    <Link href="/dashboard/shift-reports" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
+                        ⏱️ Shift Records
+                    </Link>
+                    <Link href="/dashboard/sales" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
+                        📈 Sales Ledger
+                    </Link>
+                </div>
+            </div>
+
+            {/* ─── KPI Stat Cards (Light Theme matching Users Page) ─── */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 w-full min-w-0">
+                {/* 1. Gross Turnover */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Gross Turnover</span>
+                        <span className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm flex-shrink-0">💰</span>
+                    </div>
+                    <p className="text-lg font-bold text-slate-900 mt-2 truncate">{fmt(masterMetrics.grandTotalRevenue)}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">POS + Hotel</p>
+                </div>
+
+                {/* 2. Net Turnover */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Net Sales</span>
+                        <span className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm flex-shrink-0">💵</span>
+                    </div>
+                    <p className="text-lg font-bold text-emerald-700 mt-2 truncate">{fmt(masterMetrics.grandNetTurnover)}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">Excl. KRA Taxes</p>
+                </div>
+
+                {/* 3. KRA Taxes */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">KRA Taxes</span>
+                        <span className="w-7 h-7 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-sm flex-shrink-0">🧾</span>
+                    </div>
+                    <p className="text-lg font-bold text-slate-900 mt-2 truncate">{fmt(masterMetrics.grandTotalTax)}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">16% VAT + 2% Levy</p>
+                </div>
+
+                {/* 4. Gross Profit */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Gross Profit</span>
+                        <span className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm flex-shrink-0">📈</span>
+                    </div>
+                    <p className="text-lg font-bold text-indigo-700 mt-2 truncate">{fmt(masterMetrics.grandGrossProfit)}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">{masterMetrics.profitMargin.toFixed(1)}% margin</p>
+                </div>
+
+                {/* 5. Total Transactions */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Total Bills</span>
+                        <span className="w-7 h-7 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-sm flex-shrink-0">🧾</span>
+                    </div>
+                    <p className="text-lg font-bold text-slate-900 mt-2 truncate">{fmtNum(masterMetrics.totalTransactions)}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">Settled orders</p>
+                </div>
+
+                {/* 6. Average Check */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Avg Check</span>
+                        <span className="w-7 h-7 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-sm flex-shrink-0">🎯</span>
+                    </div>
+                    <p className="text-lg font-bold text-slate-900 mt-2 truncate">{fmt(masterMetrics.avgOrderValue)}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">Per guest</p>
+                </div>
+
+                {/* 7. M-Pesa Flow */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">M-Pesa Flow</span>
+                        <span className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-sm flex-shrink-0">📱</span>
+                    </div>
+                    <p className="text-lg font-bold text-emerald-700 mt-2 truncate">{fmt(masterMetrics.mpesaTotal)}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">Mobile money</p>
+                </div>
+
+                {/* 8. Cash Drawer */}
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm min-w-0">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider truncate">Cash Drawer</span>
+                        <span className="w-7 h-7 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-sm flex-shrink-0">💵</span>
+                    </div>
+                    <p className="text-lg font-bold text-slate-900 mt-2 truncate">{fmt(masterMetrics.cashTotal)}</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5 truncate">Physical cash</p>
+                </div>
+            </div>
+
+            {/* ─── 10 Clean Tab Chips matching Users Page ─── */}
+            <div className="w-full max-w-full overflow-x-auto pb-1 scrollbar-none">
+                <div className="flex items-center gap-2 whitespace-nowrap">
+                    {[
+                        { id: 'overview', icon: '📊', label: 'Overview' },
+                        { id: 'items', icon: '🍲', label: 'Dish Performance' },
+                        { id: 'staff', icon: '🧑‍💼', label: 'Waiters & Staff' },
+                        { id: 'shifts', icon: '⏱️', label: 'Shifts & Z-Reports' },
+                        { id: 'tables', icon: '🪑', label: 'Tables & KOT' },
+                        { id: 'tax', icon: '🧾', label: 'KRA Tax eTIMS' },
+                        { id: 'hotel', icon: '🏨', label: 'Hotel PMS Rooms' },
+                        { id: 'inventory', icon: '📦', label: 'Inventory & Spoilage' },
+                        { id: 'purchases', icon: '🛒', label: 'Purchases & Suppliers' },
+                        { id: 'mpesa', icon: '📱', label: 'M-Pesa Reconciliation' },
+                    ].map(tab => {
+                        const isActive = activeTab === tab.id;
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id as ReportTab)}
+                                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all cursor-pointer ${
+                                    isActive
+                                        ? 'bg-slate-900 text-white shadow-sm'
+                                        : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                                }`}
+                            >
+                                <span>{tab.icon}</span>
+                                <span>{tab.label}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+            </div>
+
+            {/* ─── Date Filter & Search Toolbar ─── */}
+            <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm w-full min-w-0">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-3">
                     {/* Date Presets */}
                     <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-[11px] font-black uppercase text-slate-400 tracking-wider mr-1">Period:</span>
+                        <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider mr-1">Period:</span>
                         {[
                             { id: 'today', label: 'Today' },
                             { id: 'yesterday', label: 'Yesterday' },
@@ -1125,12 +1173,11 @@ export default function MasterReportsPage() {
                         ].map(p => (
                             <button
                                 key={p.id}
-                                type="button"
                                 onClick={() => applyDatePreset(p.id as DatePreset)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all ${
+                                className={`px-3 py-1 rounded-full text-xs font-semibold transition-all cursor-pointer ${
                                     datePreset === p.id 
-                                        ? 'bg-indigo-600 text-white shadow-sm' 
-                                        : 'bg-slate-900 text-slate-400 hover:text-white hover:bg-slate-800 border border-slate-800'
+                                        ? 'bg-blue-600 text-white shadow-sm' 
+                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                                 }`}
                             >
                                 {p.label}
@@ -1138,10 +1185,10 @@ export default function MasterReportsPage() {
                         ))}
                     </div>
 
-                    {/* Custom Range Inputs */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <div className="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800 text-xs">
-                            <span className="text-slate-400 font-bold">From:</span>
+                    {/* Custom Range & Search Input */}
+                    <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
+                        <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-2xl border border-slate-200 text-xs">
+                            <span className="text-slate-500 font-medium">From:</span>
                             <input
                                 type="date"
                                 value={dateFrom}
@@ -1149,11 +1196,11 @@ export default function MasterReportsPage() {
                                     setDateFrom(e.target.value);
                                     setDatePreset('custom');
                                 }}
-                                className="bg-transparent text-white focus:outline-none font-bold"
+                                className="bg-transparent text-slate-800 font-semibold focus:outline-none"
                             />
                         </div>
-                        <div className="flex items-center gap-1.5 bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-800 text-xs">
-                            <span className="text-slate-400 font-bold">To:</span>
+                        <div className="flex items-center gap-1.5 bg-slate-50 px-3 py-1.5 rounded-2xl border border-slate-200 text-xs">
+                            <span className="text-slate-500 font-medium">To:</span>
                             <input
                                 type="date"
                                 value={dateTo}
@@ -1161,24 +1208,23 @@ export default function MasterReportsPage() {
                                     setDateTo(e.target.value);
                                     setDatePreset('custom');
                                 }}
-                                className="bg-transparent text-white focus:outline-none font-bold"
+                                className="bg-transparent text-slate-800 font-semibold focus:outline-none"
                             />
                         </div>
 
-                        {/* Search Filter */}
-                        <div className="relative min-w-[200px]">
+                        {/* Search Input */}
+                        <div className="relative min-w-[200px] flex-1 md:flex-initial">
                             <input
                                 type="text"
-                                placeholder="Search active report..."
+                                placeholder="🔍 Search records..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+                                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white text-xs"
                             />
                             {searchQuery && (
                                 <button
-                                    type="button"
                                     onClick={() => setSearchQuery('')}
-                                    className="absolute right-2.5 top-1.5 text-slate-400 hover:text-white text-xs"
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs"
                                 >
                                     ✕
                                 </button>
@@ -1186,146 +1232,37 @@ export default function MasterReportsPage() {
                         </div>
                     </div>
                 </div>
-
-                {/* Sub-Reports Quick Links */}
-                <div className="mt-4 pt-3 border-t border-slate-800/50 flex items-center gap-2 flex-wrap text-xs">
-                    <span className="text-slate-500 font-bold">Quick Specialized Reports:</span>
-                    <Link href="/dashboard/reports/dish-report" className="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-indigo-400 border border-indigo-900/40 hover:border-indigo-500 transition-all font-bold">
-                        🍲 Dish Movement & Valuation
-                    </Link>
-                    <Link href="/dashboard/reports/pos" className="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-emerald-400 border border-emerald-900/40 hover:border-emerald-500 transition-all font-bold">
-                        🧾 Shift Cash Summaries
-                    </Link>
-                    <Link href="/dashboard/reports/recipe-report" className="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-pink-400 border border-pink-900/40 hover:border-pink-500 transition-all font-bold">
-                        📋 Recipe Costing & Food Margins
-                    </Link>
-                    <Link href="/dashboard/shift-reports" className="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-amber-400 border border-amber-900/40 hover:border-amber-500 transition-all font-bold">
-                        ⏱️ Shift Records Hub
-                    </Link>
-                    <Link href="/dashboard/sales" className="px-2.5 py-1 rounded-lg bg-slate-900/80 hover:bg-slate-800 text-cyan-400 border border-cyan-900/40 hover:border-cyan-500 transition-all font-bold">
-                        📈 Live Sales Ledger
-                    </Link>
-                </div>
             </div>
 
-            {/* ─── 8 MASSIVE HIGH-CONTRAST MASTER KPI CARDS ─── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-                {/* 1. Grand Turnover */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-indigo-950 via-slate-900 to-indigo-900 border border-indigo-800/50 rounded-2xl p-3.5 shadow-lg">
-                    <p className="text-[10px] font-black uppercase text-indigo-300 tracking-wider">💰 Gross Turnover</p>
-                    <p className="text-lg font-black text-white mt-1 truncate">{fmt(masterMetrics.grandTotalRevenue)}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 font-medium">POS + Hotel Rooms</p>
-                </div>
+            {/* ─── TAB CONTENT PANELS ─── */}
 
-                {/* 2. Net Sales Turnover */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-emerald-950 via-slate-900 to-teal-900 border border-emerald-800/50 rounded-2xl p-3.5 shadow-lg">
-                    <p className="text-[10px] font-black uppercase text-emerald-300 tracking-wider">💵 Net Turnover</p>
-                    <p className="text-lg font-black text-white mt-1 truncate">{fmt(masterMetrics.grandNetTurnover)}</p>
-                    <p className="text-[10px] text-emerald-400 mt-0.5 font-bold">Excl. KRA Taxes</p>
-                </div>
-
-                {/* 3. KRA Taxes Collected */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-amber-950 via-slate-900 to-orange-900 border border-amber-800/50 rounded-2xl p-3.5 shadow-lg">
-                    <p className="text-[10px] font-black uppercase text-amber-300 tracking-wider">🧾 KRA Taxes</p>
-                    <p className="text-lg font-black text-white mt-1 truncate">{fmt(masterMetrics.grandTotalTax)}</p>
-                    <p className="text-[10px] text-amber-400 mt-0.5 font-bold">VAT 16% + Levy 2%</p>
-                </div>
-
-                {/* 4. Gross Profit */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-purple-950 via-slate-900 to-purple-900 border border-purple-800/50 rounded-2xl p-3.5 shadow-lg">
-                    <p className="text-[10px] font-black uppercase text-purple-300 tracking-wider">📈 Gross Profit</p>
-                    <p className="text-lg font-black text-white mt-1 truncate">{fmt(masterMetrics.grandGrossProfit)}</p>
-                    <p className="text-[10px] text-purple-400 mt-0.5 font-bold">{masterMetrics.profitMargin.toFixed(1)}% margin</p>
-                </div>
-
-                {/* 5. Total Transactions */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-cyan-950 via-slate-900 to-cyan-900 border border-cyan-800/50 rounded-2xl p-3.5 shadow-lg">
-                    <p className="text-[10px] font-black uppercase text-cyan-300 tracking-wider">🧾 Total Bills</p>
-                    <p className="text-lg font-black text-white mt-1 truncate">{fmtNum(masterMetrics.totalTransactions)}</p>
-                    <p className="text-[10px] text-cyan-400 mt-0.5 font-medium">Orders settled</p>
-                </div>
-
-                {/* 6. Average Spend (AOV) */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-sky-950 via-slate-900 to-blue-900 border border-sky-800/50 rounded-2xl p-3.5 shadow-lg">
-                    <p className="text-[10px] font-black uppercase text-sky-300 tracking-wider">🎯 Avg Check</p>
-                    <p className="text-lg font-black text-white mt-1 truncate">{fmt(masterMetrics.avgOrderValue)}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Per dining guest</p>
-                </div>
-
-                {/* 7. M-Pesa Digital Flow */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-green-950 via-slate-900 to-emerald-950 border border-green-800/50 rounded-2xl p-3.5 shadow-lg">
-                    <p className="text-[10px] font-black uppercase text-green-300 tracking-wider">📱 M-Pesa Flow</p>
-                    <p className="text-lg font-black text-emerald-400 mt-1 truncate">{fmt(masterMetrics.mpesaTotal)}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Paybill & Till</p>
-                </div>
-
-                {/* 8. Cash Drawer Tenders */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 border border-slate-700 rounded-2xl p-3.5 shadow-lg">
-                    <p className="text-[10px] font-black uppercase text-slate-300 tracking-wider">💵 Cash Drawer</p>
-                    <p className="text-lg font-black text-white mt-1 truncate">{fmt(masterMetrics.cashTotal)}</p>
-                    <p className="text-[10px] text-slate-400 mt-0.5 font-medium">Physical cash</p>
-                </div>
-            </div>
-
-            {/* ─── 10 SUPER COMPREHENSIVE TABS SELECTOR ─── */}
-            <div className="no-print bg-slate-950 border border-slate-800 p-1.5 rounded-2xl shadow-xl flex items-center gap-1.5 overflow-x-auto">
-                {[
-                    { id: 'overview', icon: '📊', label: 'Master Overview' },
-                    { id: 'items', icon: '🍲', label: 'Dish Performance' },
-                    { id: 'staff', icon: '🧑‍💼', label: 'Waiters & Staff' },
-                    { id: 'shifts', icon: '⏱️', label: 'Shifts & Z-Reports' },
-                    { id: 'tables', icon: '🪑', label: 'Tables & KOT' },
-                    { id: 'tax', icon: '🧾', label: 'KRA Tax eTIMS' },
-                    { id: 'hotel', icon: '🏨', label: 'Hotel PMS Rooms' },
-                    { id: 'inventory', icon: '📦', label: 'Inventory & Spoilage' },
-                    { id: 'purchases', icon: '🛒', label: 'Purchases & Suppliers' },
-                    { id: 'mpesa', icon: '📱', label: 'M-Pesa Reconciliation' },
-                ].map(tab => (
-                    <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => setActiveTab(tab.id as ReportTab)}
-                        className={`px-3.5 py-2 rounded-xl text-xs font-black transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer ${
-                            activeTab === tab.id
-                                ? 'bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 text-white shadow-lg shadow-indigo-600/30'
-                                : 'text-slate-400 hover:text-white hover:bg-slate-900'
-                        }`}
-                    >
-                        <span>{tab.icon}</span>
-                        <span>{tab.label}</span>
-                    </button>
-                ))}
-            </div>
-
-            {/* ─── TAB CONTENT CONTAINERS ─── */}
-
-            {/* ─── TAB 1: MASTER OVERVIEW ─── */}
+            {/* ─── TAB 1: OVERVIEW ─── */}
             {activeTab === 'overview' && (
                 <div className="space-y-6">
-                    {/* Tender & Channel Breakdown */}
+                    {/* Breakdown Summary Cards */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        {/* 1. Tender Breakdown Card */}
-                        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                                <span>💳</span> Payment Tenders Distribution
+                        {/* 1. Tender Distribution */}
+                        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-4">
+                            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                <span>💳</span> Payment Tenders Breakdown
                             </h3>
                             <div className="space-y-3">
                                 {[
-                                    { label: 'M-Pesa Mobile Money', amt: masterMetrics.mpesaTotal, color: 'bg-emerald-500', barBg: 'bg-emerald-500/20' },
-                                    { label: 'Physical Cash Drawer', amt: masterMetrics.cashTotal, color: 'bg-amber-500', barBg: 'bg-amber-500/20' },
-                                    { label: 'Bank Card / Credit Folio', amt: masterMetrics.cardTotal, color: 'bg-indigo-500', barBg: 'bg-indigo-500/20' },
-                                    { label: 'Pending / Unsettled Balances', amt: masterMetrics.pendingTotal, color: 'bg-rose-500', barBg: 'bg-rose-500/20' },
+                                    { label: 'M-Pesa Mobile Money', amt: masterMetrics.mpesaTotal, color: 'bg-emerald-500' },
+                                    { label: 'Physical Cash Drawer', amt: masterMetrics.cashTotal, color: 'bg-slate-700' },
+                                    { label: 'Bank Card / Credit', amt: masterMetrics.cardTotal, color: 'bg-blue-600' },
+                                    { label: 'Pending / Unsettled', amt: masterMetrics.pendingTotal, color: 'bg-amber-500' },
                                 ].map((t, idx) => {
                                     const pct = masterMetrics.grandTotalRevenue > 0 
                                         ? ((t.amt / masterMetrics.grandTotalRevenue) * 100) 
                                         : 0;
                                     return (
-                                        <div key={idx} className="space-y-1">
-                                            <div className="flex justify-between text-xs font-bold">
-                                                <span className="text-slate-300">{t.label}</span>
-                                                <span className="text-white">{fmt(t.amt)} ({pct.toFixed(1)}%)</span>
+                                        <div key={idx} className="space-y-1 text-xs">
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-600 font-medium">{t.label}</span>
+                                                <span className="font-bold text-slate-900">{fmt(t.amt)} ({pct.toFixed(1)}%)</span>
                                             </div>
-                                            <div className="w-full h-2 rounded-full bg-slate-900 overflow-hidden">
+                                            <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
                                                 <div className={`h-full rounded-full ${t.color}`} style={{ width: `${Math.min(100, pct)}%` }} />
                                             </div>
                                         </div>
@@ -1334,74 +1271,72 @@ export default function MasterReportsPage() {
                             </div>
                         </div>
 
-                        {/* 2. Outlet Split (POS vs Hotel) */}
-                        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-300 flex items-center gap-2">
-                                <span>🏢</span> Revenue by Department Outlet
+                        {/* 2. Outlet Split */}
+                        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-4">
+                            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                <span>🏢</span> Revenue by Department
                             </h3>
-                            <div className="space-y-4">
-                                <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                            <div className="space-y-3">
+                                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
                                     <div>
-                                        <p className="text-xs font-black text-indigo-400 uppercase">🍽️ Restaurant & Bar POS</p>
-                                        <p className="text-lg font-black text-white mt-0.5">{fmt(masterMetrics.posGross)}</p>
-                                        <p className="text-[10px] text-slate-400">{sales.length} customer receipts</p>
+                                        <p className="text-xs font-bold text-blue-700">🍽️ Restaurant & Bar POS</p>
+                                        <p className="text-lg font-bold text-slate-900 mt-0.5">{fmt(masterMetrics.posGross)}</p>
+                                        <p className="text-[11px] text-slate-500">{sales.length} customer receipts</p>
                                     </div>
-                                    <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-500/20 text-indigo-300">
+                                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 text-blue-800">
                                         {masterMetrics.grandTotalRevenue > 0 ? ((masterMetrics.posGross / masterMetrics.grandTotalRevenue) * 100).toFixed(1) : 0}%
                                     </span>
                                 </div>
 
-                                <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-between">
+                                <div className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
                                     <div>
-                                        <p className="text-xs font-black text-purple-400 uppercase">🏨 Hotel Lodging & PMS</p>
-                                        <p className="text-lg font-black text-white mt-0.5">{fmt(masterMetrics.combinedHotel)}</p>
-                                        <p className="text-[10px] text-slate-400">{hotelBookings.length} rooms billed</p>
+                                        <p className="text-xs font-bold text-purple-700">🏨 Hotel Rooms & PMS</p>
+                                        <p className="text-lg font-bold text-slate-900 mt-0.5">{fmt(masterMetrics.combinedHotel)}</p>
+                                        <p className="text-[11px] text-slate-500">{hotelBookings.length} rooms billed</p>
                                     </div>
-                                    <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-purple-500/20 text-purple-300">
+                                    <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-purple-100 text-purple-800">
                                         {masterMetrics.grandTotalRevenue > 0 ? ((masterMetrics.combinedHotel / masterMetrics.grandTotalRevenue) * 100).toFixed(1) : 0}%
                                     </span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* 3. Executive Food & Margin Summary */}
-                        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-300 flex items-center gap-2">
+                        {/* 3. Margins & Food Cost */}
+                        <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-4">
+                            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                                 <span>⚖️</span> Cost of Goods & Margins
                             </h3>
                             <div className="space-y-2.5 text-xs">
-                                <div className="flex justify-between py-1.5 border-b border-slate-800">
-                                    <span className="text-slate-400">Total Dishes Sold:</span>
-                                    <span className="font-bold text-white">{salesItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0)} portions</span>
+                                <div className="flex justify-between py-1.5 border-b border-slate-100">
+                                    <span className="text-slate-500">Total Portions Sold:</span>
+                                    <span className="font-semibold text-slate-900">{salesItems.reduce((acc, i) => acc + (Number(i.quantity) || 1), 0)} items</span>
                                 </div>
-                                <div className="flex justify-between py-1.5 border-b border-slate-800">
-                                    <span className="text-slate-400">Total Food Cost (COGS):</span>
-                                    <span className="font-bold text-rose-400">{fmt(masterMetrics.grandCost)}</span>
+                                <div className="flex justify-between py-1.5 border-b border-slate-100">
+                                    <span className="text-slate-500">Food Cost (COGS):</span>
+                                    <span className="font-semibold text-slate-900">{fmt(masterMetrics.grandCost)}</span>
                                 </div>
-                                <div className="flex justify-between py-1.5 border-b border-slate-800">
-                                    <span className="text-slate-400">Total Discounts Granted:</span>
-                                    <span className="font-bold text-amber-400">{fmt(masterMetrics.posDiscount)}</span>
+                                <div className="flex justify-between py-1.5 border-b border-slate-100">
+                                    <span className="text-slate-500">Discounts Granted:</span>
+                                    <span className="font-semibold text-slate-900">{fmt(masterMetrics.posDiscount)}</span>
                                 </div>
-                                <div className="flex justify-between py-1.5 border-b border-slate-800">
-                                    <span className="text-slate-400">Overall Profitability:</span>
-                                    <span className="font-black text-emerald-400">{masterMetrics.profitMargin.toFixed(1)}% Gross Margin</span>
+                                <div className="flex justify-between py-1.5">
+                                    <span className="text-slate-500">Overall Profitability:</span>
+                                    <span className="font-bold text-emerald-600">{masterMetrics.profitMargin.toFixed(1)}% Gross Margin</span>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    {/* Recent Transaction Feed Table */}
-                    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                                <span>🧾</span> Recent Sales Invoices ({sales.length} Records)
+                    {/* Invoices Table matching Users Page */}
+                    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                <span>🧾</span> Sales Invoices Log ({sales.length} Records)
                             </h3>
-                            <span className="text-xs text-slate-500">Showing completed transactions in selected date range</span>
                         </div>
-
-                        <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                            <table className="w-full text-left text-xs text-slate-300">
-                                <thead className="bg-slate-900 text-[11px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs text-slate-700">
+                                <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                                     <tr>
                                         <th className="p-3">Receipt No</th>
                                         <th className="p-3">Date & Time</th>
@@ -1413,26 +1348,26 @@ export default function MasterReportsPage() {
                                         <th className="p-3">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800/60 font-medium">
+                                <tbody className="divide-y divide-slate-100 font-medium">
                                     {sales.slice(0, 15).map(s => (
-                                        <tr key={s.sale_id} className="hover:bg-slate-900/60 transition-colors">
-                                            <td className="p-3 font-bold text-indigo-400">{s.receipt_no}</td>
-                                            <td className="p-3">{s.sale_date} {s.sale_time || ''}</td>
+                                        <tr key={s.sale_id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="p-3 font-semibold text-blue-600">{s.receipt_no}</td>
+                                            <td className="p-3 text-slate-500">{s.sale_date} {s.sale_time || ''}</td>
                                             <td className="p-3">{s.table_name || s.table_no || 'Walk-in'}</td>
                                             <td className="p-3">{s.waiter_name || s.created_by || 'Staff'}</td>
                                             <td className="p-3">
-                                                <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold ${
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                                                     (s.payment_method || '').toLowerCase().includes('mpesa') 
-                                                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                                                        : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                                        : 'bg-slate-100 text-slate-700'
                                                 }`}>
                                                     {s.payment_method || 'Cash'}
                                                 </span>
                                             </td>
-                                            <td className="p-3 font-black text-white">{fmt(s.total_amount)}</td>
-                                            <td className="p-3 text-slate-400">{fmt(s.total_tax || (s.vat_amount + s.levy_amount))}</td>
+                                            <td className="p-3 font-bold text-slate-900">{fmt(s.total_amount)}</td>
+                                            <td className="p-3 text-slate-500">{fmt(s.total_tax || (s.vat_amount + s.levy_amount))}</td>
                                             <td className="p-3">
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                     {s.status}
                                                 </span>
                                             </td>
@@ -1440,7 +1375,7 @@ export default function MasterReportsPage() {
                                     ))}
                                     {sales.length === 0 && (
                                         <tr>
-                                            <td colSpan={8} className="p-8 text-center text-slate-500">
+                                            <td colSpan={8} className="p-8 text-center text-slate-400">
                                                 No sales transactions recorded in this period.
                                             </td>
                                         </tr>
@@ -1452,76 +1387,45 @@ export default function MasterReportsPage() {
                 </div>
             )}
 
-            {/* ─── TAB 2: DISH & MENU PERFORMANCE ─── */}
+            {/* ─── TAB 2: DISH PERFORMANCE ─── */}
             {activeTab === 'items' && (
                 <div className="space-y-6">
-                    {/* Top 10 Bestsellers vs Slow Movers Cards */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Top 10 Bestsellers */}
-                        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-emerald-400 flex items-center gap-2">
-                                <span>🏆</span> Top Revenue Star Dishes
-                            </h3>
-                            <div className="space-y-2">
-                                {productSalesStats.top10.map((p, idx) => (
-                                    <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900 border border-slate-800 text-xs">
-                                        <div className="flex items-center gap-2.5">
-                                            <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center font-black text-[10px]">
-                                                {idx + 1}
-                                            </span>
-                                            <div>
-                                                <p className="font-bold text-white">{p.name}</p>
-                                                <p className="text-[10px] text-slate-400">{p.qtySold} portions sold · {p.category}</p>
-                                            </div>
-                                        </div>
-                                        <div className="text-right">
-                                            <p className="font-black text-emerald-400">{fmt(p.totalRevenue)}</p>
-                                            <p className="text-[10px] text-slate-400">{fmt(p.profit)} profit</p>
+                    {/* Top Bestsellers Summary */}
+                    <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-4">
+                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <span>🏆</span> Top Revenue Star Dishes
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {productSalesStats.top10.slice(0, 6).map((p, idx) => (
+                                <div key={idx} className="p-3.5 rounded-2xl bg-slate-50 border border-slate-200/70 flex items-center justify-between text-xs">
+                                    <div className="flex items-center gap-2.5">
+                                        <span className="w-6 h-6 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold text-xs">
+                                            {idx + 1}
+                                        </span>
+                                        <div>
+                                            <p className="font-semibold text-slate-900">{p.name}</p>
+                                            <p className="text-[11px] text-slate-500">{p.qtySold} sold · {p.category}</p>
                                         </div>
                                     </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Category Contribution */}
-                        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-indigo-400 flex items-center gap-2">
-                                <span>📊</span> Product Mix & Margin Summary
-                            </h3>
-                            <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-3 text-xs">
-                                <div className="flex justify-between py-1 border-b border-slate-800">
-                                    <span className="text-slate-400">Total Products in Catalog:</span>
-                                    <span className="font-bold text-white">{products.length} menu items</span>
+                                    <div className="text-right">
+                                        <p className="font-bold text-slate-900">{fmt(p.totalRevenue)}</p>
+                                        <p className="text-[11px] text-emerald-600 font-semibold">{fmt(p.profit)} profit</p>
+                                    </div>
                                 </div>
-                                <div className="flex justify-between py-1 border-b border-slate-800">
-                                    <span className="text-slate-400">Active Dishes with Sales:</span>
-                                    <span className="font-bold text-emerald-400">{productSalesStats.list.filter(p => p.qtySold > 0).length} selling</span>
-                                </div>
-                                <div className="flex justify-between py-1 border-b border-slate-800">
-                                    <span className="text-slate-400">Total Portions Served:</span>
-                                    <span className="font-black text-white">{productSalesStats.list.reduce((acc, p) => acc + p.qtySold, 0)} portions</span>
-                                </div>
-                                <div className="flex justify-between py-1">
-                                    <span className="text-slate-400">Average Dish Selling Price:</span>
-                                    <span className="font-bold text-indigo-400">
-                                        {fmt(products.length > 0 ? (products.reduce((acc, p) => acc + (Number(p.sales_cost) || 0), 0) / products.length) : 0)}
-                                    </span>
-                                </div>
-                            </div>
+                            ))}
                         </div>
                     </div>
 
                     {/* Master Itemized Product Table */}
-                    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-200">
-                                Full Menu Item Performance Ledger ({productSalesStats.list.length} Items)
+                    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-900">
+                                Menu Item Performance Ledger ({productSalesStats.list.length} Items)
                             </h3>
                         </div>
-
-                        <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                            <table className="w-full text-left text-xs text-slate-300">
-                                <thead className="bg-slate-900 text-[11px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs text-slate-700">
+                                <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                                     <tr>
                                         <th className="p-3">Code</th>
                                         <th className="p-3">Dish / Item Name</th>
@@ -1535,27 +1439,27 @@ export default function MasterReportsPage() {
                                         <th className="p-3">Margin %</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800/60 font-medium">
+                                <tbody className="divide-y divide-slate-100 font-medium">
                                     {productSalesStats.list.map((p, idx) => {
                                         const margin = p.totalRevenue > 0 ? ((p.profit / p.totalRevenue) * 100) : 0;
                                         return (
-                                            <tr key={idx} className="hover:bg-slate-900/60 transition-colors">
-                                                <td className="p-3 font-mono text-slate-400">{p.code}</td>
-                                                <td className="p-3 font-bold text-white">{p.name}</td>
+                                            <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                                                <td className="p-3 font-mono text-slate-500">{p.code}</td>
+                                                <td className="p-3 font-semibold text-slate-900">{p.name}</td>
                                                 <td className="p-3">
-                                                    <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-900 border border-slate-800 text-slate-300">
+                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-700">
                                                         {p.category}
                                                     </span>
                                                 </td>
-                                                <td className="p-3 font-black text-indigo-400">{p.qtySold}</td>
+                                                <td className="p-3 font-bold text-blue-600">{p.qtySold}</td>
                                                 <td className="p-3">{fmt(p.unitPrice)}</td>
-                                                <td className="p-3 text-slate-400">{fmt(p.unitCost)}</td>
-                                                <td className="p-3 font-black text-emerald-400">{fmt(p.totalRevenue)}</td>
-                                                <td className="p-3 text-rose-400">{fmt(p.totalCost)}</td>
-                                                <td className="p-3 font-bold text-purple-300">{fmt(p.profit)}</td>
+                                                <td className="p-3 text-slate-500">{fmt(p.unitCost)}</td>
+                                                <td className="p-3 font-bold text-slate-900">{fmt(p.totalRevenue)}</td>
+                                                <td className="p-3 text-slate-500">{fmt(p.totalCost)}</td>
+                                                <td className="p-3 font-semibold text-emerald-600">{fmt(p.profit)}</td>
                                                 <td className="p-3">
-                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                                                        margin >= 50 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                                        margin >= 50 ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-700'
                                                     }`}>
                                                         {margin.toFixed(1)}%
                                                     </span>
@@ -1570,267 +1474,237 @@ export default function MasterReportsPage() {
                 </div>
             )}
 
-            {/* ─── TAB 3: WAITERS & CASHIER STAFF ─── */}
+            {/* ─── TAB 3: WAITERS & STAFF ─── */}
             {activeTab === 'staff' && (
-                <div className="space-y-6">
-                    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                                <span>🧑‍💼</span> Staff & Waiter Sales Leaderboard ({waiterStats.length} Staff Members)
-                            </h3>
-                            <span className="text-xs text-slate-500">Performance rankings by total turnover generated</span>
-                        </div>
-
-                        <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                            <table className="w-full text-left text-xs text-slate-300">
-                                <thead className="bg-slate-900 text-[11px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800">
-                                    <tr>
-                                        <th className="p-3">Rank</th>
-                                        <th className="p-3">Staff Name</th>
-                                        <th className="p-3">Role</th>
-                                        <th className="p-3">Bills Created</th>
-                                        <th className="p-3">Gross Sales</th>
-                                        <th className="p-3">Avg Ticket Size</th>
-                                        <th className="p-3">Discounts</th>
-                                        <th className="p-3">Cash Handled</th>
-                                        <th className="p-3">M-Pesa Handled</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-800/60 font-medium">
-                                    {waiterStats.map((w, idx) => (
-                                        <tr key={idx} className="hover:bg-slate-900/60 transition-colors">
-                                            <td className="p-3">
-                                                <span className={`w-6 h-6 rounded-full flex items-center justify-center font-black text-xs ${
-                                                    idx === 0 ? 'bg-amber-500 text-black' : idx === 1 ? 'bg-slate-300 text-black' : 'bg-slate-800 text-slate-300'
-                                                }`}>
-                                                    {idx + 1}
-                                                </span>
-                                            </td>
-                                            <td className="p-3 font-bold text-white text-sm">{w.name}</td>
-                                            <td className="p-3 text-slate-400">{w.role}</td>
-                                            <td className="p-3 font-black text-indigo-400">{w.billsCount}</td>
-                                            <td className="p-3 font-black text-emerald-400 text-sm">{fmt(w.totalSales)}</td>
-                                            <td className="p-3 text-cyan-300 font-bold">{fmt(w.avgCheck)}</td>
-                                            <td className="p-3 text-rose-400">{fmt(w.discounts)}</td>
-                                            <td className="p-3 text-amber-300">{fmt(w.cashCollected)}</td>
-                                            <td className="p-3 text-emerald-300">{fmt(w.mpesaCollected)}</td>
-                                        </tr>
-                                    ))}
-                                    {waiterStats.length === 0 && (
-                                        <tr>
-                                            <td colSpan={9} className="p-8 text-center text-slate-500">
-                                                No waiter or staff sales found for this period.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
+                <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-slate-100">
+                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <span>🧑‍💼</span> Staff & Waiter Sales Roster ({waiterStats.length} Staff Members)
+                        </h3>
                     </div>
-                </div>
-            )}
-
-            {/* ─── TAB 4: SHIFTS AUDIT & Z-REPORTS ─── */}
-            {activeTab === 'shifts' && (
-                <div className="space-y-6">
-                    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                        <div className="flex items-center justify-between">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                                <span>⏱️</span> Shift Drawer Audits & Z-Reports ({shiftReportsList.length} Shifts)
-                            </h3>
-                            <span className="text-xs text-slate-500">Cash variance reconciliation & drawer safe counts</span>
-                        </div>
-
-                        <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                            <table className="w-full text-left text-xs text-slate-300">
-                                <thead className="bg-slate-900 text-[11px] font-black uppercase tracking-wider text-slate-400 border-b border-slate-800">
-                                    <tr>
-                                        <th className="p-3">Shift ID</th>
-                                        <th className="p-3">Date</th>
-                                        <th className="p-3">Type</th>
-                                        <th className="p-3">Opened By</th>
-                                        <th className="p-3">Opening Cash</th>
-                                        <th className="p-3">Sales Generated</th>
-                                        <th className="p-3">Petty Expenses</th>
-                                        <th className="p-3">Expected Drawer</th>
-                                        <th className="p-3">Closing Count</th>
-                                        <th className="p-3">Variance</th>
-                                        <th className="p-3">Status</th>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs text-slate-700">
+                            <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                                <tr>
+                                    <th className="p-3">Rank</th>
+                                    <th className="p-3">Staff Name</th>
+                                    <th className="p-3">Role</th>
+                                    <th className="p-3">Bills Created</th>
+                                    <th className="p-3">Gross Sales</th>
+                                    <th className="p-3">Avg Ticket</th>
+                                    <th className="p-3">Discounts</th>
+                                    <th className="p-3">Cash Handled</th>
+                                    <th className="p-3">M-Pesa Handled</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-medium">
+                                {waiterStats.map((w, idx) => (
+                                    <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                                        <td className="p-3">
+                                            <span className={`w-6 h-6 rounded-xl flex items-center justify-center font-bold text-xs ${
+                                                idx === 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+                                            }`}>
+                                                {idx + 1}
+                                            </span>
+                                        </td>
+                                        <td className="p-3 font-semibold text-slate-900">{w.name}</td>
+                                        <td className="p-3 text-slate-500">{w.role}</td>
+                                        <td className="p-3 font-bold text-blue-600">{w.billsCount}</td>
+                                        <td className="p-3 font-bold text-slate-900">{fmt(w.totalSales)}</td>
+                                        <td className="p-3 text-slate-600 font-semibold">{fmt(w.avgCheck)}</td>
+                                        <td className="p-3 text-slate-500">{fmt(w.discounts)}</td>
+                                        <td className="p-3 text-slate-700">{fmt(w.cashCollected)}</td>
+                                        <td className="p-3 text-emerald-700 font-semibold">{fmt(w.mpesaCollected)}</td>
                                     </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-800/60 font-medium">
-                                    {shiftReportsList.map(sh => (
-                                        <tr key={sh.shift_id} className="hover:bg-slate-900/60 transition-colors">
-                                            <td className="p-3 font-mono font-bold text-indigo-400">SH-{sh.shift_id}</td>
-                                            <td className="p-3">{sh.shift_date}</td>
-                                            <td className="p-3 font-bold text-white">{sh.shift_type}</td>
-                                            <td className="p-3">{sh.opened_by}</td>
-                                            <td className="p-3 text-slate-300">{fmt(sh.opening_cash)}</td>
-                                            <td className="p-3 font-bold text-emerald-400">{fmt(sh.total_sales)}</td>
-                                            <td className="p-3 text-rose-400">{fmt(sh.expTotal)}</td>
-                                            <td className="p-3 font-bold text-cyan-300">{fmt(sh.expectedDrawer)}</td>
-                                            <td className="p-3 font-black text-white">{fmt(sh.computedClosing)}</td>
-                                            <td className="p-3">
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                                                    sh.computedVariance >= 0 ? 'bg-emerald-500/20 text-emerald-300' : 'bg-rose-500/20 text-rose-300'
-                                                }`}>
-                                                    {sh.computedVariance >= 0 ? '+' : ''}{fmt(sh.computedVariance)}
-                                                </span>
-                                            </td>
-                                            <td className="p-3">
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                    sh.status === 'Open' ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-400'
-                                                }`}>
-                                                    {sh.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    {shiftReportsList.length === 0 && (
-                                        <tr>
-                                            <td colSpan={11} className="p-8 text-center text-slate-500">
-                                                No shift records found.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* ─── TAB 5: TABLES & KITCHEN KOT ─── */}
-            {activeTab === 'tables' && (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Table Revenue Ranking */}
-                        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                                <span>🪑</span> Dining Floor & Table Performance
-                            </h3>
-                            <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                                <table className="w-full text-left text-xs text-slate-300">
-                                    <thead className="bg-slate-900 text-[11px] font-black uppercase text-slate-400 border-b border-slate-800">
-                                        <tr>
-                                            <th className="p-3">Table Name</th>
-                                            <th className="p-3">Bills Count</th>
-                                            <th className="p-3">Total Sales</th>
-                                            <th className="p-3">Avg Check</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-800/60 font-medium">
-                                        {tableAndKotStats.tableList.map((t, idx) => (
-                                            <tr key={idx} className="hover:bg-slate-900/60 transition-colors">
-                                                <td className="p-3 font-bold text-white">{t.name}</td>
-                                                <td className="p-3 font-bold text-indigo-400">{t.ordersCount}</td>
-                                                <td className="p-3 font-black text-emerald-400">{fmt(t.revenue)}</td>
-                                                <td className="p-3 text-cyan-300">{fmt(t.avgCheck)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        {/* Kitchen KOT Performance */}
-                        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                                <span>🍳</span> Kitchen Orders (KOT) Speed & Volume
-                            </h3>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-center">
-                                    <p className="text-[10px] font-bold uppercase text-slate-400">Total KOTs</p>
-                                    <p className="text-xl font-black text-white mt-1">{tableAndKotStats.totalKots}</p>
-                                </div>
-                                <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-center">
-                                    <p className="text-[10px] font-bold uppercase text-amber-400">Pending</p>
-                                    <p className="text-xl font-black text-amber-400 mt-1">{tableAndKotStats.pendingKots}</p>
-                                </div>
-                                <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 text-center">
-                                    <p className="text-[10px] font-bold uppercase text-emerald-400">Served</p>
-                                    <p className="text-xl font-black text-emerald-400 mt-1">{tableAndKotStats.servedKots}</p>
-                                </div>
-                            </div>
-
-                            {/* Recent KOTs */}
-                            <div className="space-y-2 mt-4">
-                                {kitchenOrders.slice(0, 5).map(k => (
-                                    <div key={k.kot_id} className="p-2.5 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-between text-xs">
-                                        <div>
-                                            <p className="font-bold text-indigo-300">{k.kot_number} · Table {k.table_name || 'Floor'}</p>
-                                            <p className="text-[10px] text-slate-500">Waiter: {k.waiter_name || 'Staff'}</p>
-                                        </div>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                            k.status === 'Served' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
-                                        }`}>
-                                            {k.status}
-                                        </span>
-                                    </div>
                                 ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── TAB 4: SHIFTS & Z-REPORTS ─── */}
+            {activeTab === 'shifts' && (
+                <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-slate-100">
+                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <span>⏱️</span> Shift Drawer Reconciliations & Z-Reports ({shiftReportsList.length} Shifts)
+                        </h3>
+                    </div>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs text-slate-700">
+                            <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                                <tr>
+                                    <th className="p-3">Shift ID</th>
+                                    <th className="p-3">Date</th>
+                                    <th className="p-3">Type</th>
+                                    <th className="p-3">Cashier</th>
+                                    <th className="p-3">Opening Cash</th>
+                                    <th className="p-3">Sales Generated</th>
+                                    <th className="p-3">Petty Expenses</th>
+                                    <th className="p-3">Expected Drawer</th>
+                                    <th className="p-3">Closing Count</th>
+                                    <th className="p-3">Variance</th>
+                                    <th className="p-3">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-medium">
+                                {shiftReportsList.map(sh => (
+                                    <tr key={sh.shift_id} className="hover:bg-slate-50/80 transition-colors">
+                                        <td className="p-3 font-mono font-semibold text-blue-600">SH-{sh.shift_id}</td>
+                                        <td className="p-3 text-slate-500">{sh.shift_date}</td>
+                                        <td className="p-3 font-medium text-slate-900">{sh.shift_type}</td>
+                                        <td className="p-3">{sh.opened_by}</td>
+                                        <td className="p-3 text-slate-600">{fmt(sh.opening_cash)}</td>
+                                        <td className="p-3 font-bold text-slate-900">{fmt(sh.total_sales)}</td>
+                                        <td className="p-3 text-slate-500">{fmt(sh.expTotal)}</td>
+                                        <td className="p-3 font-medium text-slate-900">{fmt(sh.expectedDrawer)}</td>
+                                        <td className="p-3 font-bold text-slate-900">{fmt(sh.computedClosing)}</td>
+                                        <td className="p-3">
+                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                                sh.computedVariance >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'
+                                            }`}>
+                                                {sh.computedVariance >= 0 ? '+' : ''}{fmt(sh.computedVariance)}
+                                            </span>
+                                        </td>
+                                        <td className="p-3">
+                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-700">
+                                                {sh.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── TAB 5: TABLES & KITCHEN ─── */}
+            {activeTab === 'tables' && (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Table Sales */}
+                    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                <span>🪑</span> Dining Floor & Tables
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs text-slate-700">
+                                <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                                    <tr>
+                                        <th className="p-3">Table Name</th>
+                                        <th className="p-3">Bills Count</th>
+                                        <th className="p-3">Total Sales</th>
+                                        <th className="p-3">Avg Check</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 font-medium">
+                                    {tableAndKotStats.tableList.map((t, idx) => (
+                                        <tr key={idx} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="p-3 font-semibold text-slate-900">{t.name}</td>
+                                            <td className="p-3 font-bold text-blue-600">{t.ordersCount}</td>
+                                            <td className="p-3 font-bold text-slate-900">{fmt(t.revenue)}</td>
+                                            <td className="p-3 text-slate-600">{fmt(t.avgCheck)}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* KOT Speed */}
+                    <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm space-y-4">
+                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <span>🍳</span> Kitchen Orders (KOT) Volume
+                        </h3>
+                        <div className="grid grid-cols-3 gap-3">
+                            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/70 text-center">
+                                <p className="text-[11px] font-semibold text-slate-500 uppercase">Total KOTs</p>
+                                <p className="text-2xl font-bold text-slate-900 mt-1">{tableAndKotStats.totalKots}</p>
                             </div>
+                            <div className="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/50 text-center">
+                                <p className="text-[11px] font-semibold text-amber-700 uppercase">Pending</p>
+                                <p className="text-2xl font-bold text-amber-800 mt-1">{tableAndKotStats.pendingKots}</p>
+                            </div>
+                            <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-200/50 text-center">
+                                <p className="text-[11px] font-semibold text-emerald-700 uppercase">Served</p>
+                                <p className="text-2xl font-bold text-emerald-800 mt-1">{tableAndKotStats.servedKots}</p>
+                            </div>
+                        </div>
+
+                        {/* Recent KOTs */}
+                        <div className="space-y-2 pt-2">
+                            {kitchenOrders.slice(0, 5).map(k => (
+                                <div key={k.kot_id} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between text-xs">
+                                    <div>
+                                        <p className="font-semibold text-slate-900">{k.kot_number} · Table {k.table_name || 'Floor'}</p>
+                                        <p className="text-[11px] text-slate-500">Waiter: {k.waiter_name || 'Staff'}</p>
+                                    </div>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        {k.status}
+                                    </span>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 </div>
             )}
 
-            {/* ─── TAB 6: KRA TAX & ETIMS COMPLIANCE ─── */}
+            {/* ─── TAB 6: KRA TAX ─── */}
             {activeTab === 'tax' && (
                 <div className="space-y-6">
-                    {/* KRA Metrics Cards */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-slate-400">VAT 16% Taxable Base</p>
-                            <p className="text-xl font-black text-white mt-1">{fmt(taxFiscalStats.vatTaxableBase)}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Net turnover before VAT</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">VAT 16% Base</span>
+                            <p className="text-xl font-bold text-slate-900 mt-1">{fmt(taxFiscalStats.vatTaxableBase)}</p>
                         </div>
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-amber-400">16% VAT Output Tax</p>
-                            <p className="text-xl font-black text-amber-400 mt-1">{fmt(taxFiscalStats.vatAmountTotal)}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Payable to KRA</p>
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">16% VAT Collected</span>
+                            <p className="text-xl font-bold text-slate-900 mt-1">{fmt(taxFiscalStats.vatAmountTotal)}</p>
                         </div>
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-cyan-400">2% Catering Tourism Levy</p>
-                            <p className="text-xl font-black text-cyan-400 mt-1">{fmt(taxFiscalStats.levyAmountTotal)}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Tourism fund levy</p>
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">2% Tourism Levy</span>
+                            <p className="text-xl font-bold text-slate-900 mt-1">{fmt(taxFiscalStats.levyAmountTotal)}</p>
                         </div>
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-emerald-400">Total Fiscal Receipts</p>
-                            <p className="text-xl font-black text-emerald-400 mt-1">{taxFiscalStats.totalFiscalized}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">eTIMS compliant invoices</p>
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Fiscal Invoices</span>
+                            <p className="text-xl font-bold text-emerald-700 mt-1">{taxFiscalStats.totalFiscalized}</p>
                         </div>
                     </div>
 
-                    {/* Fiscal Invoices Table */}
-                    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-200">
-                            Kenya Revenue Authority (eTIMS) Tax Invoice Register
-                        </h3>
-                        <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                            <table className="w-full text-left text-xs text-slate-300">
-                                <thead className="bg-slate-900 text-[11px] font-black uppercase text-slate-400 border-b border-slate-800">
+                    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-900">
+                                Kenya Revenue Authority (eTIMS) Tax Invoices
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs text-slate-700">
+                                <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                                     <tr>
                                         <th className="p-3">Receipt No</th>
                                         <th className="p-3">Date</th>
-                                        <th className="p-3">Customer / PIN</th>
-                                        <th className="p-3">Net Taxable Base</th>
+                                        <th className="p-3">Customer</th>
+                                        <th className="p-3">Net Taxable</th>
                                         <th className="p-3">16% VAT</th>
                                         <th className="p-3">2% Levy</th>
                                         <th className="p-3">Gross Total</th>
-                                        <th className="p-3">Verification Hash</th>
+                                        <th className="p-3">KRA Hash</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800/60 font-medium">
+                                <tbody className="divide-y divide-slate-100 font-medium">
                                     {sales.map(s => (
-                                        <tr key={s.sale_id} className="hover:bg-slate-900/60 transition-colors">
-                                            <td className="p-3 font-mono font-bold text-indigo-400">{s.receipt_no}</td>
-                                            <td className="p-3">{s.sale_date}</td>
-                                            <td className="p-3">{s.customer_name || 'Walk-in Consumer'}</td>
+                                        <tr key={s.sale_id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="p-3 font-mono font-semibold text-blue-600">{s.receipt_no}</td>
+                                            <td className="p-3 text-slate-500">{s.sale_date}</td>
+                                            <td className="p-3">{s.customer_name || 'Walk-in'}</td>
                                             <td className="p-3">{fmt(s.net_amount || s.subtotal)}</td>
-                                            <td className="p-3 text-amber-300">{fmt(s.vat_amount)}</td>
-                                            <td className="p-3 text-cyan-300">{fmt(s.levy_amount)}</td>
-                                            <td className="p-3 font-black text-white">{fmt(s.total_amount)}</td>
-                                            <td className="p-3 font-mono text-[10px] text-slate-500 truncate max-w-[150px]">
+                                            <td className="p-3 font-semibold text-slate-900">{fmt(s.vat_amount)}</td>
+                                            <td className="p-3 text-slate-600">{fmt(s.levy_amount)}</td>
+                                            <td className="p-3 font-bold text-slate-900">{fmt(s.total_amount)}</td>
+                                            <td className="p-3 font-mono text-[10px] text-slate-400 truncate max-w-[150px]">
                                                 {s.verification_hash || 'KRA-VALIDATED'}
                                             </td>
                                         </tr>
@@ -1842,41 +1716,37 @@ export default function MasterReportsPage() {
                 </div>
             )}
 
-            {/* ─── TAB 7: HOTEL PMS & ROOMS ─── */}
+            {/* ─── TAB 7: HOTEL PMS ─── */}
             {activeTab === 'hotel' && (
                 <div className="space-y-6">
-                    {/* Hotel KPIs */}
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-slate-400">Occupancy Rate</p>
-                            <p className="text-xl font-black text-indigo-400 mt-1">{hotelStats.occupancyRate.toFixed(1)}%</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">{hotelStats.occupiedRooms} / {hotelStats.totalRooms} rooms</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Occupancy</span>
+                            <p className="text-xl font-bold text-slate-900 mt-1">{hotelStats.occupancyRate.toFixed(1)}%</p>
                         </div>
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-emerald-400">Total Room Charges</p>
-                            <p className="text-xl font-black text-emerald-400 mt-1">{fmt(hotelStats.totalRoomCharges)}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Accommodation revenue</p>
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Room Revenue</span>
+                            <p className="text-xl font-bold text-slate-900 mt-1">{fmt(hotelStats.totalRoomCharges)}</p>
                         </div>
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-purple-400">Room Folio F&B Charges</p>
-                            <p className="text-xl font-black text-purple-400 mt-1">{fmt(hotelStats.totalRestaurantCharges)}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Charged to guest rooms</p>
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Room F&B Charged</span>
+                            <p className="text-xl font-bold text-slate-900 mt-1">{fmt(hotelStats.totalRestaurantCharges)}</p>
                         </div>
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-amber-400">ADR (Avg Daily Rate)</p>
-                            <p className="text-xl font-black text-amber-400 mt-1">{fmt(hotelStats.adr)}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">RevPAR: {fmt(hotelStats.revpar)}</p>
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">ADR (Avg Daily Rate)</span>
+                            <p className="text-xl font-bold text-slate-900 mt-1">{fmt(hotelStats.adr)}</p>
                         </div>
                     </div>
 
-                    {/* Bookings Folio Table */}
-                    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-200">
-                            Hotel Guest Bookings & Folios ({hotelBookings.length} Bookings)
-                        </h3>
-                        <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                            <table className="w-full text-left text-xs text-slate-300">
-                                <thead className="bg-slate-900 text-[11px] font-black uppercase text-slate-400 border-b border-slate-800">
+                    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-900">
+                                Guest Bookings & Folios ({hotelBookings.length} Bookings)
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs text-slate-700">
+                                <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                                     <tr>
                                         <th className="p-3">Booking No</th>
                                         <th className="p-3">Guest Name</th>
@@ -1888,18 +1758,18 @@ export default function MasterReportsPage() {
                                         <th className="p-3">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800/60 font-medium">
+                                <tbody className="divide-y divide-slate-100 font-medium">
                                     {hotelBookings.map(b => (
-                                        <tr key={b.booking_id} className="hover:bg-slate-900/60 transition-colors">
-                                            <td className="p-3 font-mono font-bold text-indigo-400">{b.booking_no}</td>
-                                            <td className="p-3 font-bold text-white">{b.guest_name || 'Guest'}</td>
-                                            <td className="p-3">{b.room_number || '—'} ({b.room_type_name || 'Room'})</td>
-                                            <td className="p-3">{b.check_in_date} to {b.check_out_date || 'Ongoing'} ({b.nights}n)</td>
+                                        <tr key={b.booking_id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="p-3 font-mono font-semibold text-blue-600">{b.booking_no}</td>
+                                            <td className="p-3 font-semibold text-slate-900">{b.guest_name || 'Guest'}</td>
+                                            <td className="p-3">{b.room_number || '—'}</td>
+                                            <td className="p-3 text-slate-500">{b.check_in_date} ({b.nights}n)</td>
                                             <td className="p-3">{fmt(b.room_charges)}</td>
-                                            <td className="p-3 text-purple-300">{fmt(b.restaurant_charges)}</td>
-                                            <td className="p-3 font-black text-emerald-400">{fmt(b.total_amount)}</td>
+                                            <td className="p-3">{fmt(b.restaurant_charges)}</td>
+                                            <td className="p-3 font-bold text-slate-900">{fmt(b.total_amount)}</td>
                                             <td className="p-3">
-                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300">
+                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                                                     {b.status}
                                                 </span>
                                             </td>
@@ -1907,8 +1777,8 @@ export default function MasterReportsPage() {
                                     ))}
                                     {hotelBookings.length === 0 && (
                                         <tr>
-                                            <td colSpan={8} className="p-8 text-center text-slate-500">
-                                                No hotel bookings recorded in this date range.
+                                            <td colSpan={8} className="p-8 text-center text-slate-400">
+                                                No hotel bookings in this period.
                                             </td>
                                         </tr>
                                     )}
@@ -1921,85 +1791,83 @@ export default function MasterReportsPage() {
 
             {/* ─── TAB 8: INVENTORY & SPOILAGE ─── */}
             {activeTab === 'inventory' && (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        {/* Spoilage Log */}
-                        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="text-sm font-black uppercase tracking-wider text-rose-400 flex items-center gap-2">
-                                    <span>⚠️</span> Spoilage & Wastage Losses
-                                </h3>
-                                <span className="text-xs font-black text-rose-400">Total Loss: {fmt(inventoryStats.totalSpoilageLoss)}</span>
-                            </div>
-                            <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                                <table className="w-full text-left text-xs text-slate-300">
-                                    <thead className="bg-slate-900 text-[11px] font-black uppercase text-slate-400 border-b border-slate-800">
-                                        <tr>
-                                            <th className="p-3">Date</th>
-                                            <th className="p-3">Item</th>
-                                            <th className="p-3">Qty</th>
-                                            <th className="p-3">Loss Value</th>
-                                            <th className="p-3">Reason</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-800/60 font-medium">
-                                        {spoilages.map(sp => (
-                                            <tr key={sp.spoilage_id} className="hover:bg-slate-900/60 transition-colors">
-                                                <td className="p-3">{sp.spoilage_date}</td>
-                                                <td className="p-3 font-bold text-white">{sp.product_name}</td>
-                                                <td className="p-3 text-indigo-400">{sp.quantity}</td>
-                                                <td className="p-3 font-black text-rose-400">{fmt(sp.total_loss)}</td>
-                                                <td className="p-3 text-slate-400">{sp.reason || sp.spoilage_type}</td>
-                                            </tr>
-                                        ))}
-                                        {spoilages.length === 0 && (
-                                            <tr>
-                                                <td colSpan={5} className="p-8 text-center text-slate-500">
-                                                    No spoilage or wastage incidents recorded.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        {/* Production Batches Log */}
-                        <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                            <h3 className="text-sm font-black uppercase tracking-wider text-indigo-400 flex items-center gap-2">
-                                <span>🍲</span> Production Batches Yield & Cost
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-900">
+                                Spoilage & Wastage Losses
                             </h3>
-                            <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                                <table className="w-full text-left text-xs text-slate-300">
-                                    <thead className="bg-slate-900 text-[11px] font-black uppercase text-slate-400 border-b border-slate-800">
-                                        <tr>
-                                            <th className="p-3">Batch No</th>
-                                            <th className="p-3">Dish Produced</th>
-                                            <th className="p-3">Yield</th>
-                                            <th className="p-3">Unit Cost</th>
-                                            <th className="p-3">Selling Price</th>
+                            <span className="text-xs font-semibold text-rose-600">Total Loss: {fmt(inventoryStats.totalSpoilageLoss)}</span>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs text-slate-700">
+                                <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                                    <tr>
+                                        <th className="p-3">Date</th>
+                                        <th className="p-3">Item</th>
+                                        <th className="p-3">Qty</th>
+                                        <th className="p-3">Loss Value</th>
+                                        <th className="p-3">Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 font-medium">
+                                    {spoilages.map(sp => (
+                                        <tr key={sp.spoilage_id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="p-3 text-slate-500">{sp.spoilage_date}</td>
+                                            <td className="p-3 font-semibold text-slate-900">{sp.product_name}</td>
+                                            <td className="p-3">{sp.quantity}</td>
+                                            <td className="p-3 font-bold text-rose-600">{fmt(sp.total_loss)}</td>
+                                            <td className="p-3 text-slate-500">{sp.reason || sp.spoilage_type}</td>
                                         </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-800/60 font-medium">
-                                        {batches.map(b => (
-                                            <tr key={b.batch_id} className="hover:bg-slate-900/60 transition-colors">
-                                                <td className="p-3 font-mono font-bold text-indigo-400">{b.batch_number}</td>
-                                                <td className="p-3 font-bold text-white">{b.product_name}</td>
-                                                <td className="p-3 text-cyan-300">{b.qty_produced} (Sold: {b.qty_sold})</td>
-                                                <td className="p-3 text-rose-400">{fmt(b.cost_per_unit)}</td>
-                                                <td className="p-3 font-black text-emerald-400">{fmt(b.selling_price)}</td>
-                                            </tr>
-                                        ))}
-                                        {batches.length === 0 && (
-                                            <tr>
-                                                <td colSpan={5} className="p-8 text-center text-slate-500">
-                                                    No production batches recorded.
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
+                                    ))}
+                                    {spoilages.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="p-8 text-center text-slate-400">
+                                                No spoilage or wastage logged.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-900">
+                                Production Batches Yield & Cost
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs text-slate-700">
+                                <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                                    <tr>
+                                        <th className="p-3">Batch No</th>
+                                        <th className="p-3">Dish Produced</th>
+                                        <th className="p-3">Yield</th>
+                                        <th className="p-3">Unit Cost</th>
+                                        <th className="p-3">Selling Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 font-medium">
+                                    {batches.map(b => (
+                                        <tr key={b.batch_id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="p-3 font-mono font-semibold text-blue-600">{b.batch_number}</td>
+                                            <td className="p-3 font-semibold text-slate-900">{b.product_name}</td>
+                                            <td className="p-3">{b.qty_produced} (Sold: {b.qty_sold})</td>
+                                            <td className="p-3 text-slate-500">{fmt(b.cost_per_unit)}</td>
+                                            <td className="p-3 font-bold text-slate-900">{fmt(b.selling_price)}</td>
+                                        </tr>
+                                    ))}
+                                    {batches.length === 0 && (
+                                        <tr>
+                                            <td colSpan={5} className="p-8 text-center text-slate-400">
+                                                No production batches logged.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -2008,56 +1876,52 @@ export default function MasterReportsPage() {
             {/* ─── TAB 9: PURCHASES & SUPPLIERS ─── */}
             {activeTab === 'purchases' && (
                 <div className="space-y-6">
-                    {/* Suppliers Summary */}
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-slate-400">Total Purchases</p>
-                            <p className="text-xl font-black text-white mt-1">{fmt(purchaseStats.totalPurchased)}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">{purchases.length} supplier invoices</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total Purchases</span>
+                            <p className="text-xl font-bold text-slate-900 mt-1">{fmt(purchaseStats.totalPurchased)}</p>
                         </div>
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-emerald-400">Claimable Input VAT</p>
-                            <p className="text-xl font-black text-emerald-400 mt-1">{fmt(purchaseStats.totalVatClaimable)}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Offset against sales tax</p>
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Claimable Input VAT</span>
+                            <p className="text-xl font-bold text-emerald-700 mt-1">{fmt(purchaseStats.totalVatClaimable)}</p>
                         </div>
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-indigo-400">Active Suppliers</p>
-                            <p className="text-xl font-black text-indigo-400 mt-1">{purchaseStats.totalSuppliers}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Vendors registered</p>
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Active Suppliers</span>
+                            <p className="text-xl font-bold text-slate-900 mt-1">{purchaseStats.totalSuppliers}</p>
                         </div>
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-rose-400">Supplier Payables</p>
-                            <p className="text-xl font-black text-rose-400 mt-1">{fmt(purchaseStats.totalSupplierDebt)}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">Outstanding balances</p>
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Supplier Payables</span>
+                            <p className="text-xl font-bold text-rose-600 mt-1">{fmt(purchaseStats.totalSupplierDebt)}</p>
                         </div>
                     </div>
 
-                    {/* Suppliers Directory */}
-                    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-200">
-                            Supplier Directory & Payables Ledger ({suppliers.length} Vendors)
-                        </h3>
-                        <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                            <table className="w-full text-left text-xs text-slate-300">
-                                <thead className="bg-slate-900 text-[11px] font-black uppercase text-slate-400 border-b border-slate-800">
+                    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-900">
+                                Supplier Directory & Balances ({suppliers.length} Vendors)
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs text-slate-700">
+                                <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                                     <tr>
                                         <th className="p-3">Code</th>
                                         <th className="p-3">Supplier Name</th>
-                                        <th className="p-3">Contact Person</th>
+                                        <th className="p-3">Contact</th>
                                         <th className="p-3">Phone</th>
-                                        <th className="p-3">Payment Terms</th>
+                                        <th className="p-3">Terms</th>
                                         <th className="p-3">Current Balance</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800/60 font-medium">
+                                <tbody className="divide-y divide-slate-100 font-medium">
                                     {suppliers.map(s => (
-                                        <tr key={s.supplier_id} className="hover:bg-slate-900/60 transition-colors">
-                                            <td className="p-3 font-mono font-bold text-indigo-400">{s.supplier_code || `SUP-${s.supplier_id}`}</td>
-                                            <td className="p-3 font-bold text-white text-sm">{s.supplier_name}</td>
-                                            <td className="p-3 text-slate-400">{s.contact_person || '—'}</td>
-                                            <td className="p-3">{s.phone || '—'}</td>
-                                            <td className="p-3">{s.payment_terms || 'Net 30'}</td>
-                                            <td className="p-3 font-black text-rose-400">{fmt(s.current_balance)}</td>
+                                        <tr key={s.supplier_id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="p-3 font-mono font-semibold text-blue-600">{s.supplier_code || `SUP-${s.supplier_id}`}</td>
+                                            <td className="p-3 font-semibold text-slate-900">{s.supplier_name}</td>
+                                            <td className="p-3 text-slate-500">{s.contact_person || '—'}</td>
+                                            <td className="p-3 text-slate-500">{s.phone || '—'}</td>
+                                            <td className="p-3 text-slate-500">{s.payment_terms || 'Net 30'}</td>
+                                            <td className="p-3 font-bold text-slate-900">{fmt(s.current_balance)}</td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -2070,54 +1934,52 @@ export default function MasterReportsPage() {
             {/* ─── TAB 10: M-PESA RECONCILIATION ─── */}
             {activeTab === 'mpesa' && (
                 <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-emerald-400">Total M-Pesa Collected</p>
-                            <p className="text-xl font-black text-emerald-400 mt-1">{fmt(mpesaStats.totalMpesa)}</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">POS + Hotel PMS</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Total M-Pesa Collected</span>
+                            <p className="text-xl font-bold text-emerald-700 mt-1">{fmt(mpesaStats.totalMpesa)}</p>
                         </div>
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-amber-400">Unlinked C2B Deposits</p>
-                            <p className="text-xl font-black text-amber-400 mt-1">{mpesaStats.unlinkedCount} transactions</p>
-                            <p className="text-[10px] text-slate-500 mt-0.5">{fmt(mpesaStats.unlinkedAmount)} unclaimed</p>
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Unclaimed C2B Deposits</span>
+                            <p className="text-xl font-bold text-slate-900 mt-1">{mpesaStats.unlinkedCount} transactions ({fmt(mpesaStats.unlinkedAmount)})</p>
                         </div>
-                        <div className="bg-slate-950 border border-slate-800 rounded-2xl p-4 shadow-xl">
-                            <p className="text-[10px] font-black uppercase text-indigo-400">Live Daraja Sync</p>
-                            <p className="text-xl font-black text-white mt-1">CONNECTED</p>
-                            <p className="text-[10px] text-emerald-400 mt-0.5 font-bold">Saf-Daraja C2B Active</p>
+                        <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm">
+                            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Daraja Gateway</span>
+                            <p className="text-xl font-bold text-blue-600 mt-1">CONNECTED</p>
                         </div>
                     </div>
 
-                    {/* M-Pesa Transactions Log */}
-                    <div className="bg-slate-950 border border-slate-800 rounded-3xl p-5 shadow-xl space-y-4">
-                        <h3 className="text-sm font-black uppercase tracking-wider text-slate-200">
-                            M-Pesa Live Till & Paybill Inbound Ledger ({c2bList.length} Transactions)
-                        </h3>
-                        <div className="overflow-x-auto rounded-2xl border border-slate-800">
-                            <table className="w-full text-left text-xs text-slate-300">
-                                <thead className="bg-slate-900 text-[11px] font-black uppercase text-slate-400 border-b border-slate-800">
+                    <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                        <div className="p-4 border-b border-slate-100">
+                            <h3 className="text-sm font-bold text-slate-900">
+                                M-Pesa Live Till & Paybill Inbound Ledger ({c2bList.length} Transactions)
+                            </h3>
+                        </div>
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left text-xs text-slate-700">
+                                <thead className="bg-slate-50/80 text-[11px] font-semibold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                                     <tr>
                                         <th className="p-3">M-Pesa Receipt</th>
-                                        <th className="p-3">Sender Phone</th>
+                                        <th className="p-3">Phone</th>
                                         <th className="p-3">Customer Name</th>
-                                        <th className="p-3">Amount (KES)</th>
+                                        <th className="p-3">Amount</th>
                                         <th className="p-3">Time</th>
-                                        <th className="p-3">Linked Sale ID</th>
+                                        <th className="p-3">Linked Sale</th>
                                         <th className="p-3">Status</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-800/60 font-medium">
+                                <tbody className="divide-y divide-slate-100 font-medium">
                                     {c2bList.map(c => (
-                                        <tr key={c.id} className="hover:bg-slate-900/60 transition-colors">
-                                            <td className="p-3 font-mono font-bold text-emerald-400">{c.mpesa_receipt}</td>
-                                            <td className="p-3 font-mono">{c.phone || '—'}</td>
-                                            <td className="p-3 font-bold text-white">{c.customer_name || 'Customer'}</td>
-                                            <td className="p-3 font-black text-emerald-400">{fmt(c.amount)}</td>
-                                            <td className="p-3">{new Date(c.transaction_time).toLocaleString()}</td>
-                                            <td className="p-3 font-mono text-indigo-400">{c.linked_sale_id ? `SALE #${c.linked_sale_id}` : 'Unclaimed'}</td>
+                                        <tr key={c.id} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="p-3 font-mono font-semibold text-emerald-700">{c.mpesa_receipt}</td>
+                                            <td className="p-3 font-mono text-slate-500">{c.phone || '—'}</td>
+                                            <td className="p-3 font-semibold text-slate-900">{c.customer_name || 'Customer'}</td>
+                                            <td className="p-3 font-bold text-slate-900">{fmt(c.amount)}</td>
+                                            <td className="p-3 text-slate-500">{new Date(c.transaction_time).toLocaleString()}</td>
+                                            <td className="p-3 font-mono text-slate-600">{c.linked_sale_id ? `SALE #${c.linked_sale_id}` : 'Unclaimed'}</td>
                                             <td className="p-3">
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                    c.is_linked ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                                    c.is_linked ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'
                                                 }`}>
                                                     {c.is_linked ? 'Matched' : 'Unclaimed'}
                                                 </span>
@@ -2126,8 +1988,8 @@ export default function MasterReportsPage() {
                                     ))}
                                     {c2bList.length === 0 && (
                                         <tr>
-                                            <td colSpan={7} className="p-8 text-center text-slate-500">
-                                                No direct C2B mobile transactions found. POS M-Pesa receipts are logged directly in Sales.
+                                            <td colSpan={7} className="p-8 text-center text-slate-400">
+                                                No direct C2B transactions found. POS receipts are recorded in sales.
                                             </td>
                                         </tr>
                                     )}

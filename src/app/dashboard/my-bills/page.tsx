@@ -833,19 +833,6 @@ export default function MyBillsPage() {
                                                     <span className="hidden sm:inline">KOT</span>
                                                 </button>
 
-                                                {/* If unpaid: Direct Tender / Pay button */}
-                                                {!isPaid && (
-                                                    <a
-                                                        href={`/dashboard/bill-payment?receiptNo=${bill.receipt_no}`}
-                                                        onClick={(e) => e.stopPropagation()}
-                                                        className="px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 active:scale-95 text-white rounded-xl text-xs font-black transition-all shadow-md shadow-orange-500/20 flex items-center gap-1 cursor-pointer"
-                                                        title="Settle this running bill directly"
-                                                    >
-                                                        <span>💰</span>
-                                                        <span>Pay</span>
-                                                    </a>
-                                                )}
-
                                                 {/* Accordion Toggle Arrow */}
                                                 <div className="w-8 h-8 rounded-xl bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 hover:bg-slate-200 transition-colors ml-1">
                                                     {isExpanded ? '▲' : '▼'}
