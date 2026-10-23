@@ -28,7 +28,7 @@ interface LicenseStatus {
 
 export default function LoginPage() {
     const router = useRouter();
-    const [loginMode, setLoginMode] = useState<'admin' | 'waiter'>('admin');
+    const [loginMode, setLoginMode] = useState<'admin' | 'waiter'>('waiter');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [pin, setPin] = useState('');
@@ -213,11 +213,11 @@ export default function LoginPage() {
         setIsLoading(false);
     };
 
-    const handleWaiterLogin = async () => {
-        if (pin.length !== 6) { setError('Please enter 6-digit PIN'); return; }
+    const submitWaiterPin = async (pinToVerify: string) => {
+        if (pinToVerify.length !== 6) { setError('Please enter 6-digit PIN'); return; }
         setIsLoading(true); setError('');
         try {
-            const { data, error: dbError } = await supabase.from('users').select('*').eq('pin', pin).eq('active', true).eq('user_type', 'Waiter').maybeSingle();
+            const { data, error: dbError } = await supabase.from('users').select('*').eq('pin', pinToVerify).eq('active', true).eq('user_type', 'Waiter').maybeSingle();
             if (dbError || !data) { setError('Invalid PIN'); setIsLoading(false); setPin(''); setShowPin(false); return; }
             localStorage.setItem('user', JSON.stringify({ userId: data.user_id, userName: data.user_name, name: data.name, userType: data.user_type, email: data.email, isWaiter: true }));
             router.push('/dashboard/pos');
@@ -225,13 +225,47 @@ export default function LoginPage() {
         setIsLoading(false);
     };
 
+    const handleWaiterLogin = async () => {
+        submitWaiterPin(pin);
+    };
+
     const handlePinInput = (digit: string) => {
         if (pin.length < 6) {
-            setPin(pin + digit);
+            const nextPin = pin + digit;
+            setPin(nextPin);
             setError('');
+            if (nextPin.length === 6) {
+                setTimeout(() => {
+                    submitWaiterPin(nextPin);
+                }, 120);
+            }
         }
     };
     const handlePinClear = () => { setPin(''); setError(''); setShowPin(false); };
+
+    // Support physical numpad / keyboard typing in Waiter Quick PIN mode
+    useEffect(() => {
+        if (loginMode !== 'waiter') return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (/^[0-9]$/.test(e.key)) {
+                e.preventDefault();
+                handlePinInput(e.key);
+            } else if (e.key === 'Backspace') {
+                e.preventDefault();
+                setPin(prev => prev.slice(0, -1));
+            } else if (e.key === 'Escape') {
+                e.preventDefault();
+                handlePinClear();
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                if (pin.length === 6) {
+                    submitWaiterPin(pin);
+                }
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [loginMode, pin]);
 
     // Fast-Fill Helper for Demo / Testing
     const handleFastFillAdmin = () => {
@@ -243,6 +277,9 @@ export default function LoginPage() {
     const handleFastFillWaiter = () => {
         setPin('123456');
         setError('');
+        setTimeout(() => {
+            submitWaiterPin('123456');
+        }, 120);
     };
 
     // Keyboard Caps Lock Handler
@@ -253,13 +290,13 @@ export default function LoginPage() {
     };
 
     return (
-        <div className="relative min-h-screen w-full flex flex-col lg:flex-row font-sans overflow-hidden bg-slate-950 text-slate-100">
+        <div className="relative min-h-screen h-screen w-full flex flex-col lg:flex-row font-sans overflow-hidden bg-slate-950 text-slate-100">
 
             {/* ===== LEFT PANEL: REAL RESTAURANT SHOWCASE CAROUSEL ===== */}
             <div
                 onMouseEnter={() => setIsAutoPlaying(false)}
                 onMouseLeave={() => setIsAutoPlaying(true)}
-                className="hidden lg:flex lg:w-7/12 relative overflow-hidden flex-col justify-between p-12 select-none"
+                className="hidden lg:flex lg:w-7/12 relative overflow-hidden flex-col justify-between p-8 xl:p-12 select-none h-full"
             >
                 {/* Background Image with Smooth Crossfade & Ken Burns Zoom */}
                 {loginThemes.map((t, idx) => (
@@ -373,10 +410,10 @@ export default function LoginPage() {
             </div>
 
             {/* ===== RIGHT PANEL: ULTRA-PREMIUM LOGIN CARD ===== */}
-            <div className="w-full lg:w-5/12 min-h-screen flex flex-col justify-between p-6 sm:p-10 lg:p-12 relative z-20 bg-slate-900/90 backdrop-blur-2xl border-l border-white/10 overflow-y-auto">
+            <div className="w-full lg:w-5/12 h-screen max-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-8 xl:p-10 relative z-20 bg-slate-900/90 backdrop-blur-2xl border-l border-white/10 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10">
 
                 {/* Top Terminal Status */}
-                <div className="flex items-center justify-between text-xs text-slate-400 mb-6">
+                <div className="flex items-center justify-between text-xs text-slate-400 mb-3 shrink-0">
                     <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-emerald-400" />
                         <span className="font-bold text-slate-300">Terminal Node 01</span>
@@ -387,45 +424,32 @@ export default function LoginPage() {
                 </div>
 
                 {/* Main Auth Container */}
-                <div className="max-w-md w-full mx-auto space-y-6 my-auto">
+                <div className="max-w-md w-full mx-auto space-y-4 my-auto shrink-0">
 
                     {/* Logo & Welcome Title */}
-                    <div className="text-center space-y-2">
-                        <div className="w-16 h-16 rounded-3xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-600 p-0.5 shadow-2xl mx-auto flex items-center justify-center">
-                            <div className="w-full h-full bg-slate-950 rounded-[22px] flex items-center justify-center text-3xl">
+                    <div className="text-center space-y-1">
+                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-amber-500 via-rose-500 to-indigo-600 p-0.5 shadow-xl mx-auto flex items-center justify-center">
+                            <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-2xl">
                                 🍽️
                             </div>
                         </div>
 
                         <div>
-                            <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                            <h2 className="text-2xl font-black text-white tracking-tight">
                                 Staff Portal
                             </h2>
-                            <p className="text-xs text-slate-400 mt-1">
+                            <p className="text-xs text-slate-400 mt-0.5">
                                 Sign in to your restaurant station or waiter handheld
                             </p>
                         </div>
                     </div>
 
-                    {/* Station Selector: Manager/Admin vs Waiter PIN */}
-                    <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-2xl bg-slate-950/80 border border-white/10 shadow-inner">
-                        <button
-                            type="button"
-                            onClick={() => { setLoginMode('admin'); setError(''); setPin(''); }}
-                            className={`py-3 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
-                                loginMode === 'admin'
-                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
-                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
-                            }`}
-                        >
-                            <span>🛡️</span>
-                            <span>Manager / Cashier</span>
-                        </button>
-
+                    {/* Station Selector: Waiter Quick PIN vs Manager/Cashier */}
+                    <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-slate-950/80 border border-white/10 shadow-inner">
                         <button
                             type="button"
                             onClick={() => { setLoginMode('waiter'); setError(''); setUsername(''); setPassword(''); }}
-                            className={`py-3 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                            className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
                                 loginMode === 'waiter'
                                     ? 'bg-gradient-to-r from-amber-500 to-orange-600 text-white shadow-lg shadow-amber-500/20'
                                     : 'text-slate-400 hover:text-white hover:bg-white/5'
@@ -433,6 +457,19 @@ export default function LoginPage() {
                         >
                             <span>🧑‍🍳</span>
                             <span>Waiter Quick PIN</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            onClick={() => { setLoginMode('admin'); setError(''); setPin(''); }}
+                            className={`py-2 px-3 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5 ${
+                                loginMode === 'admin'
+                                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20'
+                                    : 'text-slate-400 hover:text-white hover:bg-white/5'
+                            }`}
+                        >
+                            <span>🛡️</span>
+                            <span>Manager / Cashier</span>
                         </button>
                     </div>
 
@@ -569,7 +606,7 @@ export default function LoginPage() {
 
                     {/* MODE 2: WAITER QUICK PIN TOUCHPAD */}
                     {loginMode === 'waiter' && (
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             <div className="flex items-center justify-between">
                                 <p className="text-xs text-slate-300 font-bold uppercase tracking-wider">
                                     Enter 6-Digit Server PIN
@@ -584,11 +621,11 @@ export default function LoginPage() {
                             </div>
 
                             {/* PIN Display Slots */}
-                            <div className="flex justify-center gap-2 my-2">
+                            <div className="flex justify-center gap-1.5 sm:gap-2 my-1">
                                 {[0, 1, 2, 3, 4, 5].map(i => (
                                     <div
                                         key={i}
-                                        className={`w-12 h-14 rounded-xl border-2 flex items-center justify-center text-xl font-mono font-black transition-all ${
+                                        className={`w-10 h-11 sm:w-11 sm:h-12 rounded-xl border-2 flex items-center justify-center text-lg font-mono font-black transition-all ${
                                             pin[i]
                                                 ? 'border-amber-400 bg-amber-500/20 text-amber-300 shadow-md shadow-amber-500/20 scale-105'
                                                 : 'border-white/10 bg-slate-950/80 text-slate-600'
@@ -603,26 +640,26 @@ export default function LoginPage() {
                                 <button
                                     type="button"
                                     onClick={() => setShowPin(!showPin)}
-                                    className="text-[11px] text-slate-400 hover:text-white"
+                                    className="text-[10px] text-slate-400 hover:text-white"
                                 >
                                     {showPin ? 'Hide PIN' : 'Reveal PIN digits'}
                                 </button>
                             </div>
 
                             {error && (
-                                <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs font-bold animate-shake text-center">
+                                <div className="p-2.5 bg-red-500/10 border border-red-500/30 rounded-xl text-red-300 text-xs font-bold animate-shake text-center">
                                     ⚠️ {error}
                                 </div>
                             )}
 
                             {/* Touchpad 3x4 Grid */}
-                            <div className="grid grid-cols-3 gap-2 max-w-xs mx-auto pt-1">
+                            <div className="grid grid-cols-3 gap-1.5 max-w-xs mx-auto pt-0.5">
                                 {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
                                     <button
                                         key={num}
                                         type="button"
                                         onClick={() => handlePinInput(num.toString())}
-                                        className="h-14 rounded-2xl bg-white/5 hover:bg-white/15 active:bg-amber-500 active:text-white border border-white/10 text-xl font-bold text-white transition-all shadow-sm flex items-center justify-center font-mono"
+                                        className="h-11 sm:h-12 rounded-xl bg-white/5 hover:bg-white/15 active:bg-amber-500 active:text-white border border-white/10 text-lg font-bold text-white transition-all shadow-sm flex items-center justify-center font-mono"
                                     >
                                         {num}
                                     </button>
@@ -631,16 +668,17 @@ export default function LoginPage() {
                                 <button
                                     type="button"
                                     onClick={handlePinClear}
-                                    className="h-14 rounded-2xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 font-bold text-lg transition-all flex items-center justify-center"
+                                    className="h-11 sm:h-12 rounded-xl bg-red-500/10 hover:bg-red-500/20 active:bg-red-500 active:text-white border border-red-500/20 text-red-400 font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1"
                                     title="Clear PIN"
                                 >
-                                    ⌫
+                                    <span>⌫</span>
+                                    <span>Clear</span>
                                 </button>
 
                                 <button
                                     type="button"
                                     onClick={() => handlePinInput('0')}
-                                    className="h-14 rounded-2xl bg-white/5 hover:bg-white/15 active:bg-amber-500 border border-white/10 text-xl font-bold text-white transition-all shadow-sm flex items-center justify-center font-mono"
+                                    className="h-11 sm:h-12 rounded-xl bg-white/5 hover:bg-white/15 active:bg-amber-500 border border-white/10 text-lg font-bold text-white transition-all shadow-sm flex items-center justify-center font-mono"
                                 >
                                     0
                                 </button>
@@ -649,9 +687,16 @@ export default function LoginPage() {
                                     type="button"
                                     onClick={handleWaiterLogin}
                                     disabled={isLoading || pin.length !== 6}
-                                    className="h-14 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-lg transition-all shadow-lg shadow-amber-500/25 flex items-center justify-center disabled:opacity-40"
+                                    className="h-11 sm:h-12 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white font-bold text-xs sm:text-sm tracking-wide transition-all shadow-lg shadow-amber-500/25 flex items-center justify-center gap-1 disabled:opacity-40"
                                 >
-                                    {isLoading ? '...' : '✓'}
+                                    {isLoading ? (
+                                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                    ) : (
+                                        <>
+                                            <span>Enter</span>
+                                            <span>→</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </div>
@@ -659,8 +704,8 @@ export default function LoginPage() {
                 </div>
 
                 {/* Footer Security Badges */}
-                <div className="pt-6 border-t border-white/10 text-center space-y-2 mt-6">
-                    <div className="flex items-center justify-center gap-4 text-[11px] text-slate-400 flex-wrap">
+                <div className="pt-3 border-t border-white/10 text-center space-y-1 mt-3 shrink-0">
+                    <div className="flex items-center justify-center gap-3 text-[10px] text-slate-400 flex-wrap">
                         <span className="flex items-center gap-1 text-emerald-400 font-semibold">
                             <span>🔒</span> 256-Bit SSL Encrypted
                         </span>
@@ -670,7 +715,7 @@ export default function LoginPage() {
                         <span className="text-amber-300 font-semibold">{licensedTo}</span>
                     </div>
 
-                    <p className="text-[10px] text-slate-500">
+                    <p className="text-[9px] text-slate-500">
                         AlphaPlus Restaurant & Hotel Management System • Built for high-volume service
                     </p>
                 </div>
