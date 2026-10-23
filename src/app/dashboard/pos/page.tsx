@@ -2426,9 +2426,41 @@ export default function POSPage() {
     const [isFullscreen, setIsFullscreen] = useState(false);
 
     // ─── USER ROLE ACCESS CONTROL ───
-    const [isWaiterUser, setIsWaiterUser] = useState(false);
-    const [userRole, setUserRole] = useState<string>('Admin');
-    const [loggedInUserName, setLoggedInUserName] = useState<string>('');
+    const [isWaiterUser, setIsWaiterUser] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        try {
+            const u = localStorage.getItem('user');
+            if (u) {
+                const p = JSON.parse(u);
+                return p.isWaiter === true || 
+                       (p.userType || '').toLowerCase().includes('waiter') || 
+                       (p.userType || '').toLowerCase() === 'waitress';
+            }
+        } catch (_) {}
+        return false;
+    });
+    const [userRole, setUserRole] = useState<string>(() => {
+        if (typeof window === 'undefined') return 'Waiter';
+        try {
+            const u = localStorage.getItem('user');
+            if (u) {
+                const p = JSON.parse(u);
+                return p.userType || (p.isWaiter ? 'Waiter' : 'Admin');
+            }
+        } catch (_) {}
+        return 'Waiter';
+    });
+    const [loggedInUserName, setLoggedInUserName] = useState<string>(() => {
+        if (typeof window === 'undefined') return '';
+        try {
+            const u = localStorage.getItem('user');
+            if (u) {
+                const p = JSON.parse(u);
+                return p.name || '';
+            }
+        } catch (_) {}
+        return '';
+    });
     // Premium Toast Alert for Restricted Access (Dark Slate / Black Background)
     const showAccessDeniedToast = useCallback((featureName: string) => {
         playPOSChime('error');
@@ -4256,8 +4288,8 @@ export default function POSPage() {
                                 <div className="flex items-center gap-2 bg-[#0c161e] border border-[#162a2e] px-2.5 py-1 rounded-xl text-xs">
                                     <span className="text-base">👤</span>
                                     <div>
-                                        <p className="text-[9px] text-gray-400 font-bold uppercase leading-none">Cashier</p>
-                                        <p className="text-xs font-bold text-white leading-none mt-0.5 truncate max-w-[100px]">{loggedInUserName || 'Admin'}</p>
+                                        <p className="text-[9px] text-gray-400 font-bold uppercase leading-none">{isWaiterUser ? 'Waiter' : (userRole || 'Cashier')}</p>
+                                        <p className="text-xs font-bold text-white leading-none mt-0.5 truncate max-w-[100px]">{loggedInUserName || (isWaiterUser ? 'Waiter' : 'Admin')}</p>
                                     </div>
                                 </div>
 
@@ -4380,8 +4412,11 @@ export default function POSPage() {
 
                                 <button
                                     type="button"
-                                    onClick={() => setShowMoveTableModal(true)}
-                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all"
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_select_tables', 'Dining Floor & Tables')) return;
+                                        setShowMoveTableModal(true);
+                                    }}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all cursor-pointer"
                                     title="Tables Selection / Transfer"
                                 >
                                     <span className="text-xl">🪑</span>
@@ -4390,8 +4425,11 @@ export default function POSPage() {
 
                                 <button
                                     type="button"
-                                    onClick={sendToKitchen}
-                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 relative border border-transparent hover:border-[#162a2e] transition-all"
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_send_kot', 'Kitchen KOT Orders')) return;
+                                        sendToKitchen();
+                                    }}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 relative border border-transparent hover:border-[#162a2e] transition-all cursor-pointer"
                                     title="Kitchen Orders / KOT [F9]"
                                 >
                                     <span className="text-xl">👨‍🍳</span>
@@ -4403,8 +4441,11 @@ export default function POSPage() {
 
                                 <button
                                     type="button"
-                                    onClick={() => setShowHeldSalesModal(true)}
-                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 relative border border-transparent hover:border-[#162a2e] transition-all"
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_pending_bills', 'Pending Bills & Held Orders')) return;
+                                        setShowHeldSalesModal(true);
+                                    }}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 relative border border-transparent hover:border-[#162a2e] transition-all cursor-pointer"
                                     title="Pending Bills / Held Sales"
                                 >
                                     <span className="text-xl">⏱️</span>
@@ -4418,8 +4459,12 @@ export default function POSPage() {
 
                                 <button
                                     type="button"
-                                    onClick={() => { loadUnpaidOrders(); setShowMergeModal(true); }}
-                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all"
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_merge_bills', 'Merge Bills Studio')) return;
+                                        loadUnpaidOrders();
+                                        setShowMergeModal(true);
+                                    }}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all cursor-pointer"
                                     title="Bill Merge / Combine Tables"
                                 >
                                     <span className="text-xl">🔀</span>
@@ -4428,8 +4473,11 @@ export default function POSPage() {
 
                                 <button
                                     type="button"
-                                    onClick={() => toast.success('Guest / Room Folio selector available in Payment Modal')}
-                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all"
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_view_terminal', 'Customers & Guest Folios')) return;
+                                        toast.success('Guest / Room Folio selector available in Payment Modal');
+                                    }}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all cursor-pointer"
                                     title="Customers & Room Residents"
                                 >
                                     <span className="text-xl">👥</span>
@@ -4438,22 +4486,29 @@ export default function POSPage() {
 
                                 <button
                                     type="button"
-                                    onClick={() => toast.success('Stock inventory: live batch tracking enabled')}
-                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all"
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_shift_reconciliation', 'Stock Inventory Audit')) return;
+                                        toast.success('Stock inventory: live batch tracking enabled');
+                                    }}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all cursor-pointer"
                                     title="Stock Inventory"
                                 >
                                     <span className="text-xl">📦</span>
                                     <span className="text-[10px] font-bold">Stock</span>
                                 </button>
 
-                                <a
-                                    href="/dashboard/reports"
-                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all mt-auto"
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_reports_view', 'Sales Reports')) return;
+                                        window.location.href = '/dashboard/reports';
+                                    }}
+                                    className="w-14 py-2 rounded-xl bg-[#0a1219] hover:bg-[#101c27] text-gray-400 hover:text-white flex flex-col items-center gap-1 border border-transparent hover:border-[#162a2e] transition-all mt-auto cursor-pointer"
                                     title="Sales Reports"
                                 >
                                     <span className="text-xl">📈</span>
                                     <span className="text-[10px] font-bold">Reports</span>
-                                </a>
+                                </button>
                             </aside>
 
                             {/* B. CENTER PRODUCT AREA */}
@@ -4603,27 +4658,39 @@ export default function POSPage() {
 
                                         <button
                                             type="button"
-                                            onClick={() => { loadUnpaidOrders(); setShowRunningOrders(true); }}
-                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all"
+                                            onClick={() => {
+                                                if (!verifyPosAccess('pos_pending_bills', 'View Running Bills')) return;
+                                                loadUnpaidOrders();
+                                                setShowRunningOrders(true);
+                                            }}
+                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all cursor-pointer"
                                             title="View Running Orders"
                                         >
                                             <span>📋</span>
                                             <span>View Bills</span>
                                         </button>
 
-                                        <a
-                                            href="/dashboard/sales"
-                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all"
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                if (!verifyPosAccess('pos_day_sales', 'Day Sales')) return;
+                                                window.location.href = '/dashboard/sales';
+                                            }}
+                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all cursor-pointer"
                                             title="Today's Sales"
                                         >
                                             <span className="text-[#00e676]">📈</span>
                                             <span>Day Sales</span>
-                                        </a>
+                                        </button>
 
                                         <button
                                             type="button"
-                                            onClick={() => { loadUnpaidOrders(); setShowMergeModal(true); }}
-                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all"
+                                            onClick={() => {
+                                                if (!verifyPosAccess('pos_merge_bills', 'Merge Bills Studio')) return;
+                                                loadUnpaidOrders();
+                                                setShowMergeModal(true);
+                                            }}
+                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all cursor-pointer"
                                             title="Merge Tables / Combine Receipts"
                                         >
                                             <span className="text-indigo-400">🔀</span>
@@ -4632,8 +4699,11 @@ export default function POSPage() {
 
                                         <button
                                             type="button"
-                                            onClick={() => setShowHeldSalesModal(true)}
-                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all relative"
+                                            onClick={() => {
+                                                if (!verifyPosAccess('pos_pending_bills', 'Pending Bills & Held Orders')) return;
+                                                setShowHeldSalesModal(true);
+                                            }}
+                                            className="px-2.5 py-1.5 rounded-xl bg-[#0c161e] border border-[#162a2e] hover:border-[#00e676]/50 text-xs font-bold text-gray-300 hover:text-white flex items-center gap-1 transition-all relative cursor-pointer"
                                             title="Held Bills on Hold"
                                         >
                                             <span>⏱️</span>
@@ -5510,8 +5580,11 @@ export default function POSPage() {
                             <div className="flex gap-2">
                                 {/* Recall / Held Sales Button */}
                                 <button
-                                    onClick={() => setShowHeldSalesModal(true)}
-                                    className="relative p-2 hover:bg-amber-50 rounded-xl text-amber-500 transition-colors border border-amber-200"
+                                    onClick={() => {
+                                        if (!verifyPosAccess('pos_hold_recall_order', 'Recall Held Orders')) return;
+                                        setShowHeldSalesModal(true);
+                                    }}
+                                    className="relative p-2 hover:bg-amber-50 rounded-xl text-amber-500 transition-colors border border-amber-200 cursor-pointer"
                                     title="Recall Held Sale"
                                 >
                                     📋
