@@ -1,8 +1,17 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import {
+    HotelRole,
+    getLocalHotelRoles,
+    getRoleMeta,
+    HOTEL_DEPARTMENTS,
+    PRESET_HOTEL_ROLES,
+} from '@/lib/hotelRoles';
 
 // SHA-256 password hashing using Web Crypto API
 async function hashPassword(password: string): Promise<string> {
@@ -19,39 +28,42 @@ interface User {
     user_name: string;
     name: string;
     user_type: string;
-    email: string;
-    phone: string;
-    national_id: string;
+    email: string | null;
+    phone: string | null;
+    national_id: string | null;
     salary_type: 'Monthly' | 'Weekly';
     salary_amount: number;
-    pin: string;
+    pin: string | null;
     active: boolean;
     is_super_admin: boolean;
     created_at: string;
+    updated_at?: string;
 }
-
-interface UserRole {
-    role_id: number;
-    role_name: string;
-    description: string;
-}
-
-const defaultRoles: UserRole[] = [
-    { role_id: 1, role_name: 'Super Admin', description: 'Full system control' },
-    { role_id: 2, role_name: 'Manager', description: 'General management' },
-    { role_id: 3, role_name: 'Supervisor', description: 'User & access management' },
-    { role_id: 4, role_name: 'Cashier', description: 'Sales & payments' },
-    { role_id: 5, role_name: 'Waiter', description: 'Order taking' },
-];
 
 export default function UsersPage() {
+    const searchParams = useSearchParams();
+    const roleParam = searchParams.get('role');
+
     const [users, setUsers] = useState<User[]>([]);
+    const [roles, setRoles] = useState<HotelRole[]>(PRESET_HOTEL_ROLES);
     const [isLoading, setIsLoading] = useState(true);
+    const [viewMode, setViewMode] = useState<'table' | 'cards'>('table');
+
+    // Modals
     const [showModal, setShowModal] = useState(false);
+    const [showDetailModal, setShowDetailModal] = useState(false);
+    const [selectedUser, setSelectedUser] = useState<User | null>(null);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showPin, setShowPin] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Filters
     const [searchQuery, setSearchQuery] = useState('');
-    const [filterRole, setFilterRole] = useState('All');
+    const [filterRole, setFilterRole] = useState(roleParam || 'All');
+    const [filterDepartment, setFilterDepartment] = useState('All');
     const [filterStatus, setFilterStatus] = useState('All');
+    const [sortBy, setSortBy] = useState<'name' | 'code' | 'salary' | 'recent'>('recent');
 
     // Form state
     const [formData, setFormData] = useState({
@@ -59,6 +71,7 @@ export default function UsersPage() {
         user_name: '',
         name: '',
         user_type: 'Cashier',
+        department: 'Food & Beverage',
         email: '',
         phone: '',
         national_id: '',
@@ -69,6 +82,13 @@ export default function UsersPage() {
         active: true,
     });
 
+    // Load custom roles from localStorage
+    const loadRolesList = useCallback(() => {
+        const storedRoles = getLocalHotelRoles();
+        setRoles(storedRoles);
+    }, []);
+
+    // Load users from Supabase
     const loadUsers = useCallback(async () => {
         setIsLoading(true);
         try {
@@ -79,33 +99,54 @@ export default function UsersPage() {
 
             if (error) throw error;
             setUsers(data || []);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error loading users:', err);
-            toast.error('Failed to load users');
+            toast.error('Failed to load hotel personnel. Please verify database connection.');
+        } finally {
+            setIsLoading(false);
         }
-        setIsLoading(false);
-    }, []);
-
-    const generateUserCode = useCallback(async () => {
-        const { count } = await supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true });
-
-        const nextNum = (count || 0) + 1;
-        return `US-${String(nextNum).padStart(3, '0')}`;
     }, []);
 
     useEffect(() => {
+        loadRolesList();
         loadUsers();
-    }, [loadUsers]);
 
+        // Listen for live role updates
+        const handleRoleUpdate = () => loadRolesList();
+        window.addEventListener('alphaplus_roles_updated', handleRoleUpdate);
+        return () => window.removeEventListener('alphaplus_roles_updated', handleRoleUpdate);
+    }, [loadRolesList, loadUsers]);
+
+    // Update filter if URL changes
+    useEffect(() => {
+        if (roleParam) {
+            setFilterRole(roleParam);
+        }
+    }, [roleParam]);
+
+    // Auto-generate next Staff Code
+    const generateUserCode = useCallback(async () => {
+        try {
+            const { count } = await supabase
+                .from('users')
+                .select('*', { count: 'exact', head: true });
+
+            const nextNum = (count || users.length || 0) + 1;
+            return `US-${String(nextNum).padStart(4, '0')}`;
+        } catch {
+            return `US-${String(users.length + 1).padStart(4, '0')}`;
+        }
+    }, [users.length]);
+
+    // Open Add Staff Modal
     const openAddModal = async () => {
         const newCode = await generateUserCode();
         setFormData({
             user_code: newCode,
             user_name: '',
             name: '',
-            user_type: 'Cashier',
+            user_type: filterRole !== 'All' ? filterRole : 'Cashier',
+            department: 'Food & Beverage',
             email: '',
             phone: '',
             national_id: '',
@@ -116,154 +157,189 @@ export default function UsersPage() {
             active: true,
         });
         setEditingUser(null);
+        setShowPassword(false);
+        setShowPin(false);
         setShowModal(true);
     };
 
+    // Open Edit Staff Modal
     const openEditModal = (user: User) => {
-        // Block editing super admin
         if (user.is_super_admin) {
-            toast.error('🔒 Super Admin account cannot be edited!');
+            toast.error('🔒 Super Admin account is protected from manual modifications.');
             return;
         }
 
+        const roleMeta = getRoleMeta(user.user_type);
+
         setFormData({
-            user_code: user.user_code,
+            user_code: user.user_code || `US-${String(user.user_id).padStart(4, '0')}`,
             user_name: user.user_name,
             name: user.name,
             user_type: user.user_type,
-            email: user.email,
-            phone: user.phone,
-            national_id: user.national_id,
-            salary_type: user.salary_type,
-            salary_amount: user.salary_amount,
+            department: roleMeta.department || 'Food & Beverage',
+            email: user.email || '',
+            phone: user.phone || '',
+            national_id: user.national_id || '',
+            salary_type: user.salary_type || 'Monthly',
+            salary_amount: Number(user.salary_amount) || 0,
             password: '',
             pin: user.pin || '',
             active: user.active,
         });
         setEditingUser(user);
+        setShowPassword(false);
+        setShowPin(false);
         setShowModal(true);
     };
 
+    // Open View Detail Modal
+    const openDetailModal = (user: User) => {
+        setSelectedUser(user);
+        setShowDetailModal(true);
+    };
+
+    // Auto-generate random 4-digit PIN
+    const handleGenerateRandomPin = () => {
+        const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+        setFormData(prev => ({ ...prev, pin: randomPin }));
+        setShowPin(true);
+        toast.success(`Generated 4-digit PIN: ${randomPin}`);
+    };
+
+    // Save Staff (Insert / Update)
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
-        // Validation
-        if (!formData.user_name || !formData.name) {
-            toast.error('Username and Full Name are required');
+        if (!formData.user_name.trim() || !formData.name.trim()) {
+            toast.error('Username and Full Name are mandatory.');
             return;
         }
 
-        if (!editingUser && !formData.password && formData.user_type !== 'Cashier') {
-            toast.error('Password is required for new users');
+        if (!editingUser && !formData.password && !['Cashier', 'Waiter'].includes(formData.user_type)) {
+            toast.error('Password is required for administrative and front desk staff.');
             return;
         }
 
-        if (formData.user_type === 'Cashier' && formData.pin && ![4, 6].includes(formData.pin.length)) {
-            toast.error('PIN must be 4 or 6 digits');
+        if (formData.pin && ![4, 6].includes(formData.pin.length)) {
+            toast.error('POS Quick PIN must be exactly 4 or 6 digits.');
             return;
         }
+
+        setIsSubmitting(true);
 
         try {
             if (editingUser) {
-                // Update existing user
-                const updateData: Record<string, unknown> = {
-                    user_name: formData.user_name,
-                    name: formData.name,
+                // Update
+                const updatePayload: Record<string, any> = {
+                    user_name: formData.user_name.trim(),
+                    name: formData.name.trim(),
                     user_type: formData.user_type,
-                    email: formData.email,
-                    phone: formData.phone,
-                    national_id: formData.national_id,
+                    email: formData.email.trim() || null,
+                    phone: formData.phone.trim() || null,
+                    national_id: formData.national_id.trim() || null,
                     salary_type: formData.salary_type,
-                    salary_amount: formData.salary_amount,
-                    pin: formData.pin,
+                    salary_amount: Number(formData.salary_amount) || 0,
+                    pin: formData.pin.trim() || null,
                     active: formData.active,
+                    updated_at: new Date().toISOString(),
                 };
 
-                if (formData.password) {
-                    updateData.password_hash = await hashPassword(formData.password);
+                if (formData.password.trim()) {
+                    updatePayload.password_hash = await hashPassword(formData.password.trim());
                 }
 
                 const { error } = await supabase
                     .from('users')
-                    .update(updateData)
+                    .update(updatePayload)
                     .eq('user_id', editingUser.user_id);
 
                 if (error) throw error;
-                toast.success('User updated successfully! ✅');
+                toast.success(`Staff member "${formData.name}" updated successfully! ✅`);
             } else {
-                // Create new user - user_code will be set to null initially
+                // Insert
+                const passwordToHash = formData.password.trim() || formData.pin.trim() || '1234';
+                const passwordHash = await hashPassword(passwordToHash);
+
                 const { data, error } = await supabase
                     .from('users')
                     .insert([{
-                        user_code: null, // Let database handle or update after insert
-                        user_name: formData.user_name,
-                        password_hash: formData.password ? await hashPassword(formData.password) : (formData.pin || ''),
-                        name: formData.name,
+                        user_code: null,
+                        user_name: formData.user_name.trim(),
+                        password_hash: passwordHash,
+                        name: formData.name.trim(),
                         user_type: formData.user_type,
-                        email: formData.email || null,
-                        phone: formData.phone || null,
-                        national_id: formData.national_id || null,
+                        email: formData.email.trim() || null,
+                        phone: formData.phone.trim() || null,
+                        national_id: formData.national_id.trim() || null,
                         salary_type: formData.salary_type,
-                        salary_amount: formData.salary_amount || 0,
-                        pin: formData.pin || null,
+                        salary_amount: Number(formData.salary_amount) || 0,
+                        pin: formData.pin.trim() || null,
                         active: formData.active,
                         is_super_admin: false,
+                        created_at: new Date().toISOString(),
                     }])
                     .select()
                     .single();
 
                 if (error) throw error;
 
-                // Update user_code based on user_id
-                if (data) {
-                    const userCode = `US-${String(data.user_id).padStart(4, '0')}`;
+                // Set proper user_code
+                if (data?.user_id) {
+                    const finalCode = `US-${String(data.user_id).padStart(4, '0')}`;
                     await supabase
                         .from('users')
-                        .update({ user_code: userCode })
+                        .update({ user_code: finalCode })
                         .eq('user_id', data.user_id);
                 }
 
-                toast.success('User created successfully! 🎉');
+                toast.success(`New staff member "${formData.name}" created successfully! 🎉`);
             }
 
             setShowModal(false);
             loadUsers();
         } catch (err: any) {
             console.error('Error saving user:', err);
-            const errorMsg = err?.message || err?.error_description || err?.hint || 'Unknown error';
-            const errorCode = err?.code || '';
-            toast.error(`Failed to save user: ${errorCode} ${errorMsg}`, { duration: 6000 });
+            const msg = err?.message || err?.error_description || 'Unable to save staff record.';
+            toast.error(`Operation failed: ${msg}`);
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
+    // Toggle Active Status
     const toggleUserStatus = async (user: User) => {
         if (user.is_super_admin) {
-            toast.error('Cannot deactivate Super Admin');
+            toast.error('Cannot suspend or deactivate the Super Admin account.');
             return;
         }
 
         try {
+            const nextActive = !user.active;
             const { error } = await supabase
                 .from('users')
-                .update({ active: !user.active })
+                .update({ active: nextActive, updated_at: new Date().toISOString() })
                 .eq('user_id', user.user_id);
 
             if (error) throw error;
-            toast.success(user.active ? 'User deactivated' : 'User activated');
-            loadUsers();
-        } catch (err) {
-            console.error('Error toggling user status:', err);
-            toast.error('Failed to update user status');
+
+            toast.success(nextActive ? `✅ ${user.name} is now ACTIVE` : `⏸️ ${user.name} has been DEACTIVATED`);
+            setUsers(prev => prev.map(u => u.user_id === user.user_id ? { ...u, active: nextActive } : u));
+        } catch (err: any) {
+            console.error('Status toggle error:', err);
+            toast.error('Failed to update staff status.');
         }
     };
 
+    // Delete User
     const deleteUser = async (user: User) => {
         if (user.is_super_admin) {
-            toast.error('Cannot delete Super Admin');
+            toast.error('Cannot delete the root Super Admin account.');
             return;
         }
 
-        if (!confirm(`Are you sure you want to delete ${user.name}?`)) return;
+        if (!confirm(`Are you sure you want to permanently remove "${user.name}" (${user.user_code}) from hotel staff?`)) {
+            return;
+        }
 
         try {
             const { error } = await supabase
@@ -272,126 +348,300 @@ export default function UsersPage() {
                 .eq('user_id', user.user_id);
 
             if (error) throw error;
-            toast.success('User deleted successfully');
-            loadUsers();
-        } catch (err) {
-            console.error('Error deleting user:', err);
-            toast.error('Failed to delete user');
+            toast.success(`Staff member "${user.name}" removed.`);
+            setUsers(prev => prev.filter(u => u.user_id !== user.user_id));
+        } catch (err: any) {
+            console.error('Delete error:', err);
+            toast.error(`Delete failed: ${err.message || 'Staff may have active shift or sales records.'}`);
         }
     };
 
-    // Filter users
-    const filteredUsers = users.filter(user => {
-        const matchesSearch =
-            user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.user_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.user_code?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            user.phone?.includes(searchQuery);
-
-        const matchesRole = filterRole === 'All' || user.user_type === filterRole;
-        const matchesStatus = filterStatus === 'All' ||
-            (filterStatus === 'Active' && user.active) ||
-            (filterStatus === 'Inactive' && !user.active);
-
-        return matchesSearch && matchesRole && matchesStatus;
-    });
-
-    const getRoleColor = (role: string) => {
-        switch (role) {
-            case 'Super Admin': return 'bg-gradient-to-r from-purple-500 to-pink-500 text-white';
-            case 'Manager': return 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white';
-            case 'Supervisor': return 'bg-gradient-to-r from-amber-500 to-orange-500 text-white';
-            case 'Cashier': return 'bg-gradient-to-r from-emerald-500 to-green-500 text-white';
-            case 'Waiter': return 'bg-gradient-to-r from-indigo-500 to-blue-500 text-white';
-            default: return 'bg-gray-500 text-white';
+    // Export Staff Roster to CSV
+    const exportRosterCSV = () => {
+        if (users.length === 0) {
+            toast.error('No staff records to export.');
+            return;
         }
+
+        const headers = ['Staff Code', 'Full Name', 'Username', 'Hotel Role', 'National ID', 'Phone / M-Pesa', 'Email', 'Salary Type', 'Salary (KES)', 'Status', 'Date Registered'];
+        const rows = filteredUsers.map(u => [
+            u.user_code || `US-${u.user_id}`,
+            `"${u.name.replace(/"/g, '""')}"`,
+            `"${u.user_name.replace(/"/g, '""')}"`,
+            `"${u.user_type}"`,
+            `"${u.national_id || ''}"`,
+            `"${u.phone || ''}"`,
+            `"${u.email || ''}"`,
+            u.salary_type || 'Monthly',
+            Number(u.salary_amount || 0).toFixed(2),
+            u.active ? 'Active' : 'Inactive',
+            new Date(u.created_at).toLocaleDateString(),
+        ]);
+
+        const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', `alphaplus_hotel_staff_roster_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success('Staff roster exported to CSV 📥');
     };
 
-    const getRoleEmoji = (role: string) => {
-        switch (role) {
-            case 'Super Admin': return '👑';
-            case 'Manager': return '💼';
-            case 'Supervisor': return '🎯';
-            case 'Cashier': return '💰';
-            case 'Waiter': return '🍽️';
-            default: return '👤';
-        }
+    // Print Staff Roster
+    const handlePrintRoster = () => {
+        window.print();
     };
+
+    // Filter and Sort Users
+    const filteredUsers = useMemo(() => {
+        return users
+            .filter(user => {
+                const q = searchQuery.toLowerCase().trim();
+                const matchesSearch =
+                    !q ||
+                    user.name?.toLowerCase().includes(q) ||
+                    user.user_name?.toLowerCase().includes(q) ||
+                    user.user_code?.toLowerCase().includes(q) ||
+                    user.phone?.includes(q) ||
+                    user.national_id?.toLowerCase().includes(q) ||
+                    user.email?.toLowerCase().includes(q);
+
+                const matchesRole = filterRole === 'All' || user.user_type === filterRole;
+
+                const roleMeta = getRoleMeta(user.user_type);
+                const matchesDepartment =
+                    filterDepartment === 'All' ||
+                    roleMeta.department.toLowerCase() === filterDepartment.toLowerCase();
+
+                const matchesStatus =
+                    filterStatus === 'All' ||
+                    (filterStatus === 'Active' && user.active) ||
+                    (filterStatus === 'Inactive' && !user.active);
+
+                return matchesSearch && matchesRole && matchesDepartment && matchesStatus;
+            })
+            .sort((a, b) => {
+                if (sortBy === 'name') return a.name.localeCompare(b.name);
+                if (sortBy === 'code') return (a.user_code || '').localeCompare(b.user_code || '');
+                if (sortBy === 'salary') return (Number(b.salary_amount) || 0) - (Number(a.salary_amount) || 0);
+                // default: recent
+                return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+            });
+    }, [users, searchQuery, filterRole, filterDepartment, filterStatus, sortBy]);
+
+    // KPI Metrics
+    const metrics = useMemo(() => {
+        const total = users.length;
+        const active = users.filter(u => u.active).length;
+        const foh = users.filter(u => ['Cashier', 'Waiter', 'Waitress', 'Supervisor', 'Front Desk Agent'].includes(u.user_type)).length;
+        const boh = users.filter(u => ['Head Chef', 'Chef', 'Cook', 'Housekeeping Supervisor', 'Storekeeper'].includes(u.user_type)).length;
+        const totalPayroll = users
+            .filter(u => u.active)
+            .reduce((sum, u) => sum + (Number(u.salary_amount) || 0), 0);
+
+        return {
+            total,
+            active,
+            inactive: total - active,
+            foh,
+            boh,
+            totalPayroll,
+        };
+    }, [users]);
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-4 md:p-6">
-            {/* Header */}
+        <div className="min-h-screen bg-slate-50/70 p-4 md:p-8 text-slate-800">
+            {/* Top Bar / Branding */}
             <div className="mb-6">
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div>
-                        <h1 className="text-2xl md:text-3xl font-bold text-gray-800 flex items-center gap-3">
-                            <span className="text-3xl">👥</span>
-                            User Management
-                        </h1>
-                        <p className="text-gray-500 text-sm mt-1">
-                            Manage system users, roles, and permissions
-                        </p>
+                        <div className="flex items-center gap-3">
+                            <span className="text-3xl md:text-4xl">🏨</span>
+                            <div>
+                                <div className="flex items-center gap-2">
+                                    <h1 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">
+                                        Hotel Personnel & Staff Directory
+                                    </h1>
+                                    <span className="hidden sm:inline-block px-2.5 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full text-xs font-semibold">
+                                        KENYA HOSPITALITY
+                                    </span>
+                                </div>
+                                <p className="text-slate-500 text-sm mt-1">
+                                    Manage hotel staff credentials, POS till access PINs, roles, department rosters & monthly payroll.
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
-                    <button
-                        onClick={openAddModal}
-                        className="flex items-center justify-center gap-2 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-2xl shadow-lg shadow-blue-300/40 hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-300"
-                    >
-                        <span className="text-xl">➕</span>
-                        Add New User
-                    </button>
+                    {/* Action Buttons */}
+                    <div className="flex flex-wrap items-center gap-2.5">
+                        <Link
+                            href="/dashboard/user-roles"
+                            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-2xl border border-slate-200 shadow-sm hover:shadow transition-all text-sm"
+                            title="Manage Security & Permissions Matrix"
+                        >
+                            <span className="text-lg">🛡️</span>
+                            <span>Roles & Permissions</span>
+                            <span className="ml-1 px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full">
+                                {roles.length}
+                            </span>
+                        </Link>
+
+                        <button
+                            onClick={exportRosterCSV}
+                            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-2xl border border-slate-200 shadow-sm transition-all text-sm"
+                            title="Export Roster to Excel/CSV"
+                        >
+                            <span>📥</span>
+                            <span className="hidden sm:inline">Export CSV</span>
+                        </button>
+
+                        <button
+                            onClick={handlePrintRoster}
+                            className="inline-flex items-center gap-2 px-3.5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 font-medium rounded-2xl border border-slate-200 shadow-sm transition-all text-sm"
+                            title="Print Staff Roster"
+                        >
+                            <span>🖨️</span>
+                            <span className="hidden sm:inline">Print</span>
+                        </button>
+
+                        <button
+                            onClick={openAddModal}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-2xl shadow-md shadow-blue-500/20 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all text-sm"
+                        >
+                            <span className="text-lg">➕</span>
+                            <span>Add Hotel Staff</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-                {defaultRoles.map((role) => {
+            {/* KPI Stat Cards (Bright White with Crisp Accents) */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5 mb-6">
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Total Staff</span>
+                        <span className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-base">👥</span>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.total}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Registered personnel</p>
+                </div>
+
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Active On-Duty</span>
+                        <span className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-base">✅</span>
+                    </div>
+                    <p className="text-2xl font-bold text-emerald-600 mt-2">{metrics.active}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">{metrics.total > 0 ? Math.round((metrics.active / metrics.total) * 100) : 0}% workforce active</p>
+                </div>
+
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Front of House</span>
+                        <span className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-base">🍽️</span>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.foh}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Cashiers, Waiters, F&B</p>
+                </div>
+
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Back of House</span>
+                        <span className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center text-base">👨‍🍳</span>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-900 mt-2">{metrics.boh}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Chefs, Housekeeping, Store</p>
+                </div>
+
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Inactive / Leave</span>
+                        <span className="w-8 h-8 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-base">⏸️</span>
+                    </div>
+                    <p className="text-2xl font-bold text-slate-500 mt-2">{metrics.inactive}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Off duty or suspended</p>
+                </div>
+
+                <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm hover:shadow transition-all">
+                    <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Payroll Total</span>
+                        <span className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-base">💵</span>
+                    </div>
+                    <p className="text-xl font-bold text-indigo-700 mt-2 truncate">
+                        KES {metrics.totalPayroll.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-slate-400 mt-0.5">Active monthly commitment</p>
+                </div>
+            </div>
+
+            {/* Quick Role Shortcut Chips */}
+            <div className="flex items-center gap-2 overflow-x-auto pb-3 mb-4 scrollbar-none">
+                <button
+                    onClick={() => setFilterRole('All')}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${filterRole === 'All'
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                        }`}
+                >
+                    🏷️ All Roles ({users.length})
+                </button>
+                {roles.map(role => {
                     const count = users.filter(u => u.user_type === role.role_name).length;
+                    const isActive = filterRole === role.role_name;
                     return (
-                        <div
+                        <button
                             key={role.role_id}
-                            className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 hover:shadow-lg transition-all duration-300 hover:scale-105 cursor-pointer"
                             onClick={() => setFilterRole(role.role_name)}
+                            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold transition-all whitespace-nowrap ${isActive
+                                ? 'bg-blue-600 text-white shadow-sm'
+                                : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                                }`}
                         >
-                            <div className="flex items-center gap-3">
-                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-2xl ${getRoleColor(role.role_name)}`}>
-                                    {getRoleEmoji(role.role_name)}
-                                </div>
-                                <div>
-                                    <p className="text-2xl font-bold text-gray-800">{count}</p>
-                                    <p className="text-xs text-gray-500">{role.role_name}s</p>
-                                </div>
-                            </div>
-                        </div>
+                            <span>{role.emoji}</span>
+                            <span>{role.role_name}</span>
+                            <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                {count}
+                            </span>
+                        </button>
                     );
                 })}
             </div>
 
-            {/* Filters */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 mb-6">
-                <div className="flex flex-col md:flex-row gap-4">
-                    {/* Search */}
+            {/* Search & Filter Toolbar */}
+            <div className="bg-white rounded-3xl p-4 border border-slate-200/80 shadow-sm mb-6">
+                <div className="flex flex-col md:flex-row gap-3">
+                    {/* Search Input */}
                     <div className="flex-1 relative">
                         <input
                             type="text"
-                            placeholder="🔍 Search users by name, username, code, or phone..."
+                            placeholder="🔍 Search staff by name, username, staff code (US-...), phone or national ID..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full px-5 py-3 pl-12 bg-gray-50 border border-gray-200 rounded-xl text-gray-800 placeholder-gray-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 transition-all"
+                            className="w-full px-4 py-2.5 pl-10 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
                         />
-                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl">🔎</span>
+                        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-base">🔎</span>
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-sm"
+                            >
+                                ✕
+                            </button>
+                        )}
                     </div>
 
-                    {/* Role Filter */}
+                    {/* Department Filter */}
                     <select
-                        value={filterRole}
-                        onChange={(e) => setFilterRole(e.target.value)}
-                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 transition-all cursor-pointer"
+                        value={filterDepartment}
+                        onChange={(e) => setFilterDepartment(e.target.value)}
+                        className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 focus:outline-none focus:border-blue-500 text-sm cursor-pointer"
                     >
-                        <option value="All">🏷️ All Roles</option>
-                        {defaultRoles.map(role => (
-                            <option key={role.role_id} value={role.role_name}>
-                                {getRoleEmoji(role.role_name)} {role.role_name}
+                        {HOTEL_DEPARTMENTS.map(dept => (
+                            <option key={dept.id} value={dept.id === 'all' ? 'All' : dept.name}>
+                                {dept.icon} {dept.name}
                             </option>
                         ))}
                     </select>
@@ -400,157 +650,371 @@ export default function UsersPage() {
                     <select
                         value={filterStatus}
                         onChange={(e) => setFilterStatus(e.target.value)}
-                        className="px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 transition-all cursor-pointer"
+                        className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 focus:outline-none focus:border-blue-500 text-sm cursor-pointer"
                     >
                         <option value="All">📊 All Status</option>
-                        <option value="Active">✅ Active</option>
-                        <option value="Inactive">❌ Inactive</option>
+                        <option value="Active">✅ Active On-Duty</option>
+                        <option value="Inactive">⏸️ Inactive / Leave</option>
                     </select>
 
-                    {/* Refresh */}
+                    {/* Sort */}
+                    <select
+                        value={sortBy}
+                        onChange={(e) => setSortBy(e.target.value as any)}
+                        className="px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-700 focus:outline-none focus:border-blue-500 text-sm cursor-pointer"
+                    >
+                        <option value="recent">⏱️ Recently Added</option>
+                        <option value="name">🔤 Name (A - Z)</option>
+                        <option value="code">🆔 Staff Code</option>
+                        <option value="salary">💵 Salary (High to Low)</option>
+                    </select>
+
+                    {/* View Switcher & Refresh */}
+                    <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-2xl">
+                        <button
+                            onClick={() => setViewMode('table')}
+                            className={`p-2 rounded-xl transition-all ${viewMode === 'table' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                            title="Table View"
+                        >
+                            📋
+                        </button>
+                        <button
+                            onClick={() => setViewMode('cards')}
+                            className={`p-2 rounded-xl transition-all ${viewMode === 'cards' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                            title="Grid Cards View"
+                        >
+                            📇
+                        </button>
+                    </div>
+
                     <button
                         onClick={loadUsers}
-                        className="px-4 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-all flex items-center gap-2"
+                        className="p-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-2xl transition-all flex items-center justify-center"
+                        title="Reload from Database"
                     >
-                        <span className="text-lg">🔄</span>
-                        Refresh
+                        🔄
                     </button>
                 </div>
             </div>
 
-            {/* Users Table */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead>
-                            <tr className="bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-                                <th className="px-4 py-4 text-left text-sm font-semibold">👤 User</th>
-                                <th className="px-4 py-4 text-left text-sm font-semibold hidden md:table-cell">📧 Contact</th>
-                                <th className="px-4 py-4 text-left text-sm font-semibold">🎭 Role</th>
-                                <th className="px-4 py-4 text-left text-sm font-semibold hidden lg:table-cell">💵 Salary</th>
-                                <th className="px-4 py-4 text-center text-sm font-semibold">📊 Status</th>
-                                <th className="px-4 py-4 text-center text-sm font-semibold">⚙️ Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {isLoading ? (
-                                <tr>
-                                    <td colSpan={6} className="px-4 py-12 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <div className="w-10 h-10 border-4 border-blue-400/30 border-t-blue-500 rounded-full animate-spin"></div>
-                                            <span className="text-gray-500">Loading users...</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : filteredUsers.length === 0 ? (
-                                <tr>
-                                    <td colSpan={6} className="px-4 py-12 text-center">
-                                        <div className="flex flex-col items-center gap-3">
-                                            <span className="text-5xl">📭</span>
-                                            <span className="text-gray-500">No users found</span>
-                                        </div>
-                                    </td>
-                                </tr>
-                            ) : (
-                                filteredUsers.map((user) => (
-                                    <tr key={user.user_id} className="hover:bg-indigo-50/50 transition-colors">
-                                        <td className="px-4 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold ${getRoleColor(user.user_type)}`}>
-                                                    {user.name?.charAt(0).toUpperCase() || '?'}
-                                                </div>
-                                                <div>
-                                                    <p className="font-semibold text-gray-800 flex items-center gap-2">
-                                                        {user.name}
-                                                        {user.is_super_admin && <span title="Super Admin">👑</span>}
-                                                    </p>
-                                                    <p className="text-sm text-gray-500">@{user.user_name}</p>
-                                                    <p className="text-xs text-indigo-600 font-mono">{user.user_code}</p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4 hidden md:table-cell">
-                                            <div className="space-y-1">
-                                                <p className="text-sm text-gray-600 flex items-center gap-1">
-                                                    <span>📧</span> {user.email || '-'}
-                                                </p>
-                                                <p className="text-sm text-gray-600 flex items-center gap-1">
-                                                    <span>📱</span> {user.phone || '-'}
-                                                </p>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold ${getRoleColor(user.user_type)}`}>
-                                                {getRoleEmoji(user.user_type)} {user.user_type}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-4 hidden lg:table-cell">
-                                            <div>
-                                                <p className="text-sm font-semibold text-gray-800">
-                                                    KES {user.salary_amount?.toLocaleString() || '0'}
-                                                </p>
-                                                <p className="text-xs text-gray-500">{user.salary_type || 'Monthly'}</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-4 text-center">
-                                            <button
-                                                onClick={() => toggleUserStatus(user)}
-                                                disabled={user.is_super_admin}
-                                                className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${user.active
-                                                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                                    : 'bg-red-100 text-red-700 hover:bg-red-200'
-                                                    } ${user.is_super_admin ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
-                                            >
-                                                {user.active ? '✅ Active' : '❌ Inactive'}
-                                            </button>
-                                        </td>
-                                        <td className="px-4 py-4">
-                                            <div className="flex items-center justify-center gap-2">
-                                                {user.is_super_admin ? (
-                                                    <span className="px-3 py-2 bg-purple-100 text-purple-700 rounded-xl text-xs font-semibold">
-                                                        🔒 Protected
-                                                    </span>
-                                                ) : (
-                                                    <>
-                                                        <button
-                                                            onClick={() => openEditModal(user)}
-                                                            className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-xl transition-all hover:scale-110"
-                                                            title="Edit User"
-                                                        >
-                                                            ✏️
-                                                        </button>
-                                                        <button
-                                                            onClick={() => deleteUser(user)}
-                                                            className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-xl transition-all hover:scale-110"
-                                                            title="Delete User"
-                                                        >
-                                                            🗑️
-                                                        </button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
+            {/* Content Area: Table vs Cards */}
+            {isLoading ? (
+                <div className="bg-white rounded-3xl p-16 border border-slate-200/80 shadow-sm flex flex-col items-center justify-center text-center">
+                    <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+                    <p className="text-slate-700 font-semibold mt-4">Loading Hotel Personnel...</p>
+                    <p className="text-slate-400 text-xs mt-1">Retrieving staff records, credentials & payroll details</p>
                 </div>
-            </div>
+            ) : filteredUsers.length === 0 ? (
+                <div className="bg-white rounded-3xl p-16 border border-slate-200/80 shadow-sm flex flex-col items-center justify-center text-center">
+                    <span className="text-5xl mb-3">📭</span>
+                    <h3 className="text-lg font-bold text-slate-800">No Hotel Staff Found</h3>
+                    <p className="text-slate-500 text-sm max-w-md mt-1">
+                        No personnel matched your current search filters. Try clearing filters or create a new staff profile.
+                    </p>
+                    <button
+                        onClick={openAddModal}
+                        className="mt-4 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl shadow transition-all text-sm"
+                    >
+                        ➕ Add New Staff Member
+                    </button>
+                </div>
+            ) : viewMode === 'table' ? (
+                /* ─── TABLE VIEW ─── */
+                <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 text-xs font-semibold uppercase tracking-wider">
+                                    <th className="px-5 py-4">👤 Staff Member</th>
+                                    <th className="px-4 py-4">🎭 Role & Department</th>
+                                    <th className="px-4 py-4 hidden md:table-cell">📱 Contact & ID</th>
+                                    <th className="px-4 py-4 hidden lg:table-cell">🔐 Access / PIN</th>
+                                    <th className="px-4 py-4 hidden sm:table-cell">💵 Compensation</th>
+                                    <th className="px-4 py-4 text-center">📊 Status</th>
+                                    <th className="px-5 py-4 text-right">⚙️ Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-sm">
+                                {filteredUsers.map((user) => {
+                                    const roleMeta = getRoleMeta(user.user_type);
+                                    return (
+                                        <tr
+                                            key={user.user_id}
+                                            className="hover:bg-slate-50/70 transition-colors cursor-pointer group"
+                                            onClick={() => openDetailModal(user)}
+                                        >
+                                            {/* User identity */}
+                                            <td className="px-5 py-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-white shadow-sm bg-gradient-to-br ${roleMeta.color} text-base flex-shrink-0`}>
+                                                        {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                                                    </div>
+                                                    <div>
+                                                        <div className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors flex items-center gap-1.5">
+                                                            {user.name}
+                                                            {user.is_super_admin && <span title="Super Admin">👑</span>}
+                                                        </div>
+                                                        <div className="text-xs text-slate-500 font-mono">
+                                                            @{user.user_name}
+                                                        </div>
+                                                        <div className="text-[11px] text-blue-600 font-mono font-medium">
+                                                            {user.user_code || `US-${String(user.user_id).padStart(4, '0')}`}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
 
-            {/* Add/Edit Modal */}
+                                            {/* Role & Department */}
+                                            <td className="px-4 py-4">
+                                                <div className="space-y-1">
+                                                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${roleMeta.badge}`}>
+                                                        <span>{roleMeta.emoji}</span>
+                                                        <span>{user.user_type}</span>
+                                                    </span>
+                                                    <p className="text-[11px] text-slate-400 pl-1">
+                                                        {roleMeta.department}
+                                                    </p>
+                                                </div>
+                                            </td>
+
+                                            {/* Contact & ID */}
+                                            <td className="px-4 py-4 hidden md:table-cell">
+                                                <div className="space-y-0.5">
+                                                    {user.phone ? (
+                                                        <a
+                                                            href={`tel:${user.phone}`}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                            className="text-xs font-medium text-slate-700 hover:text-blue-600 flex items-center gap-1.5"
+                                                        >
+                                                            <span>📱</span> {user.phone}
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-xs text-slate-400">-</span>
+                                                    )}
+                                                    {user.national_id && (
+                                                        <p className="text-[11px] text-slate-500 flex items-center gap-1">
+                                                            <span>🪪</span> ID: {user.national_id}
+                                                        </p>
+                                                    )}
+                                                    {user.email && (
+                                                        <p className="text-[11px] text-slate-400 truncate max-w-[180px] flex items-center gap-1">
+                                                            <span>📧</span> {user.email}
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            </td>
+
+                                            {/* Access & PIN */}
+                                            <td className="px-4 py-4 hidden lg:table-cell">
+                                                <div className="space-y-1">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-xs">🔢 PIN:</span>
+                                                        {user.pin ? (
+                                                            <span className="px-2 py-0.5 bg-slate-100 text-slate-800 rounded font-mono text-xs font-bold">
+                                                                ●●●●
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-[11px] text-amber-600 font-medium bg-amber-50 px-2 py-0.5 rounded">
+                                                                No PIN
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <p className="text-[11px] text-slate-400">
+                                                        POS Terminal access
+                                                    </p>
+                                                </div>
+                                            </td>
+
+                                            {/* Compensation */}
+                                            <td className="px-4 py-4 hidden sm:table-cell">
+                                                <div>
+                                                    <p className="font-bold text-slate-800 text-sm">
+                                                        KES {Number(user.salary_amount || 0).toLocaleString()}
+                                                    </p>
+                                                    <p className="text-[11px] text-slate-400">
+                                                        {user.salary_type || 'Monthly'}
+                                                    </p>
+                                                </div>
+                                            </td>
+
+                                            {/* Status Toggle */}
+                                            <td className="px-4 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    onClick={() => toggleUserStatus(user)}
+                                                    disabled={user.is_super_admin}
+                                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-all ${user.active
+                                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
+                                                        : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                                                        } ${user.is_super_admin ? 'opacity-70 cursor-not-allowed' : 'cursor-pointer'}`}
+                                                    title={user.is_super_admin ? 'Protected account' : 'Click to toggle active status'}
+                                                >
+                                                    <span className={`w-2 h-2 rounded-full ${user.active ? 'bg-emerald-500' : 'bg-rose-500'}`}></span>
+                                                    <span>{user.active ? 'Active' : 'Inactive'}</span>
+                                                </button>
+                                            </td>
+
+                                            {/* Actions */}
+                                            <td className="px-5 py-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                                <div className="flex items-center justify-end gap-1.5">
+                                                    <button
+                                                        onClick={() => openDetailModal(user)}
+                                                        className="p-2 text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all text-xs"
+                                                        title="View Profile"
+                                                    >
+                                                        👁️
+                                                    </button>
+                                                    {user.is_super_admin ? (
+                                                        <span className="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-xl text-xs font-semibold">
+                                                            🔒 Root
+                                                        </span>
+                                                    ) : (
+                                                        <>
+                                                            <button
+                                                                onClick={() => openEditModal(user)}
+                                                                className="p-2 text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-xl transition-all text-xs"
+                                                                title="Edit Staff Member"
+                                                            >
+                                                                ✏️
+                                                            </button>
+                                                            <button
+                                                                onClick={() => deleteUser(user)}
+                                                                className="p-2 text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition-all text-xs"
+                                                                title="Remove Staff"
+                                                            >
+                                                                🗑️
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            ) : (
+                /* ─── VISUAL STAFF IDENTITY CARDS VIEW ─── */
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                    {filteredUsers.map((user) => {
+                        const roleMeta = getRoleMeta(user.user_type);
+                        return (
+                            <div
+                                key={user.user_id}
+                                className="bg-white rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col justify-between hover:-translate-y-0.5 cursor-pointer"
+                                onClick={() => openDetailModal(user)}
+                            >
+                                {/* Role Gradient Header Accent */}
+                                <div className={`h-3 bg-gradient-to-r ${roleMeta.color}`}></div>
+
+                                <div className="p-5 flex-1">
+                                    {/* Avatar & Header */}
+                                    <div className="flex items-start justify-between gap-3 mb-3">
+                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-white shadow bg-gradient-to-br ${roleMeta.color} text-xl flex-shrink-0`}>
+                                            {user.name ? user.name.charAt(0).toUpperCase() : '?'}
+                                        </div>
+                                        <div className="text-right">
+                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold border ${roleMeta.badge}`}>
+                                                <span>{roleMeta.emoji}</span>
+                                                <span>{user.user_type}</span>
+                                            </span>
+                                            <p className="text-[11px] text-slate-400 mt-1 font-mono">
+                                                {user.user_code || `US-${String(user.user_id).padStart(4, '0')}`}
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Name & Username */}
+                                    <h4 className="text-base font-bold text-slate-900 truncate">
+                                        {user.name}
+                                    </h4>
+                                    <p className="text-xs text-slate-400 mb-3">
+                                        @{user.user_name} • <span className="text-slate-600 font-medium">{roleMeta.department}</span>
+                                    </p>
+
+                                    {/* Contact Details */}
+                                    <div className="space-y-1.5 py-2 border-y border-slate-100 text-xs text-slate-600">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-slate-400">📱 Mobile:</span>
+                                            <span className="font-medium text-slate-800">{user.phone || 'Not provided'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-slate-400">🪪 ID No:</span>
+                                            <span className="font-medium text-slate-800">{user.national_id || '-'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-slate-400">🔢 POS PIN:</span>
+                                            <span className="font-mono font-bold text-slate-800">{user.pin ? '●●●●' : 'None'}</span>
+                                        </div>
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-slate-400">💵 Salary:</span>
+                                            <span className="font-bold text-indigo-700">KES {Number(user.salary_amount || 0).toLocaleString()}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Footer Actions */}
+                                <div className="px-5 py-3 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between" onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                        onClick={() => toggleUserStatus(user)}
+                                        disabled={user.is_super_admin}
+                                        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${user.active
+                                            ? 'bg-emerald-100 text-emerald-800'
+                                            : 'bg-rose-100 text-rose-800'
+                                            }`}
+                                    >
+                                        <span className={`w-1.5 h-1.5 rounded-full ${user.active ? 'bg-emerald-600' : 'bg-rose-600'}`}></span>
+                                        <span>{user.active ? 'Active' : 'Inactive'}</span>
+                                    </button>
+
+                                    <div className="flex items-center gap-1.5">
+                                        {!user.is_super_admin && (
+                                            <>
+                                                <button
+                                                    onClick={() => openEditModal(user)}
+                                                    className="p-1.5 text-blue-600 hover:bg-blue-100 rounded-lg transition-all text-xs"
+                                                    title="Edit"
+                                                >
+                                                    ✏️
+                                                </button>
+                                                <button
+                                                    onClick={() => deleteUser(user)}
+                                                    className="p-1.5 text-rose-600 hover:bg-rose-100 rounded-lg transition-all text-xs"
+                                                    title="Delete"
+                                                >
+                                                    🗑️
+                                                </button>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* ADD / EDIT STAFF MODAL (Bright White, Super Detailed)           */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
             {showModal && (
-                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-                        {/* Modal Header */}
-                        <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-6 py-5 text-white sticky top-0">
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 overflow-y-auto">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-2xl overflow-hidden border border-slate-200 my-8">
+                        {/* Header */}
+                        <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 px-6 py-5 text-white">
                             <div className="flex items-center justify-between">
-                                <h2 className="text-xl font-bold flex items-center gap-2">
-                                    {editingUser ? '✏️ Edit User' : '➕ Add New User'}
-                                </h2>
+                                <div>
+                                    <h2 className="text-xl font-bold flex items-center gap-2">
+                                        <span>{editingUser ? '✏️ Edit Hotel Staff Profile' : '➕ Register New Hotel Personnel'}</span>
+                                    </h2>
+                                    <p className="text-blue-100 text-xs mt-0.5">
+                                        Configure identity, POS till PIN, security credentials & department assignment
+                                    </p>
+                                </div>
                                 <button
                                     onClick={() => setShowModal(false)}
-                                    className="w-10 h-10 rounded-xl bg-white/20 hover:bg-white/30 flex items-center justify-center transition-all"
+                                    className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all text-lg"
                                 >
                                     ✕
                                 </button>
@@ -558,206 +1022,427 @@ export default function UsersPage() {
                         </div>
 
                         {/* Modal Body */}
-                        <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                            {/* User Code & Username */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🆔 User Code
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.user_code}
-                                        disabled
-                                        className="w-full px-4 py-3 bg-gray-100 border border-gray-200 rounded-xl text-gray-600 font-mono"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        👤 Username <span className="text-red-500">*</span>
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.user_name}
-                                        onChange={(e) => setFormData({ ...formData, user_name: e.target.value })}
-                                        placeholder="Enter username"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
-                                        required
-                                    />
-                                </div>
-                            </div>
-
-                            {/* Full Name */}
+                        <form onSubmit={handleSubmit} className="p-6 space-y-5 max-h-[75vh] overflow-y-auto">
+                            {/* SECTION 1: Personal & Identification */}
                             <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                    📝 Full Name <span className="text-red-500">*</span>
-                                </label>
-                                <input
-                                    type="text"
-                                    value={formData.name}
-                                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                                    placeholder="Enter full name"
-                                    className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
-                                    required
-                                />
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                    <span>👤</span> 1. Personal & Government Identification
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Full Name */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                            Official Full Name <span className="text-rose-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.name}
+                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            placeholder="e.g. Samuel Mwangi Kiprotich"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                                            required
+                                        />
+                                    </div>
+
+                                    {/* Username */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                            System Login Username <span className="text-rose-500">*</span>
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.user_name}
+                                            onChange={(e) => setFormData({ ...formData, user_name: e.target.value.toLowerCase().replace(/\s+/g, '') })}
+                                            placeholder="e.g. samuel.m"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm font-mono"
+                                            required
+                                        />
+                                    </div>
+
+                                    {/* Staff Code */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                            Staff Code (System Assigned)
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.user_code}
+                                            disabled
+                                            className="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-500 font-mono text-sm cursor-not-allowed"
+                                        />
+                                    </div>
+
+                                    {/* National ID */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                            Kenyan National ID / Passport Number
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={formData.national_id}
+                                            onChange={(e) => setFormData({ ...formData, national_id: e.target.value })}
+                                            placeholder="e.g. 29384751"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                                        />
+                                    </div>
+                                </div>
                             </div>
 
-                            {/* Role & National ID */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🎭 User Role <span className="text-red-500">*</span>
-                                    </label>
-                                    <select
-                                        value={formData.user_type}
-                                        onChange={(e) => setFormData({ ...formData, user_type: e.target.value })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 cursor-pointer"
+                            {/* SECTION 2: Contact Details */}
+                            <div>
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                    <span>📱</span> 2. Contact & Communications
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Mobile / M-Pesa Phone */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                            Mobile Phone / M-Pesa Number
+                                        </label>
+                                        <input
+                                            type="tel"
+                                            value={formData.phone}
+                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                            placeholder="0712 345 678"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                                        />
+                                    </div>
+
+                                    {/* Email */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                            Official Email Address
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={formData.email}
+                                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                            placeholder="staff@hotel.co.ke"
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* SECTION 3: Role & Department Assignment */}
+                            <div>
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                        <span>🎭</span> 3. Hotel Role & Department Access
+                                    </h3>
+                                    <Link
+                                        href="/dashboard/user-roles"
+                                        target="_blank"
+                                        className="text-xs text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1"
                                     >
-                                        <option value="Manager">💼 Manager</option>
-                                        <option value="Supervisor">🎯 Supervisor</option>
-                                        <option value="Cashier">💰 Cashier</option>
-                                        <option value="Waiter">🍽️ Waiter / Waitress</option>
-                                    </select>
+                                        ⚡ Customize Roles
+                                    </Link>
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🪪 National ID
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={formData.national_id}
-                                        onChange={(e) => setFormData({ ...formData, national_id: e.target.value })}
-                                        placeholder="Enter national ID"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
-                                    />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Role Selector */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                            Assigned Hotel Role <span className="text-rose-500">*</span>
+                                        </label>
+                                        <select
+                                            value={formData.user_type}
+                                            onChange={(e) => {
+                                                const selectedRoleName = e.target.value;
+                                                const roleObj = roles.find(r => r.role_name === selectedRoleName);
+                                                setFormData({
+                                                    ...formData,
+                                                    user_type: selectedRoleName,
+                                                    department: roleObj?.department || formData.department,
+                                                });
+                                            }}
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm cursor-pointer"
+                                        >
+                                            {roles.map(r => (
+                                                <option key={r.role_id} value={r.role_name}>
+                                                    {r.emoji} {r.role_name} ({r.department})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Department Selector */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                            Hospitality Department
+                                        </label>
+                                        <select
+                                            value={formData.department}
+                                            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm cursor-pointer"
+                                        >
+                                            {HOTEL_DEPARTMENTS.filter(d => d.id !== 'all').map(d => (
+                                                <option key={d.id} value={d.name}>
+                                                    {d.icon} {d.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Email & Phone */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        📧 Working Email
-                                    </label>
-                                    <input
-                                        type="email"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        placeholder="user@company.com"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        📱 Mobile Phone
-                                    </label>
-                                    <input
-                                        type="tel"
-                                        value={formData.phone}
-                                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                                        placeholder="0712345678"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
-                                    />
+                            {/* SECTION 4: Credentials & POS PIN */}
+                            <div>
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                    <span>🔐</span> 4. System Login & POS Quick Access PIN
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Password */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <label className="text-xs font-semibold text-slate-700">
+                                                System Password {!editingUser && <span className="text-rose-500">*</span>}
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowPassword(!showPassword)}
+                                                className="text-[11px] text-blue-600 hover:text-blue-700 font-medium"
+                                            >
+                                                {showPassword ? 'Hide' : 'Show'}
+                                            </button>
+                                        </div>
+                                        <input
+                                            type={showPassword ? 'text' : 'password'}
+                                            value={formData.password}
+                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                            placeholder={editingUser ? 'Leave blank to keep current' : 'Min. 6 characters'}
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                                        />
+                                    </div>
+
+                                    {/* POS Quick PIN */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <label className="text-xs font-semibold text-slate-700">
+                                                POS Terminal PIN (4 or 6 digits)
+                                            </label>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={handleGenerateRandomPin}
+                                                    className="text-[11px] text-emerald-600 hover:text-emerald-700 font-medium"
+                                                >
+                                                    🎲 Auto PIN
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowPin(!showPin)}
+                                                    className="text-[11px] text-blue-600 hover:text-blue-700 font-medium"
+                                                >
+                                                    {showPin ? 'Hide' : 'Show'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <input
+                                            type={showPin ? 'text' : 'password'}
+                                            value={formData.pin}
+                                            onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                                            placeholder="e.g. 1234 (Fast cashier login)"
+                                            maxLength={6}
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm font-mono tracking-widest"
+                                        />
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Salary Type & Amount */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        💰 Salary Type
-                                    </label>
-                                    <select
-                                        value={formData.salary_type}
-                                        onChange={(e) => setFormData({ ...formData, salary_type: e.target.value as 'Monthly' | 'Weekly' })}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20 cursor-pointer"
-                                    >
-                                        <option value="Monthly">📅 Monthly</option>
-                                        <option value="Weekly">📆 Weekly</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        💵 Salary Amount (KES)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        value={formData.salary_amount}
-                                        onChange={(e) => setFormData({ ...formData, salary_amount: parseFloat(e.target.value) || 0 })}
-                                        placeholder="0.00"
-                                        min="0"
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
-                                    />
+                            {/* SECTION 5: Payroll & Compensation */}
+                            <div>
+                                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                                    <span>💵</span> 5. Compensation & Payroll (Kenya Shillings)
+                                </h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    {/* Salary Type */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                            Payment Frequency
+                                        </label>
+                                        <select
+                                            value={formData.salary_type}
+                                            onChange={(e) => setFormData({ ...formData, salary_type: e.target.value as any })}
+                                            className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm cursor-pointer"
+                                        >
+                                            <option value="Monthly">📅 Monthly Salary</option>
+                                            <option value="Weekly">📆 Weekly Wage</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Salary Amount */}
+                                    <div>
+                                        <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                                            Gross Amount (KES)
+                                        </label>
+                                        <div className="relative">
+                                            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">KES</span>
+                                            <input
+                                                type="number"
+                                                value={formData.salary_amount}
+                                                onChange={(e) => setFormData({ ...formData, salary_amount: parseFloat(e.target.value) || 0 })}
+                                                placeholder="0.00"
+                                                min="0"
+                                                className="w-full px-4 py-2.5 pl-14 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-100 transition-all text-sm font-semibold"
+                                            />
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
 
-                            {/* Password & PIN */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🔐 Password {!editingUser && <span className="text-red-500">*</span>}
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={formData.password}
-                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                        placeholder={editingUser ? 'Leave blank to keep current' : 'Enter password'}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                                        🔢 PIN (4 or 6 digits) {formData.user_type === 'Cashier' && <span className="text-blue-500">*</span>}
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={formData.pin}
-                                        onChange={(e) => setFormData({ ...formData, pin: e.target.value.replace(/\D/g, '').slice(0, 6) })}
-                                        placeholder="For cashiers"
-                                        maxLength={6}
-                                        className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-400/20"
-                                    />
-                                    {formData.pin && (
-                                        <p className="text-xs text-gray-500 mt-1">
-                                            {formData.pin.length === 4 || formData.pin.length === 6 ? '✅' : '⚠️'} {formData.pin.length} digits entered
-                                        </p>
-                                    )}
-                                </div>
-                            </div>
-
-                            {/* Active Status */}
-                            <div className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl">
+                            {/* Active Status Checkbox */}
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
                                 <label className="flex items-center gap-3 cursor-pointer">
                                     <input
                                         type="checkbox"
                                         checked={formData.active}
                                         onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-                                        className="w-5 h-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                                        className="w-5 h-5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                                     />
-                                    <span className="font-semibold text-gray-700">
-                                        {formData.active ? '✅ Active' : '❌ Inactive'} - User can access the system
-                                    </span>
+                                    <div>
+                                        <span className="text-sm font-semibold text-slate-800">
+                                            {formData.active ? '✅ Active Hotel Staff' : '⏸️ Inactive / Suspended'}
+                                        </span>
+                                        <p className="text-xs text-slate-500">
+                                            Active personnel can login to POS, process hotel bills, and take room orders.
+                                        </p>
+                                    </div>
                                 </label>
                             </div>
 
                             {/* Actions */}
-                            <div className="flex flex-col md:flex-row gap-3 pt-4">
+                            <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
                                 <button
                                     type="button"
                                     onClick={() => setShowModal(false)}
-                                    className="flex-1 px-6 py-3 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold rounded-xl transition-all"
+                                    className="flex-1 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-2xl transition-all text-sm"
                                 >
                                     Cancel
                                 </button>
                                 <button
                                     type="submit"
-                                    className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-300/40 transition-all flex items-center justify-center gap-2"
+                                    disabled={isSubmitting}
+                                    className="flex-1 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-semibold rounded-2xl shadow-md transition-all text-sm flex items-center justify-center gap-2 disabled:opacity-60"
                                 >
-                                    <span>{editingUser ? '💾' : '➕'}</span>
-                                    {editingUser ? 'Update User' : 'Create User'}
+                                    {isSubmitting ? (
+                                        <>
+                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                                            <span>Saving Staff...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>{editingUser ? '💾 Update Staff' : '➕ Create Staff Member'}</span>
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {/* VIEW STAFF DETAIL PROFILE MODAL                                 */}
+            {/* ═══════════════════════════════════════════════════════════════ */}
+            {showDetailModal && selectedUser && (
+                <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-200">
+                        {/* Profile Banner */}
+                        {(() => {
+                            const roleMeta = getRoleMeta(selectedUser.user_type);
+                            return (
+                                <>
+                                    <div className={`p-6 bg-gradient-to-r ${roleMeta.color} text-white`}>
+                                        <div className="flex items-start justify-between">
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center font-bold text-white text-2xl border border-white/30">
+                                                    {selectedUser.name.charAt(0).toUpperCase()}
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-xl font-bold">{selectedUser.name}</h3>
+                                                    <p className="text-white/80 text-xs">@{selectedUser.user_name}</p>
+                                                    <span className="inline-block mt-1 px-2.5 py-0.5 bg-white/20 text-white rounded-full text-xs font-medium">
+                                                        {selectedUser.user_code || `US-${selectedUser.user_id}`}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setShowDetailModal(false)}
+                                                className="w-8 h-8 rounded-xl bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+                                            >
+                                                ✕
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Detail Specs */}
+                                    <div className="p-6 space-y-4">
+                                        <div className="grid grid-cols-2 gap-3 text-sm">
+                                            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                                <span className="text-xs text-slate-400 block">Hotel Role</span>
+                                                <span className="font-bold text-slate-800 flex items-center gap-1.5 mt-0.5">
+                                                    <span>{roleMeta.emoji}</span> {selectedUser.user_type}
+                                                </span>
+                                            </div>
+                                            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                                <span className="text-xs text-slate-400 block">Department</span>
+                                                <span className="font-bold text-slate-800 mt-0.5 block">
+                                                    {roleMeta.department}
+                                                </span>
+                                            </div>
+                                            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                                <span className="text-xs text-slate-400 block">Mobile Phone</span>
+                                                <span className="font-semibold text-slate-800 mt-0.5 block">
+                                                    {selectedUser.phone || 'None'}
+                                                </span>
+                                            </div>
+                                            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                                <span className="text-xs text-slate-400 block">National ID</span>
+                                                <span className="font-semibold text-slate-800 mt-0.5 block">
+                                                    {selectedUser.national_id || 'None'}
+                                                </span>
+                                            </div>
+                                            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                                <span className="text-xs text-slate-400 block">Compensation</span>
+                                                <span className="font-bold text-indigo-700 mt-0.5 block">
+                                                    KES {Number(selectedUser.salary_amount || 0).toLocaleString()} / {selectedUser.salary_type || 'mo'}
+                                                </span>
+                                            </div>
+                                            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                                                <span className="text-xs text-slate-400 block">POS PIN Status</span>
+                                                <span className="font-bold text-emerald-600 mt-0.5 block">
+                                                    {selectedUser.pin ? '✅ Configured (Active)' : '⚠️ Not Configured'}
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-500">
+                                            <p><strong>Registered Date:</strong> {new Date(selectedUser.created_at).toLocaleString()}</p>
+                                            <p><strong>Account Type:</strong> {selectedUser.is_super_admin ? '👑 Super Administrator' : 'Standard Hotel Staff'}</p>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 pt-2">
+                                            <button
+                                                onClick={() => {
+                                                    setShowDetailModal(false);
+                                                    openEditModal(selectedUser);
+                                                }}
+                                                disabled={selectedUser.is_super_admin}
+                                                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-2xl text-sm transition-all disabled:opacity-50"
+                                            >
+                                                ✏️ Edit Staff Details
+                                            </button>
+                                            <button
+                                                onClick={() => setShowDetailModal(false)}
+                                                className="py-2.5 px-5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-2xl text-sm transition-all"
+                                            >
+                                                Close
+                                            </button>
+                                        </div>
+                                    </div>
+                                </>
+                            );
+                        })()}
                     </div>
                 </div>
             )}

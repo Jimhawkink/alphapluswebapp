@@ -362,6 +362,7 @@ const buildMenu = (): MenuSection[] => [
                 name: 'HR & Staff', icon: Icons.hr, id: 'hr',
                 subItems: [
                     { name: 'Staff Management', icon: Icons.users, href: '/dashboard/users' },
+                    { name: 'Roles & Permissions', icon: Icons.key, href: '/dashboard/user-roles', badge: 'RBAC' },
                     { name: 'Payroll', icon: Icons.payroll, href: '/dashboard/payroll' },
                     { name: 'Shifts', icon: Icons.clock, href: '/dashboard/shifts' },
                 ],
