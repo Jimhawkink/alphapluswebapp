@@ -74,10 +74,39 @@ interface RunningOrder {
 
 interface ShiftInfo {
     id: number;
-    name: string;
+    name: string; // 'Day Shift' | 'Night Shift'
     code: string;
     startTime: string;
     openingCash: number;
+    openedBy?: string;
+    shiftDate?: string;
+}
+
+interface CloseShiftData {
+    shiftId: number;
+    shiftName: string; // 'Day Shift' or 'Night Shift'
+    shiftCode: string;
+    cashierName: string;
+    openingTime: string;
+    closingTime: string;
+    shiftDate: string;
+    durationFormatted: string;
+    openingCash: number;
+    totalSales: number;
+    totalCash: number;
+    totalMpesa: number;
+    totalCard: number;
+    totalCredit: number;
+    totalExpenses: number;
+    totalCostPrice: number;
+    grossProfit: number;
+    netSales: number;
+    netProfit: number;
+    orderCount: number;
+    expectedTillCash: number;
+    countedCash: number;
+    cashVariance: number;
+    expensesList: Array<{ description: string; category?: string; amount: number; time?: string }>;
 }
 
 interface Category {
@@ -2512,7 +2541,7 @@ export default function POSPage() {
     const [autoLockTimeoutSeconds, setAutoLockTimeoutSeconds] = useState<number>(30);
     const [autoLockOnKotEnabled, setAutoLockOnKotEnabled] = useState<boolean>(true);
 
-    // Dynamically Load Waiter Auto-Lock Preferences from Hotel Settings
+    // Dynamically Load Waiter Auto-Lock & Shift Preferences from Hotel Settings
     useEffect(() => {
         try {
             const savedSec = localStorage.getItem('waiter_autolock_seconds');
@@ -2523,13 +2552,36 @@ export default function POSPage() {
             if (savedKot !== null) {
                 setAutoLockOnKotEnabled(savedKot === 'true');
             }
+            const savedShiftsOn = localStorage.getItem('shifts_enabled');
+            if (savedShiftsOn !== null) {
+                setShiftsEnabled(savedShiftsOn === 'true');
+            }
+            const savedDayStart = localStorage.getItem('day_shift_start');
+            if (savedDayStart) setDayShiftStart(savedDayStart);
+            const savedDayEnd = localStorage.getItem('day_shift_end');
+            if (savedDayEnd) setDayShiftEnd(savedDayEnd);
+            const savedNightStart = localStorage.getItem('night_shift_start');
+            if (savedNightStart) setNightShiftStart(savedNightStart);
+            const savedNightEnd = localStorage.getItem('night_shift_end');
+            if (savedNightEnd) setNightShiftEnd(savedNightEnd);
+            const savedFloat = localStorage.getItem('default_opening_float');
+            if (savedFloat) setDefaultOpeningFloat(parseInt(savedFloat, 10) || 5000);
 
             (async () => {
                 try {
                     const { data } = await supabase
                         .from('organisation_settings')
                         .select('setting_key, setting_value')
-                        .in('setting_key', ['waiter_autolock_seconds', 'waiter_autolock_on_kot']);
+                        .in('setting_key', [
+                            'waiter_autolock_seconds', 
+                            'waiter_autolock_on_kot',
+                            'shifts_enabled',
+                            'day_shift_start',
+                            'day_shift_end',
+                            'night_shift_start',
+                            'night_shift_end',
+                            'default_opening_float'
+                        ]);
                     if (data && data.length > 0) {
                         data.forEach((s: { setting_key: string; setting_value: string }) => {
                             if (s.setting_key === 'waiter_autolock_seconds') {
@@ -2538,6 +2590,17 @@ export default function POSPage() {
                             }
                             if (s.setting_key === 'waiter_autolock_on_kot') {
                                 setAutoLockOnKotEnabled(s.setting_value === 'true');
+                            }
+                            if (s.setting_key === 'shifts_enabled') {
+                                setShiftsEnabled(s.setting_value === 'true');
+                            }
+                            if (s.setting_key === 'day_shift_start') setDayShiftStart(s.setting_value);
+                            if (s.setting_key === 'day_shift_end') setDayShiftEnd(s.setting_value);
+                            if (s.setting_key === 'night_shift_start') setNightShiftStart(s.setting_value);
+                            if (s.setting_key === 'night_shift_end') setNightShiftEnd(s.setting_value);
+                            if (s.setting_key === 'default_opening_float') {
+                                const parsedFloat = parseInt(s.setting_value, 10);
+                                if (!isNaN(parsedFloat)) setDefaultOpeningFloat(parsedFloat);
                             }
                         });
                     }
@@ -2748,17 +2811,33 @@ export default function POSPage() {
     // Hotel/Company Name from database
     const [hotelName, setHotelName] = useState<string>('Your Hotel');
 
-    // ─── OPEN / CLOSE REGISTER ───
+    // ─── OPEN / CLOSE REGISTER & SHIFT OPERATIONS ───
+    const [shiftsEnabled, setShiftsEnabled] = useState<boolean>(true);
+    const [dayShiftStart, setDayShiftStart] = useState<string>('06:00');
+    const [dayShiftEnd, setDayShiftEnd] = useState<string>('18:00');
+    const [nightShiftStart, setNightShiftStart] = useState<string>('18:00');
+    const [nightShiftEnd, setNightShiftEnd] = useState<string>('06:00');
+    const [defaultOpeningFloat, setDefaultOpeningFloat] = useState<number>(5000);
+    const [selectedShiftCycleToOpen, setSelectedShiftCycleToOpen] = useState<'Day Shift' | 'Night Shift'>('Day Shift');
     const [showOpeningDrop, setShowOpeningDrop] = useState(false);
     const [openingDropAmount, setOpeningDropAmount] = useState('');
     const [registerOpen, setRegisterOpen] = useState(false);
     const [showCloseRegister, setShowCloseRegister] = useState(false);
-    const [closeRegisterData, setCloseRegisterData] = useState<{
-        totalSales: number; totalCash: number; totalMpesa: number;
-        totalCredit: number; totalExpenses: number; openingCash: number;
-        netSales: number; orderCount: number; profit: number;
-    } | null>(null);
+    const [closeRegisterData, setCloseRegisterData] = useState<CloseShiftData | null>(null);
+    const [countedCashInput, setCountedCashInput] = useState<string>('');
     const [isLoadingRegister, setIsLoadingRegister] = useState(false);
+
+    // Detect whether current time falls under Day or Night Shift
+    const detectCurrentShiftCycle = useCallback((timeStr?: string): 'Day Shift' | 'Night Shift' => {
+        const t = timeStr || new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        if (dayShiftStart <= dayShiftEnd) {
+            if (t >= dayShiftStart && t < dayShiftEnd) return 'Day Shift';
+            return 'Night Shift';
+        } else {
+            if (t >= dayShiftStart || t < dayShiftEnd) return 'Day Shift';
+            return 'Night Shift';
+        }
+    }, [dayShiftStart, dayShiftEnd]);
 
     // ─── HOLD / RECALL SALE ───
     interface HeldSale {
@@ -2805,6 +2884,9 @@ export default function POSPage() {
     const loadActiveShift = useCallback(async () => {
         setIsLoadingShift(true);
         try {
+            const shiftsOn = localStorage.getItem('shifts_enabled') !== 'false';
+            setShiftsEnabled(shiftsOn);
+
             // 1. Try 'shifts' table
             const { data: openShift, error } = await supabase
                 .from('shifts')
@@ -2815,15 +2897,19 @@ export default function POSPage() {
                 .maybeSingle();
 
             if (!error && openShift) {
+                const isNight = (openShift.shift_type || '').toLowerCase().includes('night');
                 const shiftObj: ShiftInfo = {
                     id: openShift.shift_id,
-                    name: openShift.shift_type || 'Day Shift',
+                    name: isNight ? 'Night Shift' : 'Day Shift',
                     code: `SH-${openShift.shift_id}`,
-                    startTime: openShift.start_time || '06:00',
-                    openingCash: openShift.opening_cash || 0
+                    startTime: openShift.start_time || (isNight ? nightShiftStart : dayShiftStart),
+                    openingCash: openShift.opening_cash || 0,
+                    openedBy: openShift.opened_by || 'Cashier',
+                    shiftDate: openShift.shift_date || new Date().toISOString().split('T')[0]
                 };
                 setShift(shiftObj);
                 setHasActiveShift(true);
+                setRegisterOpen(true);
                 localStorage.setItem('alpha_hotel_active_shift', JSON.stringify(shiftObj));
                 setIsLoadingShift(false);
                 return;
@@ -2835,18 +2921,24 @@ export default function POSPage() {
                     .from('shift_instances')
                     .select('*')
                     .eq('shift_status', 'Open')
+                    .order('shift_instance_id', { ascending: false })
+                    .limit(1)
                     .maybeSingle();
 
                 if (openInstance) {
+                    const isNight = detectCurrentShiftCycle() === 'Night Shift';
                     const shiftObj: ShiftInfo = {
                         id: openInstance.shift_instance_id,
-                        name: 'Day Shift',
+                        name: isNight ? 'Night Shift' : 'Day Shift',
                         code: `SH-${openInstance.shift_instance_id}`,
-                        startTime: openInstance.start_time ? new Date(openInstance.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '06:00',
-                        openingCash: openInstance.opening_cash || 0
+                        startTime: openInstance.start_time ? new Date(openInstance.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : (isNight ? nightShiftStart : dayShiftStart),
+                        openingCash: openInstance.opening_cash || 0,
+                        openedBy: openInstance.user_id || 'Cashier',
+                        shiftDate: openInstance.shift_date || new Date().toISOString().split('T')[0]
                     };
                     setShift(shiftObj);
                     setHasActiveShift(true);
+                    setRegisterOpen(true);
                     localStorage.setItem('alpha_hotel_active_shift', JSON.stringify(shiftObj));
                     setIsLoadingShift(false);
                     return;
@@ -2855,15 +2947,17 @@ export default function POSPage() {
 
             setShift(null);
             setHasActiveShift(false);
+            setRegisterOpen(false);
             localStorage.removeItem('alpha_hotel_active_shift');
         } catch (err) {
             console.error('Error checking shift:', err);
             setShift(null);
             setHasActiveShift(false);
+            setRegisterOpen(false);
             localStorage.removeItem('alpha_hotel_active_shift');
         }
         setIsLoadingShift(false);
-    }, []);
+    }, [dayShiftStart, nightShiftStart, detectCurrentShiftCycle]);
 
     // Load held sales from localStorage on mount
     useEffect(() => {
@@ -2939,7 +3033,11 @@ export default function POSPage() {
 
     // ─── OPEN REGISTER ───
     const handleOpenRegister = async () => {
-        const amount = Number(openingDropAmount) || 0;
+        const amount = Number(openingDropAmount) || defaultOpeningFloat || 0;
+        const shiftType = selectedShiftCycleToOpen || detectCurrentShiftCycle();
+        const nowTime = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+        const nowDate = new Date().toISOString().split('T')[0];
+
         try {
             let shiftId = Date.now();
             let openedInDb = false;
@@ -2947,9 +3045,9 @@ export default function POSPage() {
             // 1. Try 'shifts' table
             try {
                 const { data: newShift, error } = await supabase.from('shifts').insert({
-                    shift_date: new Date().toISOString().split('T')[0],
-                    shift_type: 'Day',
-                    start_time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                    shift_date: nowDate,
+                    shift_type: shiftType,
+                    start_time: nowTime,
                     opening_cash: amount,
                     status: 'Open',
                     opened_by: loggedInUserName || 'Cashier'
@@ -2965,7 +3063,7 @@ export default function POSPage() {
             if (!openedInDb) {
                 try {
                     const { data: newInstance, error: instError } = await supabase.from('shift_instances').insert({
-                        shift_date: new Date().toISOString().split('T')[0],
+                        shift_date: nowDate,
                         user_id: loggedInUserName || 'Cashier',
                         opening_cash: amount,
                         shift_status: 'Open'
@@ -2980,10 +3078,12 @@ export default function POSPage() {
 
             const activeShift: ShiftInfo = {
                 id: shiftId,
-                name: 'Day Shift',
+                name: shiftType,
                 code: `SH-${shiftId}`,
-                startTime: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                openingCash: amount
+                startTime: nowTime,
+                openingCash: amount,
+                openedBy: loggedInUserName || 'Cashier',
+                shiftDate: nowDate
             };
 
             setShift(activeShift);
@@ -2992,44 +3092,122 @@ export default function POSPage() {
             setShowOpeningDrop(false);
             setOpeningDropAmount('');
             localStorage.setItem('alpha_hotel_active_shift', JSON.stringify(activeShift));
-            toast.success(`Register opened with Ksh ${amount.toLocaleString()}! You can now make sales.`);
+            toast.success(`✨ ${shiftType} opened successfully with Ksh ${amount.toLocaleString()} initial float! Terminal ready.`);
         } catch (err: any) {
             console.error('Open register error:', err);
             toast.error('Failed to open register: ' + err.message);
         }
     };
 
-    // ─── CLOSE REGISTER ───
+    // ─── CLOSE REGISTER & SHIFT AUDIT ───
     const handleCloseRegister = async () => {
         setIsLoadingRegister(true);
         try {
-            const today = new Date().toISOString().split('T')[0];
-            const { data: salesData } = await supabase
-                .from('sales')
-                .select('sale_id, total_amount, payment_method, total_cost')
-                .eq('sale_date', today);
+            const today = shift?.shiftDate || new Date().toISOString().split('T')[0];
+            const shiftId = shift?.id;
 
-            const sales = salesData || [];
-            const totalSales = sales.reduce((s, r) => s + (r.total_amount || 0), 0);
-            const totalCash = sales.filter(r => (r.payment_method || '').toLowerCase().includes('cash')).reduce((s, r) => s + (r.total_amount || 0), 0);
-            const totalMpesa = sales.filter(r => (r.payment_method || '').toLowerCase().includes('mpesa')).reduce((s, r) => s + (r.total_amount || 0), 0);
-            const totalCredit = sales.filter(r => (r.payment_method || '').toLowerCase().includes('credit')).reduce((s, r) => s + (r.total_amount || 0), 0);
+            // 1. Fetch sales belonging to this shift or date
+            let sales: any[] = [];
+            if (shiftId) {
+                const { data: shiftSales } = await supabase
+                    .from('sales')
+                    .select('*')
+                    .eq('shift_id', shiftId);
+                if (shiftSales && shiftSales.length > 0) {
+                    sales = shiftSales;
+                }
+            }
+            if (sales.length === 0) {
+                const { data: dateSales } = await supabase
+                    .from('sales')
+                    .select('*')
+                    .eq('sale_date', today);
+                sales = dateSales || [];
+            }
 
+            const totalSales = sales.reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+            const totalCash = sales.filter(r => (r.payment_method || '').toLowerCase().includes('cash'))
+                .reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+            const totalMpesa = sales.filter(r => (r.payment_method || '').toLowerCase().includes('mpesa'))
+                .reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+            const totalCard = sales.filter(r => (r.payment_method || '').toLowerCase().includes('card') || (r.payment_method || '').toLowerCase().includes('visa'))
+                .reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+            const totalCredit = sales.filter(r => (r.payment_method || '').toLowerCase().includes('credit') || (r.payment_method || '').toLowerCase().includes('room'))
+                .reduce((s, r) => s + (Number(r.total_amount) || 0), 0);
+
+            // 2. Fetch expenses
             let totalExpenses = 0;
+            let expensesList: Array<{ description: string; category?: string; amount: number; time?: string }> = [];
             try {
-                const { data: expData } = await supabase.from('expenses').select('amount').eq('expense_date', today);
-                totalExpenses = (expData || []).reduce((s, e) => s + (e.amount || 0), 0);
+                const { data: expData } = await supabase
+                    .from('expenses')
+                    .select('id, description, category, amount, created_at, expense_date')
+                    .eq('expense_date', today);
+                if (expData) {
+                    totalExpenses = expData.reduce((s, e) => s + (Number(e.amount) || 0), 0);
+                    expensesList = expData.map(e => ({
+                        description: e.description || e.category || 'Petty Expense',
+                        category: e.category || 'Operations',
+                        amount: Number(e.amount) || 0,
+                        time: e.created_at ? new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : undefined
+                    }));
+                }
             } catch (_) {}
 
-            const openingCash = shift?.openingCash || 0;
-            const netSales = totalSales - totalExpenses - totalCredit;
-            const totalCostPrice = sales.reduce((sum, s) => sum + (s.total_cost || 0), 0);
-            const profit = totalSales - totalCostPrice;
+            const openingCash = Number(shift?.openingCash) || 0;
+            const expectedTillCash = openingCash + totalCash - totalExpenses;
+            const totalCostPrice = sales.reduce((sum, s) => sum + (Number(s.total_cost) || 0), 0);
+            const grossProfit = totalSales - totalCostPrice;
+            const netSales = totalSales - totalExpenses;
+            const netProfit = totalSales - totalCostPrice - totalExpenses;
 
-            setCloseRegisterData({
-                totalSales, totalCash, totalMpesa, totalCredit,
-                totalExpenses, openingCash, netSales, orderCount: sales.length, profit
-            });
+            // Compute elapsed shift duration
+            let durationFormatted = '0h 0m';
+            try {
+                if (shift?.startTime) {
+                    const [startH, startM] = shift.startTime.split(':').map(Number);
+                    const now = new Date();
+                    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+                    const startMinutes = (startH || 0) * 60 + (startM || 0);
+                    let diffMinutes = nowMinutes - startMinutes;
+                    if (diffMinutes < 0) diffMinutes += 24 * 60;
+                    const hours = Math.floor(diffMinutes / 60);
+                    const mins = diffMinutes % 60;
+                    durationFormatted = `${hours}h ${mins}m`;
+                }
+            } catch (_) {}
+
+            const initialCounted = expectedTillCash;
+            setCountedCashInput(String(initialCounted));
+
+            const reportData: CloseShiftData = {
+                shiftId: shift?.id || Date.now(),
+                shiftName: shift?.name || detectCurrentShiftCycle(),
+                shiftCode: shift?.code || `SH-${shift?.id || '1'}`,
+                cashierName: shift?.openedBy || loggedInUserName || 'Cashier',
+                openingTime: shift?.startTime || '06:00',
+                closingTime: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                shiftDate: today,
+                durationFormatted,
+                openingCash,
+                totalSales,
+                totalCash,
+                totalMpesa,
+                totalCard,
+                totalCredit,
+                totalExpenses,
+                totalCostPrice,
+                grossProfit,
+                netSales,
+                netProfit,
+                orderCount: sales.length,
+                expectedTillCash,
+                countedCash: initialCounted,
+                cashVariance: 0,
+                expensesList
+            };
+
+            setCloseRegisterData(reportData);
             setShowCloseRegister(true);
         } catch (err: any) {
             toast.error('Failed to load register data: ' + err.message);
@@ -3039,11 +3217,15 @@ export default function POSPage() {
 
     // Finalize close register
     const finalizeCloseRegister = async () => {
-        if (shift && closeRegisterData) {
+        if (!closeRegisterData) return;
+        const actualCash = Number(countedCashInput) || 0;
+        const variance = actualCash - closeRegisterData.expectedTillCash;
+
+        if (shift) {
             try {
                 await supabase.from('shifts').update({
-                    end_time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
-                    closing_cash: closeRegisterData.totalCash,
+                    end_time: closeRegisterData.closingTime,
+                    closing_cash: actualCash,
                     total_sales: closeRegisterData.totalSales,
                     total_expenses: closeRegisterData.totalExpenses,
                     net_sales: closeRegisterData.netSales,
@@ -3055,7 +3237,9 @@ export default function POSPage() {
             try {
                 await supabase.from('shift_instances').update({
                     end_time: new Date().toISOString(),
-                    closing_cash: closeRegisterData.totalCash,
+                    closing_cash: actualCash,
+                    expected_cash: closeRegisterData.expectedTillCash,
+                    cash_variance: variance,
                     shift_status: 'Closed'
                 }).eq('shift_instance_id', shift.id);
             } catch (_) {}
@@ -3066,7 +3250,7 @@ export default function POSPage() {
         setShowCloseRegister(false);
         setCloseRegisterData(null);
         localStorage.removeItem('alpha_hotel_active_shift');
-        toast.success('Register closed successfully');
+        toast.success(`Shift ${closeRegisterData.shiftName} closed successfully! Z-Report archived. ✅`);
     };
 
     // Print Close Register Report
@@ -3074,46 +3258,107 @@ export default function POSPage() {
         if (!closeRegisterData) return;
         const d = closeRegisterData;
         const now = new Date();
-        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Close Register</title>
+        const cashCounted = Number(countedCashInput) || d.expectedTillCash;
+        const variance = cashCounted - d.expectedTillCash;
+        const varianceText = variance === 0
+            ? '0.00 (EXACT BALANCED)'
+            : variance > 0
+            ? `+${variance.toLocaleString()} (OVERAGE / SURPLUS)`
+            : `-${Math.abs(variance).toLocaleString()} (SHORTAGE / DEFICIT)`;
+
+        const cashPct = d.totalSales > 0 ? Math.round((d.totalCash / d.totalSales) * 100) : 0;
+        const mpesaPct = d.totalSales > 0 ? Math.round((d.totalMpesa / d.totalSales) * 100) : 0;
+        const cardPct = d.totalSales > 0 ? Math.round((d.totalCard / d.totalSales) * 100) : 0;
+        const creditPct = d.totalSales > 0 ? Math.round((d.totalCredit / d.totalSales) * 100) : 0;
+        const marginPct = d.totalSales > 0 ? Math.round((d.netProfit / d.totalSales) * 100) : 0;
+
+        const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Close Shift Z-Report</title>
 <style>
   @page{margin:0;size:80mm auto;}
   *{margin:0;padding:0;box-sizing:border-box;}
-  body{font-family:Arial,sans-serif;font-size:11px;font-weight:700;width:80mm;padding:4mm;background:#fff;color:#000;line-height:1.4;}
-  .c{text-align:center;} .r{display:flex;justify-content:space-between;padding:3px 0;border-bottom:0.5px dashed #ccc;}
-  .d{border:none;border-top:1px solid #000;margin:4px 0;} .dd{border:none;border-top:1px dashed #000;margin:3px 0;}
-  .big{font-size:14px;font-weight:900;} @media print{body{width:80mm;}}
+  body{font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;width:76mm;padding:3mm 2mm;background:#fff;color:#000;line-height:1.35;}
+  .c{text-align:center;} .r{display:flex;justify-content:space-between;padding:1.5px 0;}
+  .b{font-weight:900;} .big{font-size:13px;font-weight:900;} .hero{font-size:16px;font-weight:900;}
+  .d{border:none;border-top:1px solid #000;margin:3px 0;} .dd{border:none;border-top:1px dashed #000;margin:3px 0;}
+  .sec{font-size:10px;font-weight:900;text-align:center;text-transform:uppercase;border-top:1px dashed #000;border-bottom:1px dashed #000;padding:2px 0;margin:4px 0;}
+  .badge{display:inline-block;padding:2px 6px;border:1px solid #000;font-size:10px;font-weight:900;text-transform:uppercase;margin:2px 0;}
+  .sig{margin-top:14px;border-top:1px solid #000;padding-top:2px;font-size:9px;}
+  @media print{body{width:76mm;}}
 </style></head><body>
-  <div class="c"><div style="font-size:14px;font-weight:900;text-transform:uppercase;">${hotelName}</div>
-  <div style="font-size:9px;margin:2px 0;">Close Register Report</div></div><hr class="d">
-  <div class="c" style="margin:4px 0;"><div style="background:#000;color:#fff;padding:4px 12px;display:inline-block;font-size:11px;font-weight:900;">END OF DAY REPORT</div></div><hr class="dd">
-  <div class="r"><span style="font-size:9px;">Date</span><span style="font-size:10px;">${now.toLocaleDateString('en-GB')}</span></div>
-  <div class="r"><span style="font-size:9px;">Time</span><span style="font-size:10px;">${now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</span></div>
-  <div class="r"><span style="font-size:9px;">Total Orders</span><span style="font-size:10px;">${d.orderCount}</span></div><hr class="d">
-  <div class="c" style="font-size:9px;font-weight:900;letter-spacing:1px;margin:3px 0;">SALES BREAKDOWN</div>
-  <div class="r"><span>💵 Cash Sales</span><span class="big">Ksh ${d.totalCash.toLocaleString()}</span></div>
-  <div class="r"><span>📱 M-Pesa Sales</span><span class="big">Ksh ${d.totalMpesa.toLocaleString()}</span></div>
-  <div class="r"><span>📋 Credit Sales</span><span class="big">Ksh ${d.totalCredit.toLocaleString()}</span></div><hr class="dd">
-  <div style="background:#000;color:#fff;padding:5px 8px;margin:4px 0;display:flex;justify-content:space-between;">
-    <span style="font-size:11px;font-weight:900;">TOTAL SALES</span><span style="font-size:14px;font-weight:900;">Ksh ${d.totalSales.toLocaleString()}</span></div><hr class="d">
-  <div class="c" style="font-size:9px;font-weight:900;letter-spacing:1px;margin:3px 0;">CASH SUMMARY</div>
-  <div class="r"><span>🟢 Opening Cash</span><span class="big">Ksh ${d.openingCash.toLocaleString()}</span></div>
-  <div class="r"><span>💵 Cash Sales</span><span class="big">Ksh ${d.totalCash.toLocaleString()}</span></div>
-  <div class="r"><span>🔴 Expenses</span><span style="color:#c00;" class="big">-Ksh ${d.totalExpenses.toLocaleString()}</span></div><hr class="dd">
-  <div style="background:#000;color:#fff;padding:6px 8px;margin:4px 0;display:flex;justify-content:space-between;">
-    <span style="font-size:12px;font-weight:900;">NET SALES</span><span style="font-size:16px;font-weight:900;">Ksh ${d.netSales.toLocaleString()}</span></div>
-  <div style="background:#000;color:#fff;padding:5px 8px;margin:2px 0;display:flex;justify-content:space-between;">
-    <span style="font-size:10px;font-weight:900;">EXPECTED IN DRAWER</span><span style="font-size:13px;font-weight:900;">Ksh ${(d.openingCash + d.totalCash - d.totalExpenses).toLocaleString()}</span></div>
-  <div style="background:#000;color:#fff;padding:6px 8px;margin:4px 0;display:flex;justify-content:space-between;">
-    <span style="font-size:12px;font-weight:900;">📈 PROFIT</span><span style="font-size:16px;font-weight:900;">Ksh ${(d.profit || 0).toLocaleString()}</span></div><hr class="d">
-  <div class="c" style="padding:4px 0;"><div style="font-size:8px;">Printed: ${now.toLocaleDateString('en-GB')} ${now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</div>
-    <div style="font-size:7px;margin-top:2px;">Powered by Alpha Plus Hotel POS</div></div>
+  <div class="c">
+    <div style="font-size:14px;font-weight:900;text-transform:uppercase;">${hotelName}</div>
+    <div style="font-size:8.5px;margin-top:1px;">OFFICIAL POS SHIFT AUDIT &amp; CLOSING REPORT</div>
+    <div class="badge">${d.shiftName.toUpperCase()} • Z-REPORT</div>
+  </div>
+  <div class="dd"></div>
+  <div class="r"><span>Shift Ref:</span><span class="b">${d.shiftCode}</span></div>
+  <div class="r"><span>Cycle:</span><span class="b">${d.shiftName}</span></div>
+  <div class="r"><span>Date:</span><span>${d.shiftDate}</span></div>
+  <div class="r"><span>Cashier on Duty:</span><span class="b">${d.cashierName}</span></div>
+  <div class="r"><span>Opening Time:</span><span>${d.openingTime}</span></div>
+  <div class="r"><span>Closing Time:</span><span>${d.closingTime}</span></div>
+  <div class="r"><span>Shift Duration:</span><span class="b">${d.durationFormatted}</span></div>
+  <div class="r"><span>Total Orders:</span><span class="b">${d.orderCount} completed</span></div>
+  
+  <div class="sec">TURNOVER &amp; SALES CHANNELS</div>
+  <div class="r"><span>💵 Cash Sales (${cashPct}%):</span><span class="big">Ksh ${d.totalCash.toLocaleString()}</span></div>
+  <div class="r"><span>📱 M-Pesa C2B (${mpesaPct}%):</span><span class="big">Ksh ${d.totalMpesa.toLocaleString()}</span></div>
+  <div class="r"><span>💳 Card / PDQ (${cardPct}%):</span><span>Ksh ${d.totalCard.toLocaleString()}</span></div>
+  <div class="r"><span>📋 Room / Credit (${creditPct}%):</span><span>Ksh ${d.totalCredit.toLocaleString()}</span></div>
+  <div class="d"></div>
+  <div class="r b" style="font-size:11px;"><span>GROSS REVENUE:</span><span class="hero">Ksh ${d.totalSales.toLocaleString()}</span></div>
+
+  <div class="sec">CASH TILL RECONCILIATION</div>
+  <div class="r"><span>🟢 Opening Cash Float:</span><span class="b">Ksh ${d.openingCash.toLocaleString()}</span></div>
+  <div class="r"><span>➕ Cash Received (Sales):</span><span>+Ksh ${d.totalCash.toLocaleString()}</span></div>
+  <div class="r"><span>➖ Petty Cash Expenses:</span><span>-Ksh ${d.totalExpenses.toLocaleString()}</span></div>
+  <div class="dd"></div>
+  <div class="r b"><span>EXPECTED IN TILL:</span><span class="big">Ksh ${d.expectedTillCash.toLocaleString()}</span></div>
+  <div class="r b"><span>ACTUAL COUNTED CASH:</span><span class="big">Ksh ${cashCounted.toLocaleString()}</span></div>
+  <div class="d"></div>
+  <div class="r b" style="font-size:10.5px;"><span>TILL DISCREPANCY:</span><span>${varianceText}</span></div>
+
+  ${d.expensesList && d.expensesList.length > 0 ? `
+  <div class="sec">PETTY CASH DEDUCTIONS</div>
+  ${d.expensesList.map(e => `
+    <div class="r" style="font-size:9px;">
+      <span>• ${e.description.slice(0, 24)}</span>
+      <span class="b">-Ksh ${e.amount.toLocaleString()}</span>
+    </div>
+  `).join('')}
+  <div class="r b" style="border-top:0.5px dashed #000;margin-top:2px;padding-top:2px;">
+    <span>TOTAL EXPENSES:</span><span>-Ksh ${d.totalExpenses.toLocaleString()}</span>
+  </div>` : ''}
+
+  <div class="sec">PROFITABILITY &amp; MARGINS</div>
+  <div class="r"><span>Net Sales Revenue:</span><span class="b">Ksh ${d.netSales.toLocaleString()}</span></div>
+  <div class="r"><span>Cost of Goods (COGS):</span><span>-Ksh ${d.totalCostPrice.toLocaleString()}</span></div>
+  <div class="r"><span>Gross Profit:</span><span>Ksh ${d.grossProfit.toLocaleString()}</span></div>
+  <div class="d"></div>
+  <div class="r b" style="font-size:11px;"><span>NET SHIFT PROFIT:</span><span class="big">Ksh ${d.netProfit.toLocaleString()}</span></div>
+  <div class="r" style="font-size:9px;"><span>Operating Margin:</span><span>${marginPct}%</span></div>
+
+  <div class="sig c">Cashier Signature: _______________________</div>
+  <div class="sig c">Duty Manager Signature: _______________________</div>
+  <div class="dd"></div>
+  <div class="c" style="font-size:7.5px;padding-top:2px;">
+    Printed: ${now.toLocaleDateString('en-GB')} ${now.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} EAT<br/>
+    AlphaPlus Enterprise Hotel POS • Verified Audit Archive
+  </div>
 </body></html>`;
+
+        // Direct print via thermal sequence or iframe
+        try {
+            executeDirectPrint(html, { printerRole: 'customer' });
+        } catch (_) {}
+
         const iframe = document.createElement('iframe');
         iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:none;visibility:hidden;';
         document.body.appendChild(iframe);
         const doc = iframe.contentWindow?.document;
-        if (doc) { doc.open(); doc.write(html); doc.close();
-            iframe.onload = () => { setTimeout(() => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (e) { console.error(e); } setTimeout(() => document.body.removeChild(iframe), 1000); }, 300); };
+        if (doc) { 
+            doc.open(); doc.write(html); doc.close();
+            iframe.onload = () => { setTimeout(() => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (e) { console.error(e); } setTimeout(() => document.body.removeChild(iframe), 1200); }, 300); };
         }
     };
 
@@ -4291,63 +4536,136 @@ export default function POSPage() {
 
     return (
         <>
-                        {/* Register Closed Lockout Modal - Deny proceeding until register is opened */}
-            {!isLoadingShift && !hasActiveShift && (
-                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-3xl p-8 w-full max-w-md text-center shadow-2xl relative border border-gray-100">
-                        <div className="w-20 h-20 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg shadow-green-500/25">
-                            <span className="text-4xl">🟢</span>
+            {/* Register Closed Lockout Modal - Enforced when Shift Operations are Enabled */}
+            {!isLoadingShift && shiftsEnabled && !hasActiveShift && (
+                <div className="fixed inset-0 bg-slate-900/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-lg text-center shadow-2xl relative border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+                        {/* Top Cycle Badge */}
+                        <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full text-xs font-black text-amber-900 mb-3">
+                            <span>{detectCurrentShiftCycle() === 'Day Shift' ? '☀️' : '🌙'}</span>
+                            <span>Current Schedule: {detectCurrentShiftCycle().toUpperCase()}</span>
                         </div>
-                        <h2 className="text-2xl font-bold text-gray-800 mb-2">Register is Closed</h2>
-                        <p className="text-gray-600 mb-6 text-sm">
-                            Open the register with an opening cash float to start making sales. You must open the register to proceed.
+
+                        <div className="w-16 h-16 bg-gradient-to-br from-emerald-400 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-emerald-500/25 text-white text-3xl">
+                            ⏱️
+                        </div>
+                        <h2 className="text-2xl font-black text-slate-900 mb-1">Open Register &amp; Start Shift</h2>
+                        <p className="text-slate-500 mb-5 text-xs max-w-sm mx-auto">
+                            Hotel policies require an active shift with starting cash float before taking food or room orders.
                         </p>
 
-                        <div className="mb-4">
-                            <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 block text-left">
-                                💰 Opening Cash Float Amount
+                        {/* Shift Cycle Selector */}
+                        <div className="mb-4 text-left">
+                            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
+                                Select Operating Shift Cycle:
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedShiftCycleToOpen('Day Shift')}
+                                    className={`p-3 rounded-2xl border-2 text-left transition-all ${
+                                        selectedShiftCycleToOpen === 'Day Shift'
+                                            ? 'bg-amber-50/80 border-amber-500 shadow-sm'
+                                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                                            <span>☀️</span> Day Shift
+                                        </span>
+                                        {selectedShiftCycleToOpen === 'Day Shift' && (
+                                            <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 font-mono font-bold">
+                                        {dayShiftStart} – {dayShiftEnd}
+                                    </p>
+                                </button>
+
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedShiftCycleToOpen('Night Shift')}
+                                    className={`p-3 rounded-2xl border-2 text-left transition-all ${
+                                        selectedShiftCycleToOpen === 'Night Shift'
+                                            ? 'bg-indigo-50/80 border-indigo-600 shadow-sm'
+                                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                                    }`}
+                                >
+                                    <div className="flex items-center justify-between mb-1">
+                                        <span className="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                                            <span>🌙</span> Night Shift
+                                        </span>
+                                        {selectedShiftCycleToOpen === 'Night Shift' && (
+                                            <span className="w-2 h-2 rounded-full bg-indigo-600"></span>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-slate-500 font-mono font-bold">
+                                        {nightShiftStart} – {nightShiftEnd}
+                                    </p>
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Opening Cash Float Input */}
+                        <div className="mb-4 text-left">
+                            <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 block">
+                                💰 Opening Till Cash Float (Ksh)
                             </label>
                             <input
                                 type="number"
-                                value={openingDropAmount}
+                                value={openingDropAmount || (defaultOpeningFloat ? String(defaultOpeningFloat) : '')}
                                 onChange={(e) => setOpeningDropAmount(e.target.value)}
-                                placeholder="Enter amount (e.g., 5000)"
-                                className="w-full p-4 bg-gray-50 border-2 border-gray-200 rounded-xl focus:border-green-500 focus:outline-none text-2xl font-bold text-center text-gray-800"
+                                placeholder="e.g. 5000"
+                                className="w-full p-3.5 bg-slate-50 border-2 border-slate-200 rounded-xl focus:border-emerald-500 focus:outline-none text-2xl font-black font-mono text-center text-slate-900"
                                 autoFocus
                             />
                         </div>
+
+                        {/* Quick Presets */}
                         <div className="grid grid-cols-4 gap-2 mb-4">
-                            {[0, 1000, 2000, 5000].map(amt => (
+                            {[0, 2000, 5000, 10000].map(amt => (
                                 <button
                                     key={amt}
                                     type="button"
                                     onClick={() => setOpeningDropAmount(amt.toString())}
-                                    className="py-2.5 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 font-semibold transition-colors text-xs"
+                                    className="py-2 bg-slate-100 hover:bg-slate-200 rounded-xl text-slate-700 font-black transition-colors text-xs font-mono"
                                 >
-                                    {amt === 0 ? 'Zero (0)' : `Ksh ${amt.toLocaleString()}`}
+                                    {amt === 0 ? 'Zero (0)' : `+${amt.toLocaleString()}`}
                                 </button>
                             ))}
                         </div>
 
-                        <div className="p-4 bg-green-50 rounded-xl border border-green-200 mb-6 text-center">
-                            <span className="text-green-700 font-medium text-xs block mb-1">Starting Register Cash</span>
-                            <span className="text-2xl font-bold text-green-700">Ksh {(Number(openingDropAmount) || 0).toLocaleString()}</span>
+                        <div className="p-3 bg-emerald-50/80 rounded-xl border border-emerald-200 mb-5 text-center flex items-center justify-between px-4">
+                            <span className="text-emerald-800 font-bold text-xs">Assigned Cashier:</span>
+                            <span className="text-sm font-black text-emerald-950 font-mono">
+                                {loggedInUserName || 'Duty Cashier'}
+                            </span>
                         </div>
 
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                             <button
                                 type="button"
                                 onClick={handleOpenRegister}
-                                className="block w-full py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold text-base shadow-lg shadow-green-500/25 transition-all"
+                                className="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-xl font-black text-sm shadow-lg shadow-emerald-600/25 transition-all flex items-center justify-center gap-2"
                             >
-                                ✅ Open Register to Proceed
+                                <span>✅</span>
+                                <span>Open {selectedShiftCycleToOpen} &amp; Unlock Till</span>
                             </button>
-                            <a
-                                href="/dashboard"
-                                className="block w-full py-3 text-gray-400 hover:text-gray-600 font-medium text-xs text-center transition-colors"
-                            >
-                                ← Exit to Dashboard
-                            </a>
+                            <div className="flex items-center justify-center gap-4 pt-1">
+                                <a
+                                    href="/dashboard"
+                                    className="text-slate-400 hover:text-slate-600 font-bold text-xs transition-colors"
+                                >
+                                    ← Dashboard
+                                </a>
+                                <span className="text-slate-300">•</span>
+                                <a
+                                    href="/dashboard/hotel/settings"
+                                    className="text-slate-400 hover:text-slate-600 font-bold text-xs transition-colors"
+                                >
+                                    Shift Settings ⚙️
+                                </a>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -4424,6 +4742,20 @@ export default function POSPage() {
                                         <p className="text-[9px] text-gray-400 font-bold uppercase leading-none">Date & Time</p>
                                         <p className="text-xs font-bold text-white leading-none mt-0.5 font-mono">{currentTime || '10:24 AM'}</p>
                                     </div>
+                                </div>
+
+                                {/* Shift Indicator: Day vs Night Shift */}
+                                <div 
+                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black border shadow-sm ${
+                                        (shift?.name || detectCurrentShiftCycle()).toLowerCase().includes('night')
+                                            ? 'bg-purple-950/60 border-purple-500/50 text-purple-200 shadow-purple-900/30'
+                                            : 'bg-amber-950/60 border-amber-500/50 text-amber-200 shadow-amber-900/30'
+                                    }`}
+                                    title={`Shift: ${shift?.name || detectCurrentShiftCycle()} • Float: Ksh ${(shift?.openingCash || defaultOpeningFloat || 0).toLocaleString()}`}
+                                >
+                                    <span className="text-sm">{(shift?.name || detectCurrentShiftCycle()).toLowerCase().includes('night') ? '🌙' : '☀️'}</span>
+                                    <span>{shift?.name || detectCurrentShiftCycle()}</span>
+                                    {hasActiveShift && <span className="w-1.5 h-1.5 rounded-full bg-[#00e676] animate-pulse"></span>}
                                 </div>
 
                                 <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-[#00e676]/40 px-3 py-1 rounded-full text-xs text-[#00e676] font-bold shadow-[0_0_10px_rgba(0,230,118,0.15)]">
@@ -5357,11 +5689,31 @@ export default function POSPage() {
                                     <span className="text-xs text-blue-600">🧾</span>
                                     <span className="text-xs font-bold font-mono text-blue-800">{invoiceNo}</span>
                                 </div>
-                                {/* Shift Status Pill */}
-                                {!isWaiterUser && hasActiveShift && shift && (
-                                    <div className="flex items-center gap-1 px-2.5 py-1.5 bg-green-50 rounded-xl border border-green-200">
-                                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                                        <span className="text-xs font-bold text-green-800 hidden sm:inline">{shift.name}</span>
+                                {/* Shift Status Indicator: Day vs Night Shift */}
+                                {hasActiveShift && shift ? (
+                                    <div 
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-sm font-black text-xs transition-all ${
+                                            (shift.name || '').toLowerCase().includes('night')
+                                                ? 'bg-gradient-to-r from-indigo-50 to-purple-100/80 border-indigo-300 text-indigo-950'
+                                                : 'bg-gradient-to-r from-amber-50 to-orange-100/80 border-amber-300 text-amber-950'
+                                        }`}
+                                        title={`Shift: ${shift.name} (Started ${shift.startTime}) • Float: Ksh ${(shift.openingCash || 0).toLocaleString()}`}
+                                    >
+                                        <span className="text-sm">{(shift.name || '').toLowerCase().includes('night') ? '🌙' : '☀️'}</span>
+                                        <span className="tracking-wide">{shift.name}</span>
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                    </div>
+                                ) : (
+                                    <div 
+                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-bold text-xs ${
+                                            detectCurrentShiftCycle() === 'Night Shift'
+                                                ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                                                : 'bg-amber-50 text-amber-800 border-amber-200'
+                                        }`}
+                                        title={`Current Window: ${detectCurrentShiftCycle()} (Till Closed)`}
+                                    >
+                                        <span>{detectCurrentShiftCycle() === 'Night Shift' ? '🌙' : '☀️'}</span>
+                                        <span className="hidden sm:inline">{detectCurrentShiftCycle()} (Closed)</span>
                                     </div>
                                 )}
                                 {/* Close Register */}
@@ -6436,89 +6788,290 @@ export default function POSPage() {
                 </div>
             )}
 
-            {/* Close Register Modal */}
+            {/* Super Detailed Shift Close & Till Reconciliation Modal */}
             {showCloseRegister && closeRegisterData && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
-                    <div className="bg-white rounded-2xl shadow-2xl p-6 w-[480px] max-w-[95vw] max-h-[90vh] overflow-y-auto">
-                        <h3 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-                            🔴 Close Register — End of Day Report
-                        </h3>
+                <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-md flex items-center justify-center z-[100] p-3 sm:p-5">
+                    <div className="bg-white rounded-3xl shadow-2xl p-6 sm:p-7 w-[780px] max-w-[96vw] max-h-[92vh] overflow-y-auto border border-slate-200 animate-in fade-in zoom-in-95 duration-150 space-y-5 text-slate-800">
+                        {/* Header Banner */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                            <div>
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1 ${
+                                        closeRegisterData.shiftName.toLowerCase().includes('night')
+                                            ? 'bg-purple-100 text-purple-900 border border-purple-200'
+                                            : 'bg-amber-100 text-amber-900 border border-amber-200'
+                                    }`}>
+                                        <span>{closeRegisterData.shiftName.toLowerCase().includes('night') ? '🌙' : '☀️'}</span>
+                                        <span>{closeRegisterData.shiftName}</span>
+                                    </span>
+                                    <span className="font-mono text-xs font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                        {closeRegisterData.shiftCode}
+                                    </span>
+                                    <span className="text-xs text-slate-400">•</span>
+                                    <span className="text-xs font-bold text-slate-600">
+                                        Cashier: <strong className="text-slate-900">{closeRegisterData.cashierName}</strong>
+                                    </span>
+                                </div>
+                                <h3 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                                    <span>🔒</span> Shift Close &amp; Cash Till Reconciliation Audit
+                                </h3>
+                            </div>
 
-                        <div className="space-y-2 mb-4">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Sales Breakdown</p>
-                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
-                                <span className="text-gray-600">💵 Cash Sales</span>
-                                <span className="font-bold text-gray-800 text-lg">Ksh {closeRegisterData.totalCash.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
-                                <span className="text-gray-600">📱 M-Pesa Sales</span>
-                                <span className="font-bold text-green-600 text-lg">Ksh {closeRegisterData.totalMpesa.toLocaleString()}</span>
-                            </div>
-                            <div className="flex justify-between items-center p-3 bg-gray-50 rounded-xl">
-                                <span className="text-gray-600">📋 Credit Sales</span>
-                                <span className="font-bold text-orange-600 text-lg">Ksh {closeRegisterData.totalCredit.toLocaleString()}</span>
+                            {/* Shift Duration Pill */}
+                            <div className="text-left sm:text-right bg-slate-50 p-2.5 rounded-2xl border border-slate-200/80 shrink-0">
+                                <p className="text-[10px] font-bold uppercase text-slate-500">Shift Running Duration</p>
+                                <p className="text-sm font-black font-mono text-emerald-700">
+                                    ⏱️ {closeRegisterData.durationFormatted} ({closeRegisterData.openingTime} – {closeRegisterData.closingTime})
+                                </p>
                             </div>
                         </div>
 
-                        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl p-4 text-white mb-4">
-                            <div className="flex justify-between items-center">
-                                <span className="font-medium">Total Sales ({closeRegisterData.orderCount} orders)</span>
-                                <span className="text-2xl font-bold">Ksh {closeRegisterData.totalSales.toLocaleString()}</span>
+                        {/* Top 4 Hero KPI Cards */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/90 shadow-sm">
+                                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">💰 Opening Float</p>
+                                <p className="text-lg font-black font-mono text-slate-900 mt-1">
+                                    Ksh {closeRegisterData.openingCash.toLocaleString()}
+                                </p>
+                                <p className="text-[10px] text-slate-500 mt-0.5">Starting till cash</p>
+                            </div>
+
+                            <div className="p-3.5 bg-blue-50/80 rounded-2xl border border-blue-200 shadow-sm">
+                                <p className="text-[11px] font-bold text-blue-800 uppercase tracking-wider">📊 Gross Revenue</p>
+                                <p className="text-lg font-black font-mono text-blue-950 mt-1">
+                                    Ksh {closeRegisterData.totalSales.toLocaleString()}
+                                </p>
+                                <p className="text-[10px] text-blue-700 mt-0.5">{closeRegisterData.orderCount} orders completed</p>
+                            </div>
+
+                            <div className="p-3.5 bg-rose-50/80 rounded-2xl border border-rose-200 shadow-sm">
+                                <p className="text-[11px] font-bold text-rose-800 uppercase tracking-wider">🔴 Total Expenses</p>
+                                <p className="text-lg font-black font-mono text-rose-700 mt-1">
+                                    -Ksh {closeRegisterData.totalExpenses.toLocaleString()}
+                                </p>
+                                <p className="text-[10px] text-rose-600 mt-0.5">Petty deductions</p>
+                            </div>
+
+                            <div className="p-3.5 bg-emerald-50/80 rounded-2xl border border-emerald-200 shadow-sm">
+                                <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-wider">🟢 Net Sales</p>
+                                <p className="text-lg font-black font-mono text-emerald-950 mt-1">
+                                    Ksh {closeRegisterData.netSales.toLocaleString()}
+                                </p>
+                                <p className="text-[10px] text-emerald-700 mt-0.5">Gross less expenses</p>
                             </div>
                         </div>
 
-                        <div className="space-y-2 mb-4">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Deductions</p>
-                            <div className="flex justify-between items-center p-3 bg-red-50 rounded-xl border border-red-200">
-                                <span className="text-red-600">💰 Total Expenses</span>
-                                <span className="font-bold text-red-600 text-lg">-Ksh {closeRegisterData.totalExpenses.toLocaleString()}</span>
+                        {/* Two Columns: Payment Channels Breakdown (Left) & Till Reconciliation (Right) */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {/* Left: Payment Channels & Profitability */}
+                            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3">
+                                <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                                    <p className="text-xs font-black uppercase text-slate-700 tracking-wider">
+                                        Sales by Payment Channel
+                                    </p>
+                                    <span className="text-[11px] font-bold text-slate-500 font-mono">
+                                        {closeRegisterData.orderCount} Receipts
+                                    </span>
+                                </div>
+
+                                <div className="space-y-2 text-xs">
+                                    <div className="flex justify-between items-center p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                        <span className="font-bold text-slate-700 flex items-center gap-1.5">
+                                            <span>💵</span> Cash Drawer
+                                        </span>
+                                        <div className="text-right">
+                                            <span className="font-mono font-black text-slate-900 text-sm">
+                                                Ksh {closeRegisterData.totalCash.toLocaleString()}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 block font-bold">
+                                                {closeRegisterData.totalSales > 0 ? Math.round((closeRegisterData.totalCash / closeRegisterData.totalSales) * 100) : 0}% of turnover
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                        <span className="font-bold text-emerald-800 flex items-center gap-1.5">
+                                            <span>📱</span> Safaricom M-Pesa
+                                        </span>
+                                        <div className="text-right">
+                                            <span className="font-mono font-black text-emerald-700 text-sm">
+                                                Ksh {closeRegisterData.totalMpesa.toLocaleString()}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 block font-bold">
+                                                {closeRegisterData.totalSales > 0 ? Math.round((closeRegisterData.totalMpesa / closeRegisterData.totalSales) * 100) : 0}% of turnover
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                        <span className="font-bold text-blue-800 flex items-center gap-1.5">
+                                            <span>💳</span> PDQ / Credit Card
+                                        </span>
+                                        <div className="text-right">
+                                            <span className="font-mono font-black text-blue-900 text-sm">
+                                                Ksh {closeRegisterData.totalCard.toLocaleString()}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 block font-bold">
+                                                {closeRegisterData.totalSales > 0 ? Math.round((closeRegisterData.totalCard / closeRegisterData.totalSales) * 100) : 0}% of turnover
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex justify-between items-center p-2.5 bg-white rounded-xl border border-slate-200 shadow-2xs">
+                                        <span className="font-bold text-amber-800 flex items-center gap-1.5">
+                                            <span>📋</span> Room Charge / Credit
+                                        </span>
+                                        <div className="text-right">
+                                            <span className="font-mono font-black text-amber-900 text-sm">
+                                                Ksh {closeRegisterData.totalCredit.toLocaleString()}
+                                            </span>
+                                            <span className="text-[10px] text-slate-400 block font-bold">
+                                                {closeRegisterData.totalSales > 0 ? Math.round((closeRegisterData.totalCredit / closeRegisterData.totalSales) * 100) : 0}% of turnover
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Profitability strip */}
+                                <div className="p-3 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-xl border border-emerald-200 text-xs space-y-1">
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-600 font-bold">Cost of Goods (COGS):</span>
+                                        <span className="font-mono font-bold text-slate-700">Ksh {closeRegisterData.totalCostPrice.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-slate-600 font-bold">Estimated Gross Profit:</span>
+                                        <span className="font-mono font-bold text-emerald-800">Ksh {closeRegisterData.grossProfit.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex justify-between items-center pt-1 border-t border-emerald-200/80">
+                                        <span className="font-black text-emerald-950">Net Shift Profit:</span>
+                                        <span className="font-mono font-black text-emerald-900 text-base">
+                                            Ksh {closeRegisterData.netProfit.toLocaleString()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right: Cash Till Reconciliation & Discrepancy */}
+                            <div className="p-4 bg-slate-50/80 rounded-2xl border border-slate-200 space-y-3 flex flex-col justify-between">
+                                <div>
+                                    <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+                                        <p className="text-xs font-black uppercase text-slate-700 tracking-wider">
+                                            Cash Drawer Audit
+                                        </p>
+                                        <span className="text-[10px] font-black uppercase px-2 py-0.5 bg-slate-200 text-slate-700 rounded-md">
+                                            Till Discrepancy Check
+                                        </span>
+                                    </div>
+
+                                    <div className="space-y-1.5 text-xs pt-1">
+                                        <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                                            <span className="text-slate-600">Starting Till Float:</span>
+                                            <span className="font-mono font-bold text-slate-900">Ksh {closeRegisterData.openingCash.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                                            <span className="text-slate-600">+ Cash Received from Sales:</span>
+                                            <span className="font-mono font-bold text-emerald-700">+Ksh {closeRegisterData.totalCash.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-1 border-b border-slate-200/60">
+                                            <span className="text-slate-600">- Petty Cash Paid Out:</span>
+                                            <span className="font-mono font-bold text-rose-600">-Ksh {closeRegisterData.totalExpenses.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center py-2 bg-slate-100 px-2.5 rounded-xl border border-slate-200 font-bold">
+                                            <span className="text-slate-800">🔒 Expected Physical Cash:</span>
+                                            <span className="font-mono font-black text-slate-900 text-sm">
+                                                Ksh {closeRegisterData.expectedTillCash.toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    {/* Counted Cash Input */}
+                                    <div className="mt-3.5 space-y-1">
+                                        <label className="text-[11px] font-black uppercase text-slate-700 block">
+                                            🧮 Actual Physical Cash in Till (Ksh):
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={countedCashInput}
+                                            onChange={(e) => setCountedCashInput(e.target.value)}
+                                            placeholder="Enter counted cash amount"
+                                            className="w-full p-3 bg-white border-2 border-slate-300 rounded-xl font-mono text-xl font-black text-slate-900 focus:outline-none focus:border-emerald-600 text-center shadow-inner"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Variance Live Badge */}
+                                {(() => {
+                                    const counted = Number(countedCashInput) || 0;
+                                    const diff = counted - closeRegisterData.expectedTillCash;
+                                    const isBalanced = diff === 0;
+                                    const isOver = diff > 0;
+                                    return (
+                                        <div className={`p-3 rounded-xl border text-xs flex items-center justify-between ${
+                                            isBalanced
+                                                ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                                                : isOver
+                                                ? 'bg-teal-50 border-teal-200 text-teal-900'
+                                                : 'bg-rose-50 border-rose-200 text-rose-900'
+                                        }`}>
+                                            <span className="font-bold">
+                                                {isBalanced ? '✓ Drawer Exact Match' : isOver ? '▲ Cash Overage / Surplus' : '▼ Cash Shortage / Deficit'}
+                                            </span>
+                                            <span className="font-mono font-black text-sm">
+                                                {diff === 0 ? 'Ksh 0.00' : diff > 0 ? `+Ksh ${diff.toLocaleString()}` : `-Ksh ${Math.abs(diff).toLocaleString()}`}
+                                            </span>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </div>
 
-                        <div className="space-y-2 mb-4">
-                            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Cash Summary</p>
-                            <div className="flex justify-between items-center p-3 bg-green-50 rounded-xl">
-                                <span className="text-gray-600">🟢 Opening Cash</span>
-                                <span className="font-bold text-gray-800">Ksh {closeRegisterData.openingCash.toLocaleString()}</span>
+                        {/* Shift Expense Items List (If any) */}
+                        {closeRegisterData.expensesList && closeRegisterData.expensesList.length > 0 && (
+                            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
+                                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                                    Itemized Petty Cash Deductions ({closeRegisterData.expensesList.length} items):
+                                </p>
+                                <div className="max-h-24 overflow-y-auto divide-y divide-slate-200/60 text-xs">
+                                    {closeRegisterData.expensesList.map((exp, i) => (
+                                        <div key={i} className="py-1 flex justify-between items-center text-[11px]">
+                                            <span className="text-slate-700 font-medium">
+                                                {exp.description} {exp.category ? `(${exp.category})` : ''}
+                                            </span>
+                                            <span className="font-mono font-bold text-rose-700">
+                                                -Ksh {exp.amount.toLocaleString()}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                            <div className="flex justify-between items-center p-3 bg-green-50 rounded-xl">
-                                <span className="text-gray-600">Expected in Drawer</span>
-                                <span className="font-bold text-gray-800">Ksh {(closeRegisterData.openingCash + closeRegisterData.totalCash - closeRegisterData.totalExpenses).toLocaleString()}</span>
-                            </div>
-                        </div>
+                        )}
 
-                        <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-xl p-4 text-white mb-4">
-                            <div className="flex justify-between items-center">
-                                <span className="font-bold text-lg">NET SALES</span>
-                                <span className="text-3xl font-bold">Ksh {closeRegisterData.netSales.toLocaleString()}</span>
-                            </div>
-                        </div>
-
-                        <div className={`rounded-xl p-4 mb-6 ${(closeRegisterData?.profit || 0) >= 0 ? 'bg-gradient-to-r from-amber-400 to-yellow-500' : 'bg-gradient-to-r from-red-500 to-red-600'} text-white`}>
-                            <div className="flex justify-between items-center">
-                                <span className="font-bold text-lg">📈 PROFIT</span>
-                                <span className="text-3xl font-bold">Ksh {(closeRegisterData?.profit || 0).toLocaleString()}</span>
-                            </div>
-                        </div>
-
-                        <div className="flex gap-3">
+                        {/* Action Buttons */}
+                        <div className="flex flex-col sm:flex-row items-center gap-3 pt-3 border-t border-slate-100">
                             <button
+                                type="button"
                                 onClick={() => { setShowCloseRegister(false); setCloseRegisterData(null); }}
-                                className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50"
+                                className="w-full sm:w-auto px-5 py-3 border-2 border-slate-200 text-slate-600 hover:text-slate-900 rounded-2xl font-bold text-xs hover:bg-slate-50 transition-colors"
                             >
-                                Cancel
+                                Cancel / Keep Open
                             </button>
+
                             <button
+                                type="button"
                                 onClick={printCloseRegisterReport}
-                                className="flex-1 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                                className="w-full sm:flex-1 py-3 bg-slate-800 hover:bg-slate-900 text-white rounded-2xl font-black text-xs transition-all flex items-center justify-center gap-2 shadow-sm"
                             >
-                                🖨️ Print Report
+                                <span>🖨️</span>
+                                <span>Print Detailed Thermal Z-Report</span>
                             </button>
+
                             <button
+                                type="button"
                                 onClick={finalizeCloseRegister}
-                                className="flex-1 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-xl font-bold hover:shadow-lg transition-all"
+                                className="w-full sm:flex-1 py-3 bg-gradient-to-r from-rose-600 to-red-700 hover:from-rose-700 hover:to-red-800 text-white rounded-2xl font-black text-xs shadow-lg shadow-rose-600/25 transition-all flex items-center justify-center gap-2"
                             >
-                                ✅ Close & Save
+                                <span>🔒</span>
+                                <span>Confirm &amp; Finalize Close Shift</span>
                             </button>
                         </div>
                     </div>

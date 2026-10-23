@@ -5,7 +5,7 @@ import { supabase, c2bSupabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
 export default function HotelSettingsPage() {
-    const [activeTab, setActiveTab] = useState<'mpesa' | 'operations'>('mpesa');
+    const [activeTab, setActiveTab] = useState<'mpesa' | 'operations' | 'shifts'>('shifts');
     const [isSaving, setIsSaving] = useState(false);
     const [isTestingC2B, setIsTestingC2B] = useState(false);
 
@@ -26,6 +26,14 @@ export default function HotelSettingsPage() {
     const [lateCheckoutGraceMinutes, setLateCheckoutGraceMinutes] = useState(60);
     const [waiterAutoLockSeconds, setWaiterAutoLockSeconds] = useState<number>(30);
     const [waiterAutoLockOnKot, setWaiterAutoLockOnKot] = useState<boolean>(true);
+
+    // Shift Operations & Timings Policies
+    const [shiftsEnabled, setShiftsEnabled] = useState<boolean>(true);
+    const [dayShiftStart, setDayShiftStart] = useState<string>('06:00');
+    const [dayShiftEnd, setDayShiftEnd] = useState<string>('18:00');
+    const [nightShiftStart, setNightShiftStart] = useState<string>('18:00');
+    const [nightShiftEnd, setNightShiftEnd] = useState<string>('06:00');
+    const [defaultOpeningFloat, setDefaultOpeningFloat] = useState<number>(5000);
 
     const baseUrl = typeof window !== 'undefined'
         ? `${window.location.protocol}//${window.location.host}`
@@ -64,6 +72,24 @@ export default function HotelSettingsPage() {
         const savedWaitKot = localStorage.getItem('waiter_autolock_on_kot');
         if (savedWaitKot !== null) setWaiterAutoLockOnKot(savedWaitKot === 'true');
 
+        const savedShiftsOn = localStorage.getItem('shifts_enabled');
+        if (savedShiftsOn !== null) setShiftsEnabled(savedShiftsOn === 'true');
+
+        const savedDayStart = localStorage.getItem('day_shift_start');
+        if (savedDayStart) setDayShiftStart(savedDayStart);
+
+        const savedDayEnd = localStorage.getItem('day_shift_end');
+        if (savedDayEnd) setDayShiftEnd(savedDayEnd);
+
+        const savedNightStart = localStorage.getItem('night_shift_start');
+        if (savedNightStart) setNightShiftStart(savedNightStart);
+
+        const savedNightEnd = localStorage.getItem('night_shift_end');
+        if (savedNightEnd) setNightShiftEnd(savedNightEnd);
+
+        const savedFloat = localStorage.getItem('default_opening_float');
+        if (savedFloat) setDefaultOpeningFloat(parseInt(savedFloat, 10) || 5000);
+
         // Fetch from Supabase organisation_settings
         (async () => {
             try {
@@ -82,6 +108,15 @@ export default function HotelSettingsPage() {
                             if (!isNaN(parsed)) setWaiterAutoLockSeconds(parsed);
                         }
                         if (item.setting_key === 'waiter_autolock_on_kot') setWaiterAutoLockOnKot(item.setting_value === 'true');
+                        if (item.setting_key === 'shifts_enabled') setShiftsEnabled(item.setting_value === 'true');
+                        if (item.setting_key === 'day_shift_start') setDayShiftStart(item.setting_value);
+                        if (item.setting_key === 'day_shift_end') setDayShiftEnd(item.setting_value);
+                        if (item.setting_key === 'night_shift_start') setNightShiftStart(item.setting_value);
+                        if (item.setting_key === 'night_shift_end') setNightShiftEnd(item.setting_value);
+                        if (item.setting_key === 'default_opening_float') {
+                            const parsedFloat = parseInt(item.setting_value, 10);
+                            if (!isNaN(parsedFloat)) setDefaultOpeningFloat(parsedFloat);
+                        }
                     });
                 }
             } catch (err) {
@@ -106,6 +141,12 @@ export default function HotelSettingsPage() {
             localStorage.setItem('hotel_night_audit_time', nightAuditTime);
             localStorage.setItem('waiter_autolock_seconds', String(waiterAutoLockSeconds));
             localStorage.setItem('waiter_autolock_on_kot', String(waiterAutoLockOnKot));
+            localStorage.setItem('shifts_enabled', String(shiftsEnabled));
+            localStorage.setItem('day_shift_start', dayShiftStart);
+            localStorage.setItem('day_shift_end', dayShiftEnd);
+            localStorage.setItem('night_shift_start', nightShiftStart);
+            localStorage.setItem('night_shift_end', nightShiftEnd);
+            localStorage.setItem('default_opening_float', String(defaultOpeningFloat));
 
             // Upsert into Supabase organisation_settings
             const settingsToSave = [
@@ -115,7 +156,13 @@ export default function HotelSettingsPage() {
                 { setting_key: 'hotel_checkin_time', setting_value: checkInTime },
                 { setting_key: 'hotel_checkout_time', setting_value: checkOutTime },
                 { setting_key: 'waiter_autolock_seconds', setting_value: String(waiterAutoLockSeconds) },
-                { setting_key: 'waiter_autolock_on_kot', setting_value: String(waiterAutoLockOnKot) }
+                { setting_key: 'waiter_autolock_on_kot', setting_value: String(waiterAutoLockOnKot) },
+                { setting_key: 'shifts_enabled', setting_value: String(shiftsEnabled) },
+                { setting_key: 'day_shift_start', setting_value: dayShiftStart },
+                { setting_key: 'day_shift_end', setting_value: dayShiftEnd },
+                { setting_key: 'night_shift_start', setting_value: nightShiftStart },
+                { setting_key: 'night_shift_end', setting_value: nightShiftEnd },
+                { setting_key: 'default_opening_float', setting_value: String(defaultOpeningFloat) }
             ];
 
             for (const s of settingsToSave) {
@@ -124,7 +171,15 @@ export default function HotelSettingsPage() {
                     .upsert(s, { onConflict: 'setting_key' });
             }
 
-            toast.success('Hotel & M-Pesa C2B settings saved successfully! ✅');
+            // Sync shift definitions table
+            try {
+                await supabase.from('shift_definitions').upsert([
+                    { shift_name: 'Day Shift', shift_code: 'DAY', start_time: dayShiftStart, end_time: dayShiftEnd, is_active: shiftsEnabled },
+                    { shift_name: 'Night Shift', shift_code: 'NIGHT', start_time: nightShiftStart, end_time: nightShiftEnd, is_active: shiftsEnabled }
+                ], { onConflict: 'shift_code' });
+            } catch (_) {}
+
+            toast.success('Hotel, Shifts & M-Pesa C2B settings saved successfully! ✅');
         } catch (err) {
             console.error('Error saving hotel settings:', err);
             toast.error('Failed to save settings');
@@ -203,6 +258,15 @@ export default function HotelSettingsPage() {
                     >
                         <span>📱</span>
                         <span>M-Pesa C2B Webhook</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('shifts')}
+                        className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                            activeTab === 'shifts' ? 'bg-white text-emerald-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        }`}
+                    >
+                        <span>⏱️</span>
+                        <span>Shift Operations &amp; Timings</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('operations')}
@@ -581,6 +645,290 @@ export default function HotelSettingsPage() {
                                     className="w-24 p-3 bg-white border-2 border-blue-300 rounded-xl text-lg font-black text-center"
                                 />
                                 <span className="font-bold text-sm text-blue-900">% extra surcharge</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB 3: SHIFT OPERATIONS & TIMINGS */}
+            {activeTab === 'shifts' && (
+                <div className="bg-white/90 backdrop-blur-xl p-6 sm:p-8 rounded-3xl border border-slate-200/90 shadow-lg shadow-slate-900/5 space-y-6">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100">
+                        <div>
+                            <div className="flex items-center gap-2">
+                                <span className="px-3 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-full text-xs font-black uppercase tracking-wider">
+                                    POS &amp; Till Operations
+                                </span>
+                                <span className="text-xs text-slate-500 font-medium">Hotel Shift Reconciliation</span>
+                            </div>
+                            <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight mt-1 flex items-center gap-2">
+                                <span>⏱️</span> Shift Operating Hours &amp; Cash Till Policies
+                            </h2>
+                            <p className="text-xs text-slate-500 mt-1">
+                                Control whether shifts are mandatory for POS operation, set Day &amp; Night shift start/end windows, and define starting cash drawer floats.
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <a
+                                href="/dashboard/shifts"
+                                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                            >
+                                <span>📋</span>
+                                <span>View Shifts Dashboard →</span>
+                            </a>
+                        </div>
+                    </div>
+
+                    {/* Master Shift Toggle Card */}
+                    <div className={`p-6 rounded-3xl border-2 transition-all ${
+                        shiftsEnabled
+                            ? 'bg-gradient-to-br from-emerald-50/80 via-teal-50/40 to-white border-emerald-300 shadow-sm'
+                            : 'bg-slate-50 border-slate-200'
+                    }`}>
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex items-start sm:items-center gap-4">
+                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-sm flex-shrink-0 ${
+                                    shiftsEnabled
+                                        ? 'bg-emerald-600 text-white shadow-emerald-600/25'
+                                        : 'bg-slate-200 text-slate-500'
+                                }`}>
+                                    {shiftsEnabled ? '✓' : '⏸️'}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="text-base font-black text-slate-900">
+                                            Shift Management System &amp; Register Lockout
+                                        </h3>
+                                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                                            shiftsEnabled
+                                                ? 'bg-emerald-100 text-emerald-900 border border-emerald-200'
+                                                : 'bg-slate-200 text-slate-700'
+                                        }`}>
+                                            {shiftsEnabled ? 'ACTIVE &amp; ENFORCED' : 'OPTIONAL / BYPASSABLE'}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-600 mt-1 max-w-2xl leading-relaxed">
+                                        When <strong>ACTIVE</strong>, the POS terminal strictly requires cashiers to start an active shift with an opening cash float before taking orders. Day/Night shift indicators, live duration tracking, drawer variance reconciliation, and detailed Z-reports are fully operational.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <label className="relative inline-flex items-center cursor-pointer select-none self-start sm:self-center">
+                                <input
+                                    type="checkbox"
+                                    checked={shiftsEnabled}
+                                    onChange={(e) => setShiftsEnabled(e.target.checked)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-16 h-9 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-7 after:w-7 after:transition-all peer-checked:bg-emerald-600 shadow-inner"></div>
+                            </label>
+                        </div>
+                    </div>
+
+                    {/* Day & Night Shift Schedule Cards */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Day Shift Card */}
+                        <div className="p-6 bg-gradient-to-br from-amber-50/60 via-orange-50/30 to-white rounded-3xl border-2 border-amber-200/80 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between pb-3 border-b border-amber-100">
+                                <div className="flex items-center gap-3">
+                                    <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center text-xl shadow-md shadow-amber-500/20">
+                                        ☀️
+                                    </span>
+                                    <div>
+                                        <h3 className="text-base font-black text-slate-900">
+                                            Day Shift Schedule
+                                        </h3>
+                                        <p className="text-xs text-amber-800">
+                                            Morning, lunch, &amp; afternoon service window
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className="px-2.5 py-1 bg-amber-100 text-amber-900 rounded-lg text-xs font-mono font-bold">
+                                    {dayShiftStart} – {dayShiftEnd}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold uppercase text-slate-600 block">
+                                        Start Day Shift Time
+                                    </label>
+                                    <input
+                                        type="time"
+                                        value={dayShiftStart}
+                                        onChange={(e) => setDayShiftStart(e.target.value)}
+                                        className="w-full p-3 bg-white border border-amber-300 rounded-xl text-base font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500 shadow-sm"
+                                    />
+                                    <p className="text-[11px] text-slate-500">Typical breakfast / opening time</p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold uppercase text-slate-600 block">
+                                        Close Day Shift Time
+                                    </label>
+                                    <input
+                                        type="time"
+                                        value={dayShiftEnd}
+                                        onChange={(e) => setDayShiftEnd(e.target.value)}
+                                        className="w-full p-3 bg-white border border-amber-300 rounded-xl text-base font-mono font-bold text-slate-900 focus:outline-none focus:border-amber-500 shadow-sm"
+                                    />
+                                    <p className="text-[11px] text-slate-500">Day handover &amp; close time</p>
+                                </div>
+                            </div>
+
+                            <div className="pt-2">
+                                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Quick Standard Windows:</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {[
+                                        { start: '06:00', end: '18:00', label: '06:00 – 18:00 (12h)' },
+                                        { start: '07:00', end: '19:00', label: '07:00 – 19:00 (12h)' },
+                                        { start: '08:00', end: '17:00', label: '08:00 – 17:00 (9h)' }
+                                    ].map((preset) => (
+                                        <button
+                                            key={preset.label}
+                                            type="button"
+                                            onClick={() => {
+                                                setDayShiftStart(preset.start);
+                                                setDayShiftEnd(preset.end);
+                                            }}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                                                dayShiftStart === preset.start && dayShiftEnd === preset.end
+                                                    ? 'bg-amber-500 text-white border-amber-500 shadow-sm'
+                                                    : 'bg-white text-slate-700 border-amber-200 hover:bg-amber-100/50'
+                                            }`}
+                                        >
+                                            {preset.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Night Shift Card */}
+                        <div className="p-6 bg-gradient-to-br from-indigo-50/60 via-purple-50/30 to-white rounded-3xl border-2 border-indigo-200/80 shadow-sm space-y-4">
+                            <div className="flex items-center justify-between pb-3 border-b border-indigo-100">
+                                <div className="flex items-center gap-3">
+                                    <span className="w-10 h-10 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white flex items-center justify-center text-xl shadow-md shadow-indigo-600/20">
+                                        🌙
+                                    </span>
+                                    <div>
+                                        <h3 className="text-base font-black text-slate-900">
+                                            Night Shift Schedule
+                                        </h3>
+                                        <p className="text-xs text-indigo-800">
+                                            Dinner, lounge bar, &amp; overnight service window
+                                        </p>
+                                    </div>
+                                </div>
+                                <span className="px-2.5 py-1 bg-indigo-100 text-indigo-900 rounded-lg text-xs font-mono font-bold">
+                                    {nightShiftStart} – {nightShiftEnd}
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold uppercase text-slate-600 block">
+                                        Start Night Shift Time
+                                    </label>
+                                    <input
+                                        type="time"
+                                        value={nightShiftStart}
+                                        onChange={(e) => setNightShiftStart(e.target.value)}
+                                        className="w-full p-3 bg-white border border-indigo-300 rounded-xl text-base font-mono font-bold text-slate-900 focus:outline-none focus:border-indigo-500 shadow-sm"
+                                    />
+                                    <p className="text-[11px] text-slate-500">Night crew takeover time</p>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-bold uppercase text-slate-600 block">
+                                        Close Night Shift Time
+                                    </label>
+                                    <input
+                                        type="time"
+                                        value={nightShiftEnd}
+                                        onChange={(e) => setNightShiftEnd(e.target.value)}
+                                        className="w-full p-3 bg-white border border-indigo-300 rounded-xl text-base font-mono font-bold text-slate-900 focus:outline-none focus:border-indigo-500 shadow-sm"
+                                    />
+                                    <p className="text-[11px] text-slate-500">Dawn handover to day crew</p>
+                                </div>
+                            </div>
+
+                            <div className="pt-2">
+                                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Quick Standard Windows:</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {[
+                                        { start: '18:00', end: '06:00', label: '18:00 – 06:00 (12h)' },
+                                        { start: '19:00', end: '07:00', label: '19:00 – 07:00 (12h)' },
+                                        { start: '17:00', end: '02:00', label: '17:00 – 02:00 (9h)' }
+                                    ].map((preset) => (
+                                        <button
+                                            key={preset.label}
+                                            type="button"
+                                            onClick={() => {
+                                                setNightShiftStart(preset.start);
+                                                setNightShiftEnd(preset.end);
+                                            }}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                                                nightShiftStart === preset.start && nightShiftEnd === preset.end
+                                                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
+                                                    : 'bg-white text-slate-700 border-indigo-200 hover:bg-indigo-100/50'
+                                            }`}
+                                        >
+                                            {preset.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Default Opening Cash Float Configuration */}
+                    <div className="p-6 bg-slate-50 rounded-3xl border border-slate-200 space-y-4">
+                        <div className="flex items-center gap-3">
+                            <span className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center text-xl shadow-sm">
+                                💰
+                            </span>
+                            <div>
+                                <h3 className="text-base font-black text-slate-900">
+                                    Default Cash Drawer Starting Float
+                                </h3>
+                                <p className="text-xs text-slate-500">
+                                    Recommended initial petty cash provided to the cashier at shift start for customer change
+                                </p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 pt-1">
+                            <div className="flex items-center gap-2">
+                                <span className="text-base font-black text-slate-700">Ksh</span>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    step="500"
+                                    value={defaultOpeningFloat}
+                                    onChange={(e) => setDefaultOpeningFloat(Math.max(0, parseInt(e.target.value) || 0))}
+                                    className="w-40 p-3 bg-white border-2 border-slate-300 rounded-xl text-xl font-black font-mono text-center text-slate-900 focus:outline-none focus:border-emerald-600 shadow-sm"
+                                />
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                                {[1000, 2000, 5000, 10000, 15000].map((amt) => (
+                                    <button
+                                        key={amt}
+                                        type="button"
+                                        onClick={() => setDefaultOpeningFloat(amt)}
+                                        className={`px-3 py-2 rounded-xl text-xs font-bold transition-all border ${
+                                            defaultOpeningFloat === amt
+                                                ? 'bg-slate-900 text-white border-slate-900 shadow-sm'
+                                                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                                        }`}
+                                    >
+                                        Ksh {amt.toLocaleString()}
+                                    </button>
+                                ))}
                             </div>
                         </div>
                     </div>
