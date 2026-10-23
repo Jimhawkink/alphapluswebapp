@@ -452,7 +452,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     return (
         <SettingsProvider>
-            <div className="min-h-screen bg-[#f0f5f4] flex font-sans w-full max-w-full overflow-x-hidden">
+            <div className="min-h-screen bg-[#f0f5f4] font-sans">
 
                 {/* ── SIDEBAR ── */}
                 {!isWaiter && (
@@ -646,7 +646,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         transition: 'margin-left 0.25s ease',
                         minHeight: '100vh',
                     }}
-                    className="flex-1 p-6"
+                    className="p-4 md:p-6"
                 >
                     {/* Top Bar */}
                     <header className="mb-6 flex items-center justify-between">

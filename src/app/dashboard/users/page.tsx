@@ -441,7 +441,7 @@ export default function UsersPage() {
     }, [users]);
 
     return (
-        <div className="w-full max-w-full space-y-6 pb-12 overflow-x-hidden text-slate-800">
+        <div className="space-y-6 pb-12 text-slate-800">
             {/* ─── Top Bar / Header ─── */}
             <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-sm">
                 <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
