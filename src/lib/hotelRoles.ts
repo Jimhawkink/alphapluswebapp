@@ -554,11 +554,26 @@ export function getLocalHotelRoles(): HotelRole[] {
         if (stored) {
             const parsed = JSON.parse(stored);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                const hasAdmin = parsed.some((r: HotelRole) => r.is_super_admin || r.role_name === 'Super Admin');
+                // Seamlessly merge any newly added permissions from PRESET_HOTEL_ROLES into stored roles
+                const merged = parsed.map((role: HotelRole) => {
+                    const preset = PRESET_HOTEL_ROLES.find(p => p.role_id === role.role_id || p.role_name.toLowerCase() === role.role_name.toLowerCase());
+                    if (preset) {
+                        return {
+                            ...preset,
+                            ...role,
+                            permissions: {
+                                ...preset.permissions,
+                                ...(role.permissions || {}),
+                            },
+                        };
+                    }
+                    return role;
+                });
+                const hasAdmin = merged.some((r: HotelRole) => r.is_super_admin || r.role_name === 'Super Admin');
                 if (!hasAdmin) {
-                    return [PRESET_HOTEL_ROLES[0], ...parsed];
+                    return [PRESET_HOTEL_ROLES[0], ...merged];
                 }
-                return parsed;
+                return merged;
             }
         }
     } catch (e) {
