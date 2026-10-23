@@ -330,6 +330,7 @@ const buildMenu = (): MenuSection[] => [
             {
                 name: 'Sales', icon: Icons.money, id: 'sales',
                 subItems: [
+                    { name: 'Master Reports', icon: Icons.report, href: '/dashboard/reports' },
                     { name: 'Sales Records', icon: Icons.doc, href: '/dashboard/sales' },
                     { name: 'Dish Report', icon: Icons.report, href: '/dashboard/reports/dish-report' },
                     { name: 'Recipe Report', icon: Icons.report, href: '/dashboard/reports/recipe-report' },
