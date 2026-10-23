@@ -2456,6 +2456,12 @@ export default function POSPage() {
             const u = localStorage.getItem('user');
             if (u) {
                 const p = JSON.parse(u);
+                const isW = p.isWaiter === true || 
+                            (p.userType || '').toLowerCase().includes('waiter') || 
+                            (p.userType || '').toLowerCase() === 'waitress';
+                if (isW) {
+                    return ''; // For waiters, NEVER restore last user on load/refresh — force PIN!
+                }
                 return p.name || '';
             }
         } catch (_) {}
@@ -2487,6 +2493,10 @@ export default function POSPage() {
     const verifyPosAccess = useCallback((permissionKey: string, featureLabel: string): boolean => {
         const lower = (userRole || '').trim().toLowerCase();
         if (lower === 'super admin' || lower === 'admin') {
+            return true;
+        }
+        // "My Bills" is a core waiter tool and always accessible to waiters and staff
+        if (permissionKey === 'pos_view_my_bills') {
             return true;
         }
         const permitted = hasRolePermission(userRole, permissionKey);
@@ -2538,7 +2548,22 @@ export default function POSPage() {
             })();
         } catch (_) {}
     }, []);
-    const [isPosLocked, setIsPosLocked] = useState<boolean>(false);
+    const [isPosLocked, setIsPosLocked] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        try {
+            const u = localStorage.getItem('user');
+            if (u) {
+                const p = JSON.parse(u);
+                const isW = p.isWaiter === true || 
+                            (p.userType || '').toLowerCase().includes('waiter') || 
+                            (p.userType || '').toLowerCase() === 'waitress';
+                if (isW) {
+                    return true; // Waiters ALWAYS start locked on refresh/load!
+                }
+            }
+        } catch (_) {}
+        return false;
+    });
     const [lockPin, setLockPin] = useState<string>('');
     const [lockError, setLockError] = useState<string>('');
     const [isLockVerifying, setIsLockVerifying] = useState<boolean>(false);
@@ -2654,6 +2679,10 @@ export default function POSPage() {
                 setIdleCountdown(null);
                 setLockPin('');
                 setLockError('');
+                setLoggedInUserName('');
+                setSelectedWaiterName('');
+                setSelectedWaiterId(null);
+                localStorage.removeItem('alpha_hotel_selected_waiter');
                 setIsPosLocked(true);
                 playPOSChime('error');
             } else {
@@ -2847,6 +2876,10 @@ export default function POSPage() {
             setTimeout(() => {
                 setLockPin('');
                 setLockError('');
+                setLoggedInUserName('');
+                setSelectedWaiterName('');
+                setSelectedWaiterId(null);
+                localStorage.removeItem('alpha_hotel_selected_waiter');
                 setIsPosLocked(true);
             }, 600);
         }
@@ -3323,14 +3356,20 @@ export default function POSPage() {
             const userData = localStorage.getItem('user');
             if (userData) {
                 const parsed = JSON.parse(userData);
-                const waiter = parsed.isWaiter === true || (parsed.userType || '').toLowerCase() === 'waiter';
+                const waiter = parsed.isWaiter === true || 
+                               (parsed.userType || '').toLowerCase().includes('waiter') ||
+                               (parsed.userType || '').toLowerCase() === 'waitress';
                 setIsWaiterUser(waiter);
                 setUserRole(parsed.userType || 'Admin');
-                setLoggedInUserName(parsed.name || '');
-                // Auto-set waiter name for bill tracking
-                if (waiter && parsed.name) {
-                    setSelectedWaiterName(parsed.name);
-                    localStorage.setItem('alpha_hotel_selected_waiter', parsed.name);
+                if (waiter) {
+                    // For waiters, strictly lock terminal on page load/refresh & require fresh PIN
+                    setIsPosLocked(true);
+                    setLoggedInUserName('');
+                    setSelectedWaiterName('');
+                    setSelectedWaiterId(null);
+                    localStorage.removeItem('alpha_hotel_selected_waiter');
+                } else {
+                    setLoggedInUserName(parsed.name || '');
                 }
             }
         } catch (_) {}
@@ -3780,6 +3819,10 @@ export default function POSPage() {
                 setTimeout(() => {
                     setLockPin('');
                     setLockError('');
+                    setLoggedInUserName('');
+                    setSelectedWaiterName('');
+                    setSelectedWaiterId(null);
+                    localStorage.removeItem('alpha_hotel_selected_waiter');
                     setIsPosLocked(true);
                 }, 1000);
             }
@@ -4175,6 +4218,10 @@ export default function POSPage() {
             setTimeout(() => {
                 setLockPin('');
                 setLockError('');
+                setLoggedInUserName('');
+                setSelectedWaiterName('');
+                setSelectedWaiterId(null);
+                localStorage.removeItem('alpha_hotel_selected_waiter');
                 setIsPosLocked(true);
             }, 1200);
         }
@@ -4292,6 +4339,29 @@ export default function POSPage() {
                                         <p className="text-xs font-bold text-white leading-none mt-0.5 truncate max-w-[100px]">{loggedInUserName || (isWaiterUser ? 'Waiter' : 'Admin')}</p>
                                     </div>
                                 </div>
+
+                                {/* My Bills Quick Header Access */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        playPOSChime('click');
+                                        if (!verifyPosAccess('pos_view_my_bills', 'My Bills')) return;
+                                        window.location.href = '/dashboard/my-bills';
+                                    }}
+                                    className="flex items-center gap-2 bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900 border border-blue-500/40 hover:border-blue-400 px-3 py-1 rounded-xl text-xs text-blue-200 hover:text-white transition-all cursor-pointer shadow-sm group"
+                                    title="Open My Bills & Waiter Checks"
+                                >
+                                    <span className="text-base group-hover:scale-110 transition-transform">📋</span>
+                                    <div className="text-left">
+                                        <p className="text-[9px] text-blue-400 font-bold uppercase leading-none">Waiter Checks</p>
+                                        <p className="text-xs font-black text-white leading-none mt-0.5">My Bills</p>
+                                    </div>
+                                    {waiterUnpaidCount > 0 && (
+                                        <span className="ml-1 px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-900 text-[9px] font-black animate-pulse">
+                                            {waiterUnpaidCount}
+                                        </span>
+                                    )}
+                                </button>
 
                                 <div className="flex items-center gap-2 bg-[#0c161e] border border-[#162a2e] px-2.5 py-1 rounded-xl text-xs">
                                     <span className="text-base">📅</span>
@@ -4421,6 +4491,26 @@ export default function POSPage() {
                                 >
                                     <span className="text-xl">🪑</span>
                                     <span className="text-[10px] font-bold">Tables</span>
+                                </button>
+
+                                {/* My Bills Sidebar Button */}
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        playPOSChime('click');
+                                        if (!verifyPosAccess('pos_view_my_bills', 'My Bills')) return;
+                                        window.location.href = '/dashboard/my-bills';
+                                    }}
+                                    className="w-14 py-2 rounded-xl bg-gradient-to-b from-blue-900/40 via-indigo-900/40 to-slate-900 hover:from-blue-800/60 hover:to-indigo-800/60 text-blue-300 hover:text-white flex flex-col items-center gap-1 border border-blue-500/40 hover:border-blue-400 transition-all cursor-pointer relative shadow-md shadow-blue-950/50"
+                                    title="My Bills & Waiter Checks"
+                                >
+                                    <span className="text-xl">📋</span>
+                                    <span className="text-[9px] font-black uppercase text-center leading-tight">My Bills</span>
+                                    {waiterUnpaidCount > 0 && (
+                                        <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-amber-400 text-slate-900 text-[9px] font-black flex items-center justify-center animate-bounce">
+                                            {waiterUnpaidCount}
+                                        </span>
+                                    )}
                                 </button>
 
                                 <button
@@ -4654,6 +4744,26 @@ export default function POSPage() {
                                         >
                                             <span className="text-[#00e676]">➕</span>
                                             <span>New Bill</span>
+                                        </button>
+
+                                        {/* My Bills Toolbar Button */}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                playPOSChime('click');
+                                                if (!verifyPosAccess('pos_view_my_bills', 'My Bills')) return;
+                                                window.location.href = '/dashboard/my-bills';
+                                            }}
+                                            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-900/50 via-indigo-900/50 to-blue-800/50 border border-blue-500/50 hover:border-blue-400 text-xs font-black text-blue-200 hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-blue-950/40"
+                                            title="Open My Bills & Waiter Checks"
+                                        >
+                                            <span className="text-sm">📋</span>
+                                            <span>My Bills</span>
+                                            {waiterUnpaidCount > 0 && (
+                                                <span className="px-1.5 py-0.2 rounded-full bg-amber-400 text-slate-900 text-[9px] font-black animate-pulse">
+                                                    {waiterUnpaidCount}
+                                                </span>
+                                            )}
                                         </button>
 
                                         <button
@@ -5226,6 +5336,10 @@ export default function POSPage() {
                                             onClick={() => {
                                                 setLockPin('');
                                                 setLockError('');
+                                                setLoggedInUserName('');
+                                                setSelectedWaiterName('');
+                                                setSelectedWaiterId(null);
+                                                localStorage.removeItem('alpha_hotel_selected_waiter');
                                                 setIsPosLocked(true);
                                             }}
                                             className="px-2.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 rounded-xl text-xs font-black transition-all flex items-center gap-1 shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
@@ -6381,16 +6495,6 @@ export default function POSPage() {
                                 Enter your <span className="text-amber-300 font-bold">6-Digit Waiter PIN</span> to start your order
                             </p>
                         </div>
-
-                        {/* Previous Waiter Info Badge */}
-                        {loggedInUserName && (
-                            <div className="mb-4 px-3 py-1.5 bg-white/5 border border-white/10 rounded-xl text-[11px] text-slate-300 flex items-center justify-between">
-                                <span className="text-slate-500 font-bold uppercase text-[9px]">Last User</span>
-                                <span className="font-black text-amber-300 truncate max-w-[180px]">
-                                    {loggedInUserName} ({userRole || 'Staff'})
-                                </span>
-                            </div>
-                        )}
 
                         {/* 6-Digit PIN Indicator Dots */}
                         <div className="flex justify-center items-center gap-3.5 my-4">
