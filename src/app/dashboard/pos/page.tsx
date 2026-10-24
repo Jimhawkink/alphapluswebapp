@@ -3449,17 +3449,8 @@ export default function POSPage() {
 
         // Direct print via thermal sequence or iframe
         try {
-            executeDirectPrint(html, { printerRole: 'customer' });
+            await executeDirectPrint(html, { printerRole: 'customer' });
         } catch (_) {}
-
-        const iframe = document.createElement('iframe');
-        iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:none;visibility:hidden;';
-        document.body.appendChild(iframe);
-        const doc = iframe.contentWindow?.document;
-        if (doc) { 
-            doc.open(); doc.write(html); doc.close();
-            iframe.onload = () => { setTimeout(() => { try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch (e) { console.error(e); } setTimeout(() => document.body.removeChild(iframe), 1200); }, 300); };
-        }
     };
 
     // Load products from database
