@@ -253,6 +253,39 @@ function calculateKenyaPayroll({
     };
 }
 
+// -----------------------------------------------------------------
+// HELPER: Match sales check to employee by ID, direct name, or token
+// -----------------------------------------------------------------
+function isSaleMatchingEmployee(sale: any, emp: UserEmployee): boolean {
+    if (sale.waiter_id && Number(sale.waiter_id) === Number(emp.user_id)) {
+        return true;
+    }
+
+    const empName = (emp.name || '').toLowerCase().trim();
+    const empUsername = (emp.user_name || '').toLowerCase().trim();
+    const waiterName = (sale.waiter_name || '').toLowerCase().trim();
+    const customerName = (sale.customer_name || '').toLowerCase().trim();
+
+    if (waiterName && (waiterName.includes(empName) || empName.includes(waiterName))) {
+        return true;
+    }
+    if (empUsername && waiterName && (waiterName.includes(empUsername) || empUsername.includes(waiterName))) {
+        return true;
+    }
+    if (customerName && customerName !== 'walk-in customer' && (customerName.includes(empName) || empName.includes(customerName))) {
+        return true;
+    }
+
+    const empTokens = empName.split(/\s+/).filter((t) => t.length >= 3 && !['waiter', 'waitress', 'staff', 'demo', 'admin'].includes(t));
+    if (empTokens.length > 0) {
+        if (empTokens.some((tok) => waiterName.includes(tok) || (customerName !== 'walk-in customer' && customerName.includes(tok)))) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 export default function PayrollMasterPage() {
     // -------------------------------------------------------------
     // NAVIGATION & WORKSTATION TABS
@@ -507,28 +540,34 @@ export default function PayrollMasterPage() {
             }
             setAdvancesList(loadedAdvances);
 
-            // 4. Load all pending sales/bills across the property
-            const { data: pendingSalesData } = await supabase
+            // 4. Load all pending sales/bills across the property (anti-loss staff exit protection)
+            const { data: pendingSalesData, error: salesErr } = await supabase
                 .from('sales')
-                .select('sale_id, receipt_no, sale_date, sale_time, total_amount, amount_paid, waiter_name, waiter_id, customer_name, status, table_name, room_name')
-                .or('status.eq.Pending,status.eq.Unpaid,amount_paid.lt.total_amount')
-                .order('sale_id', { ascending: false })
-                .limit(100);
+                .select('sale_id, receipt_no, sale_date, sale_time, total_amount, amount_paid, waiter_name, waiter_id, customer_name, status, table_name, room_name, notes')
+                .in('status', ['Pending', 'Open', 'Unpaid', 'Hold', 'Preparing', 'pending', 'open', 'unpaid', 'hold'])
+                .order('sale_id', { ascending: false });
+
+            if (salesErr) {
+                console.error('Error loading pending sales:', salesErr);
+            }
 
             if (pendingSalesData) {
-                const billsFormatted: PendingStaffBill[] = pendingSalesData.map((s) => ({
-                    sale_id: s.sale_id,
-                    receipt_no: s.receipt_no || `RCP-${String(s.sale_id).padStart(5, '0')}`,
-                    sale_date: s.sale_date || new Date().toISOString().split('T')[0],
-                    sale_time: s.sale_time || '',
-                    waiter_name: s.waiter_name || s.customer_name || 'Staff',
-                    table_name: s.table_name || s.room_name || 'Dining Area',
-                    total_amount: Number(s.total_amount || 0),
-                    amount_paid: Number(s.amount_paid || 0),
-                    unpaid_balance: Math.max(0, Number(s.total_amount || 0) - Number(s.amount_paid || 0)),
-                    status: s.status || 'Pending',
-                    selected_for_deduction: true,
-                }));
+                const billsFormatted: PendingStaffBill[] = pendingSalesData
+                    .filter((s) => s.status !== 'Merged' && s.status !== 'Cancelled' && s.status !== 'Paid')
+                    .filter((s) => Math.max(0, Number(s.total_amount || 0) - Number(s.amount_paid || 0)) > 0)
+                    .map((s) => ({
+                        sale_id: s.sale_id,
+                        receipt_no: s.receipt_no || `RCP-${String(s.sale_id).padStart(5, '0')}`,
+                        sale_date: s.sale_date || new Date().toISOString().split('T')[0],
+                        sale_time: s.sale_time || '',
+                        waiter_name: s.waiter_name || s.customer_name || 'Staff',
+                        table_name: s.table_name || s.room_name || 'Dining Area',
+                        total_amount: Number(s.total_amount || 0),
+                        amount_paid: Number(s.amount_paid || 0),
+                        unpaid_balance: Math.max(0, Number(s.total_amount || 0) - Number(s.amount_paid || 0)),
+                        status: s.status || 'Pending',
+                        selected_for_deduction: true,
+                    }));
                 setAllPendingSales(billsFormatted);
             }
         } catch (err) {
@@ -594,25 +633,26 @@ export default function PayrollMasterPage() {
     const fetchEmployeePendingBills = async (emp: UserEmployee) => {
         setIsLoadingBills(true);
         try {
-            // Find pending sales matching waiter_name or customer_name or waiter_id
-            const empNameLower = emp.name.toLowerCase().trim();
+            // Find pending/open sales from sales table
             const { data: salesRows, error } = await supabase
                 .from('sales')
-                .select('sale_id, receipt_no, sale_date, sale_time, total_amount, amount_paid, waiter_name, waiter_id, customer_name, status, table_name, room_name')
-                .or('status.eq.Pending,status.eq.Unpaid,amount_paid.lt.total_amount');
+                .select('sale_id, receipt_no, sale_date, sale_time, total_amount, amount_paid, waiter_name, waiter_id, customer_name, status, table_name, room_name, notes')
+                .in('status', ['Pending', 'Open', 'Unpaid', 'Hold', 'Preparing', 'pending', 'open', 'unpaid', 'hold'])
+                .order('sale_id', { ascending: false });
 
             if (error || !salesRows) {
-                setStaffPendingBills([]);
+                console.error('Error fetching employee pending bills:', error);
+                const fallback = allPendingSales.filter((s) => isSaleMatchingEmployee(s, emp));
+                setStaffPendingBills(fallback.map((b) => ({ ...b, selected_for_deduction: true })));
                 setIsLoadingBills(false);
                 return;
             }
 
             const matched = salesRows.filter((s) => {
-                const wName = (s.waiter_name || '').toLowerCase();
-                const cName = (s.customer_name || '').toLowerCase();
-                const matchesId = s.waiter_id && Number(s.waiter_id) === emp.user_id;
-                const matchesName = wName.includes(empNameLower) || empNameLower.includes(wName) || cName.includes(empNameLower);
-                return matchesId || matchesName;
+                if (s.status === 'Merged' || s.status === 'Cancelled' || s.status === 'Paid') return false;
+                const balance = Math.max(0, Number(s.total_amount || 0) - Number(s.amount_paid || 0));
+                if (balance <= 0) return false;
+                return isSaleMatchingEmployee(s, emp);
             });
 
             // Fetch line items for each matched sale
@@ -645,7 +685,8 @@ export default function PayrollMasterPage() {
             setStaffPendingBills(enriched);
         } catch (err) {
             console.error('Error fetching employee pending bills:', err);
-            setStaffPendingBills([]);
+            const fallback = allPendingSales.filter((s) => isSaleMatchingEmployee(s, emp));
+            setStaffPendingBills(fallback.map((b) => ({ ...b, selected_for_deduction: true })));
         } finally {
             setIsLoadingBills(false);
         }
@@ -679,6 +720,12 @@ export default function PayrollMasterPage() {
         );
         const totalAdvanceDue = matchedAdvances.reduce((sum, a) => sum + Number(a.amount || 0), 0);
 
+        // Instantly pre-populate pending bills from allPendingSales for immediate responsiveness
+        const instantPending = allPendingSales
+            .filter((s) => isSaleMatchingEmployee(s, emp) && s.unpaid_balance > 0)
+            .map((s) => ({ ...s, selected_for_deduction: true }));
+        setStaffPendingBills(instantPending);
+
         setGenForm((prev) => ({
             ...prev,
             employee_id: empId,
@@ -686,7 +733,7 @@ export default function PayrollMasterPage() {
             salary_advance: totalAdvanceDue,
         }));
 
-        // Load pending house bills for this employee
+        // Load pending house bills for this employee (fetches line items)
         await fetchEmployeePendingBills(emp);
     };
 
@@ -848,6 +895,9 @@ export default function PayrollMasterPage() {
                 });
                 await persistAdvancesList(advUpdated);
             }
+
+            // Immediately re-scan sales and reload pending tabs counters across dashboard
+            await fetchAllData();
 
             toast.success(
                 `✅ Payroll generated for ${emp.name}! Net Pay: Ksh ${newEntry.net_pay.toLocaleString()}${deductedBills.length > 0 ? ` (${deductedBills.length} house bills deducted)` : ''}`
@@ -1943,11 +1993,7 @@ export default function PayrollMasterPage() {
                                     const weeklyVal = emp.salary_type === 'Monthly' ? Math.round(amount / 4) : amount;
 
                                     // Check if this employee has pending house bills
-                                    const empBills = allPendingSales.filter((s) => {
-                                        const wName = (s.waiter_name || '').toLowerCase();
-                                        const eName = emp.name.toLowerCase();
-                                        return wName.includes(eName) || eName.includes(wName);
-                                    });
+                                    const empBills = allPendingSales.filter((s) => isSaleMatchingEmployee(s, emp));
                                     const pendingBillsTotal = empBills.reduce((sum, b) => sum + b.unpaid_balance, 0);
 
                                     return (
@@ -2201,11 +2247,7 @@ export default function PayrollMasterPage() {
                                             <td className="py-3 px-4 text-center">
                                                 <button
                                                     onClick={() => {
-                                                        const matchedUser = employees.find(
-                                                            (u) =>
-                                                                u.name.toLowerCase().includes((b.waiter_name || '').toLowerCase()) ||
-                                                                (b.waiter_name || '').toLowerCase().includes(u.name.toLowerCase())
-                                                        );
+                                                        const matchedUser = employees.find((u) => isSaleMatchingEmployee(b, u));
                                                         setShowGenerateModal(true);
                                                         if (matchedUser) {
                                                             handleSelectEmployeeForPayroll(matchedUser.user_id);
@@ -2472,6 +2514,29 @@ export default function PayrollMasterPage() {
                                         </option>
                                     ))}
                                 </select>
+
+                                {/* Anti-Loss Alert Banner under Employee Selector */}
+                                {genForm.employee_id > 0 && staffPendingBills.length > 0 && (
+                                    <div className="mt-2.5 p-3 rounded-xl bg-rose-50 border border-rose-200 flex items-start justify-between gap-3 shadow-sm">
+                                        <div className="flex items-start gap-2">
+                                            <span className="text-base leading-none mt-0.5">🚨</span>
+                                            <div>
+                                                <p className="text-xs font-bold text-rose-900">
+                                                    Anti-Loss Protection Active: {staffPendingBills.length} Pending Bill{staffPendingBills.length > 1 ? 's' : ''} (Total Ksh {staffPendingBills.reduce((s, b) => s + b.unpaid_balance, 0).toLocaleString()})
+                                                </p>
+                                                <p className="text-[11px] text-rose-700 mt-0.5">
+                                                    Found open floor checks for {employees.find((e) => e.user_id === genForm.employee_id)?.name}. Auto-queued below for salary deduction before payout to eliminate flight risk.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="text-right whitespace-nowrap">
+                                            <span className="text-[10px] uppercase font-bold text-rose-500 block">Pending Bills Total</span>
+                                            <span className="text-sm font-mono font-bold text-rose-700">
+                                                Ksh {staffPendingBills.reduce((s, b) => s + b.unpaid_balance, 0).toLocaleString()}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Earnings Section */}
@@ -2581,17 +2646,25 @@ export default function PayrollMasterPage() {
                             {/* ========================================================= */}
                             {/* SATURDAY STAFF PENDING HOUSE BILLS DEDUCTIONS SECTION */}
                             {/* ========================================================= */}
-                            <div className="p-4 bg-rose-50/40 rounded-2xl border border-rose-200">
+                            <div className="p-4 bg-rose-50/50 rounded-2xl border border-rose-200 shadow-sm">
                                 <div className="flex items-center justify-between mb-2">
                                     <div className="flex items-center gap-1.5">
                                         <span className="text-base">⚠️</span>
-                                        <h4 className="text-xs font-bold text-rose-900">
-                                            Saturday Staff Pending Bills & Tabs Auto-Deduction
-                                        </h4>
+                                        <div>
+                                            <h4 className="text-xs font-bold text-rose-900">
+                                                Saturday Staff Pending Bills & Tabs Auto-Deduction
+                                            </h4>
+                                            <p className="text-[10px] text-rose-600">
+                                                Anti-loss wage deduction • Live restaurant & bar floor checks
+                                            </p>
+                                        </div>
                                     </div>
-                                    <span className="text-xs font-mono font-bold text-rose-700">
-                                        Deducting: Ksh {livePayrollCalc.selectedBillsTotal.toLocaleString()}
-                                    </span>
+                                    <div className="text-right">
+                                        <span className="text-[10px] uppercase font-bold text-rose-500 block">Deducting from Pay</span>
+                                        <span className="text-sm font-mono font-bold text-rose-700">
+                                            Ksh {livePayrollCalc.selectedBillsTotal.toLocaleString()}
+                                        </span>
+                                    </div>
                                 </div>
 
                                 {isLoadingBills ? (
@@ -2603,55 +2676,91 @@ export default function PayrollMasterPage() {
                                         ✅ No pending bills or unpaid customer tabs on record for this staff member.
                                     </p>
                                 ) : (
-                                    <div className="space-y-2 mt-2 max-h-48 overflow-y-auto pr-1">
-                                        {staffPendingBills.map((bill) => (
-                                            <div
-                                                key={bill.sale_id}
-                                                className={`p-2.5 rounded-xl border transition-all text-xs flex items-center justify-between ${
-                                                    bill.selected_for_deduction
-                                                        ? 'bg-white border-rose-300 shadow-sm'
-                                                        : 'bg-slate-50 border-slate-200 opacity-60'
-                                                }`}
-                                            >
-                                                <div className="flex items-center gap-2">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={bill.selected_for_deduction}
-                                                        onChange={(e) => {
-                                                            const checked = e.target.checked;
-                                                            setStaffPendingBills((prev) =>
-                                                                prev.map((b) =>
-                                                                    b.sale_id === bill.sale_id
-                                                                        ? { ...b, selected_for_deduction: checked }
-                                                                        : b
-                                                                )
-                                                            );
-                                                        }}
-                                                        className="w-4 h-4 text-rose-600 rounded"
-                                                    />
-                                                    <div>
-                                                        <div className="font-mono font-bold text-slate-800">
-                                                            {bill.receipt_no} • {bill.sale_date}
-                                                        </div>
-                                                        <div className="text-[10px] text-slate-500">
-                                                            {bill.items && bill.items.length
-                                                                ? bill.items.map((it) => `${it.quantity}x ${it.product_name}`).join(', ')
-                                                                : 'Restaurant Order'}
+                                    <>
+                                        <div className="space-y-2 mt-2 max-h-56 overflow-y-auto pr-1">
+                                            {staffPendingBills.map((bill) => (
+                                                <div
+                                                    key={bill.sale_id}
+                                                    className={`p-3 rounded-xl border transition-all text-xs flex items-center justify-between ${
+                                                        bill.selected_for_deduction
+                                                            ? 'bg-white border-rose-300 shadow-sm'
+                                                            : 'bg-slate-50 border-slate-200 opacity-60'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={bill.selected_for_deduction}
+                                                            onChange={(e) => {
+                                                                const checked = e.target.checked;
+                                                                setStaffPendingBills((prev) =>
+                                                                    prev.map((b) =>
+                                                                        b.sale_id === bill.sale_id
+                                                                            ? { ...b, selected_for_deduction: checked }
+                                                                            : b
+                                                                    )
+                                                                );
+                                                            }}
+                                                            className="w-4 h-4 text-rose-600 rounded cursor-pointer"
+                                                        />
+                                                        <div>
+                                                            <div className="font-mono font-bold text-slate-800 flex items-center gap-2">
+                                                                <span>{bill.receipt_no}</span>
+                                                                <span className="text-[10px] font-sans font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
+                                                                    {bill.sale_date} {bill.sale_time}
+                                                                </span>
+                                                                <span className="text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
+                                                                    {bill.status}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-[11px] text-slate-600 mt-1">
+                                                                {bill.items && bill.items.length
+                                                                    ? bill.items.map((it) => `${it.quantity}x ${it.product_name} (@ Ksh ${it.unit_price})`).join(', ')
+                                                                    : 'Restaurant Order / Open Check'}
+                                                            </div>
+                                                            {bill.table_name && (
+                                                                <div className="text-[10px] text-slate-400 mt-0.5">
+                                                                    Station / Table: {bill.table_name}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                </div>
 
-                                                <div className="text-right">
-                                                    <div className="font-mono font-bold text-rose-700">
-                                                        Ksh {bill.unpaid_balance.toLocaleString()}
-                                                    </div>
-                                                    <div className="text-[10px] text-slate-400">
-                                                        Total: {bill.total_amount}
+                                                    <div className="text-right pl-3">
+                                                        <div className="font-mono font-bold text-rose-700 text-sm">
+                                                            Ksh {bill.unpaid_balance.toLocaleString()}
+                                                        </div>
+                                                        <div className="text-[10px] text-slate-400">
+                                                            Total: Ksh {bill.total_amount.toLocaleString()}
+                                                        </div>
                                                     </div>
                                                 </div>
+                                            ))}
+                                        </div>
+
+                                        <div className="mt-2.5 pt-2 border-t border-rose-200/60 flex items-center justify-between text-xs">
+                                            <span className="text-rose-800 font-semibold text-[11px]">
+                                                {staffPendingBills.filter((b) => b.selected_for_deduction).length} of {staffPendingBills.length} Bill(s) Selected for Deduction
+                                            </span>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setStaffPendingBills((prev) => prev.map((b) => ({ ...b, selected_for_deduction: true })))}
+                                                    className="text-[11px] text-indigo-600 hover:underline font-semibold"
+                                                >
+                                                    Select All
+                                                </button>
+                                                <span className="text-slate-300">|</span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setStaffPendingBills((prev) => prev.map((b) => ({ ...b, selected_for_deduction: false })))}
+                                                    className="text-[11px] text-slate-500 hover:underline"
+                                                >
+                                                    Deselect All
+                                                </button>
                                             </div>
-                                        ))}
-                                    </div>
+                                        </div>
+                                    </>
                                 )}
                             </div>
 
@@ -2692,17 +2801,29 @@ export default function PayrollMasterPage() {
                             </div>
 
                             {/* Final Take-Home Summary Card */}
-                            <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-200 flex items-center justify-between">
+                            <div className="p-4 bg-emerald-50/60 rounded-2xl border border-emerald-200 flex items-center justify-between shadow-sm">
                                 <div>
-                                    <span className="text-xs text-slate-600 block">Calculated Net Pay:</span>
-                                    <span className="text-xs text-slate-400">
-                                        Gross (Ksh {livePayrollCalc.gross.toLocaleString()}) - Deductions (Ksh {livePayrollCalc.totalDeductions.toLocaleString()})
-                                    </span>
+                                    <span className="text-xs font-bold text-slate-700 block">Calculated Net Pay:</span>
+                                    <div className="text-xs text-slate-500 flex flex-wrap items-center gap-1 mt-0.5">
+                                        <span>Gross (Ksh {livePayrollCalc.gross.toLocaleString()})</span>
+                                        <span>- Taxes (Ksh {livePayrollCalc.totalStatutory.toLocaleString()})</span>
+                                        {livePayrollCalc.selectedBillsTotal > 0 && (
+                                            <span className="font-bold text-rose-700 bg-rose-100/70 px-1.5 py-0.5 rounded">
+                                                - House Tabs (Ksh {livePayrollCalc.selectedBillsTotal.toLocaleString()})
+                                            </span>
+                                        )}
+                                        {Number(genForm.salary_advance || 0) > 0 && (
+                                            <span className="font-semibold text-amber-700">
+                                                - Advance (Ksh {Number(genForm.salary_advance || 0).toLocaleString()})
+                                            </span>
+                                        )}
+                                    </div>
                                 </div>
                                 <div className="text-right">
                                     <span className="text-2xl font-bold font-mono text-emerald-700">
                                         Ksh {livePayrollCalc.netPay.toLocaleString()}
                                     </span>
+                                    <span className="text-[10px] text-slate-400 block">Final Take-Home</span>
                                 </div>
                             </div>
                         </div>
