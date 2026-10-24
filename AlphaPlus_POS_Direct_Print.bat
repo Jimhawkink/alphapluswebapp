@@ -9,27 +9,28 @@ echo.
 :: 1. Try 64-bit Google Chrome
 if exist "C:\Program Files\Google\Chrome\Application\chrome.exe" (
     echo Launching Google Chrome in Silent Kiosk Mode...
-    start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing --app=https://alphapluswebapp.vercel.app/dashboard/pos
+    start "" "C:\Program Files\Google\Chrome\Application\chrome.exe" --kiosk-printing --user-data-dir="C:\AlphaPlusPOS" --app=https://alphapluswebapp.vercel.app/dashboard/pos
     exit /b
 )
 
 :: 2. Try 32-bit Google Chrome
 if exist "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" (
     echo Launching Google Chrome (x86) in Silent Kiosk Mode...
-    start "" "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" --kiosk-printing --app=https://alphapluswebapp.vercel.app/dashboard/pos
+    start "" "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" --kiosk-printing --user-data-dir="C:\AlphaPlusPOS" --app=https://alphapluswebapp.vercel.app/dashboard/pos
     exit /b
 )
 
-:: 3. Try Microsoft Edge
+:: 3. Try Microsoft Edge (x86)
 if exist "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" (
     echo Launching Microsoft Edge in Silent Kiosk Mode...
-    start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --kiosk-printing --app=https://alphapluswebapp.vercel.app/dashboard/pos
+    start "" "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --kiosk-printing --user-data-dir="C:\AlphaPlusPOS" --app=https://alphapluswebapp.vercel.app/dashboard/pos
     exit /b
 )
 
+:: 4. Try Microsoft Edge (64-bit)
 if exist "C:\Program Files\Microsoft\Edge\Application\msedge.exe" (
     echo Launching Microsoft Edge in Silent Kiosk Mode...
-    start "" "C:\Program Files\Microsoft\Edge\Application\msedge.exe" --kiosk-printing --app=https://alphapluswebapp.vercel.app/dashboard/pos
+    start "" "C:\Program Files\Microsoft\Edge\Application\msedge.exe" --kiosk-printing --user-data-dir="C:\AlphaPlusPOS" --app=https://alphapluswebapp.vercel.app/dashboard/pos
     exit /b
 )
 

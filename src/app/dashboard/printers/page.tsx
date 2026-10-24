@@ -388,8 +388,8 @@ export default function PrintersSettingsPage() {
         toast.success('Cash drawer trigger pulse sent (ESC/POS pin 2/5)!');
     };
 
-    const chromeCommand = `"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing --app=https://alphapluswebapp.vercel.app/dashboard/pos`;
-    const edgeCommand = `"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" --kiosk-printing --app=https://alphapluswebapp.vercel.app/dashboard/pos`;
+    const chromeCommand = `"C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing --user-data-dir="C:\\AlphaPlusPOS" --app=https://alphapluswebapp.vercel.app/dashboard/pos`;
+    const edgeCommand = `"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" --kiosk-printing --user-data-dir="C:\\AlphaPlusPOS" --app=https://alphapluswebapp.vercel.app/dashboard/pos`;
 
     const copyCommand = (cmd: string, key: string) => {
         navigator.clipboard.writeText(cmd);
@@ -408,12 +408,22 @@ echo ========================================================
 timeout /t 1 /nobreak >nul
 
 if exist "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" (
-    start "" "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing --app=https://alphapluswebapp.vercel.app/dashboard/pos
+    start "" "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing --user-data-dir="C:\\AlphaPlusPOS" --app=https://alphapluswebapp.vercel.app/dashboard/pos
+    exit
+)
+
+if exist "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe" (
+    start "" "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe" --kiosk-printing --user-data-dir="C:\\AlphaPlusPOS" --app=https://alphapluswebapp.vercel.app/dashboard/pos
     exit
 )
 
 if exist "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" (
-    start "" "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" --kiosk-printing --app=https://alphapluswebapp.vercel.app/dashboard/pos
+    start "" "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" --kiosk-printing --user-data-dir="C:\\AlphaPlusPOS" --app=https://alphapluswebapp.vercel.app/dashboard/pos
+    exit
+)
+
+if exist "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe" (
+    start "" "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe" --kiosk-printing --user-data-dir="C:\\AlphaPlusPOS" --app=https://alphapluswebapp.vercel.app/dashboard/pos
     exit
 )
 
