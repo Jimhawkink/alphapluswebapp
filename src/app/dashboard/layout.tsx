@@ -272,6 +272,12 @@ const buildMenu = (): MenuSection[] => [
         category: 'HOTEL',
         items: [
             {
+                name: 'Hotel Profile & Identity',
+                icon: Icons.building,
+                href: '/dashboard/company',
+                badge: 'PROFILE'
+            },
+            {
                 name: 'Front Office', icon: Icons.hotel, id: 'front-office',
                 subItems: [
                     { name: 'Rooms Overview', icon: Icons.rooms, href: '/dashboard/hotel/rooms' },
@@ -373,6 +379,7 @@ const buildMenu = (): MenuSection[] => [
     {
         category: 'SYSTEM & SETTINGS',
         items: [
+            { name: 'Hotel Name & Profile', icon: Icons.building, href: '/dashboard/company', badge: 'NAME' },
             { name: 'Hardware Printers', icon: Icons.printer, href: '/dashboard/printers', badge: 'PRINTER' },
             { name: 'Tax Settings (POS)', icon: Icons.settings, href: '/dashboard/tax-settings', badge: 'KRA' },
             { name: 'Hotel Tax Settings', icon: Icons.settings, href: '/dashboard/hotel/tax-settings' },

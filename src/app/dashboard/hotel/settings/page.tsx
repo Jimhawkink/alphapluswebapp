@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { supabase, c2bSupabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 
@@ -277,6 +278,13 @@ export default function HotelSettingsPage() {
                         <span>🏨</span>
                         <span>Hotel Operations</span>
                     </button>
+                    <Link
+                        href="/dashboard/company"
+                        className="px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 border border-indigo-200"
+                    >
+                        <span>🏢</span>
+                        <span>Hotel Name &amp; Profile →</span>
+                    </Link>
                 </div>
             </div>
 
