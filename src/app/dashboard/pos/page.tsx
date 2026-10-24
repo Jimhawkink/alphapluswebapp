@@ -36,6 +36,7 @@ interface Product {
     category: string;
     stock: number;
     color: string;
+    photo?: string;
     barcode?: string;
     hasBatches?: boolean;
 }
@@ -229,10 +230,37 @@ const getCategoryIcon = (categoryName: string) => {
 
 
 // Smart Food Image Resolver for Cyber Emerald POS
-const getDishImage = (name: string, category?: string): string => {
+const getDishImage = (name: string, category?: string, photo?: string): string => {
+    if (photo && photo.trim().length > 0) return photo;
+
     const n = (name || '').toLowerCase();
     const c = (category || '').toLowerCase();
 
+    // Specific Authentic Kenyan Dishes & Specialties
+    if (n.includes('kuku choma')) return '/images/food/kuku_choma.jpg';
+    if (n.includes('kuku wet fry') || (n.includes('kuku') && n.includes('wet'))) return '/images/food/kuku_wet_fry.jpg';
+    if (n.includes('beef wet fry') || n.includes('karanga')) return '/images/food/beef_wet_fry.jpg';
+    if (n.includes('mbuzi wet fry') || (n.includes('goat') && n.includes('wet'))) return '/images/food/mbuzi_wet_fry.jpg';
+    if (n.includes('matoke')) return '/images/food/matoke_beef.jpg';
+    if (n.includes('mukimo') || n.includes('irio')) return '/images/food/mukimo.jpg';
+    if (n.includes('githeri')) return '/images/food/githeri.jpg';
+    if (n.includes('sukuma')) return '/images/food/sukuma_wiki.jpg';
+    if (n.includes('managu') || n.includes('terere') || n.includes('greens')) return '/images/food/managu.jpg';
+    if (n.includes('matumbo') || n.includes('tripe')) return '/images/food/matumbo.jpg';
+    if (n.includes('maini') || n.includes('liver')) return '/images/food/maini_wet_fry.jpg';
+    if (n.includes('omena')) return '/images/food/omena.jpg';
+    if (n.includes('swahili') || (n.includes('pilau') && n.includes('beef'))) return '/images/food/swahili_pilau.jpg';
+    if (n.includes('pilau') || n.includes('wali')) return '/images/food/pilau.jpg';
+    if (n.includes('mutura')) return '/images/food/mutura.jpg';
+    if (n.includes('smokie')) return '/images/food/smokie_pasua.jpg';
+    if (n.includes('kachumbari')) return '/images/food/kachumbari.jpg';
+    if (n.includes('dawa')) return '/images/food/dawa_drink.jpg';
+    if (n.includes('tusker')) return '/images/food/tusker_lager.jpg';
+    if (n.includes('stoney') || n.includes('tangawizi')) return '/images/food/stoney_tangawizi.jpg';
+    if (n.includes('mango')) return '/images/food/mango_juice.jpg';
+    if (n.includes('mahamri')) return '/images/food/mahamri.jpg';
+
+    // Existing mappings
     if (n.includes('beef stew') || (n.includes('stew') && n.includes('ugali'))) return '/images/food/beef_stew.jpg';
     if (n.includes('biryani') || n.includes('briyani')) return '/images/food/chicken_biryani.jpg';
     if (n.includes('chapati') || n.includes('roti')) return '/images/food/chapati.jpg';
@@ -243,19 +271,18 @@ const getDishImage = (name: string, category?: string): string => {
     if (n.includes('choma') || n.includes('goat') || n.includes('mbuzi') || n.includes('ribs') || n.includes('steak') || n.includes('beef') || n.includes('meat')) return '/images/food/nyama_choma.jpg';
     if (n.includes('water') || n.includes('dasani') || n.includes('keringet')) return '/images/food/mineral_water.jpg';
     if (n.includes('soda') || n.includes('coke') || n.includes('coca') || n.includes('fanta') || n.includes('sprite')) return '/images/food/soda.jpg';
-    if (n.includes('masala tea') || n.includes('dawa') || n.includes('ginger')) return '/images/food/masala_tea.jpg';
+    if (n.includes('masala tea') || n.includes('ginger')) return '/images/food/masala_tea.jpg';
     if (n.includes('ugali')) return '/images/food/ugali.jpg';
     if (n.includes('african tea') || n.includes('chai') || n.includes('black tea') || (n.includes('tea') && !n.includes('masala'))) return '/images/food/african_tea.jpg';
     if (n.includes('samosa') || n.includes('sambusa')) return '/images/food/samosa.jpg';
-    if (n.includes('mandazi') || n.includes('mahamri')) return '/images/food/mandazi.jpg';
+    if (n.includes('mandazi')) return '/images/food/mandazi.jpg';
     if (n.includes('wing') || n.includes('kuku') || n.includes('chicken')) return '/images/food/chicken_wings.jpg';
     if (n.includes('pizza')) return '/images/food/pizza_slice.jpg';
     if (n.includes('beef burger')) return '/images/food/beef_burger.jpg';
     if (n.includes('burger')) return '/images/food/burger.jpg';
-    if (n.includes('fruit') || n.includes('salad') || n.includes('kachumbari')) return '/images/food/fruit_salad.jpg';
-    if (n.includes('pilau') || n.includes('rice') || n.includes('wali')) return '/images/food/pilau.jpg';
+    if (n.includes('fruit') || n.includes('salad')) return '/images/food/fruit_salad.jpg';
     if (n.includes('coffee') || n.includes('cappuccino') || n.includes('espresso') || n.includes('latte')) return '/images/food/coffee.jpg';
-    if (n.includes('beer') || n.includes('tusker') || n.includes('guinness') || n.includes('wine') || n.includes('liquor')) return '/images/food/beer.jpg';
+    if (n.includes('beer') || n.includes('guinness') || n.includes('wine') || n.includes('liquor')) return '/images/food/beer.jpg';
     if (n.includes('soup') || n.includes('broth')) return '/images/food/soup.jpg';
 
     if (c.includes('beverage') || c.includes('tea') || c.includes('coffee') || c.includes('drink')) return '/images/food/coffee.jpg';
@@ -278,7 +305,7 @@ const CyberProductCard = ({
 }) => {
     const isOutOfStock = product.stock === 0;
     const isLowStock = product.stock > 0 && product.stock <= 5;
-    const dishImg = getDishImage(product.name, product.category);
+    const dishImg = getDishImage(product.name, product.category, product.photo);
 
     return (
         <button
@@ -3458,6 +3485,7 @@ export default function POSPage() {
                 category: p.category || 'General',
                 stock: stockByProduct[p.pid] !== undefined ? stockByProduct[p.pid] : 99,
                 color: p.button_ui_color || 'from-blue-400 to-blue-600',
+                photo: p.photo,
                 barcode: p.barcode,
                 hasBatches: (stockByProduct[p.pid] || 0) > 0,
             }));
