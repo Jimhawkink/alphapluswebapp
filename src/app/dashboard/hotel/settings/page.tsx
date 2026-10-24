@@ -27,6 +27,7 @@ export default function HotelSettingsPage() {
     const [lateCheckoutGraceMinutes, setLateCheckoutGraceMinutes] = useState(60);
     const [waiterAutoLockSeconds, setWaiterAutoLockSeconds] = useState<number>(30);
     const [waiterAutoLockOnKot, setWaiterAutoLockOnKot] = useState<boolean>(true);
+    const [readCostFromRecipe, setReadCostFromRecipe] = useState<boolean>(true);
 
     // Shift Operations & Timings Policies
     const [shiftsEnabled, setShiftsEnabled] = useState<boolean>(true);
@@ -88,6 +89,9 @@ export default function HotelSettingsPage() {
         const savedNightEnd = localStorage.getItem('night_shift_end');
         if (savedNightEnd) setNightShiftEnd(savedNightEnd);
 
+        const savedCostSource = localStorage.getItem('read_cost_from_recipe');
+        if (savedCostSource !== null) setReadCostFromRecipe(savedCostSource === 'true');
+
         const savedFloat = localStorage.getItem('default_opening_float');
         if (savedFloat) setDefaultOpeningFloat(parseInt(savedFloat, 10) || 5000);
 
@@ -114,6 +118,7 @@ export default function HotelSettingsPage() {
                         if (item.setting_key === 'day_shift_end') setDayShiftEnd(item.setting_value);
                         if (item.setting_key === 'night_shift_start') setNightShiftStart(item.setting_value);
                         if (item.setting_key === 'night_shift_end') setNightShiftEnd(item.setting_value);
+                        if (item.setting_key === 'read_cost_from_recipe') setReadCostFromRecipe(item.setting_value === 'true');
                         if (item.setting_key === 'default_opening_float') {
                             const parsedFloat = parseInt(item.setting_value, 10);
                             if (!isNaN(parsedFloat)) setDefaultOpeningFloat(parsedFloat);
@@ -148,6 +153,8 @@ export default function HotelSettingsPage() {
             localStorage.setItem('night_shift_start', nightShiftStart);
             localStorage.setItem('night_shift_end', nightShiftEnd);
             localStorage.setItem('default_opening_float', String(defaultOpeningFloat));
+            localStorage.setItem('read_cost_from_recipe', String(readCostFromRecipe));
+            localStorage.setItem('product_cost_source', readCostFromRecipe ? 'recipe' : 'manual');
 
             // Upsert into Supabase organisation_settings
             const settingsToSave = [
@@ -158,6 +165,7 @@ export default function HotelSettingsPage() {
                 { setting_key: 'hotel_checkout_time', setting_value: checkOutTime },
                 { setting_key: 'waiter_autolock_seconds', setting_value: String(waiterAutoLockSeconds) },
                 { setting_key: 'waiter_autolock_on_kot', setting_value: String(waiterAutoLockOnKot) },
+                { setting_key: 'read_cost_from_recipe', setting_value: String(readCostFromRecipe) },
                 { setting_key: 'shifts_enabled', setting_value: String(shiftsEnabled) },
                 { setting_key: 'day_shift_start', setting_value: dayShiftStart },
                 { setting_key: 'day_shift_end', setting_value: dayShiftEnd },
@@ -617,6 +625,45 @@ export default function HotelSettingsPage() {
                         </div>
                     </div>
 
+
+                    {/* CULINARY RECIPE COGS AUTO-COSTING */}
+                    <div className="p-5 bg-gradient-to-r from-purple-50 to-indigo-50 border border-purple-200 rounded-3xl space-y-3">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <span className="w-10 h-10 rounded-2xl bg-purple-600 text-white flex items-center justify-center text-lg font-bold shadow-xs">
+                                    🧪
+                                </span>
+                                <div>
+                                    <h3 className="text-sm font-black text-purple-950">
+                                        Read Product Purchase Cost from Culinary Recipes (COGS Engine)
+                                    </h3>
+                                    <p className="text-xs text-purple-700">
+                                        When enabled, menu dish purchase costs and profit margins dynamically sync from the Recipe Studio formulas. When disabled, products use fixed manual defined rates.
+                                    </p>
+                                </div>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    checked={readCostFromRecipe}
+                                    onChange={(e) => setReadCostFromRecipe(e.target.checked)}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600"></div>
+                            </label>
+                        </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-purple-200/60 text-xs">
+                            <span className="font-bold text-purple-900">
+                                Current Policy: {readCostFromRecipe ? '🟢 Reading Live Recipe COGS' : '🏷️ Using Defined Manual Rates'}
+                            </span>
+                            <Link
+                                href="/dashboard/recipe"
+                                className="text-purple-700 hover:text-purple-900 font-bold underline"
+                            >
+                                Open Recipe Studio →
+                            </Link>
+                        </div>
+                    </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
                         <div className="p-5 bg-amber-50/70 border border-amber-200 rounded-3xl space-y-2">

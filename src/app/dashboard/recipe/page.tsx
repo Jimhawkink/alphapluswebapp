@@ -494,6 +494,22 @@ export default function RecipePage() {
 
             if (ingError) throw ingError;
 
+            // Auto-synchronize live portion COGS to products master table
+            try {
+                const sPrice = Number(selectedDish.sales_cost) || 0;
+                const margin = sPrice > 0 ? Math.round(((sPrice - portionCost) / sPrice) * 10000) / 100 : 0;
+                await supabase
+                    .from('products')
+                    .update({
+                        purchase_cost: portionCost,
+                        margin_per: margin,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('pid', selectedDish.pid);
+            } catch (syncErr) {
+                console.warn('Sync to products table warning:', syncErr);
+            }
+
             toast.success(`Recipe specification saved for ${selectedDish.product_name}! Portion COGS: Ksh ${portionCost.toFixed(2)} ✅`);
             await loadAllData();
         } catch (err: any) {
@@ -595,6 +611,22 @@ export default function RecipePage() {
                             created_at: new Date().toISOString()
                         });
                 }
+            }
+
+            // Auto-synchronize live portion COGS to products master table
+            try {
+                const sPrice = Number(selectedDish.sales_cost) || 0;
+                const margin = sPrice > 0 ? Math.round(((sPrice - portionCost) / sPrice) * 10000) / 100 : 0;
+                await supabase
+                    .from('products')
+                    .update({
+                        purchase_cost: portionCost,
+                        margin_per: margin,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('pid', selectedDish.pid);
+            } catch (syncErr) {
+                console.warn('Sync to products table warning:', syncErr);
             }
 
             toast.success(`Batch ${batchNumber} successfully cooked! Deducted store ingredients and added ${portionsYield} portions to kitchen inventory 🎉`);
