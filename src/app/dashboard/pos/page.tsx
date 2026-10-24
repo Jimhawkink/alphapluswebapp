@@ -237,6 +237,27 @@ const getDishImage = (name: string, category?: string, photo?: string): string =
     const c = (category || '').toLowerCase();
 
     // Specific Authentic Kenyan Dishes & Specialties
+    if (n.includes('kienyeji') || (n.includes('brown') && n.includes('ugali'))) return '/images/food/ugali_kienyeji.jpg';
+    if (n.includes('mlima')) return '/images/food/ugali_mlima.jpg';
+    if (n.includes('ugali mix') || (n.includes('ugali') && n.includes('mix'))) return '/images/food/ugali_mix.jpg';
+    if (n.includes('cabbage')) return '/images/food/cabbage.jpg';
+    if (n.includes('porridge') || n.includes('uji')) return '/images/food/porridge_uji.jpg';
+    if (n.includes('boiled egg') || n.includes('pasua')) return '/images/food/boiled_egg.jpg';
+    if (n.includes('fried egg') || n.includes('omelette') || n.includes('egg')) return '/images/food/fried_egg.jpg';
+    if (n.includes('ndengu') || n.includes('green gram') || n.includes('grams')) return '/images/food/green_grams_ndengu.jpg';
+    if (n.includes('minji') || n.includes('pea')) return '/images/food/peas_minji.jpg';
+    if (n.includes('bean') || n.includes('maharagwe')) return '/images/food/beans_stew.jpg';
+    if (n.includes('vege') || n.includes('vegetable')) return '/images/food/mixed_veges.jpg';
+    if (n.includes('kebab')) return '/images/food/kebab.jpg';
+    if (n.includes('doughnut') || n.includes('donut')) return '/images/food/doughnut.jpg';
+    if (n.includes('500ml') && (n.includes('milk') || n.includes('maziwa'))) return '/images/food/milk_packet_500ml.jpg';
+    if (n.includes('200ml') && (n.includes('milk') || n.includes('maziwa'))) return '/images/food/milk_packet_200ml.jpg';
+    if (n.includes('milk') || n.includes('maziwa')) return '/images/food/fresh_milk_glass.jpg';
+    if (n.includes('strong tea') || n.includes('strungi')) return '/images/food/strong_tea.jpg';
+    if (n.includes('1/4') || n.includes('quarter')) return '/images/food/kuku_quarter.jpg';
+    if (n.includes('white rice') || n.includes('plain rice') || (n.includes('rice') && !n.includes('pilau') && !n.includes('biryani'))) return '/images/food/white_rice.jpg';
+    if (n.includes('soup') || n.includes('broth') || n.includes('supu')) return '/images/food/soup.jpg';
+
     if (n.includes('kuku choma')) return '/images/food/kuku_choma.jpg';
     if (n.includes('kuku wet fry') || (n.includes('kuku') && n.includes('wet'))) return '/images/food/kuku_wet_fry.jpg';
     if (n.includes('beef wet fry') || n.includes('karanga')) return '/images/food/beef_wet_fry.jpg';
@@ -273,17 +294,16 @@ const getDishImage = (name: string, category?: string, photo?: string): string =
     if (n.includes('soda') || n.includes('coke') || n.includes('coca') || n.includes('fanta') || n.includes('sprite')) return '/images/food/soda.jpg';
     if (n.includes('masala tea') || n.includes('ginger')) return '/images/food/masala_tea.jpg';
     if (n.includes('ugali')) return '/images/food/ugali.jpg';
-    if (n.includes('african tea') || n.includes('chai') || n.includes('black tea') || (n.includes('tea') && !n.includes('masala'))) return '/images/food/african_tea.jpg';
+    if (n.includes('african tea') || n.includes('chai') || (n.includes('tea') && !n.includes('masala'))) return '/images/food/african_tea.jpg';
     if (n.includes('samosa') || n.includes('sambusa')) return '/images/food/samosa.jpg';
     if (n.includes('mandazi')) return '/images/food/mandazi.jpg';
     if (n.includes('wing') || n.includes('kuku') || n.includes('chicken')) return '/images/food/chicken_wings.jpg';
-    if (n.includes('pizza')) return '/images/food/pizza_slice.jpg';
+    if (n.includes('pizza')) return '/images/food/pizza.jpg';
     if (n.includes('beef burger')) return '/images/food/beef_burger.jpg';
     if (n.includes('burger')) return '/images/food/burger.jpg';
     if (n.includes('fruit') || n.includes('salad')) return '/images/food/fruit_salad.jpg';
     if (n.includes('coffee') || n.includes('cappuccino') || n.includes('espresso') || n.includes('latte')) return '/images/food/coffee.jpg';
     if (n.includes('beer') || n.includes('guinness') || n.includes('wine') || n.includes('liquor')) return '/images/food/beer.jpg';
-    if (n.includes('soup') || n.includes('broth')) return '/images/food/soup.jpg';
 
     if (c.includes('beverage') || c.includes('tea') || c.includes('coffee') || c.includes('drink')) return '/images/food/coffee.jpg';
     if (c.includes('meat') || c.includes('choma') || c.includes('grill')) return '/images/food/nyama_choma.jpg';
