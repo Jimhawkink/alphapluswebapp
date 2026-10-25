@@ -3542,29 +3542,54 @@ export default function POSPage() {
             // Filter products designated for POS
             const availableProducts = (data || []).filter(p => p.show_in_pos !== false && p.show_ps !== false);
 
-            // Load batch stock for all products
+            // Load batch stock for all products from production_batches
             const stockByProduct: Record<number, number> = {};
             try {
                 const { data: batchData } = await supabase
                     .from('production_batches')
                     .select('product_id, qty_remaining')
-                    .eq('status', 'In Stock')
+                    .in('status', ['In Stock', 'Active'])
                     .gt('qty_remaining', 0);
 
                 (batchData || []).forEach((batch) => {
                     const pid = batch.product_id;
                     stockByProduct[pid] = (stockByProduct[pid] || 0) + (batch.qty_remaining || 0);
                 });
-            } catch (_) {}
 
-            // Transform database products to POS format
+                // Auto-seed active batch for any new product without a batch
+                const missingProducts = availableProducts.filter(p => stockByProduct[p.pid] === undefined);
+                if (missingProducts.length > 0) {
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const seedBatches = missingProducts.map(p => ({
+                        batch_number: `BATCH-INIT-${p.pid}`,
+                        product_id: p.pid,
+                        product_name: p.product_name,
+                        qty_produced: 50,
+                        qty_remaining: 50,
+                        qty_sold: 0,
+                        cost_per_unit: p.purchase_cost || 0,
+                        selling_price: p.sales_cost || 0,
+                        production_date: todayStr,
+                        status: 'In Stock',
+                        created_by: 'Inventory Auto-Init'
+                    }));
+                    await supabase.from('production_batches').insert(seedBatches);
+                    missingProducts.forEach(p => {
+                        stockByProduct[p.pid] = 50;
+                    });
+                }
+            } catch (bErr) {
+                console.warn('Batch stock load warning:', bErr);
+            }
+
+            // Transform database products to POS format with real database stock
             const posProducts: Product[] = availableProducts.map(p => ({
                 id: p.pid,
                 name: p.product_name,
                 price: p.sales_cost || 0,
                 purchasePrice: p.purchase_cost || 0,
                 category: p.category || 'General',
-                stock: stockByProduct[p.pid] !== undefined ? stockByProduct[p.pid] : 99,
+                stock: stockByProduct[p.pid] !== undefined ? stockByProduct[p.pid] : 0,
                 color: p.button_ui_color || 'from-blue-400 to-blue-600',
                 photo: p.photo,
                 barcode: p.barcode,
@@ -4458,38 +4483,112 @@ export default function POSPage() {
                 console.error('Error creating sale items:', itemsError);
             }
 
-            // 3. Deduct stock for each sold item from products table & production_batches
+            // 3. Real FIFO Stock Depletion from production_batches & Dish Movements
             for (const item of cart) {
-                const { data: productData } = await supabase
-                    .from('products')
-                    .select('pid, stock')
-                    .eq('pid', item.id)
-                    .single();
+                try {
+                    let qtyToDeduct = item.qty;
 
-                if (productData) {
-                    const newStock = Math.max(0, (productData.stock || 0) - item.qty);
-                    await supabase
-                        .from('products')
-                        .update({ stock: newStock, updated_at: new Date().toISOString() })
-                        .eq('pid', productData.pid);
-                }
-
-                if (item.batchId) {
-                    const { data: batchData } = await supabase
-                        .from('production_batches')
-                        .select('batch_id, qty_remaining')
-                        .eq('batch_id', item.batchId)
-                        .single();
-
-                    if (batchData) {
-                        const newRemaining = Math.max(0, (batchData.qty_remaining || 0) - item.qty);
-                        await supabase
+                    // A. If a specific batchId was selected for this cart item
+                    if (item.batchId) {
+                        const { data: specificBatch } = await supabase
                             .from('production_batches')
-                            .update({ qty_remaining: newRemaining })
-                            .eq('batch_id', batchData.batch_id);
+                            .select('batch_id, qty_remaining, qty_sold')
+                            .eq('batch_id', item.batchId)
+                            .single();
+
+                        if (specificBatch) {
+                            const deduct = Math.min(Number(specificBatch.qty_remaining) || 0, qtyToDeduct);
+                            const newRemaining = Math.max(0, (Number(specificBatch.qty_remaining) || 0) - deduct);
+                            const newSold = (Number(specificBatch.qty_sold) || 0) + deduct;
+                            await supabase
+                                .from('production_batches')
+                                .update({
+                                    qty_remaining: newRemaining,
+                                    qty_sold: newSold,
+                                    status: newRemaining === 0 ? 'Depleted' : 'In Stock'
+                                })
+                                .eq('batch_id', specificBatch.batch_id);
+                            qtyToDeduct -= deduct;
+                        }
                     }
+
+                    // B. Deduct remaining quantity from available batches using FIFO (First In First Out)
+                    if (qtyToDeduct > 0) {
+                        const { data: availableBatches } = await supabase
+                            .from('production_batches')
+                            .select('batch_id, qty_remaining, qty_sold, batch_number')
+                            .eq('product_id', item.id)
+                            .in('status', ['In Stock', 'Active'])
+                            .gt('qty_remaining', 0)
+                            .order('production_date', { ascending: true })
+                            .order('batch_id', { ascending: true });
+
+                        if (availableBatches && availableBatches.length > 0) {
+                            for (const b of availableBatches) {
+                                if (qtyToDeduct <= 0) break;
+                                const deduct = Math.min(Number(b.qty_remaining) || 0, qtyToDeduct);
+                                const newRemaining = Math.max(0, (Number(b.qty_remaining) || 0) - deduct);
+                                const newSold = (Number(b.qty_sold) || 0) + deduct;
+                                await supabase
+                                    .from('production_batches')
+                                    .update({
+                                        qty_remaining: newRemaining,
+                                        qty_sold: newSold,
+                                        status: newRemaining === 0 ? 'Depleted' : 'In Stock'
+                                    })
+                                    .eq('batch_id', b.batch_id);
+                                qtyToDeduct -= deduct;
+                            }
+                        } else {
+                            // C. If no batch existed, create an initial batch and deduct immediately
+                            const todayStr = new Date().toISOString().split('T')[0];
+                            const initStock = 50;
+                            const newRemaining = Math.max(0, initStock - qtyToDeduct);
+                            await supabase
+                                .from('production_batches')
+                                .insert({
+                                    batch_number: `BATCH-INIT-${item.id}`,
+                                    product_id: item.id,
+                                    product_name: item.name,
+                                    qty_produced: initStock,
+                                    qty_remaining: newRemaining,
+                                    qty_sold: qtyToDeduct,
+                                    cost_per_unit: item.purchasePrice || 0,
+                                    selling_price: item.price || 0,
+                                    production_date: todayStr,
+                                    status: newRemaining === 0 ? 'Depleted' : 'In Stock',
+                                    created_by: currentUser?.name || 'Cashier'
+                                });
+                        }
+                    }
+
+                    // D. Log to dish_movements for audit history
+                    try {
+                        const todayStr = new Date().toISOString().split('T')[0];
+                        await supabase.from('dish_movements').insert({
+                            product_id: item.id,
+                            product_name: item.name,
+                            movement_date: todayStr,
+                            movement_type: 'Sale',
+                            quantity: item.qty,
+                            reference_no: invoiceNo,
+                            reason: `POS Sale Receipt #${invoiceNo}`,
+                        });
+                    } catch (_) {}
+
+                } catch (stockErr) {
+                    console.error(`Error deducting stock for product ${item.name}:`, stockErr);
                 }
             }
+
+            // E. Immediately lessen stock in UI state (Optimistic Live Update)
+            setProducts(prev => prev.map(p => {
+                const soldItem = cart.find(ci => ci.id === p.id);
+                if (soldItem) {
+                    return { ...p, stock: Math.max(0, p.stock - soldItem.qty) };
+                }
+                return p;
+            }));
 
             // 4. Automated Recipe Stock Depletion (COGS / Kitchen Store Decrement)
             for (const item of cart) {
@@ -4670,6 +4769,7 @@ export default function POSPage() {
         // Always silent — auto-print and clear cart immediately
         setShowReceiptPreview(false);
         clearCart();
+        loadProducts();
         toast.success(isRoom ? 'Room charged successfully! Receipt generated 🏨' : 'Payment complete! Receipt sent to printer. 🧾');
         // 🔒 Auto-lock for waiters on payment tender
         if (isWaiterUser) {
