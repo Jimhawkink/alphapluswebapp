@@ -3,8 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 import { SettingsProvider, useCompanyName } from '@/context/SettingsContext';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
+import { hasRolePermission } from '@/lib/hotelRoles';
 
 interface MenuItem {
     name: string;
@@ -13,6 +15,7 @@ interface MenuItem {
     badge?: string | null;
     subItems?: MenuItem[];
     id?: string;
+    permission?: string;
 }
 
 interface MenuSection {
@@ -258,14 +261,14 @@ const buildMenu = (): MenuSection[] => [
     {
         category: 'MAIN',
         items: [
-            { name: 'Dashboard', icon: Icons.dashboard, href: '/dashboard', badge: null },
-            { name: 'Point of Sale', icon: Icons.pos, href: '/dashboard/pos', badge: 'LIVE' },
-            { name: 'Kitchen Display', icon: Icons.kitchen, href: '/dashboard/kitchen', badge: 'KDS' },
-            { name: 'Hardware Printers', icon: Icons.printer, href: '/dashboard/printers', badge: 'PRINTER' },
-            { name: 'Stores Management', icon: Icons.store, href: '/dashboard/stores', badge: 'STORES' },
-            { name: 'Cashier Checkout', icon: Icons.doc, href: '/dashboard/bills', badge: 'EXIT' },
-            { name: 'Bill Payment', icon: Icons.money, href: '/dashboard/bill-payment', badge: 'PAY' },
-            { name: 'Split & Merge Receipts', icon: Icons.doc, href: '/dashboard/split-merge-receipts', badge: 'PRO' },
+            { name: 'Dashboard', icon: Icons.dashboard, href: '/dashboard', badge: null, permission: 'reports_daily_sales_view' },
+            { name: 'Point of Sale', icon: Icons.pos, href: '/dashboard/pos', badge: 'LIVE', permission: 'pos_view_terminal' },
+            { name: 'Kitchen Display', icon: Icons.kitchen, href: '/dashboard/kitchen', badge: 'KDS', permission: 'kitchen_kds_view' },
+            { name: 'Hardware Printers', icon: Icons.printer, href: '/dashboard/printers', badge: 'PRINTER', permission: 'admin_hardware_printers' },
+            { name: 'Stores Management', icon: Icons.store, href: '/dashboard/stores', badge: 'STORES', permission: 'store_stock_adjustment' },
+            { name: 'Cashier Checkout', icon: Icons.doc, href: '/dashboard/bills', badge: 'EXIT', permission: 'finance_bill_payment_settle' },
+            { name: 'Bill Payment', icon: Icons.money, href: '/dashboard/bill-payment', badge: 'PAY', permission: 'finance_bill_payment_settle' },
+            { name: 'Split & Merge Receipts', icon: Icons.doc, href: '/dashboard/split-merge-receipts', badge: 'PRO', permission: 'pos_split_bill' },
         ],
     },
     {
@@ -275,25 +278,26 @@ const buildMenu = (): MenuSection[] => [
                 name: 'Hotel Profile & Identity',
                 icon: Icons.building,
                 href: '/dashboard/company',
-                badge: 'PROFILE'
+                badge: 'PROFILE',
+                permission: 'admin_system_settings'
             },
             {
                 name: 'Front Office', icon: Icons.hotel, id: 'front-office',
                 subItems: [
-                    { name: 'Rooms Overview', icon: Icons.rooms, href: '/dashboard/hotel/rooms' },
-                    { name: 'Reservations', icon: Icons.calendar, href: '/dashboard/hotel/reservations', badge: 'New' },
-                    { name: 'Calendar Booking', icon: Icons.calendar, href: '/dashboard/hotel/calendar-booking' },
-                    { name: 'Check-In', icon: Icons.key, href: '/dashboard/hotel/checkin' },
-                    { name: 'Check-Out', icon: Icons.door, href: '/dashboard/hotel/checkout' },
-                    { name: 'Guests', icon: Icons.users, href: '/dashboard/hotel/guests' },
+                    { name: 'Rooms Overview', icon: Icons.rooms, href: '/dashboard/hotel/rooms', permission: 'hotel_room_status_change' },
+                    { name: 'Reservations', icon: Icons.calendar, href: '/dashboard/hotel/reservations', badge: 'New', permission: 'hotel_reservations_view' },
+                    { name: 'Calendar Booking', icon: Icons.calendar, href: '/dashboard/hotel/calendar-booking', permission: 'hotel_reservations_view' },
+                    { name: 'Check-In', icon: Icons.key, href: '/dashboard/hotel/checkin', permission: 'hotel_guest_checkin' },
+                    { name: 'Check-Out', icon: Icons.door, href: '/dashboard/hotel/checkout', permission: 'hotel_guest_checkout' },
+                    { name: 'Guests', icon: Icons.users, href: '/dashboard/hotel/guests', permission: 'hotel_guest_directory' },
                 ],
             },
             {
                 name: 'Room Settings', icon: Icons.settings, id: 'room-settings',
                 subItems: [
-                    { name: 'Room Types', icon: Icons.tag, href: '/dashboard/hotel/room-types' },
-                    { name: 'Room Plans', icon: Icons.doc, href: '/dashboard/hotel/room-plans' },
-                    { name: 'Housekeeping', icon: Icons.doc, href: '/dashboard/hotel/housekeeping' },
+                    { name: 'Room Types', icon: Icons.tag, href: '/dashboard/hotel/room-types', permission: 'hotel_rooms_setup' },
+                    { name: 'Room Plans', icon: Icons.doc, href: '/dashboard/hotel/room-plans', permission: 'hotel_plans_setup' },
+                    { name: 'Housekeeping', icon: Icons.doc, href: '/dashboard/hotel/housekeeping', permission: 'hotel_housekeeping_queue' },
                 ],
             },
         ],
@@ -306,26 +310,27 @@ const buildMenu = (): MenuSection[] => [
                 icon: Icons.store,
                 href: '/dashboard/stores',
                 badge: '5 TABS',
+                permission: 'store_stock_adjustment'
             },
             {
                 name: 'Products', icon: Icons.box, id: 'products',
                 subItems: [
-                    { name: 'List Products', icon: Icons.doc, href: '/dashboard/products' },
-                    { name: 'Categories', icon: Icons.grid, href: '/dashboard/categories' },
-                    { name: 'Units', icon: Icons.ruler, href: '/dashboard/units' },
-                    { name: 'Brands', icon: Icons.building, href: '/dashboard/brands' },
+                    { name: 'List Products', icon: Icons.doc, href: '/dashboard/products', permission: 'catalog_products_view' },
+                    { name: 'Categories', icon: Icons.grid, href: '/dashboard/categories', permission: 'catalog_products_manage' },
+                    { name: 'Units', icon: Icons.ruler, href: '/dashboard/units', permission: 'catalog_products_manage' },
+                    { name: 'Brands', icon: Icons.building, href: '/dashboard/brands', permission: 'catalog_products_manage' },
                 ],
             },
             {
                 name: 'Inventory Operations', icon: Icons.inventory, id: 'inventory',
                 subItems: [
-                    { name: 'Store Stock & Issues', icon: Icons.store, href: '/dashboard/stores', badge: 'STORES' },
-                    { name: 'Dish Stock', icon: Icons.doc, href: '/dashboard/dish-stock' },
-                    { name: 'Ingredient Stock', icon: Icons.doc, href: '/dashboard/ingredient-stock' },
-                    { name: 'Stock Transfer', icon: Icons.transfer, href: '/dashboard/stock-transfer' },
-                    { name: 'Stock Adjustment', icon: Icons.scale, href: '/dashboard/stock-adjustment' },
-                    { name: 'Low Stock Alerts', icon: Icons.warn, href: '/dashboard/low-stock', badge: '!' },
-                    { name: 'Recipe Production', icon: Icons.recipe, href: '/dashboard/recipe' },
+                    { name: 'Store Stock & Issues', icon: Icons.store, href: '/dashboard/stores', badge: 'STORES', permission: 'store_issue_requisitions' },
+                    { name: 'Dish Stock', icon: Icons.doc, href: '/dashboard/dish-stock', permission: 'kitchen_dish_stock_view' },
+                    { name: 'Ingredient Stock', icon: Icons.doc, href: '/dashboard/ingredient-stock', permission: 'kitchen_recipes_view' },
+                    { name: 'Stock Transfer', icon: Icons.transfer, href: '/dashboard/stock-transfer', permission: 'store_stock_transfer' },
+                    { name: 'Stock Adjustment', icon: Icons.scale, href: '/dashboard/stock-adjustment', permission: 'store_stock_adjustment' },
+                    { name: 'Low Stock Alerts', icon: Icons.warn, href: '/dashboard/low-stock', badge: '!', permission: 'store_low_stock_alerts' },
+                    { name: 'Recipe Production', icon: Icons.recipe, href: '/dashboard/recipe', permission: 'kitchen_recipes_manage' },
                 ],
             },
         ],
@@ -336,20 +341,20 @@ const buildMenu = (): MenuSection[] => [
             {
                 name: 'Sales', icon: Icons.money, id: 'sales',
                 subItems: [
-                    { name: 'Master Reports', icon: Icons.report, href: '/dashboard/reports' },
-                    { name: 'Sales Records', icon: Icons.doc, href: '/dashboard/sales' },
-                    { name: 'Dish Report', icon: Icons.report, href: '/dashboard/reports/dish-report' },
-                    { name: 'Recipe Report', icon: Icons.report, href: '/dashboard/reports/recipe-report' },
-                    { name: 'POS Reports', icon: Icons.report, href: '/dashboard/reports/pos' },
-                    { name: 'Sales Return', icon: Icons.return, href: '/dashboard/sales-return' },
+                    { name: 'Master Reports', icon: Icons.report, href: '/dashboard/reports', permission: 'reports_daily_sales_view' },
+                    { name: 'Sales Records', icon: Icons.doc, href: '/dashboard/sales', permission: 'reports_daily_sales_view' },
+                    { name: 'Dish Report', icon: Icons.report, href: '/dashboard/reports/dish-report', permission: 'reports_itemized_pos' },
+                    { name: 'Recipe Report', icon: Icons.report, href: '/dashboard/reports/recipe-report', permission: 'reports_recipe_costing' },
+                    { name: 'POS Reports', icon: Icons.report, href: '/dashboard/reports/pos', permission: 'reports_itemized_pos' },
+                    { name: 'Sales Return', icon: Icons.return, href: '/dashboard/sales-return', permission: 'finance_sales_returns_refund' },
                 ],
             },
             {
                 name: 'Purchases', icon: Icons.cart, id: 'purchases',
                 subItems: [
-                    { name: 'Purchase List', icon: Icons.doc, href: '/dashboard/purchases' },
-                    { name: 'Add Purchase', icon: Icons.plus, href: '/dashboard/purchase' },
-                    { name: 'Suppliers', icon: Icons.truck, href: '/dashboard/suppliers' },
+                    { name: 'Purchase List', icon: Icons.doc, href: '/dashboard/purchases', permission: 'store_purchase_orders' },
+                    { name: 'Add Purchase', icon: Icons.plus, href: '/dashboard/purchase', permission: 'store_purchase_orders' },
+                    { name: 'Suppliers', icon: Icons.truck, href: '/dashboard/suppliers', permission: 'store_suppliers_manage' },
                 ],
             },
         ],
@@ -360,18 +365,18 @@ const buildMenu = (): MenuSection[] => [
             {
                 name: 'Finance', icon: Icons.finance, id: 'finance',
                 subItems: [
-                    { name: 'Expenses', icon: Icons.expense, href: '/dashboard/expenses' },
-                    { name: 'Vouchers', icon: Icons.voucher, href: '/dashboard/vouchers' },
-                    { name: 'Accounts', icon: Icons.account, href: '/dashboard/accounts' },
+                    { name: 'Expenses', icon: Icons.expense, href: '/dashboard/expenses', permission: 'finance_manage_expenses' },
+                    { name: 'Vouchers', icon: Icons.voucher, href: '/dashboard/vouchers', permission: 'finance_payment_vouchers' },
+                    { name: 'Accounts', icon: Icons.account, href: '/dashboard/accounts', permission: 'finance_chart_of_accounts' },
                 ],
             },
             {
                 name: 'HR & Staff', icon: Icons.hr, id: 'hr',
                 subItems: [
-                    { name: 'Staff Management', icon: Icons.users, href: '/dashboard/users' },
-                    { name: 'Roles & Permissions', icon: Icons.key, href: '/dashboard/user-roles', badge: 'RBAC' },
-                    { name: 'Payroll', icon: Icons.payroll, href: '/dashboard/payroll' },
-                    { name: 'Shifts', icon: Icons.clock, href: '/dashboard/shifts' },
+                    { name: 'Staff Management', icon: Icons.users, href: '/dashboard/users', permission: 'admin_staff_users_view' },
+                    { name: 'Roles & Permissions', icon: Icons.key, href: '/dashboard/user-roles', badge: 'RBAC', permission: 'admin_roles_permissions' },
+                    { name: 'Payroll', icon: Icons.payroll, href: '/dashboard/payroll', permission: 'finance_payroll_process' },
+                    { name: 'Shifts', icon: Icons.clock, href: '/dashboard/shifts', permission: 'cashier_view_all_shifts' },
                 ],
             },
         ],
@@ -379,11 +384,11 @@ const buildMenu = (): MenuSection[] => [
     {
         category: 'SYSTEM & SETTINGS',
         items: [
-            { name: 'Hotel Name & Profile', icon: Icons.building, href: '/dashboard/company', badge: 'NAME' },
-            { name: 'Hardware Printers', icon: Icons.printer, href: '/dashboard/printers', badge: 'PRINTER' },
-            { name: 'Tax Settings (POS)', icon: Icons.settings, href: '/dashboard/tax-settings', badge: 'KRA' },
-            { name: 'Hotel Tax Settings', icon: Icons.settings, href: '/dashboard/hotel/tax-settings' },
-            { name: 'Hotel Settings', icon: Icons.settings, href: '/dashboard/hotel/settings' },
+            { name: 'Hotel Name & Profile', icon: Icons.building, href: '/dashboard/company', badge: 'NAME', permission: 'admin_system_settings' },
+            { name: 'Hardware Printers', icon: Icons.printer, href: '/dashboard/printers', badge: 'PRINTER', permission: 'admin_hardware_printers' },
+            { name: 'Tax Settings (POS)', icon: Icons.settings, href: '/dashboard/tax-settings', badge: 'KRA', permission: 'reports_kra_tax_breakdown' },
+            { name: 'Hotel Tax Settings', icon: Icons.settings, href: '/dashboard/hotel/tax-settings', permission: 'admin_system_settings' },
+            { name: 'Hotel Settings', icon: Icons.settings, href: '/dashboard/hotel/settings', permission: 'admin_system_settings' },
         ],
     },
 ];
@@ -416,6 +421,59 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     });
 
     useSessionTimeout();
+
+    // Dynamic Route Guard - strictly enforces granular permissions based on user's assigned role
+    useEffect(() => {
+        if (!user || !pathname) return;
+        const role = (user.userType || '').trim();
+        const lower = role.toLowerCase();
+        if (lower === 'super admin' || lower === 'admin') return;
+
+        let isDenied = false;
+        let deniedFeature = '';
+
+        if (pathname === '/dashboard') {
+            if (!hasRolePermission(role, 'reports_daily_sales_view')) {
+                isDenied = true;
+                deniedFeature = 'Executive Dashboard';
+            }
+        } else if (pathname.startsWith('/dashboard/users') || pathname.startsWith('/dashboard/user-roles')) {
+            if (!hasRolePermission(role, 'admin_staff_users_view') && !hasRolePermission(role, 'admin_roles_permissions')) {
+                isDenied = true;
+                deniedFeature = 'Staff & Role Management';
+            }
+        } else if (pathname.startsWith('/dashboard/payroll')) {
+            if (!hasRolePermission(role, 'finance_payroll_process')) {
+                isDenied = true;
+                deniedFeature = 'Hotel Payroll';
+            }
+        } else if (pathname.startsWith('/dashboard/hotel')) {
+            if (!hasRolePermission(role, 'hotel_guest_checkin') && !hasRolePermission(role, 'hotel_reservations_view') && !hasRolePermission(role, 'hotel_room_status_change')) {
+                isDenied = true;
+                deniedFeature = 'Hotel Front Desk & Rooms';
+            }
+        } else if (pathname.startsWith('/dashboard/expenses') || pathname.startsWith('/dashboard/accounts') || pathname.startsWith('/dashboard/vouchers')) {
+            if (!hasRolePermission(role, 'finance_manage_expenses')) {
+                isDenied = true;
+                deniedFeature = 'Finance & Accounts';
+            }
+        } else if (pathname.startsWith('/dashboard/purchases') || pathname.startsWith('/dashboard/suppliers')) {
+            if (!hasRolePermission(role, 'store_purchase_orders')) {
+                isDenied = true;
+                deniedFeature = 'Procurement & Purchasing';
+            }
+        } else if (pathname.startsWith('/dashboard/stock-adjustment') || pathname.startsWith('/dashboard/stock-transfer')) {
+            if (!hasRolePermission(role, 'store_stock_adjustment')) {
+                isDenied = true;
+                deniedFeature = 'Stock Audits & Adjustments';
+            }
+        }
+
+        if (isDenied) {
+            toast.error(`Access Restricted: You do not have permission to access ${deniedFeature}. Redirecting to your assigned terminal.`);
+            router.replace('/dashboard/pos');
+        }
+    }, [pathname, user, router]);
 
     // Automatically expand parent dropdown if active route is inside it
     useEffect(() => {
@@ -450,7 +508,31 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
     if (!user) return null;
 
-    const menuSections = buildMenu();
+    const userRole = (user.userType || '').trim();
+    const isSuperAdmin = userRole.toLowerCase() === 'super admin' || userRole.toLowerCase() === 'admin';
+
+    // Dynamically filter menu items strictly according to user's granular permissions
+    const allSections = buildMenu();
+    const menuSections = allSections.map(sec => {
+        const filteredItems = sec.items.map(item => {
+            if (item.subItems) {
+                const allowedSub = item.subItems.filter(sub => {
+                    if (isSuperAdmin) return true;
+                    if (!sub.permission) return true;
+                    return hasRolePermission(userRole, sub.permission);
+                });
+                if (allowedSub.length === 0) return null;
+                return { ...item, subItems: allowedSub };
+            } else {
+                if (isSuperAdmin) return item;
+                if (!item.permission) return item;
+                return hasRolePermission(userRole, item.permission) ? item : null;
+            }
+        }).filter(Boolean) as MenuItem[];
+
+        if (filteredItems.length === 0) return null;
+        return { ...sec, items: filteredItems };
+    }).filter(Boolean) as MenuSection[];
     const initial = user.name ? user.name.charAt(0).toUpperCase() : 'A';
 
     // Gradient colors for avatar based on user initial
@@ -654,31 +736,33 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         transition: 'margin-left 0.25s ease',
                         minHeight: '100vh',
                     }}
-                    className="p-4 md:p-6"
+                    className={pathname === '/dashboard/pos' ? 'p-0 overflow-hidden' : 'p-4 md:p-6'}
                 >
-                    {/* Top Bar */}
-                    <header className="mb-6 flex items-center justify-between">
-                        <div>
-                            <h2 className="text-xl font-bold text-[#1a2332]">
-                                Alpha Plus
-                                <span className="ml-2 text-sm font-normal text-gray-400 bg-white px-2 py-0.5 rounded-full border border-gray-100">
-                                    Kenya's No.1
-                                </span>
-                            </h2>
-                            <p className="text-xs text-gray-500 mt-0.5">Welcome back, <strong>{user.name}</strong> 👋</p>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                            <div className="hidden md:flex bg-white px-3 py-1.5 rounded-full border border-gray-200 text-xs items-center gap-2 shadow-sm text-gray-600">
-                                <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                System Online
+                    {/* Top Bar - hidden on POS terminal which has its own native touch header */}
+                    {pathname !== '/dashboard/pos' && (
+                        <header className="mb-6 flex items-center justify-between">
+                            <div>
+                                <h2 className="text-xl font-bold text-[#1a2332]">
+                                    Alpha Plus
+                                    <span className="ml-2 text-sm font-normal text-gray-400 bg-white px-2 py-0.5 rounded-full border border-gray-100">
+                                        Kenya's No.1
+                                    </span>
+                                </h2>
+                                <p className="text-xs text-gray-500 mt-0.5">Welcome back, <strong>{user.name}</strong> 👋</p>
                             </div>
-                            <button className="h-9 w-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 shadow-sm hover:bg-gray-50 transition-colors relative">
-                                <span className="text-base">🔔</span>
-                                <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
-                            </button>
-                        </div>
-                    </header>
+
+                            <div className="flex items-center gap-3">
+                                <div className="hidden md:flex bg-white px-3 py-1.5 rounded-full border border-gray-200 text-xs items-center gap-2 shadow-sm text-gray-600">
+                                    <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                                    System Online
+                                </div>
+                                <button className="h-9 w-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 shadow-sm hover:bg-gray-50 transition-colors relative">
+                                    <span className="text-base">🔔</span>
+                                    <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
+                                </button>
+                            </div>
+                        </header>
+                    )}
 
                     {children}
                 </main>

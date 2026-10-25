@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { supabase } from '@/lib/supabase';
 import { loginThemes, LoginTheme } from './loginThemes';
+import { hasRolePermission } from '@/lib/hotelRoles';
 
 const SESSION_TIMEOUT = 30 * 60 * 1000;
 
@@ -204,7 +205,8 @@ export default function LoginPage() {
             }
             const hashedPassword = await hashPassword(trimmedPass);
             if (data.password_hash === hashedPassword || data.password_hash === trimmedPass || data.pin === trimmedPass) {
-                const isWaiter = data.user_type?.toLowerCase().includes('waiter') || data.is_waiter === true || data.user_type === 'Waitress';
+                const userRole = data.user_type || '';
+                const isWaiter = data.is_waiter === true || userRole.toLowerCase().includes('waiter') || userRole.toLowerCase() === 'waitress';
                 try {
                     sessionStorage.setItem('pos_is_unlocked', 'true');
                     sessionStorage.removeItem('pos_is_locked');
@@ -212,9 +214,26 @@ export default function LoginPage() {
                 localStorage.setItem('user', JSON.stringify({ userId: data.user_id, userName: data.user_name, name: data.name, userType: data.user_type, email: data.email, isWaiter: isWaiter }));
                 if (isWaiter) {
                     localStorage.setItem('alpha_hotel_selected_waiter', data.name);
+                }
+
+                // Dynamically route based on permissions (Zero hardcoded role names)
+                const canAccessDashboard = hasRolePermission(userRole, 'reports_daily_sales_view');
+                const canAccessPos = hasRolePermission(userRole, 'pos_view_terminal');
+
+                if (!canAccessDashboard && canAccessPos) {
+                    // Terminal operators without executive dashboard access go directly to POS
                     router.push('/dashboard/pos');
-                } else {
+                } else if (canAccessDashboard) {
+                    // Managers, executives, and admins go to main dashboard overview
                     router.push('/dashboard');
+                } else if (canAccessPos) {
+                    router.push('/dashboard/pos');
+                } else if (hasRolePermission(userRole, 'kitchen_kds_view')) {
+                    router.push('/dashboard/kitchen');
+                } else if (hasRolePermission(userRole, 'hotel_guest_checkin')) {
+                    router.push('/dashboard/hotel/checkin');
+                } else {
+                    router.push('/dashboard/pos');
                 }
             } else {
                 setError('Invalid username or password');

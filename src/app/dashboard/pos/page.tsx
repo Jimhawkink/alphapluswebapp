@@ -2868,6 +2868,7 @@ export default function POSPage() {
     const [defaultOpeningFloat, setDefaultOpeningFloat] = useState<number>(5000);
     const [selectedShiftCycleToOpen, setSelectedShiftCycleToOpen] = useState<'Day Shift' | 'Night Shift'>('Day Shift');
     const [showOpeningDrop, setShowOpeningDrop] = useState(false);
+    const [showManualStartShiftModal, setShowManualStartShiftModal] = useState(false);
     const [openingDropAmount, setOpeningDropAmount] = useState('');
     const [registerOpen, setRegisterOpen] = useState(false);
     const [showCloseRegister, setShowCloseRegister] = useState(false);
@@ -3081,6 +3082,7 @@ export default function POSPage() {
 
     // ─── OPEN REGISTER ───
     const handleOpenRegister = async () => {
+        if (!verifyPosAccess('pos_start_shift', 'Start Shift & Open Register')) return;
         const amount = Number(openingDropAmount) || defaultOpeningFloat || 0;
         const shiftType = selectedShiftCycleToOpen || detectCurrentShiftCycle();
         const nowTime = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -3138,6 +3140,7 @@ export default function POSPage() {
             setHasActiveShift(true);
             setRegisterOpen(true);
             setShowOpeningDrop(false);
+            setShowManualStartShiftModal(false);
             setOpeningDropAmount('');
             localStorage.setItem('alpha_hotel_active_shift', JSON.stringify(activeShift));
             toast.success(`✨ ${shiftType} opened successfully with Ksh ${amount.toLocaleString()} initial float! Terminal ready.`);
@@ -3149,6 +3152,7 @@ export default function POSPage() {
 
     // ─── CLOSE REGISTER & SHIFT AUDIT ───
     const handleCloseRegister = async () => {
+        if (!verifyPosAccess('pos_close_register', 'End Shift & Close Register')) return;
         setIsLoadingRegister(true);
         try {
             const today = shift?.shiftDate || new Date().toISOString().split('T')[0];
@@ -3354,7 +3358,7 @@ export default function POSPage() {
     };
 
     // Print Close Register Report
-    const printCloseRegisterReport = () => {
+    const printCloseRegisterReport = async () => {
         if (!closeRegisterData) return;
         const d = closeRegisterData;
         const now = new Date();
@@ -4628,10 +4632,21 @@ export default function POSPage() {
 
     return (
         <>
-            {/* Register Closed Lockout Modal - Enforced when Shift Operations are Enabled */}
-            {!isLoadingShift && shiftsEnabled && !hasActiveShift && (
+            {/* Register Closed Lockout Modal - Enforced when Shift Operations are Enabled or manually opened */}
+            {!isLoadingShift && ((shiftsEnabled && !hasActiveShift) || showManualStartShiftModal) && (
                 <div className="fixed inset-0 bg-slate-900/85 backdrop-blur-md flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-lg text-center shadow-2xl relative border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+                        {/* Close button if manually opened */}
+                        {(showManualStartShiftModal || hasActiveShift) && (
+                            <button
+                                type="button"
+                                onClick={() => setShowManualStartShiftModal(false)}
+                                className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center font-bold text-sm transition-colors cursor-pointer"
+                                title="Close"
+                            >
+                                ✕
+                            </button>
+                        )}
                         {/* Top Cycle Badge */}
                         <div className="inline-flex items-center gap-2 px-3 py-1 bg-amber-50 border border-amber-200 rounded-full text-xs font-black text-amber-900 mb-3">
                             <span>{detectCurrentShiftCycle() === 'Day Shift' ? '☀️' : '🌙'}</span>
@@ -4836,19 +4851,50 @@ export default function POSPage() {
                                     </div>
                                 </div>
 
-                                {/* Shift Indicator: Day vs Night Shift */}
-                                <div 
-                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black border shadow-sm ${
-                                        (shift?.name || detectCurrentShiftCycle()).toLowerCase().includes('night')
-                                            ? 'bg-purple-950/60 border-purple-500/50 text-purple-200 shadow-purple-900/30'
-                                            : 'bg-amber-950/60 border-amber-500/50 text-amber-200 shadow-amber-900/30'
-                                    }`}
-                                    title={`Shift: ${shift?.name || detectCurrentShiftCycle()} • Float: Ksh ${(shift?.openingCash || defaultOpeningFloat || 0).toLocaleString()}`}
-                                >
-                                    <span className="text-sm">{(shift?.name || detectCurrentShiftCycle()).toLowerCase().includes('night') ? '🌙' : '☀️'}</span>
-                                    <span>{shift?.name || detectCurrentShiftCycle()}</span>
-                                    {hasActiveShift && <span className="w-1.5 h-1.5 rounded-full bg-[#00e676] animate-pulse"></span>}
-                                </div>
+                                {/* Shift Controls: Start Shift & End Shift (Real vibrant colors, NEVER grayed out) */}
+                                {hasActiveShift ? (
+                                    <>
+                                        <div 
+                                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-black border shadow-sm ${
+                                                (shift?.name || detectCurrentShiftCycle()).toLowerCase().includes('night')
+                                                    ? 'bg-purple-950/60 border-purple-500/50 text-purple-200 shadow-purple-900/30'
+                                                    : 'bg-amber-950/60 border-amber-500/50 text-amber-200 shadow-amber-900/30'
+                                            }`}
+                                            title={`Shift: ${shift?.name || detectCurrentShiftCycle()} • Float: Ksh ${(shift?.openingCash || defaultOpeningFloat || 0).toLocaleString()}`}
+                                        >
+                                            <span className="text-sm">{(shift?.name || detectCurrentShiftCycle()).toLowerCase().includes('night') ? '🌙' : '☀️'}</span>
+                                            <span>{shift?.name || detectCurrentShiftCycle()}</span>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-[#00e676] animate-pulse"></span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                playPOSChime('click');
+                                                if (!verifyPosAccess('pos_close_register', 'End Shift & Close Register')) return;
+                                                handleCloseRegister();
+                                            }}
+                                            className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white font-black text-xs rounded-xl shadow-md shadow-rose-950/50 border border-rose-400/50 transition-all cursor-pointer"
+                                            title="End Active Shift & Close Register (Z-Report)"
+                                        >
+                                            <span>⏹️</span>
+                                            <span>End Shift</span>
+                                        </button>
+                                    </>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            playPOSChime('click');
+                                            if (!verifyPosAccess('pos_start_shift', 'Start Shift & Open Register')) return;
+                                            setShowManualStartShiftModal(true);
+                                        }}
+                                        className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-950/50 border border-emerald-400/50 transition-all cursor-pointer"
+                                        title="Open Register & Start Cashier Shift Float"
+                                    >
+                                        <span>▶️</span>
+                                        <span>Start Shift</span>
+                                    </button>
+                                )}
 
                                 <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-[#00e676]/40 px-3 py-1 rounded-full text-xs text-[#00e676] font-bold shadow-[0_0_10px_rgba(0,230,118,0.15)]">
                                     <span className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse" />
@@ -5781,45 +5827,48 @@ export default function POSPage() {
                                     <span className="text-xs text-blue-600">🧾</span>
                                     <span className="text-xs font-bold font-mono text-blue-800">{invoiceNo}</span>
                                 </div>
-                                {/* Shift Status Indicator: Day vs Night Shift */}
+                                {/* Shift Controls: Start Shift & End Shift (Real vibrant colors, NEVER grayed out) */}
                                 {hasActiveShift && shift ? (
-                                    <div 
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-sm font-black text-xs transition-all ${
-                                            (shift.name || '').toLowerCase().includes('night')
-                                                ? 'bg-gradient-to-r from-indigo-50 to-purple-100/80 border-indigo-300 text-indigo-950'
-                                                : 'bg-gradient-to-r from-amber-50 to-orange-100/80 border-amber-300 text-amber-950'
-                                        }`}
-                                        title={`Shift: ${shift.name} (Started ${shift.startTime}) • Float: Ksh ${(shift.openingCash || 0).toLocaleString()}`}
-                                    >
-                                        <span className="text-sm">{(shift.name || '').toLowerCase().includes('night') ? '🌙' : '☀️'}</span>
-                                        <span className="tracking-wide">{shift.name}</span>
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                                    </div>
+                                    <>
+                                        <div 
+                                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border shadow-sm font-black text-xs transition-all ${
+                                                (shift.name || '').toLowerCase().includes('night')
+                                                    ? 'bg-gradient-to-r from-indigo-50 to-purple-100/80 border-indigo-300 text-indigo-950'
+                                                    : 'bg-gradient-to-r from-amber-50 to-orange-100/80 border-amber-300 text-amber-950'
+                                            }`}
+                                            title={`Shift: ${shift.name} (Started ${shift.startTime}) • Float: Ksh ${(shift.openingCash || 0).toLocaleString()}`}
+                                        >
+                                            <span className="text-sm">{(shift.name || '').toLowerCase().includes('night') ? '🌙' : '☀️'}</span>
+                                            <span className="tracking-wide">{shift.name}</span>
+                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                playPOSChime('click');
+                                                if (!verifyPosAccess('pos_close_register', 'End Shift & Close Register')) return;
+                                                handleCloseRegister();
+                                            }}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-rose-900/30 cursor-pointer border border-rose-400/40"
+                                            title="End Active Shift & Print Z-Report"
+                                        >
+                                            <span className="text-sm">⏹️</span>
+                                            <span className="tracking-wide">End Shift</span>
+                                        </button>
+                                    </>
                                 ) : (
-                                    <div 
-                                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border font-bold text-xs ${
-                                            detectCurrentShiftCycle() === 'Night Shift'
-                                                ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
-                                                : 'bg-amber-50 text-amber-800 border-amber-200'
-                                        }`}
-                                        title={`Current Window: ${detectCurrentShiftCycle()} (Till Closed)`}
-                                    >
-                                        <span>{detectCurrentShiftCycle() === 'Night Shift' ? '🌙' : '☀️'}</span>
-                                        <span className="hidden sm:inline">{detectCurrentShiftCycle()} (Closed)</span>
-                                    </div>
-                                )}
-                                {/* Close Register */}
-                                {hasActiveShift && (
                                     <button
+                                        type="button"
                                         onClick={() => {
-                                            if (!verifyPosAccess('pos_close_register', 'Close Cashier Register')) return;
-                                            handleCloseRegister();
+                                            playPOSChime('click');
+                                            if (!verifyPosAccess('pos_start_shift', 'Start Shift & Open Register')) return;
+                                            setShowManualStartShiftModal(true);
                                         }}
-                                        disabled={isLoadingRegister}
-                                        className="px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-colors disabled:opacity-50 shadow-sm cursor-pointer"
-                                        title="Close Cashier Shift"
+                                        className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-900/30 transition-all cursor-pointer border border-emerald-400/40"
+                                        title="Open Register & Start Cashier Shift Float"
                                     >
-                                        🔴 Close
+                                        <span className="text-sm">▶️</span>
+                                        <span className="tracking-wide">Start Shift</span>
                                     </button>
                                 )}
                                 {/* Waiter / Staff Active Session Pill & Fast Switch */}

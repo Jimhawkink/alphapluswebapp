@@ -58,11 +58,12 @@ export const PERMISSIONS_LIST: PermissionDefinition[] = [
     // 1. RESTAURANT POS & TABLE FLOOR (/dashboard/pos, my-bills, etc.)
     // ═══════════════════════════════════════════════════════════════════
     { key: 'pos_view_terminal', label: 'Access POS Terminal Screen', subFunction: 'Open POS Register', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🖥️', description: 'Access main restaurant dining floor & touch POS screen', pagePath: '/dashboard/pos' },
+    { key: 'pos_start_shift', label: 'Start Shift & Open Register Float (▶️ Start Shift)', subFunction: 'Start Shift Button', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '▶️', description: 'Open cashier register drawer, choose operating shift cycle, and enter starting float', pagePath: '/dashboard/pos' },
+    { key: 'pos_close_register', label: 'End Shift & Close Register (⏹️ End Shift / Z-Report)', subFunction: 'End Shift Button', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '⏹️', description: 'End active cashier register shift, enter cash counts, and generate Z-Report', pagePath: '/dashboard/pos' },
     { key: 'pos_home_dashboard', label: 'Exit to Home Dashboard (🏠 Button)', subFunction: 'Home Dashboard Exit', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🏠', description: 'Navigate back to Hotel Management Main Dashboard from POS top header', pagePath: '/dashboard/pos' },
     { key: 'pos_reports_view', label: 'Access POS Reports (📊 Header Button)', subFunction: 'Reports Header Button', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '📊', description: 'Open sales & POS revenue reports summary from POS top header', pagePath: '/dashboard/pos' },
     { key: 'pos_shortcuts_view', label: 'Keyboard Shortcuts (⌨️ Button)', subFunction: 'Shortcuts Modal', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '⌨️', description: 'Open quick keyboard shortcuts guide [F1] from top header', pagePath: '/dashboard/pos' },
     { key: 'pos_lock_register', label: 'Lock POS Terminal (🔒 Button)', subFunction: 'Lock Screen Button', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🔒', description: 'Temporarily lock POS screen requiring supervisor authorization to unlock', pagePath: '/dashboard/pos' },
-    { key: 'pos_close_register', label: 'Close Cashier Shift / Register', subFunction: 'Close Register Button', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '🏁', description: 'Close active register shift, enter cash counts, and generate Z-Report', pagePath: '/dashboard/pos' },
     { key: 'pos_receive_payment', label: 'Receive Payment (💰 Direct Tender Button)', subFunction: 'Receive Pay Quick Action', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '💰', description: 'Open direct tender portal to receive payments for pending orders', pagePath: '/dashboard/pos' },
     { key: 'pos_view_my_bills', label: 'Access "My Bills" & Waiter Orders (📋 Button)', subFunction: 'My Bills Tab', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '📋', description: 'View waiter open orders, pending tickets, and settled receipts', pagePath: '/dashboard/my-bills' },
     { key: 'pos_day_sales', label: 'Day Sales Button (📊 Shifts & Sales)', subFunction: 'Day Sales Command Bar', module: 'pos', moduleName: 'Restaurant POS & Table Floor', icon: '📊', description: 'Inspect daily shift gross sales and live tender totals from command bar', pagePath: '/dashboard/pos' },
@@ -238,6 +239,8 @@ export const PRESET_HOTEL_ROLES: HotelRole[] = [
         is_system: true,
         permissions: {
             pos_view_terminal: true,
+            pos_start_shift: true,
+            pos_close_register: true,
             pos_select_tables: true,
             pos_take_orders: true,
             pos_send_kot: true,
@@ -283,6 +286,8 @@ export const PRESET_HOTEL_ROLES: HotelRole[] = [
         is_system: true,
         permissions: {
             pos_view_terminal: true,
+            pos_start_shift: true,
+            pos_close_register: true,
             pos_customer_bill_print: true,
             pos_payment_tender: true,
             pos_reprint_receipt: true,
@@ -312,13 +317,15 @@ export const PRESET_HOTEL_ROLES: HotelRole[] = [
         role_id: 'cashier',
         role_name: 'Cashier',
         department: 'Finance & Accounts',
-        description: 'POS Billing & Cashier: accept Cash/M-Pesa/PDQ payments, print receipts, split bills, record petty cash and close shifts.',
+        description: 'POS Billing & Cashier: accept Cash/M-Pesa/PDQ payments, start/end cashier shifts, print receipts, split bills, and settle customer checks.',
         color_gradient: 'from-emerald-500 to-green-600',
         badge_color: 'bg-emerald-100 text-emerald-800 border-emerald-200',
         emoji: '💰',
         is_system: true,
         permissions: {
             pos_view_terminal: true,
+            pos_start_shift: true,
+            pos_close_register: true,
             pos_select_tables: true,
             pos_take_orders: true,
             pos_send_kot: true,
@@ -330,11 +337,14 @@ export const PRESET_HOTEL_ROLES: HotelRole[] = [
             pos_merge_tables: true,
             pos_hold_recall_order: true,
             pos_item_discounts: false,
+            pos_price_override: false,
             pos_void_item: false,
             pos_cancel_order: false,
             pos_batch_selection: true,
             pos_payment_tender: true,
+            pos_tender_cash: true,
             pos_reprint_receipt: true,
+            pos_receive_payment: true,
             hotel_folio_post_charges: true,
             cashier_open_register: true,
             cashier_safe_cash_drops: true,
@@ -342,8 +352,22 @@ export const PRESET_HOTEL_ROLES: HotelRole[] = [
             cashier_x_report_print: true,
             cashier_close_z_report: true,
             finance_bill_payment_settle: true,
-            reports_daily_sales_view: true,
+            reports_daily_sales_view: false,
             catalog_products_view: true,
+            pos_home_dashboard: false,
+            admin_staff_users_view: false,
+            admin_roles_permissions: false,
+            finance_payroll_process: false,
+            finance_manage_expenses: false,
+            finance_chart_of_accounts: false,
+            hotel_reservations_view: false,
+            hotel_reservations_create: false,
+            hotel_guest_checkin: false,
+            hotel_guest_checkout: false,
+            hotel_rooms_setup: false,
+            store_stock_adjustment: false,
+            store_purchase_orders: false,
+            admin_system_settings: false,
         },
     },
     {
@@ -357,37 +381,30 @@ export const PRESET_HOTEL_ROLES: HotelRole[] = [
         is_system: true,
         permissions: {
             pos_view_terminal: true,
-            pos_home_dashboard: false,
-            pos_reports_view: false,
-            pos_shortcuts_view: true,
-            pos_lock_register: false,
+            pos_start_shift: false,
             pos_close_register: false,
-            pos_receive_payment: false,
-            pos_view_my_bills: true,
-            pos_day_sales: false,
-            pos_merge_bills: false,
-            pos_sales_summary: false,
-            pos_pending_bills: false,
-            pos_clear_cart: false,
-            pos_shift_reconciliation: false,
+            cashier_open_register: false,
+            cashier_close_z_report: false,
             pos_select_tables: true,
             pos_take_orders: true,
             pos_send_kot: true,
-            pos_reprint_kot: false,
+            pos_reprint_kot: true,
             pos_order_notes: true,
             pos_customer_bill_print: true,
+            pos_view_my_bills: true,
             pos_split_bill: false,
             pos_merge_tables: false,
-            pos_transfer_table: false,
-            pos_hold_recall_order: true,
+            pos_hold_recall_order: false,
             pos_item_discounts: false,
             pos_price_override: false,
             pos_void_item: false,
             pos_cancel_order: false,
             pos_payment_tender: false,
-            pos_tender_cash: false,
             pos_reprint_receipt: false,
-            catalog_products_view: true,
+            pos_home_dashboard: false,
+            admin_staff_users_view: false,
+            finance_payroll_process: false,
+            hotel_guest_checkin: false,
         },
     },
     {
@@ -542,7 +559,7 @@ export const PRESET_HOTEL_ROLES: HotelRole[] = [
     },
 ];
 
-const LOCAL_STORAGE_KEY = 'alphaplus_hotel_roles_v3';
+const LOCAL_STORAGE_KEY = 'alphaplus_hotel_roles_v4';
 
 export function getLocalHotelRoles(): HotelRole[] {
     if (typeof window === 'undefined') {
@@ -639,7 +656,25 @@ export function hasRolePermission(roleName: string, permissionKey: string): bool
     if (typeof window === 'undefined') return true;
     const lowerRole = (roleName || '').trim().toLowerCase();
     if (!lowerRole) return false;
+    // Super admin & System Admin have unrestricted access
     if (lowerRole === 'super admin' || lowerRole === 'admin') return true;
+
+    // Cross-mapping for start / end shift permissions between pos and cashier modules
+    const resolveKey = (perms: Record<string, boolean> | undefined): boolean | undefined => {
+        if (!perms) return undefined;
+        if (permissionKey === 'pos_start_shift' || permissionKey === 'cashier_open_register') {
+            if (typeof perms['pos_start_shift'] === 'boolean') return perms['pos_start_shift'];
+            if (typeof perms['cashier_open_register'] === 'boolean') return perms['cashier_open_register'];
+        }
+        if (permissionKey === 'pos_close_register' || permissionKey === 'cashier_close_z_report') {
+            if (typeof perms['pos_close_register'] === 'boolean') return perms['pos_close_register'];
+            if (typeof perms['cashier_close_z_report'] === 'boolean') return perms['cashier_close_z_report'];
+        }
+        if (typeof perms[permissionKey] === 'boolean') {
+            return perms[permissionKey];
+        }
+        return undefined;
+    };
 
     const roles = getLocalHotelRoles();
     const match = roles.find(r => 
@@ -650,9 +685,8 @@ export function hasRolePermission(roleName: string, permissionKey: string): bool
     );
     if (match) {
         if (match.is_super_admin) return true;
-        if (match.permissions && typeof match.permissions[permissionKey] === 'boolean') {
-            return match.permissions[permissionKey];
-        }
+        const res = resolveKey(match.permissions);
+        if (typeof res === 'boolean') return res;
     }
 
     const preset = PRESET_HOTEL_ROLES.find(r => 
@@ -661,13 +695,9 @@ export function hasRolePermission(roleName: string, permissionKey: string): bool
         (lowerRole.includes('waiter') && r.role_id === 'waiter') ||
         (lowerRole.includes('cashier') && r.role_id === 'cashier')
     );
-    if (preset?.permissions && typeof preset.permissions[permissionKey] === 'boolean') {
-        return preset.permissions[permissionKey];
-    }
+    const presetRes = resolveKey(preset?.permissions);
+    if (typeof presetRes === 'boolean') return presetRes;
 
-    if (lowerRole.includes('waiter') || lowerRole === 'waitress') {
-        return false;
-    }
-
-    return true;
+    // Strict Security Default: Deny access if permission was not explicitly granted
+    return false;
 }
