@@ -2482,6 +2482,72 @@ export default function POSPage() {
     const [currentTime, setCurrentTime] = useState<string>('');
     const searchInputRef = useRef<HTMLInputElement>(null);
 
+    // ─── SUPER PREMIUM TOUCH SCROLL REFS & CONTINUOUS CONTROLS ───
+    const cyberProductGridRef = useRef<HTMLDivElement>(null);
+    const classicProductGridRef = useRef<HTMLDivElement>(null);
+    const cyberCartListRef = useRef<HTMLDivElement>(null);
+    const classicCartListRef = useRef<HTMLDivElement>(null);
+
+    const scrollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const scrollHoldTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    const stopContinuousScroll = useCallback(() => {
+        if (scrollHoldTimeoutRef.current) {
+            clearTimeout(scrollHoldTimeoutRef.current);
+            scrollHoldTimeoutRef.current = null;
+        }
+        if (scrollIntervalRef.current) {
+            clearInterval(scrollIntervalRef.current);
+            scrollIntervalRef.current = null;
+        }
+    }, []);
+
+    const executeScroll = useCallback((target: 'cyber_dishes' | 'classic_dishes' | 'cyber_cart' | 'classic_cart', direction: 'up' | 'down') => {
+        let el: HTMLDivElement | null = null;
+        let step = 340;
+
+        if (target === 'cyber_dishes') {
+            el = cyberProductGridRef.current;
+            step = 380;
+        } else if (target === 'classic_dishes') {
+            el = classicProductGridRef.current;
+            step = 380;
+        } else if (target === 'cyber_cart') {
+            el = cyberCartListRef.current;
+            step = 220;
+        } else if (target === 'classic_cart') {
+            el = classicCartListRef.current;
+            step = 220;
+        }
+
+        if (el) {
+            el.scrollBy({
+                top: direction === 'up' ? -step : step,
+                behavior: 'smooth'
+            });
+        }
+    }, []);
+
+    const handleScrollPressStart = useCallback((target: 'cyber_dishes' | 'classic_dishes' | 'cyber_cart' | 'classic_cart', direction: 'up' | 'down') => {
+        playPOSChime('click');
+        executeScroll(target, direction);
+        stopContinuousScroll();
+
+        // Delay before auto-repeating on press-and-hold
+        scrollHoldTimeoutRef.current = setTimeout(() => {
+            scrollIntervalRef.current = setInterval(() => {
+                executeScroll(target, direction);
+            }, 140);
+        }, 320);
+    }, [executeScroll, stopContinuousScroll]);
+
+    // Cleanup scroll interval on unmount
+    useEffect(() => {
+        return () => {
+            stopContinuousScroll();
+        };
+    }, [stopContinuousScroll]);
+
     const [showNotesModal, setShowNotesModal] = useState(false);
     const [showHoldModal, setShowHoldModal] = useState(false);
     const [showRunningOrders, setShowRunningOrders] = useState(false);
@@ -5179,25 +5245,90 @@ export default function POSPage() {
                                             <span>🪑</span>
                                             <span>{tableNo ? `Table ${tableNo}` : 'Select Table'}</span>
                                         </button>
+                                    </div>
 
+                                    {/* Sub-row: Waiter Selector & SUPER PREMIUM DISH MENU SCROLL BUTTONS (Yellow Line 1) */}
+                                    <div className="flex items-center justify-between gap-3 pt-0.5">
                                         {/* Waiter Selector */}
-                                        <select
-                                            value={selectedWaiterId || ''}
-                                            onChange={(e) => {
-                                                const id = Number(e.target.value);
-                                                setSelectedWaiterId(id || null);
-                                                const w = waiters.find(item => item.user_id === id);
-                                                setSelectedWaiterName(w ? w.full_name : '');
-                                            }}
-                                            className="px-2.5 py-1.5 bg-[#0b141c] border border-[#1a2f35] rounded-xl text-xs font-bold text-gray-300 focus:outline-none focus:border-[#00e676]"
-                                        >
-                                            <option value="">👤 Select Waiter</option>
-                                            {waiters.map(w => (
-                                                <option key={w.user_id} value={w.user_id} className="bg-[#0b141c] text-white">
-                                                    {w.full_name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <div className="flex items-center gap-2">
+                                            <select
+                                                value={selectedWaiterId || ''}
+                                                onChange={(e) => {
+                                                    const id = Number(e.target.value);
+                                                    setSelectedWaiterId(id || null);
+                                                    const w = waiters.find(item => item.user_id === id);
+                                                    setSelectedWaiterName(w ? w.full_name : '');
+                                                }}
+                                                className="px-3 py-2 bg-gradient-to-r from-[#0b141c] to-[#0e1a24] border border-[#1a2f35] hover:border-emerald-500/50 rounded-xl text-xs font-bold text-gray-200 focus:outline-none focus:border-[#00e676] shadow-inner cursor-pointer"
+                                            >
+                                                <option value="">👤 Select Waiter</option>
+                                                {waiters.map(w => (
+                                                    <option key={w.user_id} value={w.user_id} className="bg-[#0b141c] text-white">
+                                                        {w.full_name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* SUPER PREMIUM DISH MENU SCROLL CONTROLS */}
+                                        <div className="flex items-center gap-2 bg-[#091219]/90 p-1 rounded-2xl border border-emerald-500/40 shadow-lg shadow-black/60">
+                                            <div className="hidden md:flex items-center gap-1.5 px-2 text-[11px] font-black uppercase tracking-wider text-emerald-400">
+                                                <span className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse"></span>
+                                                <span>Menu Scroll</span>
+                                            </div>
+
+                                            {/* Scroll Up Button */}
+                                            <button
+                                                type="button"
+                                                onMouseDown={() => handleScrollPressStart('cyber_dishes', 'up')}
+                                                onMouseUp={stopContinuousScroll}
+                                                onMouseLeave={stopContinuousScroll}
+                                                onTouchStart={() => handleScrollPressStart('cyber_dishes', 'up')}
+                                                onTouchEnd={stopContinuousScroll}
+                                                className="group relative px-4 py-2 rounded-xl bg-gradient-to-b from-[#183240] via-[#11242e] to-[#0a161d] hover:from-[#1f4255] hover:via-[#152e3b] hover:to-[#0d1d26] text-white border border-emerald-500/50 hover:border-emerald-400 active:scale-95 transition-all duration-150 flex items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.5)] hover:shadow-[0_0_16px_rgba(0,230,118,0.35)] cursor-pointer select-none"
+                                                title="Scroll dishes up (Tap or Hold)"
+                                            >
+                                                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-400 group-hover:text-black transition-colors shadow-sm">
+                                                    <svg className="w-4 h-4 fill-current transition-transform group-hover:-translate-y-0.5" viewBox="0 0 20 20">
+                                                        <path d="M10 4l6 8H4z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="text-left">
+                                                    <span className="block text-xs font-black uppercase tracking-wider text-gray-100 group-hover:text-emerald-300 transition-colors leading-none">
+                                                        Scroll Up
+                                                    </span>
+                                                    <span className="block text-[9px] font-bold text-gray-400 group-hover:text-gray-300 leading-none mt-0.5">
+                                                        Tap / Hold
+                                                    </span>
+                                                </div>
+                                            </button>
+
+                                            {/* Scroll Down Button */}
+                                            <button
+                                                type="button"
+                                                onMouseDown={() => handleScrollPressStart('cyber_dishes', 'down')}
+                                                onMouseUp={stopContinuousScroll}
+                                                onMouseLeave={stopContinuousScroll}
+                                                onTouchStart={() => handleScrollPressStart('cyber_dishes', 'down')}
+                                                onTouchEnd={stopContinuousScroll}
+                                                className="group relative px-4 py-2 rounded-xl bg-gradient-to-b from-[#183240] via-[#11242e] to-[#0a161d] hover:from-[#1f4255] hover:via-[#152e3b] hover:to-[#0d1d26] text-white border border-emerald-500/50 hover:border-emerald-400 active:scale-95 transition-all duration-150 flex items-center gap-2 shadow-[0_2px_12px_rgba(0,0,0,0.5)] hover:shadow-[0_0_16px_rgba(0,230,118,0.35)] cursor-pointer select-none"
+                                                title="Scroll dishes down (Tap or Hold)"
+                                            >
+                                                <div className="w-6 h-6 rounded-lg bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-400 group-hover:text-black transition-colors shadow-sm">
+                                                    <svg className="w-4 h-4 fill-current transition-transform group-hover:translate-y-0.5" viewBox="0 0 20 20">
+                                                        <path d="M10 16l6-8H4z" />
+                                                    </svg>
+                                                </div>
+                                                <div className="text-left">
+                                                    <span className="block text-xs font-black uppercase tracking-wider text-gray-100 group-hover:text-emerald-300 transition-colors leading-none">
+                                                        Scroll Down
+                                                    </span>
+                                                    <span className="block text-[9px] font-bold text-gray-400 group-hover:text-gray-300 leading-none mt-0.5">
+                                                        Tap / Hold
+                                                    </span>
+                                                </div>
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {/* Category Pills Carousel */}
@@ -5224,7 +5355,7 @@ export default function POSPage() {
                                 </div>
 
                                 {/* Product Cards Grid (5-column layout with real food photos!) */}
-                                <div className="flex-1 overflow-y-auto p-3.5">
+                                <div ref={cyberProductGridRef} className="flex-1 overflow-y-auto p-3.5 scroll-smooth">
                                     {isLoadingProducts ? (
                                         <div className="flex flex-col items-center justify-center h-64 gap-3 text-gray-400">
                                             <div className="w-10 h-10 border-4 border-[#00e676]/20 border-t-[#00e676] rounded-full animate-spin" />
@@ -5443,6 +5574,60 @@ export default function POSPage() {
                                     </div>
                                 </div>
 
+                                {/* SUPER PREMIUM CART SCROLL STRIP (Yellow Line 2) */}
+                                <div className="px-3 py-1.5 bg-gradient-to-r from-[#09131a] via-[#0d1c25] to-[#09131a] border-b border-[#142226] flex items-center justify-between shadow-inner">
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse"></span>
+                                        <span className="text-[11px] font-black text-gray-200 uppercase tracking-wider flex items-center gap-1">
+                                            <span>🛒</span> Cart Items Scroll
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-1.5">
+                                        {/* Cart Up Button */}
+                                        <button
+                                            type="button"
+                                            onMouseDown={() => handleScrollPressStart('cyber_cart', 'up')}
+                                            onMouseUp={stopContinuousScroll}
+                                            onMouseLeave={stopContinuousScroll}
+                                            onTouchStart={() => handleScrollPressStart('cyber_cart', 'up')}
+                                            onTouchEnd={stopContinuousScroll}
+                                            className="group px-3 py-1 rounded-xl bg-gradient-to-b from-[#18303d] via-[#11242e] to-[#0a161d] hover:from-[#204052] hover:to-[#0e1f29] text-white border border-emerald-500/50 hover:border-emerald-400 active:scale-95 transition-all flex items-center gap-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.5)] hover:shadow-[0_0_12px_rgba(0,230,118,0.35)] cursor-pointer select-none"
+                                            title="Scroll cart items up (Tap or Hold)"
+                                        >
+                                            <div className="w-4 h-4 rounded-md bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-400 group-hover:text-black transition-colors">
+                                                <svg className="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                                                    <path d="M10 4l6 8H4z" />
+                                                </svg>
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-gray-100 group-hover:text-emerald-300">
+                                                Up
+                                            </span>
+                                        </button>
+
+                                        {/* Cart Down Button */}
+                                        <button
+                                            type="button"
+                                            onMouseDown={() => handleScrollPressStart('cyber_cart', 'down')}
+                                            onMouseUp={stopContinuousScroll}
+                                            onMouseLeave={stopContinuousScroll}
+                                            onTouchStart={() => handleScrollPressStart('cyber_cart', 'down')}
+                                            onTouchEnd={stopContinuousScroll}
+                                            className="group px-3 py-1 rounded-xl bg-gradient-to-b from-[#18303d] via-[#11242e] to-[#0a161d] hover:from-[#204052] hover:to-[#0e1f29] text-white border border-emerald-500/50 hover:border-emerald-400 active:scale-95 transition-all flex items-center gap-1.5 shadow-[0_2px_8px_rgba(0,0,0,0.5)] hover:shadow-[0_0_12px_rgba(0,230,118,0.35)] cursor-pointer select-none"
+                                            title="Scroll cart items down (Tap or Hold)"
+                                        >
+                                            <div className="w-4 h-4 rounded-md bg-emerald-500/20 border border-emerald-400/50 flex items-center justify-center text-emerald-400 group-hover:bg-emerald-400 group-hover:text-black transition-colors">
+                                                <svg className="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                                                    <path d="M10 16l6-8H4z" />
+                                                </svg>
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-wider text-gray-100 group-hover:text-emerald-300">
+                                                Down
+                                            </span>
+                                        </button>
+                                    </div>
+                                </div>
+
                                 {/* Cart Items Table Header */}
                                 <div className="px-3 py-1.5 bg-[#060b0f] border-b border-[#142226] text-[10px] font-extrabold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                                     <span className="w-4 text-center">#</span>
@@ -5454,7 +5639,7 @@ export default function POSPage() {
                                 </div>
 
                                 {/* Cart Items List */}
-                                <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5">
+                                <div ref={cyberCartListRef} className="flex-1 overflow-y-auto p-2.5 space-y-1.5 scroll-smooth">
                                     {cart.length === 0 ? (
                                         <div className="flex flex-col items-center justify-center h-full text-gray-500 gap-2 py-12">
                                             <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center text-3xl">
@@ -6032,6 +6217,51 @@ export default function POSPage() {
                                 />
                             </div>
                         </div>
+
+                        {/* SUPER PREMIUM DISH MENU SCROLL CONTROLS (CLASSIC LIGHT) */}
+                        <div className="flex items-center justify-between px-3 py-1.5 bg-gray-100/90 border-t border-gray-200 mt-2">
+                            <div className="flex items-center gap-1.5 text-xs font-black text-gray-700 uppercase tracking-wider">
+                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                                <span>Menu Catalog</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <span className="text-[11px] font-bold text-gray-500 hidden sm:inline">Dish Scroll:</span>
+                                <button
+                                    type="button"
+                                    onMouseDown={() => handleScrollPressStart('classic_dishes', 'up')}
+                                    onMouseUp={stopContinuousScroll}
+                                    onMouseLeave={stopContinuousScroll}
+                                    onTouchStart={() => handleScrollPressStart('classic_dishes', 'up')}
+                                    onTouchEnd={stopContinuousScroll}
+                                    className="group px-3.5 py-1.5 rounded-xl bg-gradient-to-b from-white to-gray-100 hover:from-emerald-50 hover:to-emerald-100 text-gray-900 border border-emerald-300 hover:border-emerald-500 active:scale-95 transition-all flex items-center gap-2 shadow-sm cursor-pointer select-none"
+                                    title="Scroll dishes up (Click or Hold)"
+                                >
+                                    <div className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                                            <path d="M10 4l6 8H4z" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-xs font-black uppercase tracking-wider">Scroll Up</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onMouseDown={() => handleScrollPressStart('classic_dishes', 'down')}
+                                    onMouseUp={stopContinuousScroll}
+                                    onMouseLeave={stopContinuousScroll}
+                                    onTouchStart={() => handleScrollPressStart('classic_dishes', 'down')}
+                                    onTouchEnd={stopContinuousScroll}
+                                    className="group px-3.5 py-1.5 rounded-xl bg-gradient-to-b from-white to-gray-100 hover:from-emerald-50 hover:to-emerald-100 text-gray-900 border border-emerald-300 hover:border-emerald-500 active:scale-95 transition-all flex items-center gap-2 shadow-sm cursor-pointer select-none"
+                                    title="Scroll dishes down (Click or Hold)"
+                                >
+                                    <div className="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                        <svg className="w-3.5 h-3.5 fill-current" viewBox="0 0 20 20">
+                                            <path d="M10 16l6-8H4z" />
+                                        </svg>
+                                    </div>
+                                    <span className="text-xs font-black uppercase tracking-wider">Scroll Down</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
 
                     {/* Categories Carousel */}
@@ -6061,7 +6291,7 @@ export default function POSPage() {
                     </div>
 
                     {/* Products Grid */}
-                    <div className="flex-1 p-4 overflow-y-auto bg-gray-50">
+                    <div ref={classicProductGridRef} className="flex-1 p-4 overflow-y-auto bg-gray-50 scroll-smooth">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-2.5">
                             {filteredProducts.map(product => (
                                 <ProductCard
@@ -6312,8 +6542,52 @@ export default function POSPage() {
                         />
                     </div>
 
+                    {/* SUPER PREMIUM CART SCROLL STRIP (CLASSIC LIGHT) */}
+                    <div className="px-4 py-1.5 bg-gray-100/90 border-b border-gray-200 flex items-center justify-between shadow-inner">
+                        <div className="flex items-center gap-1.5 text-xs font-black text-gray-700 uppercase tracking-wider">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                            <span>Cart Items Scroll</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <button
+                                type="button"
+                                onMouseDown={() => handleScrollPressStart('classic_cart', 'up')}
+                                onMouseUp={stopContinuousScroll}
+                                onMouseLeave={stopContinuousScroll}
+                                onTouchStart={() => handleScrollPressStart('classic_cart', 'up')}
+                                onTouchEnd={stopContinuousScroll}
+                                className="group px-3 py-1 rounded-xl bg-white hover:bg-emerald-50 text-gray-900 border border-emerald-300 hover:border-emerald-500 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer select-none"
+                                title="Scroll Cart Items Up (Tap or Hold)"
+                            >
+                                <div className="w-4 h-4 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                    <svg className="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                                        <path d="M10 4l6 8H4z" />
+                                    </svg>
+                                </div>
+                                <span className="text-[11px] font-black uppercase tracking-wider">Up</span>
+                            </button>
+                            <button
+                                type="button"
+                                onMouseDown={() => handleScrollPressStart('classic_cart', 'down')}
+                                onMouseUp={stopContinuousScroll}
+                                onMouseLeave={stopContinuousScroll}
+                                onTouchStart={() => handleScrollPressStart('classic_cart', 'down')}
+                                onTouchEnd={stopContinuousScroll}
+                                className="group px-3 py-1 rounded-xl bg-white hover:bg-emerald-50 text-gray-900 border border-emerald-300 hover:border-emerald-500 active:scale-95 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer select-none"
+                                title="Scroll Cart Items Down (Tap or Hold)"
+                            >
+                                <div className="w-4 h-4 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center group-hover:bg-emerald-600 group-hover:text-white transition-colors">
+                                    <svg className="w-3 h-3 fill-current" viewBox="0 0 20 20">
+                                        <path d="M10 16l6-8H4z" />
+                                    </svg>
+                                </div>
+                                <span className="text-[11px] font-black uppercase tracking-wider">Down</span>
+                            </button>
+                        </div>
+                    </div>
+
                     {/* Cart Items */}
-                    <div className="flex-1 p-4 overflow-y-auto space-y-2 bg-gray-50">
+                    <div ref={classicCartListRef} className="flex-1 p-4 overflow-y-auto space-y-2 bg-gray-50 scroll-smooth">
                         {cart.length === 0 ? (
                             <div className="flex flex-col items-center justify-center h-full text-gray-400">
                                 <span className="text-7xl mb-4 opacity-50">🛒</span>
