@@ -341,6 +341,7 @@ const buildMenu = (): MenuSection[] => [
             {
                 name: 'Sales', icon: Icons.money, id: 'sales',
                 subItems: [
+                    { name: 'Financial Reports', icon: Icons.report, href: '/dashboard/financial-reports', badge: 'FINANCE', permission: 'finance_chart_of_accounts' },
                     { name: 'Master Reports', icon: Icons.report, href: '/dashboard/reports', permission: 'reports_daily_sales_view' },
                     { name: 'Sales Records', icon: Icons.doc, href: '/dashboard/sales', permission: 'reports_daily_sales_view' },
                     { name: 'Dish Report', icon: Icons.report, href: '/dashboard/reports/dish-report', permission: 'reports_itemized_pos' },
@@ -365,6 +366,7 @@ const buildMenu = (): MenuSection[] => [
             {
                 name: 'Finance', icon: Icons.finance, id: 'finance',
                 subItems: [
+                    { name: 'Financial Reports', icon: Icons.report, href: '/dashboard/financial-reports', badge: 'P&L · BS', permission: 'finance_chart_of_accounts' },
                     { name: 'Expenses', icon: Icons.expense, href: '/dashboard/expenses', permission: 'finance_manage_expenses' },
                     { name: 'Vouchers', icon: Icons.voucher, href: '/dashboard/vouchers', permission: 'finance_payment_vouchers' },
                     { name: 'Accounts', icon: Icons.account, href: '/dashboard/accounts', permission: 'finance_chart_of_accounts' },
@@ -452,8 +454,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                 isDenied = true;
                 deniedFeature = 'Hotel Front Desk & Rooms';
             }
-        } else if (pathname.startsWith('/dashboard/expenses') || pathname.startsWith('/dashboard/accounts') || pathname.startsWith('/dashboard/vouchers')) {
-            if (!hasRolePermission(role, 'finance_manage_expenses')) {
+        } else if (pathname.startsWith('/dashboard/expenses') || pathname.startsWith('/dashboard/accounts') || pathname.startsWith('/dashboard/vouchers') || pathname.startsWith('/dashboard/financial-reports')) {
+            if (!hasRolePermission(role, 'finance_manage_expenses') && !hasRolePermission(role, 'finance_chart_of_accounts')) {
                 isDenied = true;
                 deniedFeature = 'Finance & Accounts';
             }

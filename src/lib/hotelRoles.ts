@@ -162,6 +162,7 @@ export const PERMISSIONS_LIST: PermissionDefinition[] = [
     { key: 'finance_manage_expenses', label: 'Manage Operating Expenses', subFunction: 'Expense Form & Ledger', module: 'finance', moduleName: 'Accounting, Expenses & Payroll', icon: '📉', description: 'Enter utilities, rent, maintenance, licenses and operational costs', pagePath: '/dashboard/expenses' },
     { key: 'finance_payment_vouchers', label: 'Issue Payment Vouchers', subFunction: 'Voucher Issuance', module: 'finance', moduleName: 'Accounting, Expenses & Payroll', icon: '🎫', description: 'Generate formal payment vouchers for authorized payouts', pagePath: '/dashboard/vouchers' },
     { key: 'finance_chart_of_accounts', label: 'Access Chart of Accounts', subFunction: 'Accounts General Ledger', module: 'finance', moduleName: 'Accounting, Expenses & Payroll', icon: '🏦', description: 'View bank accounts, cash accounts, and accounting ledger balances', pagePath: '/dashboard/accounts' },
+    { key: 'finance_financial_reports', label: 'Financial Statements & Reports (P&L, Balance Sheet, Cash Flow, Ledgers)', subFunction: 'Financial Intelligence Suite', module: 'finance', moduleName: 'Accounting, Expenses & Payroll', icon: '📊', description: 'View and export P&L, Balance Sheet, Cash Flow, Cash Book, Trial Balance, Ledgers, Tax & Financial Ratios', pagePath: '/dashboard/financial-reports' },
     { key: 'finance_bill_payment_settle', label: 'Settle Outstanding Customer Bills', subFunction: 'Bill Payment Settle', module: 'finance', moduleName: 'Accounting, Expenses & Payroll', icon: '💳', description: 'Receive payments for unpaid customer bills and partial credit accounts', pagePath: '/dashboard/bill-payment' },
     { key: 'finance_sales_returns_refund', label: 'Authorize Sales Returns & Refunds', subFunction: 'Sales Return Refund', module: 'finance', moduleName: 'Accounting, Expenses & Payroll', icon: '↩️', description: 'Approve refund payouts and reverse inventory on customer returns', pagePath: '/dashboard/sales-return' },
     { key: 'finance_staff_advances', label: 'Issue Staff Salary Advances', subFunction: 'Salary Advance Form', module: 'finance', moduleName: 'Accounting, Expenses & Payroll', icon: '🤝', description: 'Approve salary advances and track deductions for monthly payroll', pagePath: '/dashboard/advances' },
@@ -360,6 +361,7 @@ export const PRESET_HOTEL_ROLES: HotelRole[] = [
             finance_payroll_process: false,
             finance_manage_expenses: false,
             finance_chart_of_accounts: false,
+            finance_financial_reports: false,
             hotel_reservations_view: false,
             hotel_reservations_create: false,
             hotel_guest_checkin: false,
@@ -527,6 +529,7 @@ export const PRESET_HOTEL_ROLES: HotelRole[] = [
             reports_itemized_pos: true,
             reports_kra_tax_breakdown: true,
             reports_export_excel_pdf: true,
+            finance_financial_reports: true,
         },
     },
     {
@@ -542,6 +545,7 @@ export const PRESET_HOTEL_ROLES: HotelRole[] = [
             finance_manage_expenses: true,
             finance_payment_vouchers: true,
             finance_chart_of_accounts: true,
+            finance_financial_reports: true,
             finance_bill_payment_settle: true,
             finance_sales_returns_refund: true,
             finance_staff_advances: true,
@@ -669,6 +673,10 @@ export function hasRolePermission(roleName: string, permissionKey: string): bool
         if (permissionKey === 'pos_close_register' || permissionKey === 'cashier_close_z_report') {
             if (typeof perms['pos_close_register'] === 'boolean') return perms['pos_close_register'];
             if (typeof perms['cashier_close_z_report'] === 'boolean') return perms['cashier_close_z_report'];
+        }
+        if (permissionKey === 'finance_financial_reports' || permissionKey === 'finance_chart_of_accounts') {
+            if (typeof perms['finance_financial_reports'] === 'boolean') return perms['finance_financial_reports'];
+            if (typeof perms['finance_chart_of_accounts'] === 'boolean') return perms['finance_chart_of_accounts'];
         }
         if (typeof perms[permissionKey] === 'boolean') {
             return perms[permissionKey];
