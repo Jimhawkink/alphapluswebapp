@@ -686,25 +686,25 @@ export default function FinancialReportsPage() {
     };
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1700px] mx-auto min-h-screen bg-[#070d12] text-white">
+        <div className="p-4 sm:p-6 lg:p-8 space-y-6 max-w-[1700px] mx-auto min-h-screen bg-slate-50 text-slate-800">
             <Toaster position="top-right" />
 
             {/* 1. TOP HEADER & NAVIGATION TOOLBAR */}
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-[#142630]">
-                <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-700 flex items-center justify-center text-2xl shadow-lg shadow-emerald-950/60 border border-emerald-400/30">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200 bg-white p-4 sm:p-5 rounded-2xl border shadow-sm">
+                <div className="flex items-center gap-3.5">
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-600 to-cyan-700 flex items-center justify-center text-2xl shadow-md text-white border-2 border-white/40">
                         🏛️
                     </div>
                     <div>
                         <div className="flex items-center gap-2">
-                            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-white">
-                                Financial & Accounting <span className="text-[#00e676]">Intelligence</span>
+                            <h1 className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+                                Financial &amp; Accounting <span className="text-emerald-600">Intelligence</span>
                             </h1>
-                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/20 text-[#00e676] border border-emerald-500/40 shadow-sm">
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-sm">
                                 AUDIT READY
                             </span>
                         </div>
-                        <p className="text-xs text-gray-400 mt-0.5 font-medium">
+                        <p className="text-xs text-slate-500 mt-0.5 font-medium">
                             {companyInfo?.name || 'Alpha Plus Hotel & Restaurant'} • Real-Time General Ledger, P&amp;L, Balance Sheet, Cash Flow &amp; Cash Book
                         </p>
                     </div>
@@ -714,7 +714,7 @@ export default function FinancialReportsPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                     <Link
                         href="/dashboard/accounts"
-                        className="px-3.5 py-2 rounded-xl bg-[#0b1720] hover:bg-[#122430] border border-[#1c3340] hover:border-emerald-500/40 text-xs font-bold text-gray-300 hover:text-white transition-all flex items-center gap-1.5 shadow-sm"
+                        className="px-3.5 py-2 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 hover:border-slate-300 text-xs font-bold text-slate-700 transition-all flex items-center gap-1.5 shadow-sm"
                     >
                         <span>🏦</span>
                         <span>Chart of Accounts</span>
@@ -723,17 +723,17 @@ export default function FinancialReportsPage() {
                     <button
                         type="button"
                         onClick={handleExportCSV}
-                        className="px-3.5 py-2 rounded-xl bg-[#0b1720] hover:bg-[#122430] border border-[#1c3340] hover:border-emerald-500/40 text-xs font-bold text-gray-300 hover:text-white transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
+                        className="px-3.5 py-2 rounded-xl bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 text-xs font-bold text-slate-700 hover:text-emerald-800 transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
                         title="Download CSV Spreadsheet for Excel"
                     >
-                        <span className="text-emerald-400">📥</span>
+                        <span className="text-emerald-600">📥</span>
                         <span>Export CSV</span>
                     </button>
 
                     <button
                         type="button"
                         onClick={handlePrintStatement}
-                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-500 hover:from-emerald-500 hover:to-teal-500 text-black font-black text-xs transition-all flex items-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95 cursor-pointer"
+                        className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-black text-xs transition-all flex items-center gap-2 shadow-md shadow-emerald-700/20 active:scale-95 cursor-pointer"
                         title="Print Official Financial Statement"
                     >
                         <span className="text-sm">🖨️</span>
@@ -743,10 +743,10 @@ export default function FinancialReportsPage() {
             </div>
 
             {/* 2. DATE FILTER & DYNAMIC RANGE PRESETS */}
-            <div className="p-3.5 bg-[#0a141c] rounded-2xl border border-[#142834] flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-md">
+            <div className="p-3.5 bg-white rounded-2xl border border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
                 {/* Preset Chips */}
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-                    <span className="text-xs font-black text-gray-400 uppercase tracking-wider mr-1 hidden sm:inline">
+                    <span className="text-xs font-black text-slate-500 uppercase tracking-wider mr-1 hidden sm:inline">
                         Period:
                     </span>
                     {(['today', 'yesterday', '7days', 'month', 'last_month', 'quarter', 'year', 'all'] as DatePreset[]).map(preset => {
@@ -769,8 +769,8 @@ export default function FinancialReportsPage() {
                                 onClick={() => applyDatePreset(preset)}
                                 className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                                     isSelected
-                                        ? 'bg-[#00e676] text-black font-black shadow-md shadow-[#00e676]/30'
-                                        : 'bg-[#10202c] text-gray-300 hover:text-white border border-[#183040] hover:border-gray-500'
+                                        ? 'bg-emerald-600 text-white font-black shadow-md shadow-emerald-600/20'
+                                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                                 }`}
                             >
                                 {labelMap[preset]}
@@ -781,8 +781,8 @@ export default function FinancialReportsPage() {
 
                 {/* Custom Date Pickers */}
                 <div className="flex items-center gap-2">
-                    <div className="flex items-center gap-1 bg-[#10202c] px-2.5 py-1.5 rounded-xl border border-[#183040]">
-                        <span className="text-xs text-gray-400">From:</span>
+                    <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                        <span className="text-xs font-bold text-slate-500">From:</span>
                         <input
                             type="date"
                             value={startDate}
@@ -790,11 +790,11 @@ export default function FinancialReportsPage() {
                                 setStartDate(e.target.value);
                                 setDatePreset('custom');
                             }}
-                            className="bg-transparent text-xs text-white font-bold focus:outline-none"
+                            className="bg-transparent text-xs text-slate-800 font-bold focus:outline-none"
                         />
                     </div>
-                    <div className="flex items-center gap-1 bg-[#10202c] px-2.5 py-1.5 rounded-xl border border-[#183040]">
-                        <span className="text-xs text-gray-400">To:</span>
+                    <div className="flex items-center gap-1.5 bg-slate-50 px-2.5 py-1.5 rounded-xl border border-slate-200">
+                        <span className="text-xs font-bold text-slate-500">To:</span>
                         <input
                             type="date"
                             value={endDate}
@@ -802,7 +802,7 @@ export default function FinancialReportsPage() {
                                 setEndDate(e.target.value);
                                 setDatePreset('custom');
                             }}
-                            className="bg-transparent text-xs text-white font-bold focus:outline-none"
+                            className="bg-transparent text-xs text-slate-800 font-bold focus:outline-none"
                         />
                     </div>
                 </div>
@@ -811,68 +811,68 @@ export default function FinancialReportsPage() {
             {/* 3. EXECUTIVE KPI METRICS COCKPIT */}
             <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
                 {/* KPI 1: Gross Sales Revenue */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0c1822] to-[#081219] border border-emerald-500/30 shadow-lg shadow-black/40">
-                    <div className="flex items-center justify-between text-gray-400 text-xs font-bold">
+                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
                         <span>Gross Sales Turnover</span>
-                        <span className="text-emerald-400 text-sm">📈</span>
+                        <span className="text-emerald-600 text-sm">📈</span>
                     </div>
-                    <div className="text-xl sm:text-2xl font-black text-white font-mono mt-2">
+                    <div className="text-xl sm:text-2xl font-black text-slate-900 font-mono mt-2">
                         Ksh {financialStats.netSalesRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-2 text-[11px] text-gray-400">
-                        <span className="text-[#00e676] font-bold">●</span>
+                    <div className="flex items-center gap-1.5 mt-2 text-[11px] text-slate-500">
+                        <span className="text-emerald-600 font-bold">●</span>
                         <span>{sales.length} verified sale receipts</span>
                     </div>
                 </div>
 
                 {/* KPI 2: Gross Profit & Food Cost % */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0c1822] to-[#081219] border border-teal-500/30 shadow-lg shadow-black/40">
-                    <div className="flex items-center justify-between text-gray-400 text-xs font-bold">
+                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
                         <span>Gross Profit (COGS Deducted)</span>
-                        <span className="text-teal-400 text-sm">🍳</span>
+                        <span className="text-teal-600 text-sm">🍳</span>
                     </div>
-                    <div className="text-xl sm:text-2xl font-black text-teal-300 font-mono mt-2">
+                    <div className="text-xl sm:text-2xl font-black text-teal-700 font-mono mt-2">
                         Ksh {financialStats.grossProfit.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
-                    <div className="flex items-center justify-between mt-2 text-[11px] text-gray-400">
-                        <span>Margin: <strong className="text-white">{financialStats.grossMarginPct.toFixed(1)}%</strong></span>
-                        <span>Food Cost: <strong className="text-amber-400">{financialStats.foodCostPct.toFixed(1)}%</strong></span>
+                    <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500">
+                        <span>Margin: <strong className="text-slate-800">{financialStats.grossMarginPct.toFixed(1)}%</strong></span>
+                        <span>Food Cost: <strong className="text-amber-700">{financialStats.foodCostPct.toFixed(1)}%</strong></span>
                     </div>
                 </div>
 
                 {/* KPI 3: Net Profit After Tax */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0c1822] to-[#081219] border border-cyan-500/30 shadow-lg shadow-black/40">
-                    <div className="flex items-center justify-between text-gray-400 text-xs font-bold">
+                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
                         <span>Net Profit After Tax</span>
-                        <span className="text-cyan-400 text-sm">💰</span>
+                        <span className="text-cyan-600 text-sm">💰</span>
                     </div>
-                    <div className={`text-xl sm:text-2xl font-black font-mono mt-2 ${financialStats.netProfitAfterTax >= 0 ? 'text-[#00e676]' : 'text-rose-400'}`}>
+                    <div className={`text-xl sm:text-2xl font-black font-mono mt-2 ${financialStats.netProfitAfterTax >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
                         Ksh {financialStats.netProfitAfterTax.toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
-                    <div className="flex items-center justify-between mt-2 text-[11px] text-gray-400">
-                        <span>Net Margin: <strong className="text-white">{financialStats.netMarginPct.toFixed(1)}%</strong></span>
-                        <span>EBITDA: <strong className="text-cyan-300">Ksh {Math.round(financialStats.ebitda).toLocaleString()}</strong></span>
+                    <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500">
+                        <span>Net Margin: <strong className="text-slate-800">{financialStats.netMarginPct.toFixed(1)}%</strong></span>
+                        <span>EBITDA: <strong className="text-cyan-700">Ksh {Math.round(financialStats.ebitda).toLocaleString()}</strong></span>
                     </div>
                 </div>
 
                 {/* KPI 4: Liquid Cash & M-Pesa Total */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#0c1822] to-[#081219] border border-indigo-500/30 shadow-lg shadow-black/40">
-                    <div className="flex items-center justify-between text-gray-400 text-xs font-bold">
+                <div className="p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between text-slate-500 text-xs font-bold">
                         <span>Liquid Cash &amp; Bank Reserves</span>
-                        <span className="text-indigo-400 text-sm">🏦</span>
+                        <span className="text-indigo-600 text-sm">🏦</span>
                     </div>
-                    <div className="text-xl sm:text-2xl font-black text-indigo-300 font-mono mt-2">
+                    <div className="text-xl sm:text-2xl font-black text-indigo-700 font-mono mt-2">
                         Ksh {(financialStats.tillCashOnHand + financialStats.mpesaFloat + financialStats.bankOperatingAccount).toLocaleString('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </div>
-                    <div className="flex items-center justify-between mt-2 text-[11px] text-gray-400">
-                        <span>M-Pesa: <strong className="text-white">Ksh {Math.round(financialStats.mpesaFloat).toLocaleString()}</strong></span>
-                        <span>Tills: <strong className="text-white">Ksh {Math.round(financialStats.tillCashOnHand).toLocaleString()}</strong></span>
+                    <div className="flex items-center justify-between mt-2 text-[11px] text-slate-500">
+                        <span>M-Pesa: <strong className="text-slate-800">Ksh {Math.round(financialStats.mpesaFloat).toLocaleString()}</strong></span>
+                        <span>Tills: <strong className="text-slate-800">Ksh {Math.round(financialStats.tillCashOnHand).toLocaleString()}</strong></span>
                     </div>
                 </div>
             </div>
 
             {/* 4. FINANCIAL STATEMENT TABS */}
-            <div className="flex items-center gap-1.5 overflow-x-auto border-b border-[#142834] pb-2 scrollbar-none">
+            <div className="flex items-center gap-1.5 overflow-x-auto border-b border-slate-200 pb-2 scrollbar-none">
                 {[
                     { id: 'pl', label: '📊 Profit & Loss (P&L)', badge: 'Income' },
                     { id: 'bs', label: '🏛️ Balance Sheet', badge: 'Assets = Liab' },
@@ -891,13 +891,13 @@ export default function FinancialReportsPage() {
                             onClick={() => setActiveTab(tab.id as FinancialTab)}
                             className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer ${
                                 isSelected
-                                    ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/30'
-                                    : 'bg-[#0a141c] text-gray-400 hover:text-white border border-[#142834] hover:border-gray-600'
+                                    ? 'bg-gradient-to-r from-emerald-600 to-teal-700 text-white shadow-md shadow-emerald-700/20'
+                                    : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200 hover:bg-slate-50 shadow-sm'
                             }`}
                         >
                             <span>{tab.label}</span>
                             <span className={`px-1.5 py-0.5 rounded-md text-[9px] font-black uppercase ${
-                                isSelected ? 'bg-black/30 text-emerald-200' : 'bg-white/5 text-gray-400'
+                                isSelected ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600'
                             }`}>
                                 {tab.badge}
                             </span>
@@ -907,23 +907,23 @@ export default function FinancialReportsPage() {
             </div>
 
             {/* 5. TAB CONTENT CONTAINER */}
-            <div id="financial-report-content" className="bg-[#0a141c] rounded-2xl border border-[#142834] p-4 sm:p-6 shadow-xl min-h-[500px]">
+            <div id="financial-report-content" className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 shadow-sm min-h-[500px]">
                 
                 {/* ───────────────────────────────────────────────────────────── */}
                 {/* TAB 1: PROFIT & LOSS STATEMENT (P&L / INCOME STATEMENT)      */}
                 {/* ───────────────────────────────────────────────────────────── */}
                 {activeTab === 'pl' && (
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between pb-3 border-b border-[#142834]">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                             <div>
-                                <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">
+                                <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
                                     Statement of Profit or Loss &amp; Comprehensive Income
                                 </h2>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-slate-500">
                                     Official accrual basis statement for the period {startDate} to {endDate}
                                 </p>
                             </div>
-                            <span className="px-3 py-1 rounded-xl bg-emerald-500/20 text-[#00e676] text-xs font-black border border-emerald-500/30">
+                            <span className="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-black border border-emerald-300">
                                 NET MARGIN: {financialStats.netMarginPct.toFixed(1)}%
                             </span>
                         </div>
@@ -931,153 +931,153 @@ export default function FinancialReportsPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-xs">
                                 <thead>
-                                    <tr className="border-b border-[#1c3340] text-gray-400 uppercase tracking-wider text-[11px]">
-                                        <th className="py-2.5 text-left font-black">Particulars / Financial Line Items</th>
-                                        <th className="py-2.5 text-right font-black w-36">Sub-Schedule (Ksh)</th>
-                                        <th className="py-2.5 text-right font-black w-44">Total Amount (Ksh)</th>
+                                    <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 uppercase tracking-wider text-[11px]">
+                                        <th className="py-2.5 px-3 text-left font-black">Particulars / Financial Line Items</th>
+                                        <th className="py-2.5 px-3 text-right font-black w-36">Sub-Schedule (Ksh)</th>
+                                        <th className="py-2.5 px-3 text-right font-black w-44">Total Amount (Ksh)</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-[#142630]">
+                                <tbody className="divide-y divide-slate-100">
                                     {/* SECTION 1: TURNOVER / REVENUE */}
-                                    <tr className="bg-[#0e1d27]/60 font-black text-emerald-400 text-sm">
-                                        <td colSpan={3} className="py-2 px-2">1. OPERATING REVENUE (TURNOVER)</td>
+                                    <tr className="bg-slate-100/70 font-black text-emerald-800 text-xs">
+                                        <td colSpan={3} className="py-2 px-3">1. OPERATING REVENUE (TURNOVER)</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Food &amp; Dining Sales Revenue</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">{financialStats.foodRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Food &amp; Dining Sales Revenue</td>
+                                        <td className="py-2 px-3 text-right text-slate-800 font-mono">{financialStats.foodRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Beverage, Coffee &amp; Bar Revenue</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">{financialStats.beverageRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Beverage, Coffee &amp; Bar Revenue</td>
+                                        <td className="py-2 px-3 text-right text-slate-800 font-mono">{financialStats.beverageRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Hotel Accommodation &amp; Room Revenue</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">{financialStats.roomRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Hotel Accommodation &amp; Room Revenue</td>
+                                        <td className="py-2 px-3 text-right text-slate-800 font-mono">{financialStats.roomRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Butchery &amp; Counter Specials</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">{financialStats.butcheryRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Butchery &amp; Counter Specials</td>
+                                        <td className="py-2 px-3 text-right text-slate-800 font-mono">{financialStats.butcheryRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-rose-400">Less: Customer Discounts &amp; Vouchers</td>
-                                        <td className="py-2 text-right text-rose-400 font-mono">- {financialStats.totalDiscounts.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-rose-600 font-medium">Less: Customer Discounts &amp; Vouchers</td>
+                                        <td className="py-2 px-3 text-right text-rose-600 font-mono font-bold">- {financialStats.totalDiscounts.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
-                                    <tr className="font-extrabold bg-[#0b1822] text-white border-t border-[#1a3545]">
+                                    <tr className="font-extrabold bg-slate-50 text-slate-900 border-t border-slate-300">
                                         <td className="py-2.5 pl-4 uppercase">NET SALES REVENUE</td>
                                         <td className="py-2.5 text-right"></td>
-                                        <td className="py-2.5 text-right font-mono text-emerald-400 font-black text-sm">
+                                        <td className="py-2.5 px-3 text-right font-mono text-emerald-800 font-black text-sm">
                                             Ksh {financialStats.netSalesRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
 
                                     {/* SECTION 2: COST OF SALES / COGS */}
-                                    <tr className="bg-[#0e1d27]/60 font-black text-amber-400 text-sm">
-                                        <td colSpan={3} className="py-2 px-2">2. COST OF GOODS SOLD (FOOD &amp; BEVERAGE COST)</td>
+                                    <tr className="bg-slate-100/70 font-black text-amber-800 text-xs">
+                                        <td colSpan={3} className="py-2 px-3">2. COST OF GOODS SOLD (FOOD &amp; BEVERAGE COST)</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Direct Recipe Ingredients &amp; Portion Costs</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">{financialStats.effectiveCOGS.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Direct Recipe Ingredients &amp; Portion Costs</td>
+                                        <td className="py-2 px-3 text-right text-slate-800 font-mono">{financialStats.effectiveCOGS.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
-                                    <tr className="font-extrabold bg-[#0b1822] text-white border-t border-[#1a3545]">
+                                    <tr className="font-extrabold bg-slate-50 text-slate-900 border-t border-slate-300">
                                         <td className="py-2.5 pl-4 uppercase">TOTAL COST OF GOODS SOLD (COGS)</td>
                                         <td className="py-2.5 text-right"></td>
-                                        <td className="py-2.5 text-right font-mono text-amber-400 font-black text-sm">
+                                        <td className="py-2.5 px-3 text-right font-mono text-amber-800 font-black text-sm">
                                             - Ksh {financialStats.effectiveCOGS.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
 
                                     {/* SECTION 3: GROSS PROFIT */}
-                                    <tr className="bg-gradient-to-r from-teal-950/60 to-emerald-950/60 font-black text-white text-base border-y-2 border-emerald-500/50">
+                                    <tr className="bg-emerald-50/80 font-black text-slate-900 text-base border-y-2 border-emerald-300">
                                         <td className="py-3 pl-4">GROSS PROFIT (GROSS MARGIN: {financialStats.grossMarginPct.toFixed(1)}%)</td>
                                         <td className="py-3 text-right"></td>
-                                        <td className="py-3 text-right font-mono text-[#00e676]">
+                                        <td className="py-3 px-3 text-right font-mono text-emerald-800">
                                             Ksh {financialStats.grossProfit.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
 
                                     {/* SECTION 4: OPERATING EXPENSES (OPEX) */}
-                                    <tr className="bg-[#0e1d27]/60 font-black text-cyan-400 text-sm">
-                                        <td colSpan={3} className="py-2 px-2">3. OPERATING &amp; ADMINISTRATIVE EXPENSES (OPEX)</td>
+                                    <tr className="bg-slate-100/70 font-black text-cyan-800 text-xs">
+                                        <td colSpan={3} className="py-2 px-3">3. OPERATING &amp; ADMINISTRATIVE EXPENSES (OPEX)</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Staff Salaries, Wages &amp; Chef Payroll</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">{financialStats.payrollExpense.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Staff Salaries, Wages &amp; Chef Payroll</td>
+                                        <td className="py-2 px-3 text-right text-slate-800 font-mono">{financialStats.payrollExpense.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Premises Lease, Property Rent &amp; Land Rates</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">{financialStats.rentAndLease.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Premises Lease, Property Rent &amp; Land Rates</td>
+                                        <td className="py-2 px-3 text-right text-slate-800 font-mono">{financialStats.rentAndLease.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Utilities: Power Tokens, LPG Cooking Gas &amp; Water</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">{financialStats.utilitiesExpense.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Utilities: Power Tokens, LPG Cooking Gas &amp; Water</td>
+                                        <td className="py-2 px-3 text-right text-slate-800 font-mono">{financialStats.utilitiesExpense.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Kitchen Machinery, Oven &amp; Equipment Maintenance</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">{financialStats.maintenanceRepairs.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Kitchen Machinery, Oven &amp; Equipment Maintenance</td>
+                                        <td className="py-2 px-3 text-right text-slate-800 font-mono">{financialStats.maintenanceRepairs.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Safaricom M-Pesa Merchant C2B &amp; Bank Fees</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">{financialStats.bankMpesaCharges.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Safaricom M-Pesa Merchant C2B &amp; Bank Fees</td>
+                                        <td className="py-2 px-3 text-right text-slate-800 font-mono">{financialStats.bankMpesaCharges.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Shift Petty Cash Disbursements &amp; Consumables</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">{financialStats.adminGeneralExpenses.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Shift Petty Cash Disbursements &amp; Consumables</td>
+                                        <td className="py-2 px-3 text-right text-slate-800 font-mono">{financialStats.adminGeneralExpenses.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
-                                    <tr className="font-extrabold bg-[#0b1822] text-white border-t border-[#1a3545]">
+                                    <tr className="font-extrabold bg-slate-50 text-slate-900 border-t border-slate-300">
                                         <td className="py-2.5 pl-4 uppercase">TOTAL OPERATING EXPENSES</td>
                                         <td className="py-2.5 text-right"></td>
-                                        <td className="py-2.5 text-right font-mono text-cyan-400 font-black text-sm">
+                                        <td className="py-2.5 px-3 text-right font-mono text-cyan-800 font-black text-sm">
                                             - Ksh {financialStats.totalOperatingExpenses.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
 
                                     {/* SECTION 5: OPERATING PROFIT (EBITDA) */}
-                                    <tr className="bg-[#0c1a24] font-black text-white text-sm border-t border-[#1c3340]">
+                                    <tr className="bg-slate-100 font-black text-slate-900 text-sm border-t border-slate-300">
                                         <td className="py-2.5 pl-4">OPERATING PROFIT BEFORE DEPRECIATION (EBITDA)</td>
                                         <td className="py-2.5 text-right"></td>
-                                        <td className="py-2.5 text-right font-mono text-white font-black">
+                                        <td className="py-2.5 px-3 text-right font-mono text-slate-900 font-black">
                                             Ksh {financialStats.ebitda.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-300">Depreciation on Kitchen Appliances &amp; POS Systems</td>
-                                        <td className="py-2 text-right text-gray-300 font-mono">- {financialStats.depreciation.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Depreciation on Kitchen Appliances &amp; POS Systems</td>
+                                        <td className="py-2 px-3 text-right text-rose-600 font-mono">- {financialStats.depreciation.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
-                                    <tr className="font-extrabold bg-[#0b1822] text-white border-t border-[#1a3545]">
+                                    <tr className="font-extrabold bg-slate-50 text-slate-900 border-t border-slate-300">
                                         <td className="py-2.5 pl-4 uppercase">NET PROFIT BEFORE TAX (PBT)</td>
                                         <td className="py-2.5 text-right"></td>
-                                        <td className="py-2.5 text-right font-mono font-black text-sm text-yellow-300">
+                                        <td className="py-2.5 px-3 text-right font-mono font-black text-sm text-amber-800">
                                             Ksh {financialStats.netProfitBeforeTax.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-rose-400">Provision for Corporate Income Tax (30%)</td>
-                                        <td className="py-2 text-right text-rose-400 font-mono">- {financialStats.incomeTaxExpense.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-rose-600 font-medium">Provision for Corporate Income Tax (30%)</td>
+                                        <td className="py-2 px-3 text-right text-rose-600 font-mono font-bold">- {financialStats.incomeTaxExpense.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         <td className="py-2 text-right"></td>
                                     </tr>
 
                                     {/* SECTION 6: NET PROFIT AFTER TAX */}
-                                    <tr className="bg-gradient-to-r from-emerald-900/80 via-teal-900/80 to-emerald-950 font-black text-white text-base sm:text-lg border-y-4 border-double border-emerald-400">
+                                    <tr className="bg-gradient-to-r from-emerald-100 via-teal-100 to-emerald-50 font-black text-emerald-950 text-base sm:text-lg border-y-4 border-double border-emerald-600">
                                         <td className="py-3.5 pl-4">
                                             NET PROFIT AFTER TAX (NET INCOME)
                                         </td>
-                                        <td className="py-3.5 text-right font-mono text-xs text-emerald-300">
+                                        <td className="py-3.5 text-right font-mono text-xs text-emerald-800 font-bold">
                                             Margin: {financialStats.netMarginPct.toFixed(1)}%
                                         </td>
-                                        <td className="py-3.5 text-right font-mono text-[#00e676] font-black">
+                                        <td className="py-3.5 px-3 text-right font-mono text-emerald-900 font-black">
                                             Ksh {financialStats.netProfitAfterTax.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
@@ -1092,16 +1092,16 @@ export default function FinancialReportsPage() {
                 {/* ───────────────────────────────────────────────────────────── */}
                 {activeTab === 'bs' && (
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between pb-3 border-b border-[#142834]">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                             <div>
-                                <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">
+                                <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
                                     Statement of Financial Position (Balance Sheet)
                                 </h2>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-slate-500">
                                     As at {endDate} • Audited Standard Format (Assets = Liabilities + Owner's Equity)
                                 </p>
                             </div>
-                            <span className="px-3 py-1 rounded-xl bg-emerald-500/20 text-[#00e676] text-xs font-black border border-emerald-500/30">
+                            <span className="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-black border border-emerald-300">
                                 ✅ BALANCE AUDIT: 100% BALANCED
                             </span>
                         </div>
@@ -1109,44 +1109,44 @@ export default function FinancialReportsPage() {
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             {/* LEFT COLUMN: ASSETS */}
                             <div className="space-y-4">
-                                <div className="p-3 bg-[#0d1c26] rounded-xl border border-emerald-500/30 flex items-center justify-between">
-                                    <span className="font-black text-sm text-emerald-400 uppercase tracking-wider">
+                                <div className="p-3 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-between">
+                                    <span className="font-black text-sm text-emerald-800 uppercase tracking-wider">
                                         1. ASSETS
                                     </span>
-                                    <span className="text-xs text-gray-400 font-bold">Current &amp; Non-Current</span>
+                                    <span className="text-xs text-slate-500 font-bold">Current &amp; Non-Current</span>
                                 </div>
 
                                 <table className="w-full text-xs">
                                     <thead>
-                                        <tr className="border-b border-[#1c3340] text-gray-400 uppercase text-[10px]">
-                                            <th className="py-2 text-left font-black">Current Assets</th>
-                                            <th className="py-2 text-right font-black">Value (Ksh)</th>
+                                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 uppercase text-[10px]">
+                                            <th className="py-2 px-3 text-left font-black">Current Assets</th>
+                                            <th className="py-2 px-3 text-right font-black">Value (Ksh)</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-[#142630]">
+                                    <tbody className="divide-y divide-slate-100">
                                         <tr>
-                                            <td className="py-2 text-gray-200">Register Till Cash &amp; Safe Float</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">{financialStats.tillCashOnHand.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">Register Till Cash &amp; Safe Float</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">{financialStats.tillCashOnHand.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-gray-200">Safaricom M-Pesa Liquid Balance</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">{financialStats.mpesaFloat.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">Safaricom M-Pesa Liquid Balance</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">{financialStats.mpesaFloat.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-gray-200">Bank Operating Accounts (KCB / Equity)</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">{financialStats.bankOperatingAccount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">Bank Operating Accounts (KCB / Equity)</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">{financialStats.bankOperatingAccount.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-gray-200">Accounts Receivable (Debtors &amp; Room Credit)</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">{financialStats.accountsReceivable.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">Accounts Receivable (Debtors &amp; Room Credit)</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">{financialStats.accountsReceivable.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-gray-200">Food &amp; Beverage Stock (Live Batches)</td>
-                                            <td className="py-2 text-right font-mono text-emerald-400 font-bold">{financialStats.liveInventoryValue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">Food &amp; Beverage Stock (Live Batches)</td>
+                                            <td className="py-2 px-3 text-right font-mono text-emerald-800 font-bold">{financialStats.liveInventoryValue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
-                                        <tr className="bg-[#0c1822] font-black text-white">
-                                            <td className="py-2.5">SUBTOTAL CURRENT ASSETS</td>
-                                            <td className="py-2.5 text-right font-mono text-emerald-400">
+                                        <tr className="bg-slate-50 font-black text-slate-900">
+                                            <td className="py-2.5 px-3">SUBTOTAL CURRENT ASSETS</td>
+                                            <td className="py-2.5 px-3 text-right font-mono text-emerald-800 font-black">
                                                 Ksh {financialStats.totalCurrentAssets.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                             </td>
                                         </tr>
@@ -1155,33 +1155,33 @@ export default function FinancialReportsPage() {
 
                                 <table className="w-full text-xs mt-4">
                                     <thead>
-                                        <tr className="border-b border-[#1c3340] text-gray-400 uppercase text-[10px]">
-                                            <th className="py-2 text-left font-black">Non-Current (Fixed) Assets</th>
-                                            <th className="py-2 text-right font-black">Value (Ksh)</th>
+                                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 uppercase text-[10px]">
+                                            <th className="py-2 px-3 text-left font-black">Non-Current (Fixed) Assets</th>
+                                            <th className="py-2 px-3 text-right font-black">Value (Ksh)</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-[#142630]">
+                                    <tbody className="divide-y divide-slate-100">
                                         <tr>
-                                            <td className="py-2 text-gray-200">Commercial Kitchen Machinery &amp; Appliances</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">280,000.00</td>
+                                            <td className="py-2 px-3 text-slate-700">Commercial Kitchen Machinery &amp; Appliances</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">280,000.00</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-gray-200">Hotel Furniture, Restaurant Fittings &amp; POS</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">150,000.00</td>
+                                            <td className="py-2 px-3 text-slate-700">Hotel Furniture, Restaurant Fittings &amp; POS</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">150,000.00</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-rose-400">Less: Accumulated Depreciation</td>
-                                            <td className="py-2 text-right font-mono text-rose-400">- 45,000.00</td>
+                                            <td className="py-2 px-3 text-rose-600 font-medium">Less: Accumulated Depreciation</td>
+                                            <td className="py-2 px-3 text-right font-mono text-rose-600 font-bold">- 45,000.00</td>
                                         </tr>
-                                        <tr className="bg-[#0c1822] font-black text-white">
-                                            <td className="py-2.5">NET FIXED ASSETS</td>
-                                            <td className="py-2.5 text-right font-mono text-cyan-400">
+                                        <tr className="bg-slate-50 font-black text-slate-900">
+                                            <td className="py-2.5 px-3">NET FIXED ASSETS</td>
+                                            <td className="py-2.5 px-3 text-right font-mono text-cyan-800 font-black">
                                                 Ksh {financialStats.netFixedAssets.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                             </td>
                                         </tr>
-                                        <tr className="bg-gradient-to-r from-emerald-950 to-teal-950 font-black text-base border-y-2 border-emerald-400">
-                                            <td className="py-3 text-white">TOTAL ASSETS</td>
-                                            <td className="py-3 text-right font-mono text-[#00e676]">
+                                        <tr className="bg-emerald-50 font-black text-base border-y-2 border-emerald-300">
+                                            <td className="py-3 px-3 text-emerald-950">TOTAL ASSETS</td>
+                                            <td className="py-3 px-3 text-right font-mono text-emerald-900 font-black">
                                                 Ksh {financialStats.totalAssets.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                             </td>
                                         </tr>
@@ -1191,50 +1191,50 @@ export default function FinancialReportsPage() {
 
                             {/* RIGHT COLUMN: LIABILITIES & EQUITY */}
                             <div className="space-y-4">
-                                <div className="p-3 bg-[#0d1c26] rounded-xl border border-rose-500/30 flex items-center justify-between">
-                                    <span className="font-black text-sm text-rose-400 uppercase tracking-wider">
+                                <div className="p-3 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-between">
+                                    <span className="font-black text-sm text-rose-800 uppercase tracking-wider">
                                         2. LIABILITIES &amp; EQUITY
                                     </span>
-                                    <span className="text-xs text-gray-400 font-bold">Creditors &amp; Capital</span>
+                                    <span className="text-xs text-slate-500 font-bold">Creditors &amp; Capital</span>
                                 </div>
 
                                 <table className="w-full text-xs">
                                     <thead>
-                                        <tr className="border-b border-[#1c3340] text-gray-400 uppercase text-[10px]">
-                                            <th className="py-2 text-left font-black">Current Liabilities</th>
-                                            <th className="py-2 text-right font-black">Amount (Ksh)</th>
+                                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 uppercase text-[10px]">
+                                            <th className="py-2 px-3 text-left font-black">Current Liabilities</th>
+                                            <th className="py-2 px-3 text-right font-black">Amount (Ksh)</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-[#142630]">
+                                    <tbody className="divide-y divide-slate-100">
                                         <tr>
-                                            <td className="py-2 text-gray-200">Accounts Payable (Trade Food Suppliers)</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">{financialStats.accountsPayableSuppliers.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">Accounts Payable (Trade Food Suppliers)</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">{financialStats.accountsPayableSuppliers.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-gray-200">KRA Net VAT Payable (16%)</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">{financialStats.netVatPayable.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">KRA Net VAT Payable (16%)</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">{financialStats.netVatPayable.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-gray-200">Tourism Regulatory Levy Payable (2%)</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">{financialStats.totalLevyOutput.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">Tourism Regulatory Levy Payable (2%)</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">{financialStats.totalLevyOutput.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-gray-200">Accrued Staff Wages &amp; Statutory Deductions</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">{financialStats.accruedPayroll.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">Accrued Staff Wages &amp; Statutory Deductions</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">{financialStats.accruedPayroll.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
-                                        <tr className="bg-[#0c1822] font-black text-white">
-                                            <td className="py-2.5">SUBTOTAL CURRENT LIABILITIES</td>
-                                            <td className="py-2.5 text-right font-mono text-rose-400">
+                                        <tr className="bg-slate-50 font-black text-slate-900">
+                                            <td className="py-2.5 px-3">SUBTOTAL CURRENT LIABILITIES</td>
+                                            <td className="py-2.5 px-3 text-right font-mono text-rose-700 font-black">
                                                 Ksh {financialStats.totalCurrentLiabilities.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                             </td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-gray-200">Commercial Bank Long-Term Loan Facility</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">{financialStats.longTermLoanFacility.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">Commercial Bank Long-Term Loan Facility</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">{financialStats.longTermLoanFacility.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
-                                        <tr className="bg-[#0c1822] font-black text-white">
-                                            <td className="py-2.5">TOTAL LIABILITIES</td>
-                                            <td className="py-2.5 text-right font-mono text-rose-400">
+                                        <tr className="bg-slate-100 font-black text-slate-900">
+                                            <td className="py-2.5 px-3">TOTAL LIABILITIES</td>
+                                            <td className="py-2.5 px-3 text-right font-mono text-rose-800 font-black">
                                                 Ksh {financialStats.totalLiabilities.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                             </td>
                                         </tr>
@@ -1243,33 +1243,33 @@ export default function FinancialReportsPage() {
 
                                 <table className="w-full text-xs mt-4">
                                     <thead>
-                                        <tr className="border-b border-[#1c3340] text-gray-400 uppercase text-[10px]">
-                                            <th className="py-2 text-left font-black">Owner's Equity &amp; Capital</th>
-                                            <th className="py-2 text-right font-black">Amount (Ksh)</th>
+                                        <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 uppercase text-[10px]">
+                                            <th className="py-2 px-3 text-left font-black">Owner's Equity &amp; Capital</th>
+                                            <th className="py-2 px-3 text-right font-black">Amount (Ksh)</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-[#142630]">
+                                    <tbody className="divide-y divide-slate-100">
                                         <tr>
-                                            <td className="py-2 text-gray-200">Owner's Share Capital Contribution</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">{financialStats.ownersCapital.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">Owner's Share Capital Contribution</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">{financialStats.ownersCapital.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-gray-200">Retained Earnings from Prior Operations</td>
-                                            <td className="py-2 text-right font-mono text-gray-300">{financialStats.retainedEarningsPrior.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-slate-700">Retained Earnings from Prior Operations</td>
+                                            <td className="py-2 px-3 text-right font-mono text-slate-800">{financialStats.retainedEarningsPrior.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
                                         <tr>
-                                            <td className="py-2 text-emerald-400 font-bold">Net Profit for Current Period (From P&amp;L)</td>
-                                            <td className="py-2 text-right font-mono text-emerald-400 font-bold">{financialStats.netProfitAfterTax.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                            <td className="py-2 px-3 text-emerald-800 font-bold">Net Profit for Current Period (From P&amp;L)</td>
+                                            <td className="py-2 px-3 text-right font-mono text-emerald-800 font-bold">{financialStats.netProfitAfterTax.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                         </tr>
-                                        <tr className="bg-[#0c1822] font-black text-white">
-                                            <td className="py-2.5">TOTAL OWNER'S EQUITY</td>
-                                            <td className="py-2.5 text-right font-mono text-teal-300">
+                                        <tr className="bg-slate-50 font-black text-slate-900">
+                                            <td className="py-2.5 px-3">TOTAL OWNER'S EQUITY</td>
+                                            <td className="py-2.5 px-3 text-right font-mono text-teal-800 font-black">
                                                 Ksh {financialStats.totalEquity.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                             </td>
                                         </tr>
-                                        <tr className="bg-gradient-to-r from-emerald-950 to-teal-950 font-black text-base border-y-2 border-emerald-400">
-                                            <td className="py-3 text-white">TOTAL LIABILITIES &amp; EQUITY</td>
-                                            <td className="py-3 text-right font-mono text-[#00e676]">
+                                        <tr className="bg-emerald-50 font-black text-base border-y-2 border-emerald-300">
+                                            <td className="py-3 px-3 text-emerald-950">TOTAL LIABILITIES &amp; EQUITY</td>
+                                            <td className="py-3 px-3 text-right font-mono text-emerald-900 font-black">
                                                 Ksh {(financialStats.totalLiabilities + financialStats.totalEquity).toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                             </td>
                                         </tr>
@@ -1285,16 +1285,16 @@ export default function FinancialReportsPage() {
                 {/* ───────────────────────────────────────────────────────────── */}
                 {activeTab === 'cashflow' && (
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between pb-3 border-b border-[#142834]">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                             <div>
-                                <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">
+                                <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
                                     Statement of Cash Flows (Direct Method)
                                 </h2>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-slate-500">
                                     Inflows &amp; outflows from operating, investing, and financing activities
                                 </p>
                             </div>
-                            <span className="px-3 py-1 rounded-xl bg-teal-500/20 text-teal-300 text-xs font-black border border-teal-500/30">
+                            <span className="px-3 py-1 rounded-xl bg-teal-100 text-teal-800 text-xs font-black border border-teal-300">
                                 NET CASH INFLOW: Ksh {Math.round(financialStats.netSalesRevenue - financialStats.effectiveCOGS - financialStats.totalOperatingExpenses).toLocaleString()}
                             </span>
                         </div>
@@ -1302,95 +1302,95 @@ export default function FinancialReportsPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-xs">
                                 <thead>
-                                    <tr className="border-b border-[#1c3340] text-gray-400 uppercase text-[11px]">
-                                        <th className="py-2.5 text-left font-black">Cash Flow Activities &amp; Source</th>
-                                        <th className="py-2.5 text-right font-black w-40">Amount (Ksh)</th>
+                                    <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 uppercase text-[11px]">
+                                        <th className="py-2.5 px-3 text-left font-black">Cash Flow Activities &amp; Source</th>
+                                        <th className="py-2.5 px-3 text-right font-black w-40">Amount (Ksh)</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-[#142630]">
-                                    <tr className="bg-[#0e1d27]/70 font-black text-emerald-400 text-sm">
-                                        <td colSpan={2} className="py-2 px-2">A. CASH FLOWS FROM OPERATING ACTIVITIES</td>
+                                <tbody className="divide-y divide-slate-100">
+                                    <tr className="bg-slate-100/80 font-black text-emerald-800 text-xs">
+                                        <td colSpan={2} className="py-2 px-3">A. CASH FLOWS FROM OPERATING ACTIVITIES</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Cash Received from Customers (POS &amp; Till Cash)</td>
-                                        <td className="py-2 text-right font-mono text-emerald-400 font-bold">+ {financialStats.cashCollections.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Cash Received from Customers (POS &amp; Till Cash)</td>
+                                        <td className="py-2 px-3 text-right font-mono text-emerald-700 font-bold">+ {financialStats.cashCollections.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Safaricom M-Pesa Merchant Collections</td>
-                                        <td className="py-2 text-right font-mono text-emerald-400 font-bold">+ {financialStats.mpesaCollections.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Safaricom M-Pesa Merchant Collections</td>
+                                        <td className="py-2 px-3 text-right font-mono text-emerald-700 font-bold">+ {financialStats.mpesaCollections.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Card / PDQ Terminal Settlements</td>
-                                        <td className="py-2 text-right font-mono text-emerald-400 font-bold">+ {financialStats.cardCollections.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-slate-700">Card / PDQ Terminal Settlements</td>
+                                        <td className="py-2 px-3 text-right font-mono text-emerald-700 font-bold">+ {financialStats.cardCollections.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-rose-400">Cash Paid to Food &amp; Drink Suppliers</td>
-                                        <td className="py-2 text-right font-mono text-rose-400">- {financialStats.effectiveCOGS.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-rose-600 font-medium">Cash Paid to Food &amp; Drink Suppliers</td>
+                                        <td className="py-2 px-3 text-right font-mono text-rose-600 font-bold">- {financialStats.effectiveCOGS.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-rose-400">Cash Paid for Staff Salaries &amp; Wages</td>
-                                        <td className="py-2 text-right font-mono text-rose-400">- {financialStats.payrollExpense.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-rose-600 font-medium">Cash Paid for Staff Salaries &amp; Wages</td>
+                                        <td className="py-2 px-3 text-right font-mono text-rose-600 font-bold">- {financialStats.payrollExpense.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-rose-400">Cash Paid for Power, Gas, Water &amp; Rent</td>
-                                        <td className="py-2 text-right font-mono text-rose-400">- {(financialStats.utilitiesExpense + financialStats.rentAndLease).toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-rose-600 font-medium">Cash Paid for Power, Gas, Water &amp; Rent</td>
+                                        <td className="py-2 px-3 text-right font-mono text-rose-600 font-bold">- {(financialStats.utilitiesExpense + financialStats.rentAndLease).toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-rose-400">Shift Petty Cash Outflows &amp; Merchant Fees</td>
-                                        <td className="py-2 text-right font-mono text-rose-400">- {(financialStats.bankMpesaCharges + financialStats.adminGeneralExpenses).toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
+                                        <td className="py-2 pl-6 text-rose-600 font-medium">Shift Petty Cash Outflows &amp; Merchant Fees</td>
+                                        <td className="py-2 px-3 text-right font-mono text-rose-600 font-bold">- {(financialStats.bankMpesaCharges + financialStats.adminGeneralExpenses).toLocaleString('en-KE', { minimumFractionDigits: 2 })}</td>
                                     </tr>
-                                    <tr className="font-extrabold bg-[#0b1822] text-white border-t border-[#1a3545]">
+                                    <tr className="font-extrabold bg-slate-50 text-slate-900 border-t border-slate-300">
                                         <td className="py-2.5 pl-4 uppercase">NET CASH PROVIDED BY OPERATING ACTIVITIES</td>
-                                        <td className="py-2.5 text-right font-mono text-emerald-400 font-black text-sm">
+                                        <td className="py-2.5 px-3 text-right font-mono text-emerald-800 font-black text-sm">
                                             Ksh {Math.max(0, financialStats.netSalesRevenue - financialStats.effectiveCOGS - financialStats.totalOperatingExpenses).toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
 
-                                    <tr className="bg-[#0e1d27]/70 font-black text-cyan-400 text-sm">
-                                        <td colSpan={2} className="py-2 px-2">B. CASH FLOWS FROM INVESTING ACTIVITIES</td>
+                                    <tr className="bg-slate-100/80 font-black text-cyan-800 text-xs">
+                                        <td colSpan={2} className="py-2 px-3">B. CASH FLOWS FROM INVESTING ACTIVITIES</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Purchase of Kitchen Machinery &amp; Thermal Printers</td>
-                                        <td className="py-2 text-right font-mono text-rose-400">- 8,500.00</td>
+                                        <td className="py-2 pl-6 text-slate-700">Purchase of Kitchen Machinery &amp; Thermal Printers</td>
+                                        <td className="py-2 px-3 text-right font-mono text-rose-600 font-bold">- 8,500.00</td>
                                     </tr>
-                                    <tr className="font-extrabold bg-[#0b1822] text-white border-t border-[#1a3545]">
+                                    <tr className="font-extrabold bg-slate-50 text-slate-900 border-t border-slate-300">
                                         <td className="py-2.5 pl-4 uppercase">NET CASH USED IN INVESTING ACTIVITIES</td>
-                                        <td className="py-2.5 text-right font-mono text-cyan-400 font-black text-sm">
+                                        <td className="py-2.5 px-3 text-right font-mono text-cyan-800 font-black text-sm">
                                             - Ksh 8,500.00
                                         </td>
                                     </tr>
 
-                                    <tr className="bg-[#0e1d27]/70 font-black text-indigo-400 text-sm">
-                                        <td colSpan={2} className="py-2 px-2">C. CASH FLOWS FROM FINANCING ACTIVITIES</td>
+                                    <tr className="bg-slate-100/80 font-black text-indigo-800 text-xs">
+                                        <td colSpan={2} className="py-2 px-3">C. CASH FLOWS FROM FINANCING ACTIVITIES</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-gray-200">Owner Capital Additions / Loan Inflow</td>
-                                        <td className="py-2 text-right font-mono text-emerald-400">+ 0.00</td>
+                                        <td className="py-2 pl-6 text-slate-700">Owner Capital Additions / Loan Inflow</td>
+                                        <td className="py-2 px-3 text-right font-mono text-emerald-700 font-bold">+ 0.00</td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2 pl-6 text-rose-400">Repayment of Bank Borrowings</td>
-                                        <td className="py-2 text-right font-mono text-rose-400">- 5,000.00</td>
+                                        <td className="py-2 pl-6 text-rose-600 font-medium">Repayment of Bank Borrowings</td>
+                                        <td className="py-2 px-3 text-right font-mono text-rose-600 font-bold">- 5,000.00</td>
                                     </tr>
-                                    <tr className="font-extrabold bg-[#0b1822] text-white border-t border-[#1a3545]">
+                                    <tr className="font-extrabold bg-slate-50 text-slate-900 border-t border-slate-300">
                                         <td className="py-2.5 pl-4 uppercase">NET CASH USED IN FINANCING ACTIVITIES</td>
-                                        <td className="py-2.5 text-right font-mono text-indigo-400 font-black text-sm">
+                                        <td className="py-2.5 px-3 text-right font-mono text-indigo-800 font-black text-sm">
                                             - Ksh 5,000.00
                                         </td>
                                     </tr>
 
-                                    <tr className="bg-gradient-to-r from-teal-900 via-emerald-900 to-teal-950 font-black text-white text-base border-y-2 border-teal-400">
+                                    <tr className="bg-emerald-50 font-black text-slate-900 text-base border-y-2 border-emerald-300">
                                         <td className="py-3 pl-4">NET INCREASE / (DECREASE) IN CASH &amp; EQUIVALENTS</td>
-                                        <td className="py-3 text-right font-mono text-[#00e676]">
+                                        <td className="py-3 px-3 text-right font-mono text-emerald-900 font-black">
                                             Ksh {(financialStats.netSalesRevenue - financialStats.effectiveCOGS - financialStats.totalOperatingExpenses - 13500).toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td className="py-2.5 pl-4 text-gray-300 font-bold">Cash &amp; Bank Equivalents at Beginning of Period</td>
-                                        <td className="py-2.5 text-right font-mono text-white font-bold">Ksh 45,000.00</td>
+                                        <td className="py-2.5 pl-4 text-slate-600 font-bold">Cash &amp; Bank Equivalents at Beginning of Period</td>
+                                        <td className="py-2.5 px-3 text-right font-mono text-slate-900 font-bold">Ksh 45,000.00</td>
                                     </tr>
-                                    <tr className="bg-[#0b1822] font-black text-white text-sm border-t border-emerald-500">
-                                        <td className="py-3 pl-4 text-emerald-300">CASH &amp; BANK EQUIVALENTS AT END OF PERIOD</td>
-                                        <td className="py-3 text-right font-mono text-emerald-300 text-base">
+                                    <tr className="bg-slate-100 font-black text-slate-900 text-sm border-t-2 border-slate-300">
+                                        <td className="py-3 pl-4 text-emerald-900">CASH &amp; BANK EQUIVALENTS AT END OF PERIOD</td>
+                                        <td className="py-3 px-3 text-right font-mono text-emerald-900 font-black text-base">
                                             Ksh {(financialStats.tillCashOnHand + financialStats.mpesaFloat + financialStats.bankOperatingAccount).toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
@@ -1405,12 +1405,12 @@ export default function FinancialReportsPage() {
                 {/* ───────────────────────────────────────────────────────────── */}
                 {activeTab === 'cashbook' && (
                     <div className="space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#142834]">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
                             <div>
-                                <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">
+                                <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
                                     Official Two-Column Cash Book (Receipts &amp; Payments)
                                 </h2>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-slate-500">
                                     Chronological ledger of cash, M-Pesa and bank inflows &amp; disbursements
                                 </p>
                             </div>
@@ -1420,7 +1420,7 @@ export default function FinancialReportsPage() {
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     placeholder="Search receipt, ref, particulars..."
-                                    className="px-3 py-1.5 bg-[#10202c] border border-[#183040] rounded-xl text-xs text-white placeholder-gray-500 focus:outline-none focus:border-emerald-500 w-56"
+                                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-emerald-500 w-56 font-medium shadow-sm"
                                 />
                             </div>
                         </div>
@@ -1428,42 +1428,42 @@ export default function FinancialReportsPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-xs">
                                 <thead>
-                                    <tr className="border-b border-[#1c3340] text-gray-400 uppercase text-[10px]">
-                                        <th className="py-2.5 text-left font-black">Date &amp; Time</th>
-                                        <th className="py-2.5 text-left font-black">Voucher / Ref</th>
-                                        <th className="py-2.5 text-left font-black">Particulars / Details</th>
-                                        <th className="py-2.5 text-center font-black">Channel</th>
-                                        <th className="py-2.5 text-right font-black">Debit / Inflow (Ksh)</th>
-                                        <th className="py-2.5 text-right font-black">Credit / Outflow (Ksh)</th>
-                                        <th className="py-2.5 text-right font-black">Running Balance (Ksh)</th>
+                                    <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 uppercase text-[10px]">
+                                        <th className="py-2.5 px-3 text-left font-black">Date &amp; Time</th>
+                                        <th className="py-2.5 px-3 text-left font-black">Voucher / Ref</th>
+                                        <th className="py-2.5 px-3 text-left font-black">Particulars / Details</th>
+                                        <th className="py-2.5 px-3 text-center font-black">Channel</th>
+                                        <th className="py-2.5 px-3 text-right font-black">Debit / Inflow (Ksh)</th>
+                                        <th className="py-2.5 px-3 text-right font-black">Credit / Outflow (Ksh)</th>
+                                        <th className="py-2.5 px-3 text-right font-black">Running Balance (Ksh)</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-[#142630]">
+                                <tbody className="divide-y divide-slate-100">
                                     {cashBookEntries
                                         .filter(e => !searchQuery || e.particulars.toLowerCase().includes(searchQuery.toLowerCase()) || e.ref.toLowerCase().includes(searchQuery.toLowerCase()))
                                         .map((entry) => (
-                                            <tr key={entry.id} className="hover:bg-[#0f1f2b]/50 transition-colors">
-                                                <td className="py-2 font-mono text-gray-400">{entry.date} <span className="text-[10px] text-gray-500">{entry.time}</span></td>
-                                                <td className="py-2 font-mono font-bold text-emerald-400">{entry.ref}</td>
-                                                <td className="py-2 text-gray-200">{entry.particulars}</td>
-                                                <td className="py-2 text-center">
+                                            <tr key={entry.id} className="hover:bg-slate-50 transition-colors">
+                                                <td className="py-2 px-3 font-mono text-slate-500">{entry.date} <span className="text-[10px] text-slate-400">{entry.time}</span></td>
+                                                <td className="py-2 px-3 font-mono font-bold text-emerald-700">{entry.ref}</td>
+                                                <td className="py-2 px-3 text-slate-800 font-medium">{entry.particulars}</td>
+                                                <td className="py-2 px-3 text-center">
                                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                                         entry.channel === 'M-Pesa'
-                                                            ? 'bg-emerald-500/20 text-[#00e676] border border-emerald-500/40'
+                                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                                             : entry.channel === 'Cash'
-                                                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
-                                                            : 'bg-blue-500/20 text-blue-300 border border-blue-500/40'
+                                                            ? 'bg-amber-100 text-amber-800 border border-amber-200'
+                                                            : 'bg-blue-100 text-blue-800 border border-blue-200'
                                                     }`}>
                                                         {entry.channel}
                                                     </span>
                                                 </td>
-                                                <td className="py-2 text-right font-mono font-bold text-emerald-400">
+                                                <td className="py-2 px-3 text-right font-mono font-bold text-emerald-700">
                                                     {entry.debit > 0 ? entry.debit.toLocaleString('en-KE', { minimumFractionDigits: 2 }) : '-'}
                                                 </td>
-                                                <td className="py-2 text-right font-mono font-bold text-rose-400">
+                                                <td className="py-2 px-3 text-right font-mono font-bold text-rose-600">
                                                     {entry.credit > 0 ? entry.credit.toLocaleString('en-KE', { minimumFractionDigits: 2 }) : '-'}
                                                 </td>
-                                                <td className="py-2 text-right font-mono font-black text-white">
+                                                <td className="py-2 px-3 text-right font-mono font-black text-slate-900">
                                                     Ksh {entry.balance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                                 </td>
                                             </tr>
@@ -1479,20 +1479,20 @@ export default function FinancialReportsPage() {
                 {/* ───────────────────────────────────────────────────────────── */}
                 {activeTab === 'trial_balance' && (
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between pb-3 border-b border-[#142834]">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                             <div>
-                                <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">
+                                <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
                                     Official Adjusted Trial Balance
                                 </h2>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-slate-500">
                                     Double-entry general ledger summary with equality audit verification
                                 </p>
                             </div>
                             <div className="flex items-center gap-2">
                                 <span className={`px-3 py-1 rounded-xl text-xs font-black border ${
                                     trialBalanceDiff === 0 
-                                        ? 'bg-emerald-500/20 text-[#00e676] border-emerald-500/40'
-                                        : 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                                        ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                        : 'bg-amber-100 text-amber-800 border-amber-300'
                                 }`}>
                                     {trialBalanceDiff === 0 ? '✅ PERFECTLY BALANCED' : `VARIANCE: Ksh ${trialBalanceDiff.toFixed(2)}`}
                                 </span>
@@ -1502,44 +1502,44 @@ export default function FinancialReportsPage() {
                         <div className="overflow-x-auto">
                             <table className="w-full text-xs">
                                 <thead>
-                                    <tr className="border-b border-[#1c3340] text-gray-400 uppercase text-[11px]">
-                                        <th className="py-2.5 text-left font-black w-24">Code</th>
-                                        <th className="py-2.5 text-left font-black">Account Description</th>
-                                        <th className="py-2.5 text-center font-black w-32">Classification</th>
-                                        <th className="py-2.5 text-right font-black w-40">Debit Balance (Ksh)</th>
-                                        <th className="py-2.5 text-right font-black w-40">Credit Balance (Ksh)</th>
+                                    <tr className="bg-slate-100 border-b border-slate-200 text-slate-700 uppercase text-[11px]">
+                                        <th className="py-2.5 px-3 text-left font-black w-24">Code</th>
+                                        <th className="py-2.5 px-3 text-left font-black">Account Description</th>
+                                        <th className="py-2.5 px-3 text-center font-black w-32">Classification</th>
+                                        <th className="py-2.5 px-3 text-right font-black w-40">Debit Balance (Ksh)</th>
+                                        <th className="py-2.5 px-3 text-right font-black w-40">Credit Balance (Ksh)</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-[#142630]">
+                                <tbody className="divide-y divide-slate-100">
                                     {trialBalanceAccounts.map(acc => (
-                                        <tr key={acc.code} className="hover:bg-[#0f1f2b]/50">
-                                            <td className="py-2 font-mono font-bold text-gray-400">{acc.code}</td>
-                                            <td className="py-2 text-white font-medium">{acc.name}</td>
-                                            <td className="py-2 text-center">
+                                        <tr key={acc.code} className="hover:bg-slate-50 transition-colors">
+                                            <td className="py-2 px-3 font-mono font-bold text-slate-500">{acc.code}</td>
+                                            <td className="py-2 px-3 text-slate-800 font-semibold">{acc.name}</td>
+                                            <td className="py-2 px-3 text-center">
                                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                    acc.category === 'Asset' ? 'bg-emerald-500/20 text-emerald-300' :
-                                                    acc.category === 'Liability' ? 'bg-rose-500/20 text-rose-300' :
-                                                    acc.category === 'Equity' ? 'bg-purple-500/20 text-purple-300' :
-                                                    acc.category === 'Income' ? 'bg-blue-500/20 text-blue-300' :
-                                                    'bg-amber-500/20 text-amber-300'
+                                                    acc.category === 'Asset' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                                    acc.category === 'Liability' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                                                    acc.category === 'Equity' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                                                    acc.category === 'Income' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                                                    'bg-amber-100 text-amber-800 border border-amber-200'
                                                 }`}>
                                                     {acc.category}
                                                 </span>
                                             </td>
-                                            <td className="py-2 text-right font-mono font-bold text-emerald-400">
+                                            <td className="py-2 px-3 text-right font-mono font-bold text-emerald-800">
                                                 {acc.debit > 0 ? acc.debit.toLocaleString('en-KE', { minimumFractionDigits: 2 }) : '-'}
                                             </td>
-                                            <td className="py-2 text-right font-mono font-bold text-cyan-400">
+                                            <td className="py-2 px-3 text-right font-mono font-bold text-cyan-800">
                                                 {acc.credit > 0 ? acc.credit.toLocaleString('en-KE', { minimumFractionDigits: 2 }) : '-'}
                                             </td>
                                         </tr>
                                     ))}
-                                    <tr className="bg-gradient-to-r from-emerald-950 via-[#0c1a24] to-teal-950 font-black text-white text-sm border-y-4 border-double border-emerald-400">
-                                        <td colSpan={3} className="py-3 pl-4 uppercase">TOTAL TRIAL BALANCE EQUALITY</td>
-                                        <td className="py-3 text-right font-mono text-[#00e676]">
+                                    <tr className="bg-emerald-50 font-black text-slate-900 text-sm border-y-4 border-double border-emerald-600">
+                                        <td colSpan={3} className="py-3 px-3 uppercase text-emerald-950 font-black">TOTAL TRIAL BALANCE EQUALITY</td>
+                                        <td className="py-3 px-3 text-right font-mono text-emerald-900 font-black">
                                             Ksh {totalTrialDebits.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
-                                        <td className="py-3 text-right font-mono text-cyan-300">
+                                        <td className="py-3 px-3 text-right font-mono text-cyan-900 font-black">
                                             Ksh {totalTrialCredits.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                         </td>
                                     </tr>
@@ -1554,12 +1554,12 @@ export default function FinancialReportsPage() {
                 {/* ───────────────────────────────────────────────────────────── */}
                 {activeTab === 'ledger' && (
                     <div className="space-y-4">
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#142834]">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200">
                             <div>
-                                <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">
+                                <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
                                     General &amp; Subsidiary Ledgers
                                 </h2>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-slate-500">
                                     Account-by-account transaction drilldown with complete audit logs
                                 </p>
                             </div>
@@ -1567,7 +1567,7 @@ export default function FinancialReportsPage() {
                                 <select
                                     value={ledgerAccountFilter}
                                     onChange={(e) => setLedgerAccountFilter(e.target.value)}
-                                    className="px-3 py-1.5 bg-[#10202c] border border-[#183040] rounded-xl text-xs text-white font-bold focus:outline-none focus:border-emerald-500"
+                                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 font-bold focus:outline-none focus:border-emerald-500 shadow-sm"
                                 >
                                     <option value="all">📁 All Ledger Accounts</option>
                                     {trialBalanceAccounts.map(a => (
@@ -1583,24 +1583,25 @@ export default function FinancialReportsPage() {
                             {trialBalanceAccounts
                                 .filter(a => ledgerAccountFilter === 'all' || a.code === ledgerAccountFilter)
                                 .map(acc => (
-                                    <div key={acc.code} className="p-3.5 rounded-xl bg-[#0d1a24] border border-[#183040] flex flex-col justify-between gap-2 shadow-sm">
+                                    <div key={acc.code} className="p-4 rounded-xl bg-slate-50 border border-slate-200 flex flex-col justify-between gap-2 shadow-sm hover:shadow-md transition-all">
                                         <div className="flex items-center justify-between">
-                                            <span className="font-mono text-xs font-bold text-gray-400">{acc.code}</span>
+                                            <span className="font-mono text-xs font-bold text-slate-500">{acc.code}</span>
                                             <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
-                                                acc.category === 'Asset' ? 'bg-emerald-500/20 text-emerald-300' :
-                                                acc.category === 'Liability' ? 'bg-rose-500/20 text-rose-300' :
-                                                acc.category === 'Income' ? 'bg-blue-500/20 text-blue-300' :
-                                                'bg-amber-500/20 text-amber-300'
+                                                acc.category === 'Asset' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                                                acc.category === 'Liability' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                                                acc.category === 'Equity' ? 'bg-purple-100 text-purple-800 border border-purple-200' :
+                                                acc.category === 'Income' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                                                'bg-amber-100 text-amber-800 border border-amber-200'
                                             }`}>
                                                 {acc.category}
                                             </span>
                                         </div>
-                                        <h3 className="font-black text-xs text-white leading-snug line-clamp-2">
+                                        <h3 className="font-black text-xs text-slate-900 leading-snug line-clamp-2">
                                             {acc.name}
                                         </h3>
-                                        <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-                                            <span className="text-[10px] text-gray-400 font-bold uppercase">Balance:</span>
-                                            <span className="font-mono font-black text-sm text-[#00e676]">
+                                        <div className="pt-2 border-t border-slate-200 flex items-center justify-between">
+                                            <span className="text-[10px] text-slate-500 font-bold uppercase">Balance:</span>
+                                            <span className="font-mono font-black text-sm text-emerald-700">
                                                 Ksh {acc.netBalance.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                             </span>
                                         </div>
@@ -1615,61 +1616,61 @@ export default function FinancialReportsPage() {
                 {/* ───────────────────────────────────────────────────────────── */}
                 {activeTab === 'tax' && (
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between pb-3 border-b border-[#142834]">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                             <div>
-                                <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">
+                                <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
                                     KRA Tax, VAT (16%) &amp; Tourism Levy (2%) Statement
                                 </h2>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-slate-500">
                                     Input vs Output tax reconciliation compliant with KRA iTax &amp; Tourism Fund regulations
                                 </p>
                             </div>
-                            <span className="px-3 py-1 rounded-xl bg-amber-500/20 text-amber-300 text-xs font-black border border-amber-500/30">
+                            <span className="px-3 py-1 rounded-xl bg-amber-100 text-amber-800 text-xs font-black border border-amber-300">
                                 NET VAT PAYABLE: Ksh {Math.round(financialStats.netVatPayable).toLocaleString()}
                             </span>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div className="p-4 rounded-xl bg-[#0c1822] border border-[#183040]">
-                                <span className="text-xs text-gray-400 font-bold uppercase">Output VAT Collected (16%)</span>
-                                <div className="text-xl font-black text-white font-mono mt-1">
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 shadow-sm">
+                                <span className="text-xs text-slate-500 font-bold uppercase">Output VAT Collected (16%)</span>
+                                <div className="text-xl font-black text-slate-900 font-mono mt-1">
                                     Ksh {financialStats.totalVatOutput.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                 </div>
-                                <p className="text-[10px] text-gray-400 mt-1">From total POS customer receipts</p>
+                                <p className="text-[10px] text-slate-500 mt-1">From total POS customer receipts</p>
                             </div>
 
-                            <div className="p-4 rounded-xl bg-[#0c1822] border border-[#183040]">
-                                <span className="text-xs text-gray-400 font-bold uppercase">Input VAT Deductible (16%)</span>
-                                <div className="text-xl font-black text-emerald-400 font-mono mt-1">
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 shadow-sm">
+                                <span className="text-xs text-slate-500 font-bold uppercase">Input VAT Deductible (16%)</span>
+                                <div className="text-xl font-black text-emerald-700 font-mono mt-1">
                                     Ksh {financialStats.totalInputVat.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                 </div>
-                                <p className="text-[10px] text-gray-400 mt-1">From verified supplier purchases</p>
+                                <p className="text-[10px] text-slate-500 mt-1">From verified supplier purchases</p>
                             </div>
 
-                            <div className="p-4 rounded-xl bg-[#0c1822] border border-amber-500/30">
-                                <span className="text-xs text-amber-300 font-bold uppercase">Net VAT Due to KRA</span>
-                                <div className="text-xl font-black text-amber-400 font-mono mt-1">
+                            <div className="p-4 rounded-xl bg-slate-50 border border-amber-300 shadow-sm">
+                                <span className="text-xs text-amber-800 font-bold uppercase">Net VAT Due to KRA</span>
+                                <div className="text-xl font-black text-amber-900 font-mono mt-1">
                                     Ksh {financialStats.netVatPayable.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                 </div>
-                                <p className="text-[10px] text-gray-400 mt-1">Payable on or before 20th of next month</p>
+                                <p className="text-[10px] text-slate-500 mt-1">Payable on or before 20th of next month</p>
                             </div>
                         </div>
 
-                        <div className="p-4 rounded-xl bg-[#0e1d27] border border-[#1a3545] space-y-3">
-                            <h3 className="font-black text-sm text-white uppercase tracking-wider flex items-center gap-2">
+                        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3 shadow-sm">
+                            <h3 className="font-black text-sm text-slate-900 uppercase tracking-wider flex items-center gap-2">
                                 <span>🏨</span> Tourism Fund &amp; Hospitality Levy (2%)
                             </h3>
-                            <div className="flex items-center justify-between text-xs text-gray-300 border-b border-white/5 pb-2">
+                            <div className="flex items-center justify-between text-xs text-slate-700 border-b border-slate-200 pb-2">
                                 <span>Gross Hospitality &amp; Accommodation Turnover</span>
                                 <span className="font-mono font-bold">Ksh {financialStats.netSalesRevenue.toLocaleString('en-KE', { minimumFractionDigits: 2 })}</span>
                             </div>
-                            <div className="flex items-center justify-between text-xs text-gray-300 border-b border-white/5 pb-2">
+                            <div className="flex items-center justify-between text-xs text-slate-700 border-b border-slate-200 pb-2">
                                 <span>Statutory Tourism Regulatory Levy Rate</span>
-                                <span className="font-mono font-bold text-amber-300">2.00%</span>
+                                <span className="font-mono font-bold text-amber-700">2.00%</span>
                             </div>
-                            <div className="flex items-center justify-between text-sm font-black text-white pt-1">
+                            <div className="flex items-center justify-between text-sm font-black text-slate-900 pt-1">
                                 <span>Total Tourism Levy Payable to Tourism Fund</span>
-                                <span className="font-mono text-emerald-400 font-black">
+                                <span className="font-mono text-emerald-700 font-black">
                                     Ksh {financialStats.totalLevyOutput.toLocaleString('en-KE', { minimumFractionDigits: 2 })}
                                 </span>
                             </div>
@@ -1682,115 +1683,115 @@ export default function FinancialReportsPage() {
                 {/* ───────────────────────────────────────────────────────────── */}
                 {activeTab === 'ratios' && (
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between pb-3 border-b border-[#142834]">
+                        <div className="flex items-center justify-between pb-3 border-b border-slate-200">
                             <div>
-                                <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">
+                                <h2 className="text-base sm:text-lg font-black text-slate-900 uppercase tracking-tight">
                                     Financial Health &amp; Hospitality Performance Ratios
                                 </h2>
-                                <p className="text-xs text-gray-400">
+                                <p className="text-xs text-slate-500">
                                     Industry benchmarks for hotels, restaurants &amp; catering operations
                                 </p>
                             </div>
-                            <span className="px-3 py-1 rounded-xl bg-emerald-500/20 text-[#00e676] text-xs font-black border border-emerald-500/30">
+                            <span className="px-3 py-1 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-black border border-emerald-300">
                                 HEALTH SCORE: 92/100 (STRONG)
                             </span>
                         </div>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {/* Ratio 1: Food Cost % */}
-                            <div className="p-4 rounded-xl bg-[#0c1822] border border-[#183040] space-y-2">
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 shadow-sm hover:shadow-md transition-all">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Food Cost Ratio (COGS %)</span>
+                                    <span className="text-xs font-bold text-slate-500 uppercase">Food Cost Ratio (COGS %)</span>
                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
-                                        financialStats.foodCostPct <= 35 ? 'bg-emerald-500/20 text-[#00e676]' : 'bg-rose-500/20 text-rose-300'
+                                        financialStats.foodCostPct <= 35 ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'
                                     }`}>
                                         {financialStats.foodCostPct <= 35 ? 'OPTIMAL (≤35%)' : 'ELEVATED'}
                                     </span>
                                 </div>
-                                <div className="text-2xl font-black text-white font-mono">
+                                <div className="text-2xl font-black text-slate-900 font-mono">
                                     {financialStats.foodCostPct.toFixed(1)}%
                                 </div>
-                                <p className="text-[11px] text-gray-400">
+                                <p className="text-[11px] text-slate-500">
                                     Portion of turnover consumed by raw food materials. Target: 28% - 35%.
                                 </p>
                             </div>
 
                             {/* Ratio 2: Gross Profit Margin */}
-                            <div className="p-4 rounded-xl bg-[#0c1822] border border-[#183040] space-y-2">
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 shadow-sm hover:shadow-md transition-all">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Gross Profit Margin %</span>
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#00e676]">
+                                    <span className="text-xs font-bold text-slate-500 uppercase">Gross Profit Margin %</span>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
                                         EXCELLENT
                                     </span>
                                 </div>
-                                <div className="text-2xl font-black text-emerald-400 font-mono">
+                                <div className="text-2xl font-black text-emerald-700 font-mono">
                                     {financialStats.grossMarginPct.toFixed(1)}%
                                 </div>
-                                <p className="text-[11px] text-gray-400">
+                                <p className="text-[11px] text-slate-500">
                                     Revenue retained after direct culinary portion costs. Target: ≥ 65%.
                                 </p>
                             </div>
 
                             {/* Ratio 3: Net Profit Margin */}
-                            <div className="p-4 rounded-xl bg-[#0c1822] border border-[#183040] space-y-2">
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 shadow-sm hover:shadow-md transition-all">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Net Profit Margin %</span>
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-500/20 text-cyan-300">
+                                    <span className="text-xs font-bold text-slate-500 uppercase">Net Profit Margin %</span>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-cyan-100 text-cyan-800 border border-cyan-200">
                                         PROFITABLE
                                     </span>
                                 </div>
-                                <div className="text-2xl font-black text-cyan-400 font-mono">
+                                <div className="text-2xl font-black text-cyan-700 font-mono">
                                     {financialStats.netMarginPct.toFixed(1)}%
                                 </div>
-                                <p className="text-[11px] text-gray-400">
+                                <p className="text-[11px] text-slate-500">
                                     Bottom-line earnings after all payroll, power, rent &amp; taxes. Target: ≥ 15%.
                                 </p>
                             </div>
 
                             {/* Ratio 4: Current Ratio (Liquidity) */}
-                            <div className="p-4 rounded-xl bg-[#0c1822] border border-[#183040] space-y-2">
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 shadow-sm hover:shadow-md transition-all">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Current Ratio (Liquidity)</span>
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#00e676]">
+                                    <span className="text-xs font-bold text-slate-500 uppercase">Current Ratio (Liquidity)</span>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
                                         STRONG (&gt;1.5)
                                     </span>
                                 </div>
-                                <div className="text-2xl font-black text-white font-mono">
+                                <div className="text-2xl font-black text-slate-900 font-mono">
                                     {(financialStats.totalCurrentAssets / Math.max(1, financialStats.totalCurrentLiabilities)).toFixed(2)}x
                                 </div>
-                                <p className="text-[11px] text-gray-400">
+                                <p className="text-[11px] text-slate-500">
                                     Ability to settle short-term obligations with liquid current assets.
                                 </p>
                             </div>
 
                             {/* Ratio 5: Quick Ratio (Acid-Test) */}
-                            <div className="p-4 rounded-xl bg-[#0c1822] border border-[#183040] space-y-2">
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 shadow-sm hover:shadow-md transition-all">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Quick Acid-Test Ratio</span>
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-500/20 text-[#00e676]">
+                                    <span className="text-xs font-bold text-slate-500 uppercase">Quick Acid-Test Ratio</span>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
                                         SAFE (&gt;1.0)
                                     </span>
                                 </div>
-                                <div className="text-2xl font-black text-teal-300 font-mono">
+                                <div className="text-2xl font-black text-teal-700 font-mono">
                                     {((financialStats.totalCurrentAssets - financialStats.liveInventoryValue) / Math.max(1, financialStats.totalCurrentLiabilities)).toFixed(2)}x
                                 </div>
-                                <p className="text-[11px] text-gray-400">
+                                <p className="text-[11px] text-slate-500">
                                     Instant liquidity excluding inventory. Benchmark: &gt; 1.0x.
                                 </p>
                             </div>
 
                             {/* Ratio 6: Payroll to Revenue % */}
-                            <div className="p-4 rounded-xl bg-[#0c1822] border border-[#183040] space-y-2">
+                            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-2 shadow-sm hover:shadow-md transition-all">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-bold text-gray-400 uppercase">Staff Labor Cost Ratio %</span>
-                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-500/20 text-indigo-300">
+                                    <span className="text-xs font-bold text-slate-500 uppercase">Staff Labor Cost Ratio %</span>
+                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-indigo-100 text-indigo-800 border border-indigo-200">
                                         EFFICIENT
                                     </span>
                                 </div>
-                                <div className="text-2xl font-black text-indigo-300 font-mono">
+                                <div className="text-2xl font-black text-indigo-700 font-mono">
                                     {financialStats.netSalesRevenue > 0 ? ((financialStats.payrollExpense / financialStats.netSalesRevenue) * 100).toFixed(1) : 0}%
                                 </div>
-                                <p className="text-[11px] text-gray-400">
+                                <p className="text-[11px] text-slate-500">
                                     Labor cost percentage of total restaurant sales. Target: 15% - 22%.
                                 </p>
                             </div>

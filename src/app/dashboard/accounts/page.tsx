@@ -280,18 +280,18 @@ export default function AccountsPage() {
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-3">
-                    <span className="w-12 h-12 bg-gradient-to-br from-slate-700 to-gray-900 rounded-2xl flex items-center justify-center text-white text-2xl shadow-lg">
+                    <span className="w-12 h-12 bg-gradient-to-tr from-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center text-white text-2xl shadow-md">
                         📒
                     </span>
                     Chart of Accounts & Ledger
                 </h1>
                 <div className="flex gap-3">
                     <button onClick={() => setShowJournalModal(true)}
-                        className="px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all text-sm">
+                        className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all text-sm shadow-sm">
                         📝 Post Journal Entry
                     </button>
                     <button onClick={openAddAccount}
-                        className="px-5 py-2.5 bg-gradient-to-r from-slate-700 to-gray-900 text-white rounded-xl font-semibold hover:shadow-lg transition-all text-sm">
+                        className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold hover:shadow-lg transition-all text-sm shadow-sm">
                         ➕ Add Account
                     </button>
                 </div>
@@ -330,7 +330,7 @@ export default function AccountsPage() {
             <div className="flex gap-2">
                 {(['chart', 'journal', 'summary'] as const).map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab)}
-                        className={`px-5 py-2.5 rounded-xl font-semibold text-sm capitalize transition-all ${activeTab === tab ? 'bg-slate-800 text-white shadow-md' : 'bg-white border text-gray-600 hover:bg-gray-50'}`}>
+                        className={`px-5 py-2.5 rounded-xl font-bold text-sm capitalize transition-all ${activeTab === tab ? 'bg-emerald-600 text-white shadow-md' : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'}`}>
                         {tab === 'chart' ? '📒 Chart of Accounts' : tab === 'journal' ? '📝 Journal Entries' : '📊 Financial Summary'}
                     </button>
                 ))}
@@ -340,49 +340,49 @@ export default function AccountsPage() {
             {activeTab === 'chart' && (
                 <>
                     {/* Filters */}
-                    <div className="bg-white rounded-2xl border p-4 flex flex-wrap gap-3 items-center">
+                    <div className="bg-white rounded-2xl border border-slate-200 p-4 flex flex-wrap gap-3 items-center shadow-sm">
                         <div className="flex-1 min-w-[200px]">
                             <input type="text" value={search} onChange={e => setSearch(e.target.value)}
                                 placeholder="🔍 Search accounts..."
-                                className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-slate-500 outline-none" />
+                                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:border-emerald-500 outline-none" />
                         </div>
                         <div className="flex gap-2 flex-wrap">
                             {['All', ...ACCOUNT_TYPES].map(t => (
                                 <button key={t} onClick={() => setFilterType(t)}
-                                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filterType === t ? 'bg-slate-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                                    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filterType === t ? 'bg-emerald-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200'}`}>
                                     {t}
                                 </button>
                             ))}
                         </div>
-                        <span className="text-xs text-gray-400 ml-auto">{filtered.length} accounts</span>
+                        <span className="text-xs text-slate-500 ml-auto font-medium">{filtered.length} accounts</span>
                     </div>
 
                     {loading ? (
                         <div className="flex items-center justify-center py-20">
-                            <div className="spinner" /><span className="ml-3 text-sm text-gray-500">Loading accounts...</span>
+                            <div className="spinner" /><span className="ml-3 text-sm text-slate-500">Loading accounts...</span>
                         </div>
                     ) : accounts.length === 0 ? (
-                        <div className="bg-white rounded-2xl border py-20 text-center">
+                        <div className="bg-white rounded-2xl border border-slate-200 py-20 text-center shadow-sm">
                             <div className="text-6xl mb-4">📒</div>
-                            <p className="text-xl font-bold text-gray-400">No accounts set up yet</p>
-                            <p className="text-sm text-gray-400 mt-1">Create your Chart of Accounts to get started</p>
-                            <button onClick={openAddAccount} className="mt-4 px-6 py-3 bg-gradient-to-r from-slate-700 to-gray-900 text-white rounded-xl font-semibold hover:shadow-lg text-sm">
+                            <p className="text-xl font-bold text-slate-700">No accounts set up yet</p>
+                            <p className="text-sm text-slate-500 mt-1">Create your Chart of Accounts to get started</p>
+                            <button onClick={openAddAccount} className="mt-4 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md text-sm">
                                 ➕ Add First Account
                             </button>
                         </div>
                     ) : (
-                        <div className="bg-white rounded-2xl border overflow-hidden">
+                        <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                             <div className="overflow-x-auto">
                                 <table className="w-full">
                                     <thead>
-                                        <tr className="bg-gradient-to-r from-slate-700 to-gray-800">
-                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-white">Code</th>
-                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-white">Account Name</th>
-                                            <th className="px-4 py-3.5 text-center text-xs font-bold uppercase text-white">Type</th>
-                                            <th className="px-4 py-3.5 text-right text-xs font-bold uppercase text-white">Balance</th>
-                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-white">Description</th>
-                                            <th className="px-4 py-3.5 text-center text-xs font-bold uppercase text-white">Status</th>
-                                            <th className="px-4 py-3.5 text-center text-xs font-bold uppercase text-white">Actions</th>
+                                        <tr className="bg-slate-100 border-b border-slate-200">
+                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-slate-700">Code</th>
+                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-slate-700">Account Name</th>
+                                            <th className="px-4 py-3.5 text-center text-xs font-bold uppercase text-slate-700">Type</th>
+                                            <th className="px-4 py-3.5 text-right text-xs font-bold uppercase text-slate-700">Balance</th>
+                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-slate-700">Description</th>
+                                            <th className="px-4 py-3.5 text-center text-xs font-bold uppercase text-slate-700">Status</th>
+                                            <th className="px-4 py-3.5 text-center text-xs font-bold uppercase text-slate-700">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -441,32 +441,32 @@ export default function AccountsPage() {
                                 className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:border-slate-500 outline-none" />
                         </div>
                         <button onClick={loadEntries}
-                            className="px-5 py-2.5 bg-gradient-to-r from-slate-700 to-gray-900 text-white rounded-xl font-semibold hover:shadow-md transition-all text-sm">
+                            className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold hover:shadow-md transition-all text-sm shadow-sm">
                             🔍 Filter
                         </button>
                         <button onClick={() => setShowJournalModal(true)}
-                            className="ml-auto px-5 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl font-semibold hover:shadow-md transition-all text-sm">
+                            className="ml-auto px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold hover:shadow-md transition-all text-sm shadow-sm">
                             📝 New Entry
                         </button>
                     </div>
 
-                    <div className="bg-white rounded-2xl border overflow-hidden">
+                    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
                         {entriesLoading ? (
                             <div className="flex items-center justify-center py-20">
-                                <div className="spinner" /><span className="ml-3 text-sm text-gray-500">Loading journal entries...</span>
+                                <div className="spinner" /><span className="ml-3 text-sm text-slate-500">Loading journal entries...</span>
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
                                 <table className="w-full">
                                     <thead>
-                                        <tr className="bg-gradient-to-r from-blue-600 to-indigo-700">
-                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-white">Date</th>
-                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-white">Reference</th>
-                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-white">Description</th>
-                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-white">Debit Account</th>
-                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-white">Credit Account</th>
-                                            <th className="px-4 py-3.5 text-right text-xs font-bold uppercase text-white">Amount</th>
-                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-white">Posted By</th>
+                                        <tr className="bg-slate-100 border-b border-slate-200">
+                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-slate-700">Date</th>
+                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-slate-700">Reference</th>
+                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-slate-700">Description</th>
+                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-slate-700">Debit Account</th>
+                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-slate-700">Credit Account</th>
+                                            <th className="px-4 py-3.5 text-right text-xs font-bold uppercase text-slate-700">Amount</th>
+                                            <th className="px-4 py-3.5 text-left text-xs font-bold uppercase text-slate-700">Posted By</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -537,8 +537,8 @@ export default function AccountsPage() {
                     })}
 
                     {/* Profit & Loss Summary */}
-                    <div className="md:col-span-2 bg-white rounded-2xl border overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-700 to-gray-800 px-5 py-4 text-white">
+                    <div className="md:col-span-2 bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm">
+                        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 px-5 py-4 text-white">
                             <h3 className="font-black text-lg">📊 Profit & Loss Summary</h3>
                         </div>
                         <div className="p-6 space-y-3">
@@ -565,9 +565,9 @@ export default function AccountsPage() {
             {showAccountModal && (
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 z-50">
                     <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden">
-                        <div className="bg-gradient-to-r from-slate-700 to-gray-900 px-6 py-5 text-white">
+                        <div className="bg-gradient-to-r from-emerald-600 to-teal-700 px-6 py-5 text-white">
                             <h2 className="text-lg font-bold">{editAccount ? '✏️ Edit Account' : '➕ New Account'}</h2>
-                            <p className="text-slate-300 text-sm mt-0.5">Chart of Accounts</p>
+                            <p className="text-emerald-100 text-sm mt-0.5">Chart of Accounts</p>
                         </div>
                         <div className="p-6 space-y-4">
                             <div className="grid grid-cols-2 gap-4">
@@ -609,7 +609,7 @@ export default function AccountsPage() {
                             </div>
                             <div className="flex gap-3 pt-2">
                                 <button onClick={() => setShowAccountModal(false)} className="flex-1 py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50">Cancel</button>
-                                <button onClick={saveAccount} disabled={isSaving} className="flex-1 py-3 bg-gradient-to-r from-slate-700 to-gray-900 text-white rounded-xl font-semibold hover:shadow-lg disabled:opacity-50">
+                                <button onClick={saveAccount} disabled={isSaving} className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-md disabled:opacity-50 transition-all">
                                     {isSaving ? '⏳ Saving...' : editAccount ? '✅ Update' : '✅ Create Account'}
                                 </button>
                             </div>
