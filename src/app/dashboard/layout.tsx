@@ -758,10 +758,14 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                                     <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                                     System Online
                                 </div>
-                                <button className="h-9 w-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 shadow-sm hover:bg-gray-50 transition-colors relative">
+                                <Link
+                                    href="/dashboard/notifications"
+                                    title="Notification Centre"
+                                    className="h-9 w-9 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-500 shadow-sm hover:bg-gray-50 hover:text-indigo-600 transition-colors relative"
+                                >
                                     <span className="text-base">🔔</span>
                                     <span className="absolute top-0 right-0 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
-                                </button>
+                                </Link>
                             </div>
                         </header>
                     )}
