@@ -6,8 +6,21 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-    title: 'Alpha Plus Hotel System',
-    description: 'Professional Hotel Management System',
+    title: {
+        default: 'Alpha Plus Hotel & Restaurant System',
+        template: '%s | Alpha Plus Hotel & POS',
+    },
+    description: 'Premier Hotel, Resort & Restaurant Management System with POS, Kitchen Display, Inventory & Financial Accounting',
+    icons: {
+        icon: [
+            { url: '/icon.svg', type: 'image/svg+xml' },
+            { url: '/favicon.ico', sizes: 'any' },
+        ],
+        apple: [
+            { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+        ],
+    },
+    manifest: '/manifest.json',
 };
 
 export default function RootLayout({
@@ -17,6 +30,15 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
+            <head>
+                <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+                <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+                <link rel="manifest" href="/manifest.json" />
+                <meta name="theme-color" content="#4338ca" />
+                <meta name="apple-mobile-web-app-capable" content="yes" />
+                <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+                <meta name="apple-mobile-web-app-title" content="Alpha Plus" />
+            </head>
             <body className={inter.className}>
                 {/* Modern Toast Notifications - Top Position */}
                 <Toaster
