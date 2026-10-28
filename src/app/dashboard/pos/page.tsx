@@ -417,78 +417,135 @@ const CyberCartItemRow = ({
     const dishImg = getDishImage(item.name, item.category);
 
     return (
-        <div className="bg-[#0e1721] rounded-xl p-2.5 border border-[#162a2e] hover:border-[#00e676]/30 transition-all flex items-center gap-2">
-            <span className="text-xs font-bold text-gray-500 w-4 text-center shrink-0">
-                {index}
-            </span>
+        <div className="bg-[#0e1721] rounded-xl p-2.5 border border-[#162a2e] hover:border-[#00e676]/30 transition-all space-y-1.5">
+            {/* Main Item Line */}
+            <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-500 w-4 text-center shrink-0">
+                    {index}
+                </span>
 
-            <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-black/40 border border-white/5">
-                <img
-                    src={dishImg}
-                    alt={item.name}
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/images/food/default_dish.jpg';
+                <div className="w-10 h-10 rounded-lg overflow-hidden shrink-0 bg-black/40 border border-white/5">
+                    <img
+                        src={dishImg}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                            (e.target as HTMLImageElement).src = '/images/food/default_dish.jpg';
+                        }}
+                    />
+                </div>
+
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-bold text-white text-xs leading-tight truncate">
+                        {item.name}
+                    </h4>
+                    <p className="text-[11px] font-mono text-[#00e676]/80 font-bold mt-0.5">
+                        KSh {Number(item.price).toFixed(2)}
+                    </p>
+                </div>
+
+                {/* Touch Stepper */}
+                <div className="flex items-center gap-1 bg-[#132029] p-0.5 rounded-lg border border-white/5 shrink-0">
+                    <button
+                        onClick={() => {
+                            onDecrease();
+                            playPOSChime('click');
+                        }}
+                        className="w-6 h-6 rounded bg-[#1a2b37] hover:bg-[#22394a] text-gray-200 font-bold text-xs flex items-center justify-center transition-all"
+                        title="Decrease"
+                    >
+                        −
+                    </button>
+                    <span className="font-mono font-black text-xs text-white min-w-[20px] text-center">
+                        {item.qty}
+                    </span>
+                    <button
+                        onClick={() => {
+                            onIncrease();
+                            playPOSChime('click');
+                        }}
+                        className="w-6 h-6 rounded bg-[#00e676] hover:bg-[#00c853] text-black font-black text-xs flex items-center justify-center transition-all shadow-sm"
+                        title="Increase"
+                    >
+                        +
+                    </button>
+                </div>
+
+                {/* Line Total */}
+                <div className="text-right shrink-0 min-w-[55px]">
+                    <p className="font-mono font-black text-xs text-white">
+                        {itemTotal.toFixed(2)}
+                    </p>
+                </div>
+
+                {/* Remove Button */}
+                <button
+                    onClick={() => {
+                        onRemove();
+                        playPOSChime('void');
                     }}
-                />
+                    className="w-7 h-7 rounded-lg bg-red-950/40 hover:bg-red-600 text-red-400 hover:text-white transition-all flex items-center justify-center text-xs shrink-0 border border-red-500/20"
+                    title="Remove Item"
+                >
+                    🗑️
+                </button>
             </div>
 
-            <div className="flex-1 min-w-0">
-                <h4 className="font-bold text-white text-xs leading-tight truncate">
-                    {item.name}
-                </h4>
-                <p className="text-[11px] font-mono text-[#00e676]/80 font-bold mt-0.5">
-                    KSh {Number(item.price).toFixed(2)}
-                </p>
-                {item.notes && (
-                    <p className="text-[10px] text-amber-400 truncate mt-0.5">
-                        📝 {item.notes}
-                    </p>
+            {/* Note Display Beneath Item */}
+            {item.notes && (
+                <div
+                    onClick={() => {
+                        onEditNotes();
+                        playPOSChime('click');
+                    }}
+                    className="flex items-center gap-1.5 text-[10px] text-amber-300 bg-amber-950/40 border border-amber-500/30 px-2 py-0.5 rounded-lg cursor-pointer hover:bg-amber-950/70 transition-all ml-6"
+                    title="Click to edit kitchen note"
+                >
+                    <span className="shrink-0">📝</span>
+                    <span className="truncate font-semibold">{item.notes}</span>
+                </div>
+            )}
+
+            {/* Quick Action Buttons for Cart Item */}
+            <div className="flex items-center justify-between pt-1 border-t border-white/5 ml-6">
+                <div className="flex items-center gap-1.5">
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onEditNotes();
+                            playPOSChime('click');
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 border ${
+                            item.notes
+                                ? 'bg-amber-500/20 text-amber-300 border-amber-500/50 hover:bg-amber-500/30'
+                                : 'bg-[#132029] text-gray-300 border-white/10 hover:text-[#00e676] hover:border-[#00e676]/40 hover:bg-[#1a2b37]'
+                        }`}
+                        title="Special Kitchen Note"
+                    >
+                        <span>📝</span>
+                        <span>{item.notes ? 'Edit Note' : 'Notes'}</span>
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={() => {
+                            onEditDiscount();
+                            playPOSChime('click');
+                        }}
+                        className="px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 bg-[#132029] text-gray-300 border border-white/10 hover:text-[#00e676] hover:border-[#00e676]/40 hover:bg-[#1a2b37]"
+                        title="Item Discount"
+                    >
+                        <span>🏷️</span>
+                        <span>Disc</span>
+                    </button>
+                </div>
+
+                {item.discount > 0 && (
+                    <span className="text-[10px] font-bold text-emerald-400 font-mono">
+                        -Ksh {item.discount.toFixed(2)}
+                    </span>
                 )}
             </div>
-
-            <div className="flex items-center gap-1 bg-[#132029] p-0.5 rounded-lg border border-white/5 shrink-0">
-                <button
-                    onClick={() => {
-                        onDecrease();
-                        playPOSChime('click');
-                    }}
-                    className="w-6 h-6 rounded bg-[#1a2b37] hover:bg-[#22394a] text-gray-200 font-bold text-xs flex items-center justify-center transition-all"
-                    title="Decrease"
-                >
-                    −
-                </button>
-                <span className="font-mono font-black text-xs text-white min-w-[20px] text-center">
-                    {item.qty}
-                </span>
-                <button
-                    onClick={() => {
-                        onIncrease();
-                        playPOSChime('click');
-                    }}
-                    className="w-6 h-6 rounded bg-[#00e676] hover:bg-[#00c853] text-black font-black text-xs flex items-center justify-center transition-all shadow-sm"
-                    title="Increase"
-                >
-                    +
-                </button>
-            </div>
-
-            <div className="text-right shrink-0 min-w-[55px]">
-                <p className="font-mono font-black text-xs text-white">
-                    {itemTotal.toFixed(2)}
-                </p>
-            </div>
-
-            <button
-                onClick={() => {
-                    onRemove();
-                    playPOSChime('void');
-                }}
-                className="w-7 h-7 rounded-lg bg-red-950/40 hover:bg-red-600 text-red-400 hover:text-white transition-all flex items-center justify-center text-xs shrink-0 border border-red-500/20"
-                title="Remove Item"
-            >
-                🗑️
-            </button>
         </div>
     );
 };
@@ -4196,6 +4253,163 @@ export default function POSPage() {
         );
     };
 
+    // Compact & Crisp Kitchen Order Ticket (KOT) Formatter
+    // Sized properly for thermal printers (80mm/58mm) with item-level notes beneath each item
+    const generateCrispPOSKitchenKOTHTML = (data: any, company: any): string => {
+        const itemRows = (data.items || []).map((item: any, index: number) => `
+            <div style="padding: 3px 0; border-bottom: 1px dotted #ccc;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                    <span style="font-size: 13px; font-weight: 700; max-width: 78%; word-break: break-word; color: #000;">
+                        ${index + 1}. ${item.name}
+                    </span>
+                    <span style="font-size: 13.5px; font-weight: 800; min-width: 38px; text-align: right; color: #000;">
+                        [ ${item.qty} ]
+                    </span>
+                </div>
+                ${item.notes ? `
+                <div style="font-size: 11px; color: #000; font-weight: 700; font-style: italic; padding: 2px 4px 2px 8px; margin: 2px 0 2px 10px; border-left: 2px solid #222; background: #f7f7f7;">
+                    📝 Note: ${item.notes}
+                </div>
+                ` : ''}
+            </div>
+        `).join('');
+
+        return `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>KOT - ${data.kotNo}</title>
+  <style>
+    @page {
+      margin: 0;
+      size: 80mm auto;
+    }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-print-color-adjust: exact;
+      print-color-adjust: exact;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      font-size: 12px;
+      width: 76mm;
+      max-width: 76mm;
+      padding: 2mm 1.5mm;
+      margin: 0 auto;
+      background: #ffffff;
+      color: #000000;
+      line-height: 1.3;
+      font-weight: 600;
+    }
+    .thin-dash {
+      border-top: 1px dashed #000000;
+      margin: 3px 0;
+      width: 100%;
+    }
+    .title-strip {
+      border-top: 1.5px dashed #000000;
+      border-bottom: 1.5px dashed #000000;
+      padding: 3px 0;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin: 3px 0;
+      color: #000000;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: #000000;
+      padding: 1px 0;
+    }
+    .items-container {
+      margin: 4px 0;
+    }
+    .notes-box {
+      border: 1px dashed #000000;
+      padding: 3px 5px;
+      margin: 4px 0;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-align: center;
+      font-style: italic;
+      color: #000000;
+    }
+    .footer-note {
+      text-align: center;
+      font-size: 10px;
+      font-weight: 600;
+      color: #444444;
+      margin-top: 4px;
+      line-height: 1.25;
+    }
+    @media print {
+      body {
+        width: 76mm;
+        max-width: 76mm;
+        padding: 1mm 1.5mm;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <div style="text-align:center;margin-bottom:2px;">
+    <div style="font-size:12px;font-weight:800;text-transform:uppercase;color:#000;">${company?.name || 'ALPHA PLUS HOTEL & RESORT'}</div>
+  </div>
+
+  <!-- Document Title Strip -->
+  <div class="title-strip">
+    KITCHEN ORDER TICKET #${data.kotNo}
+    ${data.priority === 'rush' ? '<br><span style="color:#000;font-size:13px;font-weight:900;">*** RUSH ORDER ***</span>' : ''}
+  </div>
+
+  <!-- Metadata -->
+  <div class="info-row">
+    <span>Order: ${data.orderType ? data.orderType.toUpperCase() : 'DINE-IN'}</span>
+    ${data.tableNo ? `<span style="font-size:13px;font-weight:800;">TABLE: ${data.tableNo}</span>` : ''}
+  </div>
+  <div class="info-row">
+    <span>Server: ${data.waiter || 'Server'}</span>
+    <span>${data.date} ${data.time}</span>
+  </div>
+
+  <div class="thin-dash"></div>
+
+  <!-- Items List -->
+  <div class="items-container">
+    <div style="display:flex;justify-content:space-between;font-size:11px;font-weight:800;color:#000;border-bottom:1px dashed #000;padding-bottom:2px;margin-bottom:2px;text-transform:uppercase;">
+      <span>Item Description</span>
+      <span>Qty</span>
+    </div>
+    ${itemRows}
+  </div>
+
+  ${data.orderNotes ? `
+  <div class="notes-box">
+    Order Note: ${data.orderNotes}
+  </div>
+  ` : ''}
+
+  <div class="thin-dash"></div>
+
+  <!-- Footer -->
+  <div class="footer-note">
+    <div>*** KITCHEN EXPEDITE COPY ***</div>
+    <div>Alpha Plus POS • ${data.date} ${data.time}</div>
+  </div>
+
+</body>
+</html>`;
+    };
+
     // Send to Kitchen (Print KOT then Customer Bill) - Now saves to database as Pending
     const sendToKitchen = async () => {
         if (cart.length === 0) return;
@@ -4220,7 +4434,7 @@ export default function POSPage() {
             // Load company info from database for receipts
             const companyInfo = await loadCompanyInfo();
 
-            const kotHtmlContent = generateKOTHTML(kotData, companyInfo);
+            const kotHtmlContent = generateCrispPOSKitchenKOTHTML(kotData, companyInfo);
             setKOTHTML(kotHtmlContent);
 
             // Create Customer Bill (Unpaid) data for printing
