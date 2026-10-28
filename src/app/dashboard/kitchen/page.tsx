@@ -363,16 +363,12 @@ export default function MasterKitchenDisplaySystem() {
   const readyCount = orders.filter(o => o.status === 'Ready').length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#02130e] via-[#041d14] to-[#020e0a] text-emerald-50 p-3 sm:p-5 -m-4 sm:-m-6 space-y-4 select-none font-sans relative overflow-x-hidden">
-      
-      {/* Ambient Super Emerald Radial Light Fields */}
-      <div className="absolute top-0 left-1/4 w-[600px] h-[600px] bg-gradient-to-br from-[#00e676]/15 to-emerald-600/5 rounded-full blur-[140px] pointer-events-none" />
-      <div className="absolute bottom-10 right-1/4 w-[600px] h-[600px] bg-gradient-to-tl from-[#00e676]/15 to-teal-500/5 rounded-full blur-[140px] pointer-events-none" />
+    <div className="min-h-screen bg-[#000000] text-emerald-50 p-3 sm:p-5 -m-4 sm:-m-6 space-y-4 select-none font-sans relative overflow-x-hidden">
 
       {/* ==================================================================== */}
       {/* 1. SUPER EMERALD TOP COMMAND BAR                                     */}
       {/* ==================================================================== */}
-      <div className="relative bg-[#06281d]/85 backdrop-blur-2xl border-2 border-emerald-500/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 shadow-[0_12px_45px_rgba(0,230,118,0.18)]">
+      <div className="relative bg-[#051a13]/90 backdrop-blur-2xl border border-emerald-500/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 shadow-2xl shadow-emerald-950/40">
         <div className="flex items-center gap-4">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#00e676] via-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 text-3xl shadow-[0_0_25px_rgba(0,230,118,0.5)] flex-shrink-0 font-extrabold border-2 border-emerald-200">
             👨‍🍳
