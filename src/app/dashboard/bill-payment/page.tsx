@@ -50,6 +50,22 @@ interface Bill {
     items?: SaleItem[];
 }
 
+// ─── Payment Detection Helpers ────────────────────────────────────────────────
+const checkIsMpesaBill = (bill: Bill | null | undefined): boolean => {
+    if (!bill) return false;
+    if (bill.mpesa_code && String(bill.mpesa_code).trim().length > 0) return true;
+    const combined = ((bill.payment_method || '') + ' ' + ((bill as any).last_payment_method || '')).toLowerCase();
+    const clean = combined.replace(/[^a-z0-9]/g, '');
+    return clean.includes('mpesa') || clean.includes('c2b') || clean.includes('stk') || combined.includes('m-pesa');
+};
+
+const checkIsCashBill = (bill: Bill | null | undefined, isMpesa?: boolean): boolean => {
+    if (!bill) return false;
+    if (isMpesa) return false;
+    const combined = ((bill.payment_method || '') + ' ' + ((bill as any).last_payment_method || '')).toLowerCase();
+    return combined.includes('cash') || combined.includes('till') || combined.includes('counter');
+};
+
 function BillPaymentContent() {
     const searchParams = useSearchParams();
     const preSelectedId = searchParams.get('id');
@@ -64,6 +80,7 @@ function BillPaymentContent() {
     const [dateFrom, setDateFrom] = useState('');
     const [dateTo, setDateTo] = useState('');
     const [filterStatus, setFilterStatus] = useState('Pending');
+    const [filterPayment, setFilterPayment] = useState<'All' | 'M-Pesa' | 'Cash' | 'Credit'>('All');
     const [filterUser, setFilterUser] = useState('All');
 
     // Payment states

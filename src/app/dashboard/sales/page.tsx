@@ -50,6 +50,7 @@ interface Sale {
     change_amount?: number | null;
     mpesa_code?: string | null;
     mpesa_receipt?: string | null;
+    last_payment_method?: string | null;
     status: string;
     notes?: string | null;
     created_by?: string | null;
@@ -59,6 +60,20 @@ interface Sale {
 
 type SortField = 'date' | 'receipt' | 'amount' | 'cost' | 'profit' | 'margin';
 type SortOrder = 'asc' | 'desc';
+
+// ─── Helpers: Payment Mode Detection ──────────────────────────────────────────
+const checkIsMpesa = (method?: string | null, code?: string | null, lastMethod?: string | null): boolean => {
+    if (code && String(code).trim().length > 0) return true;
+    const combined = ((method || '') + ' ' + (lastMethod || '')).toLowerCase();
+    const clean = combined.replace(/[^a-z0-9]/g, '');
+    return clean.includes('mpesa') || clean.includes('c2b') || clean.includes('stk') || combined.includes('m-pesa');
+};
+
+const checkIsCash = (method?: string | null, lastMethod?: string | null, isMpesa?: boolean): boolean => {
+    if (isMpesa) return false;
+    const combined = ((method || '') + ' ' + (lastMethod || '')).toLowerCase();
+    return combined.includes('cash') || combined.includes('till') || combined.includes('counter');
+};
 
 export default function SalesPage() {
     // ─── State ─────────────────────────────────────────────────────────────────
@@ -119,7 +134,31 @@ export default function SalesPage() {
                 return;
             }
 
-            setSales(data || []);
+            // Also fetch verified M-Pesa transactions to backfill receipt codes if missing
+            const { data: mpesaTxs } = await supabase
+                .from('mpesa_transactions')
+                .select('account_reference, mpesa_receipt_number, phone_number')
+                .eq('status', 'completed');
+
+            const mpesaRefMap = new Map<string, { code: string; phone?: string }>();
+            mpesaTxs?.forEach(tx => {
+                if (tx.account_reference && tx.mpesa_receipt_number) {
+                    mpesaRefMap.set(tx.account_reference, { code: tx.mpesa_receipt_number, phone: tx.phone_number || undefined });
+                }
+            });
+
+            const enriched = (data || []).map((s: Sale) => {
+                const tx = mpesaRefMap.get(s.receipt_no);
+                const code = s.mpesa_code || tx?.code || null;
+                const phone = s.customer_phone || tx?.phone || null;
+                return {
+                    ...s,
+                    mpesa_code: code,
+                    customer_phone: phone,
+                };
+            });
+
+            setSales(enriched);
         } catch (err: any) {
             console.error('Error loading sales:', err);
             toast.error('Error loading sales from database');
@@ -231,6 +270,11 @@ export default function SalesPage() {
     // ─── Filter & Sort Logic ───────────────────────────────────────────────────
     const filteredSales = useMemo(() => {
         return sales.filter(s => {
+            const isMpesa = checkIsMpesa(s.payment_method, s.mpesa_code, (s as any).last_payment_method);
+            const isCash = checkIsCash(s.payment_method, (s as any).last_payment_method, isMpesa);
+            const isCredit = (s.payment_method || '').toLowerCase().includes('credit');
+            const isPending = (s.payment_method || '').toLowerCase().includes('pending') || (s.status || '').toLowerCase() === 'pending';
+
             // Search query
             if (searchQuery.trim()) {
                 const q = searchQuery.toLowerCase().trim();
@@ -240,7 +284,7 @@ export default function SalesPage() {
                 const matchRoom = (s.room_name || '').toLowerCase().includes(q);
                 const matchWaiter = (s.waiter_name || '').toLowerCase().includes(q);
                 const matchCashier = (s.created_by || '').toLowerCase().includes(q);
-                const matchMpesa = (s.mpesa_code || '').toLowerCase().includes(q);
+                const matchMpesa = (s.mpesa_code || '').toLowerCase().includes(q) || (isMpesa && (q.includes('mpesa') || q.includes('m-pesa') || 'mpesa'.includes(q)));
                 const matchPhone = (s.customer_phone || '').toLowerCase().includes(q);
                 const matchItems = (s.sales_items || []).some(itm => (itm.product_name || '').toLowerCase().includes(q));
 
@@ -251,19 +295,18 @@ export default function SalesPage() {
 
             // Payment Filter
             if (filterPayment !== 'All') {
-                const pMethod = (s.payment_method || '').toLowerCase();
                 const target = filterPayment.toLowerCase();
-                if (target === 'mpesa' && !pMethod.includes('mpesa')) return false;
-                if (target === 'cash' && !pMethod.includes('cash')) return false;
-                if (target === 'credit' && !pMethod.includes('credit')) return false;
-                if (target === 'pending' && !pMethod.includes('pending')) return false;
+                if (target === 'mpesa' && !isMpesa) return false;
+                if (target === 'cash' && !isCash) return false;
+                if (target === 'credit' && !isCredit) return false;
+                if (target === 'pending' && !isPending) return false;
             }
 
             // Status Filter
             if (filterStatus !== 'All') {
                 const st = (s.status || '').toLowerCase();
                 if (filterStatus === 'Completed' && st !== 'completed' && st !== 'paid') return false;
-                if (filterStatus === 'Pending' && st !== 'pending') return false;
+                if (filterStatus === 'Pending' && st !== 'pending' && st !== 'preparing') return false;
                 if (filterStatus === 'Voided' && st !== 'voided') return false;
             }
 
@@ -341,7 +384,7 @@ export default function SalesPage() {
     const stats = useMemo(() => {
         let grossRevenue = 0;
         let totalCost = 0;
-        let totalProfit = 0;
+        let totalProfit = 0; // Strictly from Paid / Completed Receipts Only!
         let completedCount = 0;
         let mpesaTotal = 0;
         let mpesaCount = 0;
@@ -349,12 +392,16 @@ export default function SalesPage() {
         let cashCount = 0;
         let pendingTotal = 0;
         let pendingCount = 0;
+        let pendingProfit = 0;
+        let pendingCost = 0;
 
         filteredSales.forEach(s => {
             const { totalAmount, totalCost: c, profit: p } = getSaleMetrics(s);
-            const isCompleted = s.status === 'Completed' || s.status === 'Paid';
-            const isPending = s.status === 'Pending';
-            const pMethod = (s.payment_method || '').toLowerCase();
+            const st = (s.status || '').toLowerCase();
+            const isCompleted = st === 'completed' || st === 'paid';
+            const isPending = st === 'pending' || st === 'preparing';
+            const isMpesa = checkIsMpesa(s.payment_method, s.mpesa_code, (s as any).last_payment_method);
+            const isCash = checkIsCash(s.payment_method, (s as any).last_payment_method, isMpesa);
 
             if (isCompleted) {
                 grossRevenue += totalAmount;
@@ -362,15 +409,17 @@ export default function SalesPage() {
                 totalProfit += p;
                 completedCount++;
 
-                if (pMethod.includes('mpesa')) {
+                if (isMpesa) {
                     mpesaTotal += totalAmount;
                     mpesaCount++;
-                } else if (pMethod.includes('cash')) {
+                } else if (isCash) {
                     cashTotal += totalAmount;
                     cashCount++;
                 }
             } else if (isPending) {
                 pendingTotal += totalAmount;
+                pendingCost += c;
+                pendingProfit += p;
                 pendingCount++;
             }
         });
@@ -381,7 +430,7 @@ export default function SalesPage() {
         return {
             grossRevenue,
             totalCost,
-            totalProfit,
+            totalProfit, // Real Profit strictly from paid receipts!
             overallMargin,
             completedCount,
             mpesaTotal,
@@ -390,6 +439,8 @@ export default function SalesPage() {
             cashCount,
             pendingTotal,
             pendingCount,
+            pendingProfit,
+            pendingCost,
             aov,
             totalRecords: filteredSales.length,
         };
@@ -566,73 +617,91 @@ export default function SalesPage() {
                 </div>
             </div>
 
-            {/* ── 7 SUPER BEAUTIFUL HIGH-CONTRAST KPI CARDS ─────────────────────── */}
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-                {/* 1. Gross Revenue */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 rounded-2xl p-4 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
-                    <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-100">💰 Gross Revenue</p>
-                    <p className="text-2xl font-black mt-2 tracking-tight">{fmt(stats.grossRevenue)}</p>
+            {/* ── 8 SUPER BEAUTIFUL HIGH-CONTRAST KPI CARDS ─────────────────────── */}
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+                {/* 1. Gross Revenue (Settled) */}
+                <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 via-teal-600 to-emerald-700 rounded-2xl p-3.5 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
+                    <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10 pointer-events-none" />
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-emerald-100">💰 Settled Sales</p>
+                    <p className="text-xl md:text-2xl font-black mt-2 tracking-tight">{fmt(stats.grossRevenue)}</p>
                     <p className="text-[10px] text-emerald-100/90 mt-1 font-medium">
-                        {stats.completedCount} settled sales
+                        {stats.completedCount} settled receipts
                     </p>
                 </div>
 
-                {/* 2. Gross Profit */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-800 rounded-2xl p-4 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
-                    <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-100">📈 Gross Profit</p>
-                    <p className="text-2xl font-black mt-2 tracking-tight">{fmt(stats.totalProfit)}</p>
-                    <p className="text-[10px] text-indigo-100/90 mt-1 font-bold">
-                        Margin: {stats.overallMargin.toFixed(1)}%
-                    </p>
+                {/* 2. REAL PROFIT (PAID BILLS ONLY) - EXECUTIVELY HIGHLIGHTED */}
+                <div className="relative overflow-hidden bg-gradient-to-br from-indigo-700 via-purple-700 to-violet-800 rounded-2xl p-3.5 text-white shadow-lg hover:shadow-2xl transition-all hover:-translate-y-1 ring-2 ring-purple-300/40">
+                    <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/15 pointer-events-none" />
+                    <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black uppercase tracking-wider text-purple-100">💎 Real Paid Profit</p>
+                        <span className="text-[8px] bg-emerald-400 text-emerald-950 px-1 py-0.2 rounded font-black uppercase">Paid Only</span>
+                    </div>
+                    <p className="text-xl md:text-2xl font-black mt-2 tracking-tight text-white">{fmt(stats.totalProfit)}</p>
+                    <div className="flex items-center justify-between mt-1">
+                        <p className="text-[10px] text-purple-200 font-bold">
+                            Margin: {stats.overallMargin.toFixed(1)}%
+                        </p>
+                        <span className="text-[9px] text-purple-200/90">
+                            Excl. {stats.pendingCount} pending
+                        </span>
+                    </div>
                 </div>
 
                 {/* 3. Total COGS */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-amber-500 via-orange-600 to-amber-700 rounded-2xl p-4 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
-                    <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-amber-100">📦 Total Cost (COGS)</p>
-                    <p className="text-2xl font-black mt-2 tracking-tight">{fmt(stats.totalCost)}</p>
+                <div className="relative overflow-hidden bg-gradient-to-br from-amber-500 via-orange-600 to-amber-700 rounded-2xl p-3.5 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
+                    <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10 pointer-events-none" />
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-100">📦 Total Cost (COGS)</p>
+                    <p className="text-xl md:text-2xl font-black mt-2 tracking-tight">{fmt(stats.totalCost)}</p>
                     <p className="text-[10px] text-amber-100/90 mt-1 font-medium">
-                        Raw food & drink cost
+                        Food & drink cost
                     </p>
                 </div>
 
-                {/* 4. M-Pesa Collections */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-teal-600 to-emerald-800 rounded-2xl p-4 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
-                    <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-teal-100">📱 M-Pesa Total</p>
-                    <p className="text-2xl font-black mt-2 tracking-tight">{fmt(stats.mpesaTotal)}</p>
+                {/* 4. M-Pesa Collections (FIXED!) */}
+                <div className="relative overflow-hidden bg-gradient-to-br from-teal-600 to-emerald-800 rounded-2xl p-3.5 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1 ring-2 ring-emerald-300/30">
+                    <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10 pointer-events-none" />
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-teal-100">📱 M-Pesa Total</p>
+                    <p className="text-xl md:text-2xl font-black mt-2 tracking-tight">{fmt(stats.mpesaTotal)}</p>
                     <p className="text-[10px] text-teal-100/90 mt-1 font-medium">
-                        {stats.mpesaCount} txns • {stats.grossRevenue > 0 ? ((stats.mpesaTotal / stats.grossRevenue) * 100).toFixed(0) : 0}% of rev
+                        {stats.mpesaCount} txns • {stats.grossRevenue > 0 ? ((stats.mpesaTotal / stats.grossRevenue) * 100).toFixed(1) : 0}% of rev
                     </p>
                 </div>
 
                 {/* 5. Cash Collections */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-sky-600 to-blue-700 rounded-2xl p-4 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
-                    <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-blue-100">💵 Cash at Till</p>
-                    <p className="text-2xl font-black mt-2 tracking-tight">{fmt(stats.cashTotal)}</p>
+                <div className="relative overflow-hidden bg-gradient-to-br from-blue-600 via-sky-600 to-blue-700 rounded-2xl p-3.5 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
+                    <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10 pointer-events-none" />
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-blue-100">💵 Cash at Till</p>
+                    <p className="text-xl md:text-2xl font-black mt-2 tracking-tight">{fmt(stats.cashTotal)}</p>
                     <p className="text-[10px] text-blue-100/90 mt-1 font-medium">
-                        {stats.cashCount} txns • {stats.grossRevenue > 0 ? ((stats.cashTotal / stats.grossRevenue) * 100).toFixed(0) : 0}% of rev
+                        {stats.cashCount} txns • {stats.grossRevenue > 0 ? ((stats.cashTotal / stats.grossRevenue) * 100).toFixed(1) : 0}% of rev
                     </p>
                 </div>
 
                 {/* 6. Pending / Open */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-violet-700 to-purple-800 rounded-2xl p-4 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
-                    <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-purple-100">⏳ Pending Bills</p>
-                    <p className="text-2xl font-black mt-2 tracking-tight">{fmt(stats.pendingTotal)}</p>
+                <div className="relative overflow-hidden bg-gradient-to-br from-purple-600 via-violet-700 to-purple-800 rounded-2xl p-3.5 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
+                    <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10 pointer-events-none" />
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-purple-100">⏳ Pending Bills</p>
+                    <p className="text-xl md:text-2xl font-black mt-2 tracking-tight">{fmt(stats.pendingTotal)}</p>
                     <p className="text-[10px] text-purple-100/90 mt-1 font-medium">
                         {stats.pendingCount} open orders
                     </p>
                 </div>
 
-                {/* 7. Average Basket */}
-                <div className="relative overflow-hidden bg-gradient-to-br from-rose-500 via-pink-600 to-rose-700 rounded-2xl p-4 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
-                    <div className="absolute -top-4 -right-4 w-20 h-20 rounded-full bg-white/10 pointer-events-none" />
-                    <p className="text-[11px] font-bold uppercase tracking-wider text-rose-100">🎯 Avg Basket (AOV)</p>
-                    <p className="text-2xl font-black mt-2 tracking-tight">{fmt(stats.aov)}</p>
+                {/* 7. Unrealized Profit in Pending Bills */}
+                <div className="relative overflow-hidden bg-gradient-to-br from-amber-600 via-rose-600 to-red-700 rounded-2xl p-3.5 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
+                    <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10 pointer-events-none" />
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-amber-100">⏳ Pending Profit</p>
+                    <p className="text-xl md:text-2xl font-black mt-2 tracking-tight">{fmt(stats.pendingProfit)}</p>
+                    <p className="text-[10px] text-amber-100/90 mt-1 font-medium">
+                        Uncollected in tables
+                    </p>
+                </div>
+
+                {/* 8. Average Basket */}
+                <div className="relative overflow-hidden bg-gradient-to-br from-rose-500 via-pink-600 to-rose-700 rounded-2xl p-3.5 text-white shadow-md hover:shadow-xl transition-all hover:-translate-y-1">
+                    <div className="absolute -top-4 -right-4 w-16 h-16 rounded-full bg-white/10 pointer-events-none" />
+                    <p className="text-[10px] font-extrabold uppercase tracking-wider text-rose-100">🎯 Avg Basket (AOV)</p>
+                    <p className="text-xl md:text-2xl font-black mt-2 tracking-tight">{fmt(stats.aov)}</p>
                     <p className="text-[10px] text-rose-100/90 mt-1 font-medium">
                         Avg ticket value
                     </p>
@@ -716,10 +785,10 @@ export default function SalesPage() {
                             className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 font-medium focus:bg-white focus:border-indigo-500 outline-none"
                         >
                             <option value="All">All Payment Modes</option>
-                            <option value="Mpesa">📱 M-Pesa Only</option>
-                            <option value="Cash">💵 Cash Only</option>
+                            <option value="Mpesa">📱 M-Pesa Only ({stats.mpesaCount})</option>
+                            <option value="Cash">💵 Cash Only ({stats.cashCount})</option>
                             <option value="Credit">💳 Credit / Room Bill</option>
-                            <option value="Pending">⏳ Pending Unsettled</option>
+                            <option value="Pending">⏳ Pending Unsettled ({stats.pendingCount})</option>
                         </select>
                     </div>
 
@@ -875,7 +944,9 @@ export default function SalesPage() {
                                         const isCompleted = sale.status === 'Completed' || sale.status === 'Paid';
                                         const isPending = sale.status === 'Pending';
                                         const pMethod = (sale.payment_method || '').toLowerCase();
-                                        const isMpesa = pMethod.includes('mpesa');
+                                        const isMpesa = checkIsMpesa(sale.payment_method, sale.mpesa_code, sale.last_payment_method);
+                                        const isCash = checkIsCash(sale.payment_method, sale.last_payment_method, isMpesa);
+                                        const isCredit = !isMpesa && !isCash && (pMethod.includes('credit') || pMethod.includes('room'));
 
                                         return (
                                             <div key={sale.sale_id} style={{ display: 'contents' }}>
@@ -980,7 +1051,7 @@ export default function SalesPage() {
                                                                     Mode: {sale.mpesa_code ? 'STK Push (Express)' : 'Mobile Money'}
                                                                 </span>
                                                             </div>
-                                                        ) : pMethod.includes('cash') ? (
+                                                        ) : isCash ? (
                                                             <div className="flex flex-col gap-0.5">
                                                                 <span className="inline-flex items-center w-fit px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">
                                                                     💵 CASH
@@ -989,7 +1060,7 @@ export default function SalesPage() {
                                                                     Mode: Counter / Till
                                                                 </span>
                                                             </div>
-                                                        ) : pMethod.includes('credit') ? (
+                                                        ) : isCredit ? (
                                                             <div className="flex flex-col gap-0.5">
                                                                 <span className="inline-flex items-center w-fit px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-100 text-rose-800 border border-rose-300">
                                                                     💳 CREDIT
@@ -1234,7 +1305,9 @@ export default function SalesPage() {
                             const isCompleted = sale.status === 'Completed' || sale.status === 'Paid';
                             const isPending = sale.status === 'Pending';
                             const pMethod = (sale.payment_method || '').toLowerCase();
-                            const isMpesa = pMethod.includes('mpesa');
+                            const isMpesa = checkIsMpesa(sale.payment_method, sale.mpesa_code, sale.last_payment_method);
+                            const isCash = checkIsCash(sale.payment_method, sale.last_payment_method, isMpesa);
+                            const isCredit = !isMpesa && !isCash && (pMethod.includes('credit') || pMethod.includes('room'));
                             const isExpanded = expandedRowIds.has(sale.sale_id);
 
                             return (
@@ -1318,10 +1391,10 @@ export default function SalesPage() {
                                             ) : (
                                                 <div className="flex items-center justify-between">
                                                     <span className="font-bold text-gray-700">
-                                                        {pMethod.includes('cash') ? '💵 CASH' : pMethod.includes('credit') ? '💳 CREDIT' : '⏳ PENDING'}
+                                                        {isCash ? '💵 CASH' : isCredit ? '💳 CREDIT' : '⏳ PENDING'}
                                                     </span>
                                                     <span className="text-[10px] text-gray-500">
-                                                        {pMethod.includes('cash') ? 'Counter / Till' : 'Room Folio'}
+                                                        {isCash ? 'Counter / Till' : isCredit ? 'Room Folio' : 'Unsettled'}
                                                     </span>
                                                 </div>
                                             )}
@@ -1469,7 +1542,9 @@ export default function SalesPage() {
                                 <div className="flex justify-between">
                                     <span className="text-gray-400">Payment Mode:</span>
                                     <span className="font-bold text-gray-700">
-                                        {selectedSale.payment_method?.toLowerCase().includes('mpesa') ? 'M-Pesa STK Push' : selectedSale.payment_method}
+                                        {checkIsMpesa(selectedSale.payment_method, selectedSale.mpesa_code, selectedSale.last_payment_method)
+                                            ? (selectedSale.mpesa_code ? 'M-Pesa STK Push (Express)' : 'M-Pesa Mobile Money')
+                                            : selectedSale.payment_method}
                                     </span>
                                 </div>
                                 <div className="flex justify-between">
