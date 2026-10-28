@@ -34,7 +34,7 @@ export default function MasterKitchenDisplaySystem() {
   const [orders, setOrders] = useState<KOTOrder[]>([]);
   const [completedOrders, setCompletedOrders] = useState<KOTOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filterStation, setFilterStation] = useState<'All' | 'Grill' | 'Hot Kitchen' | 'Bar' | 'Pantry'>('All');
+  const [filterStation, setFilterStation] = useState<'All' | 'Hot Kitchen' | 'Grill' | 'Bar' | 'Pantry'>('All');
   const [filterStatus, setFilterStatus] = useState<'All' | 'Pending' | 'Preparing' | 'Ready'>('All');
   const [audioEnabled, setAudioEnabled] = useState(false);
   const [showRecallModal, setShowRecallModal] = useState(false);
@@ -101,7 +101,7 @@ export default function MasterKitchenDisplaySystem() {
       setAudioEnabled(true);
       playKitchenChime();
       toast.success('Kitchen chime sound enabled! 🔔', {
-        style: { background: '#06281d', color: '#00e676', border: '1px solid #00e676' }
+        style: { background: '#0c161e', color: '#00e676', border: '1px solid #00e676' }
       });
     } catch {
       setAudioEnabled(true);
@@ -218,7 +218,7 @@ export default function MasterKitchenDisplaySystem() {
         playKitchenChime();
         toast('🔔 New Kitchen Order Placed!', {
           icon: '👨‍🍳',
-          style: { background: '#06281d', color: '#00e676', border: '1px solid #00e676' }
+          style: { background: '#0c161e', color: '#00e676', border: '1px solid #00e676' }
         });
       }
       prevCountRef.current = builtOrders.length;
@@ -287,11 +287,11 @@ export default function MasterKitchenDisplaySystem() {
         if (nextStatus === 'Ready') {
           playKitchenChime();
           toast.success(`Order #${order.kot_number} is READY! Waiter notified.`, {
-            style: { background: '#03261a', color: '#00e676', border: '1px solid #00e676' }
+            style: { background: '#0c161e', color: '#00e676', border: '1px solid #00e676' }
           });
         } else if (nextStatus === 'Completed') {
           toast.success(`Ticket #${order.kot_number} bumped to archive.`, {
-            style: { background: '#06281d', color: '#fff', border: '1px solid #162a2e' }
+            style: { background: '#0c161e', color: '#fff', border: '1px solid #162a2e' }
           });
         }
 
@@ -352,6 +352,9 @@ export default function MasterKitchenDisplaySystem() {
     if (filterStation === 'Bar') {
       return o.items.some(i => i.product_name.toLowerCase().includes('beer') || i.product_name.toLowerCase().includes('tusker') || i.product_name.toLowerCase().includes('wine') || i.product_name.toLowerCase().includes('soda') || i.product_name.toLowerCase().includes('water') || i.product_name.toLowerCase().includes('juice'));
     }
+    if (filterStation === 'Pantry') {
+      return o.items.some(i => i.product_name.toLowerCase().includes('salad') || i.product_name.toLowerCase().includes('fruit') || i.product_name.toLowerCase().includes('kachumbari') || i.product_name.toLowerCase().includes('dessert'));
+    }
     if (filterStation === 'Hot Kitchen') {
       return o.items.some(i => !i.product_name.toLowerCase().includes('beer') && !i.product_name.toLowerCase().includes('tusker') && !i.product_name.toLowerCase().includes('wine') && !i.product_name.toLowerCase().includes('soda'));
     }
@@ -363,36 +366,36 @@ export default function MasterKitchenDisplaySystem() {
   const readyCount = orders.filter(o => o.status === 'Ready').length;
 
   return (
-    <div className="min-h-screen bg-[#000000] text-emerald-50 p-3 sm:p-5 -m-4 sm:-m-6 space-y-4 select-none font-sans relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#05090d] text-white p-3 sm:p-5 -m-4 sm:-m-6 space-y-4 select-none font-sans relative overflow-x-hidden">
 
       {/* ==================================================================== */}
-      {/* 1. SUPER EMERALD TOP COMMAND BAR                                     */}
+      {/* 1. CYBER EMERALD TOP COMMAND BAR (MATCHING POS DESIGN SYSTEM)         */}
       {/* ==================================================================== */}
-      <div className="relative bg-[#051a13]/90 backdrop-blur-2xl border border-emerald-500/40 rounded-2xl sm:rounded-3xl p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 shadow-2xl shadow-emerald-950/40">
-        <div className="flex items-center gap-4">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#00e676] via-emerald-400 to-teal-600 flex items-center justify-center text-slate-950 text-3xl shadow-[0_0_25px_rgba(0,230,118,0.5)] flex-shrink-0 font-extrabold border-2 border-emerald-200">
+      <header className="relative bg-[#080e14] border border-[#162a2e] rounded-2xl p-4 sm:p-5 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 shadow-[0_10px_35px_rgba(0,0,0,0.8)]">
+        <div className="flex items-center gap-3.5">
+          <div className="w-12 h-12 rounded-xl bg-[#00e676]/15 border border-[#00e676]/50 flex items-center justify-center text-[#00e676] text-2xl shadow-[0_0_15px_rgba(0,230,118,0.3)] shrink-0 font-black">
             👨‍🍳
           </div>
           <div>
             <div className="flex items-center gap-2.5 flex-wrap">
-              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2 drop-shadow-md">
+              <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
                 <span>AlphaPlus</span>
-                <span className="text-[#00e676] drop-shadow-[0_0_20px_rgba(0,230,118,0.7)]">KDS Pass</span>
+                <span className="text-[#00e676] drop-shadow-[0_0_20px_rgba(0,230,118,0.8)]">KDS Pass</span>
               </h1>
-              <span className="text-[11px] font-black uppercase px-3 py-1 rounded-full bg-emerald-950/90 text-[#00e676] border-2 border-[#00e676] flex items-center gap-2 shadow-[0_0_15px_rgba(0,230,118,0.35)]">
-                <span className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse" />
-                Super Emerald Cook Line
+              <span className="text-[10px] font-bold uppercase px-2.5 py-0.5 rounded-full bg-emerald-950/80 text-[#00e676] border border-[#00e676]/40 backdrop-blur-md flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,230,118,0.25)]">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00e676] shadow-[0_0_6px_#00e676] animate-pulse" />
+                Live Cook Line
               </span>
             </div>
-            <div className="text-xs text-emerald-200/90 mt-1 flex items-center gap-2.5 font-mono flex-wrap">
-              <span className="text-[#00e676] font-black bg-[#031d15] px-2.5 py-0.5 rounded-lg border border-emerald-500/50 shadow-inner">
+            <div className="text-xs text-gray-400 mt-1 flex items-center gap-2.5 font-mono flex-wrap">
+              <span className="text-[#00e676] font-black bg-[#0c161e] px-2.5 py-0.5 rounded-lg border border-[#00e676]/30 shadow-inner">
                 {liveTime.toLocaleTimeString('en-GB')} EAT
               </span>
               <span>•</span>
               <span className="text-white font-bold">{orders.length} Active Orders on Pass</span>
               <span>•</span>
               <span className="text-[#00e676] flex items-center gap-1 font-semibold">
-                <span className="w-2 h-2 bg-[#00e676] rounded-full animate-ping" /> Real-Time Live Sync
+                <span className="w-1.5 h-1.5 bg-[#00e676] rounded-full animate-ping" /> Real-Time Live Sync
               </span>
             </div>
           </div>
@@ -403,127 +406,145 @@ export default function MasterKitchenDisplaySystem() {
           {!audioEnabled ? (
             <button
               onClick={enableAudio}
-              className="px-4 py-2.5 bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-500 hover:from-amber-300 hover:to-emerald-400 text-slate-950 rounded-xl text-xs font-black shadow-[0_0_20px_rgba(245,158,11,0.45)] transition-all flex items-center gap-1.5 animate-bounce active:scale-95"
+              className="px-4 py-2 bg-gradient-to-r from-amber-400 via-amber-500 to-amber-400 hover:brightness-110 text-black rounded-xl text-xs font-black shadow-[0_0_20px_rgba(245,158,11,0.4)] transition-all flex items-center gap-1.5 active:scale-95 cursor-pointer"
             >
               🔔 Enable Chime
             </button>
           ) : (
-            <span className="px-3.5 py-2 bg-[#041f16] text-[#00e676] border-2 border-[#00e676]/60 rounded-xl text-xs font-black flex items-center gap-2 shadow-[0_0_15px_rgba(0,230,118,0.25)]">
-              <span className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse" />
+            <span className="px-3.5 py-2 bg-[#0c161e] text-[#00e676] border border-[#00e676]/50 rounded-xl text-xs font-black flex items-center gap-2 shadow-[0_0_12px_rgba(0,230,118,0.2)]">
+              <span className="w-2 h-2 rounded-full bg-[#00e676] shadow-[0_0_6px_#00e676] animate-pulse" />
               Chime Active
             </span>
           )}
 
           <button
             onClick={() => setShowRecallModal(true)}
-            className="px-3.5 py-2 bg-[#05281e] hover:bg-[#093c2d] text-emerald-100 border border-emerald-500/40 hover:border-[#00e676] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-md shadow-emerald-950/40"
+            className="px-3.5 py-2 bg-[#0c161e] hover:bg-[#132230] text-gray-200 hover:text-white border border-[#162a2e] hover:border-[#00e676]/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm cursor-pointer"
           >
             ↩ Recall Bumped ({completedOrders.length})
           </button>
 
           <button
             onClick={() => { setLoading(true); loadKitchenOrders(); }}
-            className="px-3.5 py-2 bg-[#05281e] hover:bg-[#093c2d] text-emerald-100 border border-emerald-500/40 hover:border-[#00e676] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-md shadow-emerald-950/40"
+            className="px-3.5 py-2 bg-[#0c161e] hover:bg-[#132230] text-gray-200 hover:text-white border border-[#162a2e] hover:border-[#00e676]/50 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 active:scale-95 shadow-sm cursor-pointer"
           >
             ↻ Refresh
           </button>
 
           <Link
             href="/dashboard/pos"
-            className="px-4 py-2 bg-gradient-to-r from-[#00e676] via-emerald-400 to-teal-400 hover:from-[#00c853] hover:to-emerald-300 text-slate-950 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-[0_0_20px_rgba(0,230,118,0.4)] active:scale-95"
+            className="px-4 py-2 bg-[#00e676] hover:bg-[#00c853] text-black rounded-xl text-xs font-black transition-all flex items-center gap-1.5 shadow-[0_0_20px_rgba(0,230,118,0.4)] active:scale-95 cursor-pointer"
           >
             POS Terminal →
           </Link>
         </div>
-      </div>
+      </header>
 
       {/* ==================================================================== */}
-      {/* 2. SUPER EMERALD STATION & STATUS STRIP                              */}
+      {/* 2. STATION & STATUS STRIP (CYBER EMERALD FILTER PILLS)                */}
       {/* ==================================================================== */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-[#06281d]/75 border border-emerald-500/30 backdrop-blur-xl rounded-2xl p-3 px-4 shadow-[0_8px_30px_rgba(0,230,118,0.1)]">
-        {/* Stations Filter */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className="text-[11px] font-black uppercase text-[#00e676] mr-1.5 tracking-wider flex items-center gap-1 drop-shadow-[0_0_8px_rgba(0,230,118,0.5)]">
-            <span>🔥</span> Station:
-          </span>
-          {(['All', 'Hot Kitchen', 'Grill', 'Bar', 'Pantry'] as const).map(st => (
+      <div className="space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-[#080e14] border border-[#162a2e] rounded-2xl p-3 px-4 shadow-[0_4px_20px_rgba(0,0,0,0.5)]">
+          {/* Station Filter Pills */}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <span className="text-[11px] font-black uppercase text-[#00e676] mr-1 tracking-wider flex items-center gap-1">
+              <span>🔥</span> Station:
+            </span>
+            {[
+              { id: 'All', label: 'All', icon: '🍽️' },
+              { id: 'Hot Kitchen', label: 'Hot Kitchen', icon: '🍲' },
+              { id: 'Grill', label: 'Grill', icon: '🥩' },
+              { id: 'Bar', label: 'Bar', icon: '🍹' },
+              { id: 'Pantry', label: 'Pantry', icon: '🥗' }
+            ].map(st => {
+              const isSelected = filterStation === st.id;
+              return (
+                <button
+                  key={st.id}
+                  onClick={() => setFilterStation(st.id as any)}
+                  className={`px-3.5 py-1.5 rounded-xl font-bold text-xs whitespace-nowrap transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
+                    isSelected
+                      ? 'bg-[#00e676] text-black shadow-lg shadow-[#00e676]/40 font-black'
+                      : 'bg-[#0b141c] text-gray-300 hover:text-white border border-[#1a2f35] hover:border-[#00e676]/60'
+                  }`}
+                >
+                  <span>{st.icon}</span>
+                  <span>{st.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Status Counters */}
+          <div className="flex items-center gap-2 flex-wrap">
             <button
-              key={st}
-              onClick={() => setFilterStation(st)}
-              className={`px-3.5 py-1 rounded-xl text-xs font-bold transition-all border ${
-                filterStation === st
-                  ? 'bg-gradient-to-r from-[#00e676] via-emerald-400 to-teal-400 text-slate-950 border-transparent shadow-[0_0_18px_rgba(0,230,118,0.45)] font-black'
-                  : 'bg-[#042017] text-emerald-200 border-emerald-500/25 hover:border-[#00e676]/60 hover:text-white hover:bg-[#073325]'
+              onClick={() => setFilterStatus('All')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                filterStatus === 'All'
+                  ? 'bg-[#00e676] text-black shadow-md shadow-[#00e676]/30 font-black'
+                  : 'bg-[#0c161e] text-gray-400 hover:text-white border border-[#162a2e]'
               }`}
             >
-              {st}
+              All ({orders.length})
             </button>
-          ))}
+
+            <button
+              onClick={() => setFilterStatus('Pending')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                filterStatus === 'Pending'
+                  ? 'bg-rose-500 text-black font-black shadow-md shadow-rose-500/40 border-rose-400'
+                  : 'bg-rose-950/40 text-rose-300 border-rose-500/30 hover:bg-rose-950/70'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+              Pending ({pendingCount})
+            </button>
+
+            <button
+              onClick={() => setFilterStatus('Preparing')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                filterStatus === 'Preparing'
+                  ? 'bg-amber-400 text-black font-black shadow-md shadow-amber-400/40 border-amber-300'
+                  : 'bg-amber-950/40 text-amber-300 border-amber-500/30 hover:bg-amber-950/70'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400" />
+              Cooking ({preparingCount})
+            </button>
+
+            <button
+              onClick={() => setFilterStatus('Ready')}
+              className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer border ${
+                filterStatus === 'Ready'
+                  ? 'bg-[#00e676] text-black font-black shadow-md shadow-[#00e676]/40 border-[#00e676]'
+                  : 'bg-emerald-950/50 text-[#00e676] border-[#00e676]/40 hover:bg-emerald-950/80'
+              }`}
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00e676] shadow-[0_0_6px_#00e676]" />
+              Ready ({readyCount})
+            </button>
+          </div>
         </div>
 
-        {/* Status Counters */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => setFilterStatus('All')}
-            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all border ${
-              filterStatus === 'All'
-                ? 'bg-[#0a3d2c] text-white border-[#00e676] shadow-[0_0_12px_rgba(0,230,118,0.3)] font-black'
-                : 'text-emerald-300/80 border-transparent hover:text-white'
-            }`}
-          >
-            All ({orders.length})
-          </button>
-          <button
-            onClick={() => setFilterStatus('Pending')}
-            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
-              filterStatus === 'Pending'
-                ? 'bg-rose-950/90 text-rose-200 border-rose-500 shadow-sm shadow-rose-950/60 font-black'
-                : 'text-rose-400 border-rose-500/30 bg-rose-950/20 hover:bg-rose-950/50'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" />
-            Pending ({pendingCount})
-          </button>
-          <button
-            onClick={() => setFilterStatus('Preparing')}
-            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
-              filterStatus === 'Preparing'
-                ? 'bg-amber-950/90 text-amber-200 border-amber-500 shadow-sm shadow-amber-950/60 font-black'
-                : 'text-amber-400 border-amber-500/30 bg-amber-950/20 hover:bg-amber-950/50'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-amber-500" />
-            Cooking ({preparingCount})
-          </button>
-          <button
-            onClick={() => setFilterStatus('Ready')}
-            className={`px-3 py-1 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
-              filterStatus === 'Ready'
-                ? 'bg-emerald-950 text-[#00e676] border-2 border-[#00e676] shadow-[0_0_15px_rgba(0,230,118,0.4)] font-black'
-                : 'text-emerald-400 border-emerald-500/40 bg-emerald-950/40 hover:bg-emerald-950/80'
-            }`}
-          >
-            <span className="w-2 h-2 rounded-full bg-[#00e676]" />
-            Ready ({readyCount})
-          </button>
-        </div>
+        {/* Vibrant Neon Accent Line */}
+        <div className="h-[2px] w-full bg-gradient-to-r from-[#00e676] via-teal-400 to-transparent shadow-[0_0_10px_#00e676] rounded-full" />
       </div>
 
       {/* ==================================================================== */}
-      {/* 3. ORDER CARDS GRID (WORLD-CLASS SUPER EMERALD THEME)                */}
+      {/* 3. ORDER CARDS GRID (SUPER BRIGHT CYBER EMERALD - NO IMAGES)          */}
       {/* ==================================================================== */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-28 text-emerald-400 space-y-3">
-          <div className="w-12 h-12 border-4 border-[#00e676] border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(0,230,118,0.5)]" />
-          <p className="text-sm font-bold text-emerald-300 font-mono tracking-wider">Connecting to Super Emerald Pass...</p>
+          <div className="w-12 h-12 border-4 border-[#00e676] border-t-transparent rounded-full animate-spin shadow-[0_0_20px_rgba(0,230,118,0.6)]" />
+          <p className="text-sm font-bold text-gray-300 font-mono tracking-wider">Connecting to Cyber Emerald Pass...</p>
         </div>
       ) : filteredOrders.length === 0 ? (
-        <div className="bg-[#06281d]/80 border-2 border-emerald-500/40 rounded-3xl p-16 text-center space-y-4 shadow-[0_10px_40px_rgba(0,230,118,0.15)] relative overflow-hidden">
-          <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-[#00e676]/20 to-teal-500/10 border-2 border-[#00e676] flex items-center justify-center text-5xl mx-auto shadow-[0_0_30px_rgba(0,230,118,0.3)]">
+        <div className="bg-[#080e14] border border-[#162a2e] rounded-3xl p-16 text-center space-y-4 shadow-[0_10px_40px_rgba(0,0,0,0.8)] relative overflow-hidden">
+          <div className="w-20 h-20 rounded-2xl bg-[#00e676]/15 border border-[#00e676]/50 flex items-center justify-center text-4xl mx-auto shadow-[0_0_25px_rgba(0,230,118,0.25)] text-[#00e676]">
             🍽️
           </div>
           <h2 className="text-2xl font-black text-white">All Kitchen Orders Cleared</h2>
-          <p className="text-xs text-emerald-200/80 max-w-md mx-auto leading-relaxed">
+          <p className="text-xs text-gray-400 max-w-md mx-auto leading-relaxed">
             The cook line is running smoothly and tickets are clear. New dining, room service, and bar orders will pop up in real-time with an acoustic bell chime.
           </p>
         </div>
@@ -532,24 +553,12 @@ export default function MasterKitchenDisplaySystem() {
           {filteredOrders.map(order => {
             const isLate = order.elapsed >= 900; // 15+ mins
 
-            // Card borders & headers stay GORGEOUS EMERALD
-            let cardBorder = 'border-2 border-emerald-500/40 hover:border-[#00e676] shadow-[0_8px_30px_rgba(0,0,0,0.6)] hover:shadow-[0_12px_40px_rgba(0,230,118,0.25)]';
-            let cardHeaderBg = 'bg-gradient-to-r from-[#0d4735] via-[#093526] to-[#06261c] border-b border-emerald-500/35';
-            let timerGlow = 'text-[#00e676] drop-shadow-[0_0_8px_rgba(0,230,118,0.5)]';
-
+            // Card border styling strictly following Cyber Emerald aesthetic
+            let cardBorder = 'border-2 border-[#162a2e] hover:border-[#00e676]/70 shadow-[0_8px_30px_rgba(0,0,0,0.8)] hover:shadow-[0_8px_30px_rgba(0,230,118,0.2)]';
             if (order.status === 'Ready') {
-              cardBorder = 'border-2 border-[#00e676] shadow-[0_0_30px_rgba(0,230,118,0.3)] bg-gradient-to-b from-[#00e676]/10 to-[#041f16]';
-              cardHeaderBg = 'bg-gradient-to-r from-emerald-950 via-[#0a4531] to-[#04241a] border-b border-[#00e676]/50';
-              timerGlow = 'text-[#00e676] drop-shadow-[0_0_12px_rgba(0,230,118,0.8)]';
+              cardBorder = 'border-2 border-[#00e676] shadow-[0_0_35px_rgba(0,230,118,0.35)] ring-1 ring-[#00e676]/50';
             } else if (order.status === 'Preparing') {
-              cardBorder = 'border-2 border-emerald-500/60 shadow-[0_8px_35px_rgba(0,230,118,0.2)] bg-gradient-to-b from-emerald-950/30 to-[#041a13]';
-              cardHeaderBg = 'bg-gradient-to-r from-[#0d4735] via-[#0b3c2d] to-[#06241b] border-b border-emerald-500/40';
-              timerGlow = isLate ? 'text-amber-300 font-black' : 'text-[#00e676]';
-            } else {
-              // Pending
-              cardBorder = 'border-2 border-emerald-500/40 shadow-[0_8px_30px_rgba(0,0,0,0.6)] bg-gradient-to-b from-[#072c20] to-[#03150f]';
-              cardHeaderBg = 'bg-gradient-to-r from-[#0c3f2f] via-[#093325] to-[#052017] border-b border-emerald-500/30';
-              timerGlow = isLate ? 'text-amber-300 font-black' : 'text-[#00e676]';
+              cardBorder = 'border-2 border-[#00e676]/70 shadow-[0_4px_25px_rgba(0,230,118,0.2)]';
             }
 
             const locationLabel = order.table_name
@@ -561,49 +570,66 @@ export default function MasterKitchenDisplaySystem() {
             return (
               <div
                 key={order.sale_id}
-                className={`bg-gradient-to-b from-[#083225] via-[#052219] to-[#031610] rounded-2xl ${cardBorder} flex flex-col justify-between overflow-hidden transition-all duration-200`}
+                className={`bg-[#0c161e] rounded-2xl ${cardBorder} flex flex-col justify-between overflow-hidden transition-all duration-200 relative`}
               >
                 {/* Ticket Header */}
                 <div>
-                  <div className={`p-3.5 ${cardHeaderBg} flex items-center justify-between gap-2`}>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="text-sm font-black tracking-wide text-white drop-shadow-sm">
+                  <div className="p-3.5 bg-[#080e14] border-b border-[#142226] space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-sm font-black tracking-wide text-white truncate">
                           {locationLabel}
                         </span>
-                        <span className="text-[10px] font-mono font-bold bg-[#02140e] px-2 py-0.5 rounded text-[#00e676] border border-emerald-500/40 shadow-inner">
+                        <span className="text-xs font-mono font-bold bg-[#00e676]/15 text-[#00e676] border border-[#00e676]/50 px-2 py-0.5 rounded-lg shadow-[0_0_10px_rgba(0,230,118,0.2)] shrink-0">
                           {order.kot_number}
                         </span>
                       </div>
-                      <p className="text-[11px] text-emerald-200/90 mt-1 truncate">
-                        Server: <strong className="text-white">{order.waiter_name}</strong>
-                      </p>
-                    </div>
 
-                    {/* Digital Elapsed Timer */}
-                    <div className="text-right flex-shrink-0">
-                      <div className="flex items-center justify-end gap-1">
-                        <span className={`text-base font-black font-mono tracking-tight ${timerGlow}`}>
+                      {/* Digital Monospace Timer */}
+                      <div className="text-right shrink-0">
+                        <span className="text-base font-black font-mono text-[#00e676] drop-shadow-[0_0_10px_rgba(0,230,118,0.7)]">
                           {formatTime(order.elapsed)}
                         </span>
                       </div>
-                      <div className="mt-0.5 flex items-center justify-end gap-1">
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs pt-0.5">
+                      <p className="text-gray-400 text-[11px] truncate">
+                        Server: <strong className="text-white font-bold">{order.waiter_name}</strong>
+                      </p>
+
+                      <div className="flex items-center gap-1.5 shrink-0">
                         {isLate && (
-                          <span className="text-[9px] uppercase font-black bg-amber-500/20 text-amber-300 border border-amber-500/40 px-1 rounded">
+                          <span className="text-[10px] font-black uppercase bg-amber-500/20 text-amber-300 border border-amber-500/50 px-1.5 py-0.5 rounded flex items-center gap-1 shadow-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
                             DELAY
                           </span>
                         )}
-                        <span className="text-[9px] uppercase font-bold text-emerald-300/80">
-                          {order.status}
-                        </span>
+
+                        {order.status === 'Ready' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-950/80 text-[#00e676] border border-[#00e676]/50 backdrop-blur-md flex items-center gap-1 shadow-[0_0_10px_rgba(0,230,118,0.25)]">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00e676] shadow-[0_0_6px_#00e676]" />
+                            Ready
+                          </span>
+                        ) : order.status === 'Preparing' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-950/80 text-amber-300 border border-amber-500/40 backdrop-blur-md flex items-center gap-1 shadow-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                            Cooking
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-950/80 text-rose-300 border border-rose-500/40 backdrop-blur-md flex items-center gap-1 shadow-sm">
+                            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-pulse" />
+                            Pending
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Items List */}
-                  <div className="p-3.5 space-y-2">
+                  {/* Items List (Cyber Emerald Cart-Style Lines) */}
+                  <div className="p-3.5 space-y-2 bg-[#0c161e]">
                     {order.items.length === 0 ? (
-                      <p className="text-xs text-emerald-400/60 italic py-2">No item lines on this check</p>
+                      <p className="text-xs text-gray-500 italic py-2">No item lines on this check</p>
                     ) : (
                       order.items.map(item => (
                         <div
@@ -611,28 +637,32 @@ export default function MasterKitchenDisplaySystem() {
                           onClick={() => toggleItemDone(order.sale_id, item.item_id)}
                           className={`p-2.5 rounded-xl transition-all cursor-pointer flex items-start gap-2.5 border ${
                             item.done
-                              ? 'bg-[#03150f]/60 border-transparent opacity-40 line-through text-emerald-500'
-                              : 'bg-[#05261b] hover:bg-[#083a29] border-emerald-500/25 hover:border-[#00e676]/60 text-white shadow-sm'
+                              ? 'bg-[#060b0f]/60 border-transparent opacity-40 line-through text-gray-500'
+                              : 'bg-[#0e1721] hover:bg-[#132230] border-[#162a2e] hover:border-[#00e676]/50 text-white shadow-sm'
                           }`}
                         >
+                          {/* Checkbox */}
                           <div
-                            className={`w-5 h-5 rounded-md border flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
+                            className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 mt-0.5 transition-all ${
                               item.done
-                                ? 'bg-[#00e676] border-[#00e676] text-slate-950 font-black text-xs shadow-[0_0_8px_rgba(0,230,118,0.6)]'
-                                : 'border-emerald-500/40 bg-[#031b13]'
+                                ? 'bg-[#00e676] border-[#00e676] text-black font-black text-xs shadow-[0_0_8px_#00e676]'
+                                : 'border-[#00e676]/40 bg-[#060b0f]'
                             }`}
                           >
                             {item.done ? '✓' : ''}
                           </div>
+
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-extrabold leading-snug">
-                              <span className="text-[#00e676] font-black font-mono mr-1.5 text-sm drop-shadow-[0_0_6px_rgba(0,230,118,0.5)]">
+                            <p className="text-xs font-bold leading-snug">
+                              <span className="text-[#00e676] font-black font-mono mr-2 text-sm drop-shadow-[0_0_8px_rgba(0,230,118,0.5)]">
                                 {item.quantity}x
                               </span>
-                              {item.product_name}
+                              <span className="text-white font-extrabold tracking-wide">
+                                {item.product_name}
+                              </span>
                             </p>
                             {item.notes && (
-                              <p className="text-[10px] font-bold text-emerald-200 mt-1 bg-[#093c2a] px-2 py-0.5 rounded border border-[#00e676]/50 inline-block shadow-sm">
+                              <p className="text-[11px] font-bold text-amber-300 bg-amber-950/60 border border-amber-500/40 px-2 py-0.5 rounded-lg inline-flex items-center gap-1 mt-1.5 shadow-sm">
                                 📝 {item.notes}
                               </p>
                             )}
@@ -644,12 +674,12 @@ export default function MasterKitchenDisplaySystem() {
                 </div>
 
                 {/* Ticket Footer Action Button */}
-                <div className="p-3 bg-[#031710] border-t border-emerald-500/30">
+                <div className="p-3 bg-[#080e14] border-t border-[#142226]">
                   {order.status === 'Pending' && (
                     <button
                       onClick={() => bumpOrder(order)}
                       disabled={updatingId === order.sale_id}
-                      className="w-full py-2.5 rounded-xl font-black text-xs bg-gradient-to-r from-amber-400 via-amber-500 to-emerald-500 hover:from-amber-300 hover:to-emerald-400 text-slate-950 shadow-[0_0_20px_rgba(245,158,11,0.35)] transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                      className="w-full py-2.5 rounded-xl font-black text-xs bg-[#00e676] hover:bg-[#00c853] text-black shadow-[0_0_20px_rgba(0,230,118,0.4)] transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
                     >
                       <span>👨‍🍳 START PREPARING</span>
                     </button>
@@ -659,7 +689,7 @@ export default function MasterKitchenDisplaySystem() {
                     <button
                       onClick={() => bumpOrder(order)}
                       disabled={updatingId === order.sale_id}
-                      className="w-full py-2.5 rounded-xl font-black text-xs bg-gradient-to-r from-[#00e676] via-emerald-400 to-teal-400 hover:from-[#00c853] hover:to-emerald-300 text-slate-950 shadow-[0_0_25px_rgba(0,230,118,0.5)] transition-all flex items-center justify-center gap-1.5 active:scale-95 animate-pulse"
+                      className="w-full py-2.5 rounded-xl font-black text-xs bg-gradient-to-r from-[#00e676] via-emerald-300 to-[#00e676] hover:brightness-110 text-black shadow-[0_0_25px_rgba(0,230,118,0.6)] transition-all flex items-center justify-center gap-2 active:scale-95 animate-pulse cursor-pointer"
                     >
                       <span>🔔 MARK READY &amp; CHIME</span>
                     </button>
@@ -669,7 +699,7 @@ export default function MasterKitchenDisplaySystem() {
                     <button
                       onClick={() => bumpOrder(order)}
                       disabled={updatingId === order.sale_id}
-                      className="w-full py-2.5 rounded-xl font-black text-xs bg-[#073625] hover:bg-[#0a4832] text-[#00e676] border-2 border-[#00e676]/60 hover:border-[#00e676] shadow-[0_0_15px_rgba(0,230,118,0.25)] transition-all flex items-center justify-center gap-1.5 active:scale-95"
+                      className="w-full py-2.5 rounded-xl font-black text-xs bg-[#0e261d] hover:bg-[#133528] text-[#00e676] border-2 border-[#00e676] shadow-[0_0_15px_rgba(0,230,118,0.3)] transition-all flex items-center justify-center gap-2 active:scale-95 cursor-pointer"
                     >
                       <span>✓ BUMP / COMPLETE TICKET</span>
                     </button>
@@ -682,22 +712,22 @@ export default function MasterKitchenDisplaySystem() {
       )}
 
       {/* ==================================================================== */}
-      {/* 4. RECALL BUMPED TICKETS MODAL (SUPER EMERALD GLASS)                 */}
+      {/* 4. RECALL BUMPED TICKETS MODAL (CYBER EMERALD GLASS)                 */}
       {/* ==================================================================== */}
       {showRecallModal && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
-          <div className="bg-gradient-to-b from-[#083225] via-[#052219] to-[#031610] border-2 border-emerald-500/50 rounded-3xl max-w-2xl w-full p-6 text-white space-y-4 shadow-[0_0_50px_rgba(0,230,118,0.25)] max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between pb-3 border-b border-emerald-500/30">
+          <div className="bg-[#0c161e] border-2 border-[#00e676]/60 rounded-3xl max-w-2xl w-full p-6 text-white space-y-4 shadow-[0_0_50px_rgba(0,230,118,0.3)] max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-[#162a2e]">
               <div className="flex items-center gap-2.5">
                 <span className="text-xl text-[#00e676] drop-shadow-[0_0_8px_rgba(0,230,118,0.6)]">↩</span>
                 <div>
                   <h3 className="text-base font-black text-white">Recently Bumped &amp; Completed Tickets</h3>
-                  <p className="text-xs text-emerald-200/80">Restore accidentally completed kitchen tickets to active pass</p>
+                  <p className="text-xs text-gray-400">Restore accidentally completed kitchen tickets to active pass</p>
                 </div>
               </div>
               <button
                 onClick={() => setShowRecallModal(false)}
-                className="w-8 h-8 rounded-full bg-[#041f16] text-emerald-300 hover:text-white hover:bg-[#073325] flex items-center justify-center border border-emerald-500/30"
+                className="w-8 h-8 rounded-full bg-[#080e14] text-gray-400 hover:text-white flex items-center justify-center border border-[#162a2e] cursor-pointer"
               >
                 ✕
               </button>
@@ -705,31 +735,31 @@ export default function MasterKitchenDisplaySystem() {
 
             <div className="overflow-y-auto space-y-2.5 flex-1 pr-1">
               {completedOrders.length === 0 ? (
-                <p className="text-xs text-emerald-400/60 text-center py-12">No completed orders in recent history</p>
+                <p className="text-xs text-gray-500 text-center py-12">No completed orders in recent history</p>
               ) : (
                 completedOrders.map(ord => (
                   <div
                     key={ord.sale_id}
-                    className="p-3.5 rounded-2xl bg-[#05261b] border border-emerald-500/30 flex items-center justify-between gap-3 text-xs shadow-sm hover:border-[#00e676]/60 transition-all"
+                    className="p-3.5 rounded-2xl bg-[#0e1721] border border-[#162a2e] flex items-center justify-between gap-3 text-xs shadow-sm hover:border-[#00e676]/50 transition-all"
                   >
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-black text-white">
                           {ord.table_name ? `Table ${ord.table_name}` : ord.room_name ? `Room ${ord.room_name}` : ord.order_type}
                         </span>
-                        <span className="font-mono text-[#00e676] bg-[#02130e] px-1.5 py-0.5 rounded border border-emerald-500/40">
+                        <span className="font-mono text-[#00e676] bg-[#0c161e] px-1.5 py-0.5 rounded border border-[#00e676]/40">
                           {ord.kot_number}
                         </span>
-                        <span className="text-emerald-200/80">• Server: {ord.waiter_name}</span>
+                        <span className="text-gray-400">• Server: {ord.waiter_name}</span>
                       </div>
-                      <p className="text-emerald-100/90 mt-1.5 text-[11px]">
+                      <p className="text-gray-300 mt-1.5 text-[11px]">
                         {ord.items.map(i => `${i.quantity}x ${i.product_name}`).join(', ') || 'No items listed'}
                       </p>
                     </div>
 
                     <button
                       onClick={() => restoreOrder(ord)}
-                      className="px-3.5 py-1.5 bg-gradient-to-r from-[#00e676] to-emerald-500 hover:from-[#00c853] hover:to-emerald-400 text-slate-950 font-black rounded-xl text-xs flex-shrink-0 shadow-[0_0_15px_rgba(0,230,118,0.3)] transition-all active:scale-95"
+                      className="px-3.5 py-1.5 bg-[#00e676] hover:bg-[#00c853] text-black font-black rounded-xl text-xs shrink-0 shadow-[0_0_15px_rgba(0,230,118,0.3)] transition-all active:scale-95 cursor-pointer"
                     >
                       Restore to Pass
                     </button>
@@ -738,10 +768,10 @@ export default function MasterKitchenDisplaySystem() {
               )}
             </div>
 
-            <div className="pt-3 border-t border-emerald-500/30 text-right">
+            <div className="pt-3 border-t border-[#162a2e] text-right">
               <button
                 onClick={() => setShowRecallModal(false)}
-                className="px-4 py-2 bg-[#05281e] hover:bg-[#093c2d] text-emerald-200 hover:text-white rounded-xl text-xs font-bold border border-emerald-500/40"
+                className="px-4 py-2 bg-[#080e14] hover:bg-[#132230] text-gray-300 hover:text-white rounded-xl text-xs font-bold border border-[#162a2e] cursor-pointer"
               >
                 Close
               </button>
