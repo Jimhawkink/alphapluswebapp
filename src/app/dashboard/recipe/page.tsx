@@ -100,8 +100,15 @@ export default function RecipePage() {
     const [searchLibrary, setSearchLibrary] = useState('');
 
     // =========================================================================
-    // UNIT CONVERSION ENGINE
+    // UNIT CONVERSION ENGINE & UNITS CATALOG
+    // Matches Ingredient Stock (ingredient-stock) base tracking units
     // =========================================================================
+    const ALL_RECIPE_UNITS = [
+        'KG', 'G', 'L', 'ML', 'PCS', 'Piece', 'Packet', 'PKT', 'Bag', 'Bottle',
+        'Tin', 'Box', 'Litre', 'Tray', 'EGGS', 'Dozen', 'Bundle', 'Roll', 'Tub',
+        'Bucket', 'Crate', 'Sack', 'Carton'
+    ];
+
     const normalizeUnit = (unit: string): string => {
         const u = (unit || '').toUpperCase().trim();
         if (['L', 'LTR', 'LITER', 'LITERS', 'LITRE', 'LITRES'].includes(u)) return 'L';
@@ -111,10 +118,20 @@ export default function RecipePage() {
         if (['PCS', 'PC', 'PIECE', 'PIECES', 'EACH', 'EA'].includes(u)) return 'PCS';
         if (['EGG', 'EGGS'].includes(u)) return 'EGGS';
         if (['TRAY', 'TRAYS'].includes(u)) return 'TRAY';
-        if (['PKT', 'PACKET', 'PACKETS'].includes(u)) return 'PKT';
+        if (['DOZ', 'DOZEN', 'DOZENS'].includes(u)) return 'DOZEN';
+        if (['PKT', 'PACKET', 'PACKETS', 'PACK'].includes(u)) return 'PKT';
         if (['BOX', 'BOXES'].includes(u)) return 'BOX';
         if (['BTL', 'BOTTLE', 'BOTTLES'].includes(u)) return 'BTL';
-        return u || 'KG';
+        if (['TIN', 'TINS'].includes(u)) return 'TIN';
+        if (['BAG', 'BAGS'].includes(u)) return 'BAG';
+        if (['BUNDLE', 'BUNDLES'].includes(u)) return 'BUNDLE';
+        if (['ROLL', 'ROLLS'].includes(u)) return 'ROLL';
+        if (['TUB', 'TUBS'].includes(u)) return 'TUB';
+        if (['BUCKET', 'BUCKETS'].includes(u)) return 'BUCKET';
+        if (['CARTON', 'CARTONS', 'CTN'].includes(u)) return 'CARTON';
+        if (['CRATE', 'CRATES'].includes(u)) return 'CRATE';
+        if (['SACK', 'SACKS'].includes(u)) return 'SACK';
+        return u;
     };
 
     const convertToBase = (qty: number, fromUnit: string, baseUnit: string): number => {
@@ -122,17 +139,21 @@ export default function RecipePage() {
         const base = normalizeUnit(baseUnit);
         if (from === base || !from) return qty;
 
-        // Mass
+        // Mass: G <-> KG
         if (from === 'G' && base === 'KG') return qty * 0.001;
         if (from === 'KG' && base === 'G') return qty * 1000;
 
-        // Volume
+        // Volume: ML <-> L
         if (from === 'ML' && base === 'L') return qty * 0.001;
         if (from === 'L' && base === 'ML') return qty * 1000;
 
-        // Eggs
-        if (from === 'TRAY' && base === 'EGGS') return qty * 30;
-        if (from === 'EGGS' && base === 'TRAY') return qty / 30;
+        // Eggs & Tray (1 Tray = 30 Eggs)
+        if (from === 'TRAY' && (base === 'EGGS' || base === 'PCS')) return qty * 30;
+        if ((from === 'EGGS' || from === 'PCS') && base === 'TRAY') return qty / 30;
+
+        // Count: Dozen <-> PCS / Piece (1 Dozen = 12 Pieces)
+        if (from === 'DOZEN' && (base === 'PCS' || base === 'EGGS')) return qty * 12;
+        if ((from === 'PCS' || from === 'EGGS') && base === 'DOZEN') return qty / 12;
 
         return qty;
     };
@@ -142,6 +163,46 @@ export default function RecipePage() {
         const costPerBase = ing.cost_per_base_unit || (ing.price_per_pack / (ing.pack_size || 1)) || 0;
         return qtyInBase * costPerBase;
     };
+
+    // Find currently selected ingredient object
+    const selectedIngredient = useMemo(() => {
+        return ingredients.find(i => i.pid === Number(selectedIngId));
+    }, [ingredients, selectedIngId]);
+
+    // Available units list: puts ingredient's base unit first, then compatible units, then full catalog
+    const availableUnits = useMemo(() => {
+        if (!selectedIngredient) return ALL_RECIPE_UNITS;
+        const base = selectedIngredient.base_unit || 'KG';
+        const norm = normalizeUnit(base);
+
+        let related: string[] = [];
+        if (norm === 'KG' || norm === 'G') {
+            related = ['KG', 'G'];
+        } else if (norm === 'L' || norm === 'ML') {
+            related = ['L', 'ML', 'Litre'];
+        } else if (norm === 'EGGS' || norm === 'TRAY') {
+            related = ['EGGS', 'Tray', 'PCS'];
+        } else if (norm === 'PCS') {
+            related = ['Piece', 'PCS', 'Dozen'];
+        } else if (norm === 'DOZEN') {
+            related = ['Dozen', 'Piece', 'PCS'];
+        } else if (norm === 'PKT') {
+            related = ['Packet', 'PKT'];
+        } else if (norm === 'BTL') {
+            related = ['Bottle', 'BTL'];
+        } else if (norm === 'BOX') {
+            related = ['Box', 'Carton'];
+        }
+
+        const set = new Set<string>();
+        // 1. Put exact ingredient base_unit first
+        set.add(base);
+        // 2. Put related units next
+        related.forEach(u => set.add(u));
+        // 3. Put all other standard units from ingredients page
+        ALL_RECIPE_UNITS.forEach(u => set.add(u));
+        return Array.from(set);
+    }, [selectedIngredient]);
 
     // =========================================================================
     // LOAD DATA
@@ -941,7 +1002,11 @@ export default function RecipePage() {
                                         const id = Number(e.target.value);
                                         setSelectedIngId(id || '');
                                         const match = ingredients.find(i => i.pid === id);
-                                        if (match) setInputUnit(match.base_unit);
+                                        if (match) {
+                                            setInputUnit(match.base_unit || 'KG');
+                                        } else {
+                                            setInputUnit('');
+                                        }
                                     }}
                                     className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-emerald-500"
                                 >
@@ -972,9 +1037,10 @@ export default function RecipePage() {
                                 <select
                                     value={inputUnit}
                                     onChange={(e) => setInputUnit(e.target.value)}
-                                    className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-xs font-bold uppercase focus:outline-none"
+                                    className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
                                 >
-                                    {['KG', 'G', 'L', 'ML', 'PCS', 'EGGS', 'TRAY', 'PKT'].map(u => (
+                                    {!inputUnit && <option value="">Select unit...</option>}
+                                    {availableUnits.map(u => (
                                         <option key={u} value={u}>{u}</option>
                                     ))}
                                 </select>
