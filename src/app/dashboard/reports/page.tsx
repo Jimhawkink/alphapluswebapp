@@ -1018,24 +1018,224 @@ export default function MasterReportsPage() {
                     </div>
                 </div>
 
-                {/* Sub-Reports Quick Links */}
-                <div className="mt-4 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap text-xs">
-                    <span className="text-slate-400 font-semibold">Specialized Modules:</span>
-                    <Link href="/dashboard/reports/dish-report" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
-                        🍲 Dish Movement & Valuation
-                    </Link>
-                    <Link href="/dashboard/reports/pos" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
-                        🧾 Shift Cash Summaries
-                    </Link>
-                    <Link href="/dashboard/reports/recipe-report" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
-                        📋 Recipe Costing
-                    </Link>
-                    <Link href="/dashboard/shift-reports" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
-                        ⏱️ Shift Records
-                    </Link>
-                    <Link href="/dashboard/sales" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
-                        📈 Sales Ledger
-                    </Link>
+                {/* Specialized Audit Modules: The 7 Pillars of Restaurant Fraud Prevention */}
+                <div className="mt-5 pt-4 border-t border-slate-100">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                                Executive Audit Suite &amp; Theft Prevention (7 Specialized Terminals)
+                            </span>
+                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
+                                Cyber Emerald Verified
+                            </span>
+                        </div>
+                        <span className="text-xs text-slate-400 hidden sm:inline">Certified audit-ready for Kenyan Hospitality &amp; KRA Compliance</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+                        {/* 1. Void Audit */}
+                        <Link
+                            href="/dashboard/reports/void-audit"
+                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-2xl">🛡️</span>
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                    Theft Watch
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                    Void &amp; Cancel Audit
+                                </h3>
+                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
+                                    Tracks cashier voids, manager PIN authorization &amp; kitchen waste.
+                                </p>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-[#00e676]">Loss Prevention</span>
+                                <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                        </Link>
+
+                        {/* 2. Official Z-Report */}
+                        <Link
+                            href="/dashboard/reports/z-report"
+                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-2xl">🧾</span>
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                    KRA 80mm
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                    EOD Z &amp; Mid X-Report
+                                </h3>
+                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
+                                    Thermal 80mm slip, VAT 16%, 2% Levy, Drawer cash vs counted.
+                                </p>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-[#00e676]">Fiscal Closeout</span>
+                                <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                        </Link>
+
+                        {/* 3. Consumption Variance */}
+                        <Link
+                            href="/dashboard/reports/consumption-variance"
+                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-2xl">🥩</span>
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                    Store Bleed
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                    Kitchen Bleed &amp; Variance
+                                </h3>
+                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
+                                    Theoretical recipe grams vs physical inventory depletion.
+                                </p>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-[#00e676]">Recipe Audit</span>
+                                <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                        </Link>
+
+                        {/* 4. Menu Engineering */}
+                        <Link
+                            href="/dashboard/reports/menu-engineering"
+                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-2xl">🍽️</span>
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                    4-Quadrant
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                    Menu Engineering
+                                </h3>
+                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
+                                    Stars, Plowhorses, Puzzles &amp; Dogs margin analyzer.
+                                </p>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-[#00e676]">Profit Matrix</span>
+                                <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                        </Link>
+
+                        {/* 5. Hourly Peak Rush */}
+                        <Link
+                            href="/dashboard/reports/hourly-productivity"
+                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-2xl">⏰</span>
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                    24h Rushes
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                    Peak Rush &amp; Staff Productivity
+                                </h3>
+                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
+                                    Hourly revenue bars, checks/hr, labor productivity index.
+                                </p>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-[#00e676]">Speed &amp; Labor</span>
+                                <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                        </Link>
+
+                        {/* 6. Complimentary & Spillage */}
+                        <Link
+                            href="/dashboard/reports/complimentary-spillage"
+                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-2xl">🎁</span>
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                    Zero-Rated
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                    Complimentary &amp; Spillage
+                                </h3>
+                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
+                                    VIP entertainment, manager duty meals &amp; kitchen drops.
+                                </p>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-[#00e676]">Cost Absorbed</span>
+                                <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                        </Link>
+
+                        {/* 7. Debtor & Credit Aging */}
+                        <Link
+                            href="/dashboard/reports/debtor-aging"
+                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-2xl">⏳</span>
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                    Aging Tabs
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                    Debtor &amp; Credit Aging
+                                </h3>
+                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
+                                    0-30d, 31-60d, 61-90d, 90+d overdue tabs &amp; statements.
+                                </p>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-[#00e676]">Cashflow Lock</span>
+                                <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                        </Link>
+                    </div>
+
+                    {/* Classic Sub-Reports Pill Links */}
+                    <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap text-xs">
+                        <span className="text-slate-400 font-semibold">Other Sub-Ledgers:</span>
+                        <Link href="/dashboard/reports/dish-report" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
+                            🍲 Dish Movement &amp; Valuation
+                        </Link>
+                        <Link href="/dashboard/reports/pos" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
+                            🧾 Shift Cash Summaries
+                        </Link>
+                        <Link href="/dashboard/reports/recipe-report" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
+                            📋 Recipe Costing
+                        </Link>
+                        <Link href="/dashboard/shift-reports" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
+                            ⏱️ Shift Records
+                        </Link>
+                        <Link href="/dashboard/sales" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
+                            📈 Sales Ledger
+                        </Link>
+                    </div>
                 </div>
             </div>
 
