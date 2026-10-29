@@ -1023,39 +1023,39 @@ export default function MasterReportsPage() {
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                             <span className="text-sm font-black text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                                Executive Audit Suite &amp; Theft Prevention (7 Specialized Terminals)
+                                <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 animate-pulse"></span>
+                                Executive Audit Suite &amp; Theft Prevention (8 Specialized Modules)
                             </span>
-                            <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px] font-bold">
-                                Cyber Emerald Verified
+                            <span className="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[11px] font-bold">
+                                Certified Hospitality Audits
                             </span>
                         </div>
-                        <span className="text-xs text-slate-400 hidden sm:inline">Certified audit-ready for Kenyan Hospitality &amp; KRA Compliance</span>
+                        <span className="text-xs text-slate-500 hidden sm:inline">Certified audit-ready for Kenyan Hospitality &amp; KRA Compliance</span>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3">
                         {/* 1. Void Audit */}
                         <Link
                             href="/dashboard/reports/void-audit"
-                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                            className="group relative bg-white hover:bg-rose-50/40 border border-slate-200/90 hover:border-rose-300 rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-2xl">🛡️</span>
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 text-[10px] font-black flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                                     Theft Watch
                                 </span>
                             </div>
                             <div>
-                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                <h3 className="text-slate-900 font-black text-xs group-hover:text-rose-600 transition-colors leading-tight">
                                     Void &amp; Cancel Audit
                                 </h3>
-                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
-                                    Tracks cashier voids, manager PIN authorization &amp; kitchen waste.
+                                <p className="text-slate-500 text-[10px] mt-1 leading-snug">
+                                    Cashier voids, manager PIN authorization &amp; kitchen waste.
                                 </p>
                             </div>
-                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                                <span className="text-[11px] font-black text-[#00e676]">Loss Prevention</span>
+                            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-rose-600">Loss Prevention</span>
                                 <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
                             </div>
                         </Link>
@@ -1063,25 +1063,25 @@ export default function MasterReportsPage() {
                         {/* 2. Official Z-Report */}
                         <Link
                             href="/dashboard/reports/z-report"
-                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                            className="group relative bg-white hover:bg-emerald-50/40 border border-slate-200/90 hover:border-emerald-300 rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-2xl">🧾</span>
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 text-[10px] font-black flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
                                     KRA 80mm
                                 </span>
                             </div>
                             <div>
-                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                <h3 className="text-slate-900 font-black text-xs group-hover:text-emerald-800 transition-colors leading-tight">
                                     EOD Z &amp; Mid X-Report
                                 </h3>
-                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
-                                    Thermal 80mm slip, VAT 16%, 2% Levy, Drawer cash vs counted.
+                                <p className="text-slate-500 text-[10px] mt-1 leading-snug">
+                                    Thermal 80mm slip, VAT 16%, 2% Levy, drawer reconciliation.
                                 </p>
                             </div>
-                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                                <span className="text-[11px] font-black text-[#00e676]">Fiscal Closeout</span>
+                            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-emerald-800">Fiscal Closeout</span>
                                 <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
                             </div>
                         </Link>
@@ -1089,25 +1089,25 @@ export default function MasterReportsPage() {
                         {/* 3. Consumption Variance */}
                         <Link
                             href="/dashboard/reports/consumption-variance"
-                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                            className="group relative bg-white hover:bg-amber-50/40 border border-slate-200/90 hover:border-amber-300 rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-2xl">🥩</span>
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
-                                    Store Bleed
+                                <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-black flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-600"></span>
+                                    Stock Bleed
                                 </span>
                             </div>
                             <div>
-                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                <h3 className="text-slate-900 font-black text-xs group-hover:text-amber-800 transition-colors leading-tight">
                                     Kitchen Bleed &amp; Variance
                                 </h3>
-                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
+                                <p className="text-slate-500 text-[10px] mt-1 leading-snug">
                                     Theoretical recipe grams vs physical inventory depletion.
                                 </p>
                             </div>
-                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                                <span className="text-[11px] font-black text-[#00e676]">Recipe Audit</span>
+                            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-amber-800">Recipe Audit</span>
                                 <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
                             </div>
                         </Link>
@@ -1115,25 +1115,25 @@ export default function MasterReportsPage() {
                         {/* 4. Menu Engineering */}
                         <Link
                             href="/dashboard/reports/menu-engineering"
-                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                            className="group relative bg-white hover:bg-indigo-50/40 border border-slate-200/90 hover:border-indigo-300 rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-2xl">🍽️</span>
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
-                                    4-Quadrant
+                                <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200 text-[10px] font-black flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+                                    Profit Matrix
                                 </span>
                             </div>
                             <div>
-                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                <h3 className="text-slate-900 font-black text-xs group-hover:text-indigo-600 transition-colors leading-tight">
                                     Menu Engineering
                                 </h3>
-                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
+                                <p className="text-slate-500 text-[10px] mt-1 leading-snug">
                                     Stars, Plowhorses, Puzzles &amp; Dogs margin analyzer.
                                 </p>
                             </div>
-                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                                <span className="text-[11px] font-black text-[#00e676]">Profit Matrix</span>
+                            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-indigo-700">4-Quadrant</span>
                                 <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
                             </div>
                         </Link>
@@ -1141,25 +1141,25 @@ export default function MasterReportsPage() {
                         {/* 5. Hourly Peak Rush */}
                         <Link
                             href="/dashboard/reports/hourly-productivity"
-                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                            className="group relative bg-white hover:bg-sky-50/40 border border-slate-200/90 hover:border-sky-300 rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-2xl">⏰</span>
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                <span className="px-2 py-0.5 rounded-full bg-sky-50 text-sky-800 border border-sky-200 text-[10px] font-black flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-sky-600"></span>
                                     24h Rushes
                                 </span>
                             </div>
                             <div>
-                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
-                                    Peak Rush &amp; Staff Productivity
+                                <h3 className="text-slate-900 font-black text-xs group-hover:text-sky-700 transition-colors leading-tight">
+                                    Peak Rush &amp; Productivity
                                 </h3>
-                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
+                                <p className="text-slate-500 text-[10px] mt-1 leading-snug">
                                     Hourly revenue bars, checks/hr, labor productivity index.
                                 </p>
                             </div>
-                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                                <span className="text-[11px] font-black text-[#00e676]">Speed &amp; Labor</span>
+                            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-sky-800">Speed &amp; Labor</span>
                                 <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
                             </div>
                         </Link>
@@ -1167,25 +1167,25 @@ export default function MasterReportsPage() {
                         {/* 6. Complimentary & Spillage */}
                         <Link
                             href="/dashboard/reports/complimentary-spillage"
-                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                            className="group relative bg-white hover:bg-purple-50/40 border border-slate-200/90 hover:border-purple-300 rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-2xl">🎁</span>
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                <span className="px-2 py-0.5 rounded-full bg-purple-50 text-purple-800 border border-purple-200 text-[10px] font-black flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-purple-600"></span>
                                     Zero-Rated
                                 </span>
                             </div>
                             <div>
-                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                <h3 className="text-slate-900 font-black text-xs group-hover:text-purple-700 transition-colors leading-tight">
                                     Complimentary &amp; Spillage
                                 </h3>
-                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
+                                <p className="text-slate-500 text-[10px] mt-1 leading-snug">
                                     VIP entertainment, manager duty meals &amp; kitchen drops.
                                 </p>
                             </div>
-                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                                <span className="text-[11px] font-black text-[#00e676]">Cost Absorbed</span>
+                            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-purple-800">Cost Absorbed</span>
                                 <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
                             </div>
                         </Link>
@@ -1193,21 +1193,56 @@ export default function MasterReportsPage() {
                         {/* 7. Debtor & Credit Aging */}
                         <Link
                             href="/dashboard/reports/debtor-aging"
-                            className="group relative bg-[#080f18] hover:bg-[#0c1624] border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-3.5 shadow-lg hover:shadow-[0_0_20px_rgba(0,230,118,0.2)] transition-all flex flex-col justify-between"
+                            className="group relative bg-white hover:bg-teal-50/40 border border-slate-200/90 hover:border-teal-300 rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
                         >
                             <div className="flex items-center justify-between mb-2">
                                 <span className="text-2xl">⏳</span>
-                                <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-[#00e676] border border-emerald-500/30 text-[10px] font-bold flex items-center gap-1">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-[#00e676]"></span>
+                                <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-800 border border-teal-200 text-[10px] font-black flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-teal-600"></span>
                                     Aging Tabs
                                 </span>
                             </div>
                             <div>
-                                <h3 className="text-white font-bold text-xs group-hover:text-[#00e676] transition-colors leading-tight">
+                                <h3 className="text-slate-900 font-black text-xs group-hover:text-teal-700 transition-colors leading-tight">
                                     Debtor &amp; Credit Aging
                                 </h3>
-                                <p className="text-slate-400 text-[10px] mt-1 leading-snug">
-                                    0-30d, 31-60d, 61-90d, 90+d overdue tabs &amp; statements.
+                                <p className="text-slate-500 text-[10px] mt-1 leading-snug">
+                                    0-30d, 31-60d, 61-90d, 90+d overdue tabs &amp; settlements.
+                                </p>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-teal-800">Receivables</span>
+                                <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                        </Link>
+
+                        {/* 8. Butchery Sales & Profit */}
+                        <Link
+                            href="/dashboard/butchery/sales-report"
+                            className="group relative bg-white hover:bg-rose-50/40 border border-slate-200/90 hover:border-rose-300 rounded-2xl p-3.5 shadow-xs hover:shadow-md transition-all flex flex-col justify-between"
+                        >
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-2xl">🥩</span>
+                                <span className="px-2 py-0.5 rounded-full bg-rose-50 text-rose-800 border border-rose-200 text-[10px] font-black flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-rose-600"></span>
+                                    Butchery
+                                </span>
+                            </div>
+                            <div>
+                                <h3 className="text-slate-900 font-black text-xs group-hover:text-rose-700 transition-colors leading-tight">
+                                    Butchery Sales Audit
+                                </h3>
+                                <p className="text-slate-500 text-[10px] mt-1 leading-snug">
+                                    Meat weights sold, choma vs takeaway margins &amp; yields.
+                                </p>
+                            </div>
+                            <div className="mt-3 pt-2 border-t border-slate-100 flex items-center justify-between">
+                                <span className="text-[11px] font-black text-rose-700">Meat Yields</span>
+                                <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
+                            </div>
+                        </Link>
+                    </div>
+                </div>
                                 </p>
                             </div>
                             <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">

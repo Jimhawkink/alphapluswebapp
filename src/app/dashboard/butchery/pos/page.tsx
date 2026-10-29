@@ -14,6 +14,7 @@ interface MeatStock {
     stock_id: number;
     stock_code: string;
     meat_type_name: string;
+    category: 'Beef' | 'Goat' | 'Chicken' | 'Pork' | 'Bones' | 'Offals';
     available_kg: number;
     cost_per_kg: number;
     selling_price: number;
@@ -32,8 +33,20 @@ interface CartItem {
     subtotal: number;
     prep_mode: 'Raw Takeaway' | 'Nyama Choma' | 'Wet Fry' | 'Dry Fry' | 'Boil / Soup';
     doneness?: string;
+    spice_level?: string;
     accompaniments: string[];
     special_notes?: string;
+}
+
+interface ParkedTicket {
+    id: string;
+    ticketCode: string;
+    items: CartItem[];
+    customerName: string;
+    customerPhone: string;
+    tableNo: string;
+    timestamp: string;
+    grandTotal: number;
 }
 
 interface ButcheryDashboard {
@@ -68,20 +81,22 @@ interface C2BPayment {
     created_at?: string;
 }
 
-// Benchmark active meat cuts to ensure terminal is ALWAYS operational even before DB table creation
+// Benchmark active meat cuts ensuring terminal is ALWAYS operational even before DB table creation
 const DEFAULT_FALLBACK_BATCHES: MeatStock[] = [
-    { stock_id: 101, stock_code: 'BCH-BF01', meat_type_name: 'Prime Beef Steak', available_kg: 24.5, cost_per_kg: 480, selling_price: 650, wholesale_price: 580, days_old: 0 },
-    { stock_id: 102, stock_code: 'BCH-MB02', meat_type_name: 'Mbuzi / Goat Choma Cut', available_kg: 18.2, cost_per_kg: 600, selling_price: 800, wholesale_price: 720, days_old: 1 },
-    { stock_id: 103, stock_code: 'BCH-TB03', meat_type_name: 'T-Bone Steak', available_kg: 14.0, cost_per_kg: 650, selling_price: 900, wholesale_price: 810, days_old: 0 },
-    { stock_id: 104, stock_code: 'BCH-MC04', meat_type_name: 'Minced Beef (Grade A)', available_kg: 12.5, cost_per_kg: 500, selling_price: 700, wholesale_price: 630, days_old: 0 },
-    { stock_id: 105, stock_code: 'BCH-SB05', meat_type_name: 'Soup Bones / Bone Broth', available_kg: 35.0, cost_per_kg: 150, selling_price: 250, wholesale_price: 200, days_old: 2 },
-    { stock_id: 106, stock_code: 'BCH-CH06', meat_type_name: 'Farm Fresh Chicken', available_kg: 22.0, cost_per_kg: 400, selling_price: 550, wholesale_price: 490, days_old: 1 },
+    { stock_id: 101, stock_code: 'BCH-BF01', meat_type_name: 'Prime Beef Steak', category: 'Beef', available_kg: 24.5, cost_per_kg: 480, selling_price: 650, wholesale_price: 580, days_old: 0 },
+    { stock_id: 102, stock_code: 'BCH-MB02', meat_type_name: 'Mbuzi / Goat Choma Cut', category: 'Goat', available_kg: 18.2, cost_per_kg: 600, selling_price: 800, wholesale_price: 720, days_old: 1 },
+    { stock_id: 103, stock_code: 'BCH-TB03', meat_type_name: 'T-Bone Steak', category: 'Beef', available_kg: 14.0, cost_per_kg: 650, selling_price: 900, wholesale_price: 810, days_old: 0 },
+    { stock_id: 104, stock_code: 'BCH-MC04', meat_type_name: 'Minced Beef (Grade A)', category: 'Beef', available_kg: 12.5, cost_per_kg: 500, selling_price: 700, wholesale_price: 630, days_old: 0 },
+    { stock_id: 105, stock_code: 'BCH-SB05', meat_type_name: 'Soup Bones / Bone Broth', category: 'Bones', available_kg: 35.0, cost_per_kg: 150, selling_price: 250, wholesale_price: 200, days_old: 2 },
+    { stock_id: 106, stock_code: 'BCH-CH06', meat_type_name: 'Farm Fresh Chicken', category: 'Chicken', available_kg: 22.0, cost_per_kg: 400, selling_price: 550, wholesale_price: 490, days_old: 1 },
+    { stock_id: 107, stock_code: 'BCH-PK07', meat_type_name: 'Pork Chops & Belly', category: 'Pork', available_kg: 16.0, cost_per_kg: 420, selling_price: 600, wholesale_price: 540, days_old: 1 },
+    { stock_id: 108, stock_code: 'BCH-OF08', meat_type_name: 'Fresh Matumbo & Liver', category: 'Offals', available_kg: 19.5, cost_per_kg: 280, selling_price: 400, wholesale_price: 360, days_old: 0 },
 ];
 
 export default function ButcheryPOSPage() {
     // ─── STATE MANAGEMENT ───────────────────────────────────────────────────────
     const [batches, setBatches] = useState<MeatStock[]>(DEFAULT_FALLBACK_BATCHES);
-    const [dashboard, setDashboard] = useState<ButcheryDashboard>({ todaySales: 0, todayWeightSold: 0, todayTransactions: 0, availableStock: 126.2 });
+    const [dashboard, setDashboard] = useState<ButcheryDashboard>({ todaySales: 0, todayWeightSold: 0, todayTransactions: 0, availableStock: 161.7 });
     const [todaySales, setTodaySales] = useState<TodaySale[]>([]);
     const [saleCode, setSaleCode] = useState('BCH000101');
     const [isLoading, setIsLoading] = useState(false);
@@ -89,13 +104,22 @@ export default function ButcheryPOSPage() {
     const [isSchemaCached, setIsSchemaCached] = useState(true);
     const [showSqlModal, setShowSqlModal] = useState(false);
 
-    // Multi-Item Cart
+    // Filtering & Categories
+    const [categoryFilter, setCategoryFilter] = useState<'All' | 'Beef' | 'Goat' | 'Chicken' | 'Pork' | 'Bones' | 'Offals'>('All');
+    const [searchCut, setSearchCut] = useState('');
+
+    // Multi-Item Cart & Parked Tickets
     const [cart, setCart] = useState<CartItem[]>([]);
+    const [parkedTickets, setParkedTickets] = useState<ParkedTicket[]>([]);
+    const [showParkedModal, setShowParkedModal] = useState(false);
+    const [activeRightTab, setActiveRightTab] = useState<'BASKET' | 'RECENT'>('BASKET');
+
+    // Modals
     const [showPaymentModal, setShowPaymentModal] = useState(false);
     const [showReceiptModal, setShowReceiptModal] = useState(false);
     const [lastCompletedSale, setLastCompletedSale] = useState<any>(null);
 
-    // Input Mode: Weight-First vs Amount-First
+    // Input Mode & Price Tier
     const [inputMode, setInputMode] = useState<'WEIGHT' | 'AMOUNT'>('WEIGHT');
     const [priceTier, setPriceTier] = useState<'Retail' | 'Wholesale'>('Retail');
 
@@ -105,6 +129,7 @@ export default function ButcheryPOSPage() {
     const [amountInput, setAmountInput] = useState<string>('');
     const [prepMode, setPrepMode] = useState<'Raw Takeaway' | 'Nyama Choma' | 'Wet Fry' | 'Dry Fry' | 'Boil / Soup'>('Raw Takeaway');
     const [doneness, setDoneness] = useState<string>('Medium Well');
+    const [spiceLevel, setSpiceLevel] = useState<string>('Mild / Normal');
     const [selectedAccompaniments, setSelectedAccompaniments] = useState<string[]>([]);
     const [itemNotes, setItemNotes] = useState<string>('');
 
@@ -137,14 +162,14 @@ export default function ButcheryPOSPage() {
         return () => clearInterval(t);
     }, []);
 
-    // ─── LOAD DATA WITH SILENT FALLBACK (NEVER CRASHES ON SCHEMA ERROR) ───────────
+    // ─── LOAD DATA (SILENT FALLBACK) ───────────────────────────────────────────
     const loadData = useCallback(async () => {
         setIsLoading(true);
         try {
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
 
-            // 1. Attempt query to meat_stock
+            // 1. Query meat_stock
             const { data: stockData, error: stockError } = await supabase
                 .from('meat_stock')
                 .select('*, meat_types(meat_type_name)')
@@ -152,7 +177,6 @@ export default function ButcheryPOSPage() {
                 .order('stock_id', { ascending: false });
 
             if (stockError) {
-                // If table is missing or not in schema cache, log gently and use fallback
                 console.warn('Meat stock schema notice:', stockError.message);
                 setIsSchemaCached(false);
                 setBatches(DEFAULT_FALLBACK_BATCHES);
@@ -163,11 +187,21 @@ export default function ButcheryPOSPage() {
                     const daysOld = Math.max(0, Math.floor((today.getTime() - purchaseDate.getTime()) / (1000 * 60 * 60 * 24)));
                     const retailPrice = Number(b.selling_price) || 650;
                     const wholesalePrice = Number(b.wholesale_price) || Math.round(retailPrice * 0.9);
+                    const name = (b as any).meat_types?.meat_type_name || 'Prime Beef';
+
+                    let cat: MeatStock['category'] = 'Beef';
+                    const lower = name.toLowerCase();
+                    if (lower.includes('goat') || lower.includes('mbuzi')) cat = 'Goat';
+                    else if (lower.includes('chicken') || lower.includes('kuku')) cat = 'Chicken';
+                    else if (lower.includes('pork')) cat = 'Pork';
+                    else if (lower.includes('bone') || lower.includes('soup')) cat = 'Bones';
+                    else if (lower.includes('matumbo') || lower.includes('liver') || lower.includes('offal')) cat = 'Offals';
 
                     return {
                         stock_id: b.stock_id,
                         stock_code: b.stock_code || `BCH-${b.stock_id}`,
-                        meat_type_name: (b as any).meat_types?.meat_type_name || 'Prime Beef',
+                        meat_type_name: name,
+                        category: cat,
                         available_kg: Number(b.available_kg) || 0,
                         cost_per_kg: Number(b.cost_per_kg) || 450,
                         selling_price: retailPrice,
@@ -183,7 +217,7 @@ export default function ButcheryPOSPage() {
                 setBatches(DEFAULT_FALLBACK_BATCHES);
             }
 
-            // 2. Attempt query to meat_sales
+            // 2. Query meat_sales
             const { data: salesData } = await supabase
                 .from('meat_sales')
                 .select('*')
@@ -219,7 +253,7 @@ export default function ButcheryPOSPage() {
             }
 
         } catch (err: any) {
-            console.warn('Silent fallback active for butchery POS:', err);
+            console.warn('Fallback active for butchery POS:', err);
             setBatches(DEFAULT_FALLBACK_BATCHES);
         } finally {
             setIsLoading(false);
@@ -264,6 +298,13 @@ export default function ButcheryPOSPage() {
         }
     };
 
+    // Incremental step adjusters
+    const adjustWeightBy = (delta: number) => {
+        const cur = parseFloat(weightInput) || 0;
+        const next = Math.max(0.1, Math.round((cur + delta) * 100) / 100);
+        handleWeightChange(next.toString());
+    };
+
     // Quick buttons
     const quickWeights = [
         { label: '250g', val: 0.25 },
@@ -276,7 +317,17 @@ export default function ButcheryPOSPage() {
         { label: '5.0 Kg', val: 5.00 },
     ];
     const quickAmounts = [200, 300, 500, 800, 1000, 1500, 2000, 3000];
-    const accompanimentsList = ['Ugali', 'Kachumbari', 'Sukuma Wiki', 'Spinach', 'Roast Potatoes', 'Mukimo'];
+    const accompanimentsList = ['Ugali', 'Kachumbari', 'Sukuma Wiki', 'Spinach', 'Roast Potatoes', 'Mukimo', 'Roast Maize'];
+
+    // Filtered Batches by Category and Search
+    const filteredBatches = useMemo(() => {
+        return batches.filter(b => {
+            const matchesCategory = categoryFilter === 'All' || b.category === categoryFilter;
+            const matchesSearch = b.meat_type_name.toLowerCase().includes(searchCut.toLowerCase()) ||
+                b.stock_code.toLowerCase().includes(searchCut.toLowerCase());
+            return matchesCategory && matchesSearch;
+        });
+    }, [batches, categoryFilter, searchCut]);
 
     // Cart calculations
     const cartSubtotal = useMemo(() => cart.reduce((sum, item) => sum + item.subtotal, 0), [cart]);
@@ -317,6 +368,7 @@ export default function ButcheryPOSPage() {
             subtotal: lineTotal,
             prep_mode: prepMode,
             doneness: prepMode !== 'Raw Takeaway' ? doneness : undefined,
+            spice_level: prepMode !== 'Raw Takeaway' ? spiceLevel : undefined,
             accompaniments: [...selectedAccompaniments],
             special_notes: itemNotes.trim() || undefined
         };
@@ -330,6 +382,47 @@ export default function ButcheryPOSPage() {
     const handleRemoveFromCart = (id: string) => {
         setCart(prev => prev.filter(item => item.id !== id));
         toast('Item removed from basket');
+    };
+
+    // ─── HOLD / PARK TICKET SYSTEM ─────────────────────────────────────────────
+    const handleParkCurrentTicket = () => {
+        if (cart.length === 0) {
+            toast.error('Cannot park an empty basket!');
+            return;
+        }
+
+        const parked: ParkedTicket = {
+            id: `park-${Date.now()}`,
+            ticketCode: saleCode,
+            items: [...cart],
+            customerName: customerName || 'Walk-in',
+            customerPhone,
+            tableNo: tableNo || 'Choma Bar',
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            grandTotal: cartGrandTotal
+        };
+
+        setParkedTickets(prev => [parked, ...prev]);
+        setCart([]);
+        setCustomerName('');
+        setCustomerPhone('');
+        setTableNo('');
+        toast.success(`⏸️ Ticket ${saleCode} Parked! You can recall it anytime.`);
+    };
+
+    const handleRecallTicket = (ticket: ParkedTicket) => {
+        if (cart.length > 0) {
+            if (!confirm('Replace current basket with parked ticket?')) return;
+        }
+
+        setCart(ticket.items);
+        setCustomerName(ticket.customerName);
+        setCustomerPhone(ticket.customerPhone);
+        setTableNo(ticket.tableNo);
+        setSaleCode(ticket.ticketCode);
+        setParkedTickets(prev => prev.filter(p => p.id !== ticket.id));
+        setShowParkedModal(false);
+        toast.success(`▶️ Ticket ${ticket.ticketCode} recalled!`);
     };
 
     // ─── M-PESA STK PUSH (Matches Bill Payment) ────────────────────────────────
@@ -375,7 +468,6 @@ export default function ButcheryPOSPage() {
                 setMpesaStatus('waiting');
                 setMpesaStatusMessage('📲 Prompt sent! Customer should enter M-Pesa PIN...');
 
-                // Try logging in Supabase if table exists
                 try {
                     await supabase.from('mpesa_transactions').insert({
                         checkout_request_id: requestId,
@@ -491,6 +583,7 @@ export default function ButcheryPOSPage() {
                 const itemNotesFormatted = [
                     item.prep_mode,
                     item.doneness ? `Doneness: ${item.doneness}` : null,
+                    item.spice_level ? `Spice: ${item.spice_level}` : null,
                     item.accompaniments.length > 0 ? `Sides: ${item.accompaniments.join(', ')}` : null,
                     item.special_notes ? `Note: ${item.special_notes}` : null,
                     tableNo ? `Table: ${tableNo}` : null
@@ -526,7 +619,7 @@ export default function ButcheryPOSPage() {
                         }).eq('stock_id', item.stock_id);
                     }
                 } catch {
-                    // Silent catch so sales never fail for cashier
+                    // Silent catch
                 }
             }
 
@@ -601,13 +694,13 @@ export default function ButcheryPOSPage() {
         <div className="min-h-screen bg-[#05090d] text-slate-100 p-3 sm:p-5 space-y-4 select-none font-sans relative">
             <Toaster position="top-right" />
 
-            {/* Schema Cache Alert Helper (Only shows if table not yet run in Supabase SQL editor) */}
+            {/* Offline / Demo Safe Mode Helper */}
             {!isSchemaCached && (
                 <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3 flex items-center justify-between text-xs text-amber-300">
                     <div className="flex items-center gap-2">
                         <span className="text-base">⚡</span>
                         <span>
-                            <strong>Offline / Demo Safe Mode:</strong> Butchery POS is active with live simulated chiller batches.
+                            <strong>Demo / Standalone Mode Active:</strong> Butchery terminal running with live simulated chiller inventory.
                         </span>
                     </div>
                     <button
@@ -620,7 +713,7 @@ export default function ButcheryPOSPage() {
             )}
 
             {/* ==================================================================== */}
-            {/* 1. TOP COMMAND BAR (Obsidian & Emerald Aesthetic)                     */}
+            {/* 1. TOP COMMAND BAR                                                   */}
             {/* ==================================================================== */}
             <header className="bg-[#0c161e] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                 <div className="flex items-center gap-3.5">
@@ -649,13 +742,41 @@ export default function ButcheryPOSPage() {
                             <span>•</span>
                             <span className="text-white font-bold">{saleCode}</span>
                             <span>•</span>
-                            <span className="text-slate-300">Dual-Mode Kg/KES · FIFO Batch Depletion</span>
+                            <span className="text-slate-300">Dual-Mode Scale · Choma KOT Handoff</span>
                         </div>
                     </div>
                 </div>
 
                 {/* Right Top Controls */}
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-2.5 flex-wrap">
+                    {/* Parked Tickets Button */}
+                    <button
+                        type="button"
+                        onClick={() => setShowParkedModal(true)}
+                        className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 border ${
+                            parkedTickets.length > 0
+                                ? 'bg-amber-500/20 text-amber-400 border-amber-500/40 animate-pulse'
+                                : 'bg-[#080f18] text-slate-400 border-slate-800 hover:text-white'
+                        }`}
+                    >
+                        <span>⏸️ Parked</span>
+                        <span className="px-1.5 py-0.2 rounded bg-amber-500 text-slate-950 font-black text-[10px]">
+                            {parkedTickets.length}
+                        </span>
+                    </button>
+
+                    {/* Reprint Last Ticket */}
+                    {lastCompletedSale && (
+                        <button
+                            type="button"
+                            onClick={() => setShowReceiptModal(true)}
+                            className="px-3 py-2 bg-[#080f18] hover:bg-[#132230] text-slate-300 hover:text-emerald-400 border border-slate-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                            <span>🖨️</span>
+                            <span>Reprint Last</span>
+                        </button>
+                    )}
+
                     {/* Price Tier Toggle */}
                     <div className="flex items-center bg-[#05090d] p-1 rounded-xl border border-slate-700/80">
                         <button
@@ -667,7 +788,7 @@ export default function ButcheryPOSPage() {
                                     : 'text-slate-400 hover:text-white'
                             }`}
                         >
-                            Walk-in Retail
+                            Retail
                         </button>
                         <button
                             type="button"
@@ -685,19 +806,18 @@ export default function ButcheryPOSPage() {
                     <button
                         onClick={loadData}
                         disabled={isLoading}
-                        className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 hover:text-emerald-400 transition-all flex items-center gap-1.5"
+                        className="px-3.5 py-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-xs font-bold text-slate-300 hover:text-emerald-400 transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                         <span>{isLoading ? '⏳' : '🔄'}</span>
-                        <span>Sync Stock</span>
+                        <span>Sync</span>
                     </button>
                 </div>
             </header>
 
             {/* ==================================================================== */}
-            {/* 2. HUD STAT CARDS (Cyber Emerald Cards matching Screenshot)            */}
+            {/* 2. HUD STAT CARDS (Cyber Emerald Cards)                               */}
             {/* ==================================================================== */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5">
-                {/* 1. Today Meat Sales */}
                 <div className="bg-[#0c161e] border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col justify-between hover:border-emerald-500/50 transition-all">
                     <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
                         <span>Today Sales</span>
@@ -711,7 +831,6 @@ export default function ButcheryPOSPage() {
                     </div>
                 </div>
 
-                {/* 2. Weight Sold */}
                 <div className="bg-[#0c161e] border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col justify-between hover:border-cyan-500/50 transition-all">
                     <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
                         <span>Weight Dispensed</span>
@@ -721,11 +840,10 @@ export default function ButcheryPOSPage() {
                         <p className="text-xl sm:text-2xl font-black text-cyan-400 font-mono">
                             {dashboard.todayWeightSold.toFixed(2)} Kg
                         </p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Scale scale cut count</p>
+                        <p className="text-[11px] text-slate-400 mt-0.5">Scale scale cuts</p>
                     </div>
                 </div>
 
-                {/* 3. Completed Tickets */}
                 <div className="bg-[#0c161e] border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col justify-between hover:border-indigo-500/50 transition-all">
                     <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
                         <span>Butchery Tickets</span>
@@ -739,7 +857,6 @@ export default function ButcheryPOSPage() {
                     </div>
                 </div>
 
-                {/* 4. Total Available Stock */}
                 <div className="bg-[#0c161e] border border-slate-800 rounded-2xl p-4 shadow-lg flex flex-col justify-between hover:border-amber-500/50 transition-all">
                     <div className="flex items-center justify-between text-xs text-slate-400 font-bold uppercase tracking-wider">
                         <span>Chiller Stock</span>
@@ -762,20 +879,52 @@ export default function ButcheryPOSPage() {
                 {/* ── LEFT: SCALE TERMINAL & BATCH SELECTION (7 Cols) ── */}
                 <div className="xl:col-span-7 space-y-4">
 
-                    {/* Batch Meat Selection Grid */}
-                    <div className="bg-[#0c161e] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-3">
-                        <div className="flex items-center justify-between">
-                            <h2 className="font-black text-white text-base flex items-center gap-2">
-                                <span>🥩 Select Meat Cut &amp; Batch</span>
-                                <span className="text-xs text-slate-400 font-normal">(FIFO Oldest First)</span>
-                            </h2>
-                            <span className="text-xs font-mono text-[#00e676]">
-                                Tier: <span className="font-bold">{priceTier}</span>
-                            </span>
+                    {/* Meat Cut Category Pills & Search Bar (Matching POS Screenshot) */}
+                    <div className="bg-[#0c161e] border border-slate-800 rounded-2xl p-4 space-y-3">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                            {/* Category Filter Pills */}
+                            <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-1 sm:pb-0 scrollbar-none">
+                                {[
+                                    { id: 'All', label: 'All Cuts', emoji: '🥩' },
+                                    { id: 'Beef', label: 'Beef Steak', emoji: '🥩' },
+                                    { id: 'Goat', label: 'Mbuzi / Goat', emoji: '🐐' },
+                                    { id: 'Chicken', label: 'Chicken', emoji: '🍗' },
+                                    { id: 'Pork', label: 'Pork', emoji: '🍖' },
+                                    { id: 'Bones', label: 'Soup Bones', emoji: '🥣' },
+                                    { id: 'Offals', label: 'Matumbo', emoji: '🫀' },
+                                ].map(cat => (
+                                    <button
+                                        key={cat.id}
+                                        type="button"
+                                        onClick={() => setCategoryFilter(cat.id as any)}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1.5 ${
+                                            categoryFilter === cat.id
+                                                ? 'bg-[#00e676] text-slate-950 font-black shadow-[0_0_12px_rgba(0,230,118,0.4)]'
+                                                : 'bg-[#080f18] text-slate-400 hover:text-white border border-slate-800'
+                                        }`}
+                                    >
+                                        <span>{cat.emoji}</span>
+                                        <span>{cat.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Search Cut Input */}
+                            <div className="relative w-full sm:w-48">
+                                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs">🔍</span>
+                                <input
+                                    type="text"
+                                    value={searchCut}
+                                    onChange={(e) => setSearchCut(e.target.value)}
+                                    placeholder="Search cut..."
+                                    className="w-full bg-[#05090d] border border-slate-700 rounded-xl pl-7 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                                />
+                            </div>
                         </div>
 
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                            {batches.map(batch => {
+                        {/* Meat Cut Grid (Obsidian Card Style) */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-72 overflow-y-auto pr-1">
+                            {filteredBatches.map(batch => {
                                 const isSelected = selectedBatch?.stock_id === batch.stock_id;
                                 const price = priceTier === 'Wholesale' ? (batch.wholesale_price || batch.selling_price) : batch.selling_price;
 
@@ -783,42 +932,42 @@ export default function ButcheryPOSPage() {
                                     <div
                                         key={batch.stock_id}
                                         onClick={() => setSelectedBatch(batch)}
-                                        className={`relative rounded-2xl p-3.5 cursor-pointer transition-all border ${
+                                        className={`relative rounded-2xl p-3 cursor-pointer transition-all border ${
                                             isSelected
                                                 ? 'bg-gradient-to-br from-[#0c161e] to-emerald-950/40 border-emerald-500 shadow-[0_0_20px_rgba(0,230,118,0.25)] ring-1 ring-emerald-500'
                                                 : 'bg-[#080f18] border-slate-800 hover:border-slate-700'
                                         }`}
                                     >
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-slate-400">
+                                        <div className="flex items-center justify-between mb-1.5">
+                                            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-slate-900 border border-slate-800 text-slate-400">
                                                 {batch.stock_code}
                                             </span>
-                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+                                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border flex items-center gap-1 ${
                                                 batch.days_old === 0
                                                     ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                                                     : batch.days_old <= 2
                                                     ? 'bg-yellow-500/15 text-yellow-400 border-yellow-500/30'
                                                     : 'bg-red-500/15 text-red-400 border-red-500/30'
                                             }`}>
-                                                <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
-                                                {batch.days_old === 0 ? 'Fresh Today' : `${batch.days_old}d Old`}
+                                                <span className="w-1 h-1 rounded-full bg-current"></span>
+                                                {batch.days_old === 0 ? 'Fresh' : `${batch.days_old}d`}
                                             </span>
                                         </div>
 
-                                        <h3 className="font-bold text-white text-sm truncate">
+                                        <h3 className="font-bold text-white text-xs truncate">
                                             {batch.meat_type_name}
                                         </h3>
 
-                                        <div className="mt-2 flex items-baseline justify-between">
-                                            <span className="text-[#00e676] font-black text-base font-mono">
+                                        <div className="mt-1.5 flex items-baseline justify-between">
+                                            <span className="text-[#00e676] font-black text-sm font-mono">
                                                 KES {price.toLocaleString()}
-                                                <span className="text-[10px] text-slate-400 font-normal">/Kg</span>
+                                                <span className="text-[9px] text-slate-400 font-normal">/Kg</span>
                                             </span>
                                         </div>
 
-                                        <div className="mt-1 text-[11px] text-slate-400 flex items-center justify-between">
+                                        <div className="mt-1 text-[10px] text-slate-400 flex items-center justify-between">
                                             <span>Avail:</span>
-                                            <span className="font-mono font-bold text-slate-300">{batch.available_kg.toFixed(2)} Kg</span>
+                                            <span className="font-mono font-bold text-slate-300">{batch.available_kg.toFixed(1)} Kg</span>
                                         </div>
                                     </div>
                                 );
@@ -826,15 +975,15 @@ export default function ButcheryPOSPage() {
                         </div>
                     </div>
 
-                    {/* Dual-Mode Scale Input Terminal */}
+                    {/* Digital Scale Terminal */}
                     <div className="bg-[#0c161e] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-xl space-y-4">
                         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                             <div className="flex items-center gap-2">
                                 <span className="text-xl">⚖️</span>
-                                <h3 className="font-black text-white text-base">Digital Scale &amp; Price Calculator</h3>
+                                <h3 className="font-black text-white text-base">Digital Scale &amp; Price Terminal</h3>
                             </div>
 
-                            {/* Dual Mode Toggle */}
+                            {/* Dual Mode Switch */}
                             <div className="flex items-center bg-[#05090d] p-1 rounded-xl border border-slate-700/80">
                                 <button
                                     type="button"
@@ -845,7 +994,7 @@ export default function ButcheryPOSPage() {
                                             : 'text-slate-400 hover:text-white'
                                     }`}
                                 >
-                                    Mode A: Enter Weight (Kg)
+                                    Mode A: Weight (Kg)
                                 </button>
                                 <button
                                     type="button"
@@ -856,14 +1005,14 @@ export default function ButcheryPOSPage() {
                                             : 'text-slate-400 hover:text-white'
                                     }`}
                                 >
-                                    Mode B: Enter Amount (KES)
+                                    Mode B: Amount (KES)
                                 </button>
                             </div>
                         </div>
 
-                        {/* Interactive Scale Display */}
+                        {/* Live Digital Scale Display */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {/* Weight Input */}
+                            {/* Weight Box */}
                             <div className={`p-4 rounded-2xl border transition-all ${
                                 inputMode === 'WEIGHT'
                                     ? 'bg-[#080f18] border-emerald-500/60 shadow-[0_0_15px_rgba(0,230,118,0.15)]'
@@ -873,11 +1022,22 @@ export default function ButcheryPOSPage() {
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
                                         ⚖️ Net Meat Weight
                                     </label>
-                                    {inputMode === 'WEIGHT' && (
-                                        <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full">
-                                            ACTIVE INPUT
-                                        </span>
-                                    )}
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            type="button"
+                                            onClick={() => adjustWeightBy(-0.25)}
+                                            className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs font-bold font-mono"
+                                        >
+                                            -0.25
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => adjustWeightBy(0.25)}
+                                            className="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs font-bold font-mono"
+                                        >
+                                            +0.25
+                                        </button>
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <input
@@ -895,7 +1055,7 @@ export default function ButcheryPOSPage() {
                                 </p>
                             </div>
 
-                            {/* Amount Input */}
+                            {/* Amount Box */}
                             <div className={`p-4 rounded-2xl border transition-all ${
                                 inputMode === 'AMOUNT'
                                     ? 'bg-[#080f18] border-emerald-500/60 shadow-[0_0_15px_rgba(0,230,118,0.15)]'
@@ -927,10 +1087,10 @@ export default function ButcheryPOSPage() {
                             </div>
                         </div>
 
-                        {/* Quick Presets Buttons */}
+                        {/* Quick Presets */}
                         <div className="space-y-1.5">
                             <span className="text-[11px] text-slate-400 uppercase font-bold tracking-wider block">
-                                Quick One-Tap Shortcuts:
+                                Quick Shortcuts:
                             </span>
                             {inputMode === 'WEIGHT' ? (
                                 <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
@@ -1004,29 +1164,54 @@ export default function ButcheryPOSPage() {
                                 ))}
                             </div>
 
-                            {/* Doneness & Accompaniments */}
+                            {/* Doneness & Sides if Cooked */}
                             {prepMode !== 'Raw Takeaway' && (
                                 <div className="p-3.5 bg-[#05090d] border border-slate-800 rounded-xl space-y-3">
-                                    <div className="flex items-center justify-between text-xs">
-                                        <span className="text-slate-400 font-bold">Grill Doneness:</span>
-                                        <div className="flex gap-1.5">
-                                            {['Medium', 'Medium Well', 'Well Done / Crispy'].map(d => (
-                                                <button
-                                                    key={d}
-                                                    type="button"
-                                                    onClick={() => setDoneness(d)}
-                                                    className={`px-2 py-1 rounded-lg text-xs font-semibold ${
-                                                        doneness === d
-                                                            ? 'bg-emerald-500 text-slate-950 font-bold'
-                                                            : 'bg-[#0c161e] text-slate-400 hover:text-white border border-slate-800'
-                                                    }`}
-                                                >
-                                                    {d}
-                                                </button>
-                                            ))}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                        {/* Doneness */}
+                                        <div>
+                                            <span className="text-slate-400 font-bold block mb-1">Grill Doneness:</span>
+                                            <div className="flex gap-1.5 flex-wrap">
+                                                {['Medium', 'Medium Well', 'Well Done / Crispy'].map(d => (
+                                                    <button
+                                                        key={d}
+                                                        type="button"
+                                                        onClick={() => setDoneness(d)}
+                                                        className={`px-2 py-1 rounded-lg text-xs font-semibold ${
+                                                            doneness === d
+                                                                ? 'bg-emerald-500 text-slate-950 font-bold'
+                                                                : 'bg-[#0c161e] text-slate-400 hover:text-white border border-slate-800'
+                                                        }`}
+                                                    >
+                                                        {d}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Pepper / Spice */}
+                                        <div>
+                                            <span className="text-slate-400 font-bold block mb-1">Pili Pili / Seasoning:</span>
+                                            <div className="flex gap-1.5 flex-wrap">
+                                                {['Mild / Normal', 'Extra Pili Pili', 'No Pepper / Plain'].map(sp => (
+                                                    <button
+                                                        key={sp}
+                                                        type="button"
+                                                        onClick={() => setSpiceLevel(sp)}
+                                                        className={`px-2 py-1 rounded-lg text-xs font-semibold ${
+                                                            spiceLevel === sp
+                                                                ? 'bg-amber-400 text-slate-950 font-bold'
+                                                                : 'bg-[#0c161e] text-slate-400 hover:text-white border border-slate-800'
+                                                        }`}
+                                                    >
+                                                        {sp}
+                                                    </button>
+                                                ))}
+                                            </div>
                                         </div>
                                     </div>
 
+                                    {/* Accompaniments */}
                                     <div>
                                         <span className="text-slate-400 text-xs font-bold block mb-1.5">Accompaniments (Side Dishes):</span>
                                         <div className="flex flex-wrap gap-1.5">
@@ -1073,110 +1258,163 @@ export default function ButcheryPOSPage() {
                 <div className="xl:col-span-5 space-y-4">
                     <div className="bg-[#0c161e] border border-slate-800 rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col justify-between h-full space-y-4">
 
-                        {/* Basket Header */}
+                        {/* Basket / Recent Tabs */}
                         <div>
                             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
                                 <div className="flex items-center gap-2">
-                                    <span className="text-2xl">🛒</span>
-                                    <div>
-                                        <h3 className="font-black text-white text-base">Meat Basket</h3>
-                                        <p className="text-[11px] text-slate-400">{cart.length} item(s) on ticket</p>
-                                    </div>
-                                </div>
-                                {cart.length > 0 && (
                                     <button
                                         type="button"
-                                        onClick={() => setCart([])}
-                                        className="text-xs text-rose-400 hover:text-rose-300 font-bold"
+                                        onClick={() => setActiveRightTab('BASKET')}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                            activeRightTab === 'BASKET'
+                                                ? 'bg-emerald-500 text-slate-950 font-black'
+                                                : 'text-slate-400 hover:text-white'
+                                        }`}
                                     >
-                                        Clear All
+                                        🛒 Active Basket ({cart.length})
                                     </button>
-                                )}
-                            </div>
-
-                            {/* Customer & Table details */}
-                            <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
-                                <div>
-                                    <label className="text-slate-400 block mb-1 text-[11px]">Customer (Optional)</label>
-                                    <input
-                                        type="text"
-                                        value={customerName}
-                                        onChange={(e) => setCustomerName(e.target.value)}
-                                        placeholder="e.g. John K."
-                                        className="w-full bg-[#05090d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
-                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveRightTab('RECENT')}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                            activeRightTab === 'RECENT'
+                                                ? 'bg-emerald-500 text-slate-950 font-black'
+                                                : 'text-slate-400 hover:text-white'
+                                        }`}
+                                    >
+                                        📋 Today&apos;s Tickets ({todaySales.length})
+                                    </button>
                                 </div>
-                                <div>
-                                    <label className="text-slate-400 block mb-1 text-[11px]">Table # / Choma Seat</label>
-                                    <input
-                                        type="text"
-                                        value={tableNo}
-                                        onChange={(e) => setTableNo(e.target.value)}
-                                        placeholder="e.g. Table 12 / Choma Bar"
-                                        className="w-full bg-[#05090d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
-                                    />
-                                </div>
-                            </div>
 
-                            {/* Itemized Cart List */}
-                            <div className="mt-4 space-y-2.5 max-h-64 overflow-y-auto pr-1">
-                                {cart.length === 0 ? (
-                                    <div className="text-center py-10 text-slate-500 border border-dashed border-slate-800 rounded-xl">
-                                        <span className="text-3xl block mb-2">🥩</span>
-                                        <p className="font-semibold text-slate-400">Basket is empty</p>
-                                        <p className="text-xs text-slate-500 mt-1">Select cuts on the left to build order</p>
-                                    </div>
-                                ) : (
-                                    cart.map(item => (
-                                        <div
-                                            key={item.id}
-                                            className="bg-[#080f18] border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-2"
+                                {activeRightTab === 'BASKET' && cart.length > 0 && (
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={handleParkCurrentTicket}
+                                            className="text-xs text-amber-400 hover:text-amber-300 font-bold"
+                                            title="Hold ticket for later"
                                         >
-                                            <div className="min-w-0">
-                                                <div className="flex items-center gap-2">
-                                                    <h4 className="font-bold text-white text-xs truncate">
-                                                        {item.meat_type_name}
-                                                    </h4>
-                                                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-800 text-slate-400 font-mono">
-                                                        {item.stock_code}
-                                                    </span>
-                                                </div>
-                                                <p className="text-[11px] text-slate-400 font-mono mt-0.5">
-                                                    {item.weight_kg.toFixed(3)} Kg @ KES {item.price_per_kg.toLocaleString()}/Kg
-                                                </p>
-                                                <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                                        item.prep_mode === 'Raw Takeaway'
-                                                            ? 'bg-slate-800 text-slate-300'
-                                                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                                                    }`}>
-                                                        {item.prep_mode}
-                                                    </span>
-                                                    {item.doneness && (
-                                                        <span className="text-[10px] text-slate-400">({item.doneness})</span>
-                                                    )}
-                                                    {item.accompaniments.length > 0 && (
-                                                        <span className="text-[10px] text-slate-400">+ {item.accompaniments.join(', ')}</span>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            <div className="text-right shrink-0">
-                                                <span className="font-black text-white text-sm font-mono block">
-                                                    KES {item.subtotal.toLocaleString()}
-                                                </span>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRemoveFromCart(item.id)}
-                                                    className="text-[10px] text-rose-400 hover:text-rose-300 font-bold mt-1 cursor-pointer"
-                                                >
-                                                    Remove
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
+                                            ⏸️ Park
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setCart([])}
+                                            className="text-xs text-rose-400 hover:text-rose-300 font-bold"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
                                 )}
                             </div>
+
+                            {activeRightTab === 'BASKET' ? (
+                                <>
+                                    {/* Customer & Table details */}
+                                    <div className="grid grid-cols-2 gap-2 mt-3 text-xs">
+                                        <div>
+                                            <label className="text-slate-400 block mb-1 text-[11px]">Customer (Optional)</label>
+                                            <input
+                                                type="text"
+                                                value={customerName}
+                                                onChange={(e) => setCustomerName(e.target.value)}
+                                                placeholder="e.g. John K."
+                                                className="w-full bg-[#05090d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="text-slate-400 block mb-1 text-[11px]">Table # / Choma Seat</label>
+                                            <input
+                                                type="text"
+                                                value={tableNo}
+                                                onChange={(e) => setTableNo(e.target.value)}
+                                                placeholder="e.g. Table 12 / Choma Bar"
+                                                className="w-full bg-[#05090d] border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500 font-mono"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Itemized Cart List */}
+                                    <div className="mt-4 space-y-2.5 max-h-64 overflow-y-auto pr-1">
+                                        {cart.length === 0 ? (
+                                            <div className="text-center py-10 text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                                                <span className="text-3xl block mb-2">🥩</span>
+                                                <p className="font-semibold text-slate-400">Basket is empty</p>
+                                                <p className="text-xs text-slate-500 mt-1">Select cuts on the left to build order</p>
+                                            </div>
+                                        ) : (
+                                            cart.map(item => (
+                                                <div
+                                                    key={item.id}
+                                                    className="bg-[#080f18] border border-slate-800 rounded-xl p-3 flex items-start justify-between gap-2"
+                                                >
+                                                    <div className="min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <h4 className="font-bold text-white text-xs truncate">
+                                                                {item.meat_type_name}
+                                                            </h4>
+                                                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-900 text-slate-400 font-mono">
+                                                                {item.stock_code}
+                                                            </span>
+                                                        </div>
+                                                        <p className="text-[11px] text-slate-400 font-mono mt-0.5">
+                                                            {item.weight_kg.toFixed(3)} Kg @ KES {item.price_per_kg.toLocaleString()}/Kg
+                                                        </p>
+                                                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                                                item.prep_mode === 'Raw Takeaway'
+                                                                    ? 'bg-slate-800 text-slate-300'
+                                                                    : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                                                            }`}>
+                                                                {item.prep_mode}
+                                                            </span>
+                                                            {item.doneness && (
+                                                                <span className="text-[10px] text-slate-400">({item.doneness})</span>
+                                                            )}
+                                                            {item.accompaniments.length > 0 && (
+                                                                <span className="text-[10px] text-slate-400">+ {item.accompaniments.join(', ')}</span>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="text-right shrink-0">
+                                                        <span className="font-black text-white text-sm font-mono block">
+                                                            KES {item.subtotal.toLocaleString()}
+                                                        </span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveFromCart(item.id)}
+                                                            className="text-[10px] text-rose-400 hover:text-rose-300 font-bold mt-1 cursor-pointer"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                /* Today's Dispatched Tickets View */
+                                <div className="mt-3 space-y-2 max-h-80 overflow-y-auto pr-1">
+                                    {todaySales.length === 0 ? (
+                                        <p className="text-center py-8 text-slate-500 text-xs">No sales dispatched yet today</p>
+                                    ) : (
+                                        todaySales.map(ts => (
+                                            <div key={ts.sale_id} className="bg-[#080f18] p-3 rounded-xl border border-slate-800 flex justify-between items-center text-xs">
+                                                <div>
+                                                    <span className="font-mono font-bold text-white">{ts.sale_code}</span>
+                                                    <p className="text-slate-400 text-[10px]">{ts.meat_type_name} • {ts.weight_kg.toFixed(2)} Kg</p>
+                                                    <span className="text-[9px] text-slate-500">{ts.sale_time}</span>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="font-mono font-black text-[#00e676]">KES {ts.net_amount.toLocaleString()}</span>
+                                                    <span className="text-[10px] text-slate-400 block">{ts.payment_mode}</span>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         {/* Order Summary & Totals */}
@@ -1419,7 +1657,7 @@ export default function ButcheryPOSPage() {
                             </div>
                         )}
 
-                        {/* Cash Tender Input */}
+                        {/* Cash Tender Input with Quick Cash Buttons */}
                         {paymentMode === 'Cash' && (
                             <div className="space-y-3 bg-[#080f18] border border-slate-800 rounded-2xl p-4">
                                 <label className="text-xs text-slate-400 block">Cash Tendered by Customer</label>
@@ -1433,6 +1671,27 @@ export default function ButcheryPOSPage() {
                                         className="w-full bg-[#05090d] border border-slate-700 rounded-xl px-4 py-3 text-white text-xl font-mono focus:outline-none focus:border-emerald-500"
                                     />
                                 </div>
+
+                                {/* Quick Cash Buttons */}
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                    {[
+                                        { label: 'Exact', amt: cartGrandTotal },
+                                        { label: 'KES 500', amt: 500 },
+                                        { label: 'KES 1,000', amt: 1000 },
+                                        { label: 'KES 2,000', amt: 2000 },
+                                        { label: 'KES 5,000', amt: 5000 },
+                                    ].map(qb => (
+                                        <button
+                                            key={qb.label}
+                                            type="button"
+                                            onClick={() => setCashTendered(qb.amt.toString())}
+                                            className="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-lg text-xs font-mono font-bold"
+                                        >
+                                            {qb.label}
+                                        </button>
+                                    ))}
+                                </div>
+
                                 <div className="p-3 bg-[#05090d] rounded-xl border border-slate-800 flex justify-between items-center">
                                     <span className="text-xs text-slate-400 font-semibold">Change to Return:</span>
                                     <span className="font-mono font-black text-lg text-emerald-400">
@@ -1539,6 +1798,11 @@ export default function ButcheryPOSPage() {
                                         <div className="flex justify-between text-[10px] text-gray-600 pl-2">
                                             <span>{i.weight_kg.toFixed(3)} Kg @ {i.price_per_kg}/Kg ({i.prep_mode})</span>
                                         </div>
+                                        {i.doneness && (
+                                            <div className="text-[9px] text-gray-500 pl-2">
+                                                Doneness: {i.doneness} {i.spice_level ? `• ${i.spice_level}` : ''}
+                                            </div>
+                                        )}
                                         {i.accompaniments.length > 0 && (
                                             <div className="text-[9px] text-gray-500 pl-2">
                                                 Sides: {i.accompaniments.join(', ')}
@@ -1608,7 +1872,62 @@ export default function ButcheryPOSPage() {
             )}
 
             {/* ==================================================================== */}
-            {/* 6. MODAL: SQL SETUP SCRIPT (1-Click Copy for Admin)                  */}
+            {/* 6. MODAL: PARKED TICKETS RECALL                                      */}
+            {/* ==================================================================== */}
+            {showParkedModal && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
+                    <div className="bg-[#0c161e] border border-slate-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                            <h3 className="font-black text-white text-base flex items-center gap-2">
+                                <span>⏸️ Parked / Held Meat Tickets</span>
+                            </h3>
+                            <button
+                                onClick={() => setShowParkedModal(false)}
+                                className="w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center font-bold cursor-pointer"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {parkedTickets.length === 0 ? (
+                            <p className="text-center py-8 text-slate-400 text-xs">No tickets are currently parked.</p>
+                        ) : (
+                            <div className="space-y-2">
+                                {parkedTickets.map(pt => (
+                                    <div
+                                        key={pt.id}
+                                        className="bg-[#080f18] border border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3"
+                                    >
+                                        <div>
+                                            <span className="font-mono font-bold text-white text-sm">{pt.ticketCode}</span>
+                                            <p className="text-slate-400 text-xs mt-0.5">
+                                                {pt.customerName} • {pt.tableNo} • {pt.items.length} cut(s)
+                                            </p>
+                                            <span className="text-[10px] text-slate-500">{pt.timestamp}</span>
+                                        </div>
+
+                                        <div className="text-right">
+                                            <p className="font-mono font-black text-[#00e676] text-sm">
+                                                KES {pt.grandTotal.toLocaleString()}
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleRecallTicket(pt)}
+                                                className="mt-1 px-3 py-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-lg text-xs"
+                                            >
+                                                Recall ▶️
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+
+            {/* ==================================================================== */}
+            {/* 7. MODAL: SQL SETUP SCRIPT (1-Click Copy for Admin)                  */}
             {/* ==================================================================== */}
             {showSqlModal && (
                 <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4">
