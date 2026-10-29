@@ -38,12 +38,12 @@ export default function ButcherySalesReportPage() {
     const [sales, setSales] = useState<MeatSaleRecord[]>(DEFAULT_SALES);
     const [isLoading, setIsLoading] = useState(false);
     const [datePreset, setDatePreset] = useState<DatePreset>('all');
-    const [dateFrom, setDateFrom] = useState(() => {
+    const [dateFrom, setDateFrom] = useState<string>(() => {
         const d = new Date();
         d.setDate(d.getDate() - 30);
         return d.toISOString().split('T')[0];
     });
-    const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
+    const [dateTo, setDateTo] = useState<string>(() => new Date().toISOString().split('T')[0]);
     const [searchQuery, setSearchQuery] = useState('');
     const [paymentFilter, setPaymentFilter] = useState('All');
     const [meatFilter, setMeatFilter] = useState('All');

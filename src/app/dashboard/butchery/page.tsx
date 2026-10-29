@@ -34,7 +34,7 @@ export default function ButcheryDashboardPage() {
     });
     const [recentSales, setRecentSales] = useState<RecentSale[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [currentTime, setCurrentTime] = useState(new Date());
+    const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
     useEffect(() => {
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -106,7 +106,7 @@ export default function ButcheryDashboardPage() {
                 ]);
             }
 
-        } catch (err) {
+        } catch (err: any) {
             console.warn('Dashboard notice:', err);
         } finally {
             setIsLoading(false);

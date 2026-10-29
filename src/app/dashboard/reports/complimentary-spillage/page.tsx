@@ -24,12 +24,12 @@ export default function ComplimentarySpillageReportPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedRecord, setSelectedRecord] = useState<CompSpillageRecord | null>(null);
 
-    const [dateFrom, setDateFrom] = useState(() => {
+    const [dateFrom, setDateFrom] = useState<string>(() => {
         const d = new Date();
         d.setDate(d.getDate() - 30);
         return d.toISOString().split('T')[0];
     });
-    const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
+    const [dateTo, setDateTo] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
     const fmt = (n: number | null | undefined) =>
         `Ksh ${(Number(n) || 0).toLocaleString('en-KE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;

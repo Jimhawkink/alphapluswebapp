@@ -275,12 +275,12 @@ export default function MasterReportsPage() {
     const [datePreset, setDatePreset] = useState<DatePreset>('all');
     
     // Dates defaults to all-time / 30-days range
-    const [dateFrom, setDateFrom] = useState(() => {
+    const [dateFrom, setDateFrom] = useState<string>(() => {
         const d = new Date();
         d.setDate(d.getDate() - 30);
         return d.toISOString().split('T')[0];
     });
-    const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
+    const [dateTo, setDateTo] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
     // Data states
     const [loading, setLoading] = useState(true);

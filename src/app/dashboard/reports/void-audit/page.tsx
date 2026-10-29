@@ -32,15 +32,15 @@ export default function VoidAuditReportPage() {
     const [filterReason, setFilterReason] = useState<string>('ALL');
     const [filterStaff, setFilterStaff] = useState<string>('ALL');
     const [selectedRecord, setSelectedRecord] = useState<VoidAuditRecord | null>(null);
-    const [dateFrom, setDateFrom] = useState(() => {
+    const [dateFrom, setDateFrom] = useState<string>(() => {
         const d = new Date();
         d.setDate(d.getDate() - 30);
         return d.toISOString().split('T')[0];
     });
-    const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
+    const [dateTo, setDateTo] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
     // Live clock
-    const [liveTime, setLiveTime] = useState(new Date());
+    const [liveTime, setLiveTime] = useState<Date>(new Date());
     useEffect(() => {
         const t = setInterval(() => setLiveTime(new Date()), 1000);
         return () => clearInterval(t);
@@ -224,7 +224,7 @@ export default function VoidAuditReportPage() {
             // Combine live with benchmarks
             const combined = [...mappedRecords, ...benchmarkAuditList];
             setRecords(combined);
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error fetching void records:', err);
             toast.error('Failed to load void audit data');
         } finally {

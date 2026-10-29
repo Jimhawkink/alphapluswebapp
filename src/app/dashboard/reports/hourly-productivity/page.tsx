@@ -31,7 +31,7 @@ export default function HourlyProductivityReportPage() {
     const [waiterList, setWaiterList] = useState<WaiterProductivity[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'hourly' | 'waiters'>('hourly');
-    const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
 
     const fmt = (n: number | null | undefined) =>
         `Ksh ${(Number(n) || 0).toLocaleString('en-KE', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;

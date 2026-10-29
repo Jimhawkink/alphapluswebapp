@@ -156,7 +156,7 @@ export default function ButcheryPOSPage() {
     const [loadingC2B, setLoadingC2B] = useState(false);
 
     // Live Clock
-    const [liveTime, setLiveTime] = useState(new Date());
+    const [liveTime, setLiveTime] = useState<Date>(new Date());
     useEffect(() => {
         const t = setInterval(() => setLiveTime(new Date()), 1000);
         return () => clearInterval(t);

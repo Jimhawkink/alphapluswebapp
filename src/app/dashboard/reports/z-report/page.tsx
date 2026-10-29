@@ -12,7 +12,7 @@ export default function ZReportPage() {
     const [isLoading, setIsLoading] = useState(true);
 
     // Date and Shift Selection
-    const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().split('T')[0]);
+    const [selectedDate, setSelectedDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
     const [selectedCashier, setSelectedCashier] = useState('ALL');
     const [cashierList, setCashierList] = useState<string[]>([]);
 
