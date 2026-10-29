@@ -1243,16 +1243,8 @@ export default function MasterReportsPage() {
                         </Link>
                     </div>
                 </div>
-                                </p>
-                            </div>
-                            <div className="mt-3 pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                                <span className="text-[11px] font-black text-[#00e676]">Cashflow Lock</span>
-                                <span className="text-slate-400 text-xs group-hover:translate-x-1 transition-transform">→</span>
-                            </div>
-                        </Link>
-                    </div>
 
-                    {/* Classic Sub-Reports Pill Links */}
+                {/* Classic Sub-Reports Pill Links */}
                     <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-2 flex-wrap text-xs">
                         <span className="text-slate-400 font-semibold">Other Sub-Ledgers:</span>
                         <Link href="/dashboard/reports/dish-report" className="px-2.5 py-1 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200 transition-all font-medium">
@@ -2234,6 +2226,5 @@ export default function MasterReportsPage() {
                     </div>
                 </div>
             )}
-        </div>
     );
 }
