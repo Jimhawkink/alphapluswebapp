@@ -263,12 +263,48 @@ const buildMenu = (): MenuSection[] => [
         items: [
             { name: 'Dashboard', icon: Icons.dashboard, href: '/dashboard', badge: null, permission: 'reports_daily_sales_view' },
             { name: 'Point of Sale', icon: Icons.pos, href: '/dashboard/pos', badge: 'LIVE', permission: 'pos_view_terminal' },
+            { name: 'Cyber Butchery POS', icon: Icons.scale, href: '/dashboard/butchery/pos', badge: 'MEAT', permission: 'pos_view_terminal' },
             { name: 'Kitchen Display', icon: Icons.kitchen, href: '/dashboard/kitchen', badge: 'KDS', permission: 'kitchen_kds_view' },
             { name: 'Hardware Printers', icon: Icons.printer, href: '/dashboard/printers', badge: 'PRINTER', permission: 'admin_hardware_printers' },
             { name: 'Stores Management', icon: Icons.store, href: '/dashboard/stores', badge: 'STORES', permission: 'store_stock_adjustment' },
             { name: 'Cashier Checkout', icon: Icons.doc, href: '/dashboard/bills', badge: 'EXIT', permission: 'finance_bill_payment_settle' },
             { name: 'Bill Payment', icon: Icons.money, href: '/dashboard/bill-payment', badge: 'PAY', permission: 'finance_bill_payment_settle' },
             { name: 'Split & Merge Receipts', icon: Icons.doc, href: '/dashboard/split-merge-receipts', badge: 'PRO', permission: 'pos_split_bill' },
+        ],
+    },
+    {
+        category: 'AUDIT & FRAUD PREVENTION',
+        items: [
+            {
+                name: 'Executive Fraud Audits', icon: Icons.warn, id: 'fraud-audit-reports',
+                subItems: [
+                    { name: 'Void & Cancel Audit', icon: Icons.warn, href: '/dashboard/reports/void-audit', badge: 'THEFT', permission: 'reports_daily_sales_view' },
+                    { name: 'Official Z-Report (80mm)', icon: Icons.printer, href: '/dashboard/reports/z-report', badge: 'KRA', permission: 'reports_kra_tax_breakdown' },
+                    { name: 'Kitchen Bleed Variance', icon: Icons.scale, href: '/dashboard/reports/consumption-variance', badge: 'BLEED', permission: 'kitchen_dish_stock_view' },
+                    { name: 'Menu Engineering Matrix', icon: Icons.grid, href: '/dashboard/reports/menu-engineering', badge: 'PROFIT', permission: 'reports_recipe_costing' },
+                    { name: 'Hourly Peak Rush & Labor', icon: Icons.clock, href: '/dashboard/reports/hourly-productivity', badge: 'RUSH', permission: 'reports_daily_sales_view' },
+                    { name: 'VIP Comp & Spillage', icon: Icons.voucher, href: '/dashboard/reports/complimentary-spillage', badge: 'WASTE', permission: 'finance_manage_expenses' },
+                    { name: 'Debtor & Credit Aging', icon: Icons.account, href: '/dashboard/reports/debtor-aging', badge: 'AGING', permission: 'finance_bill_payment_settle' },
+                    { name: 'Master Reports Hub', icon: Icons.report, href: '/dashboard/reports', badge: 'HUB', permission: 'reports_daily_sales_view' },
+                ],
+            },
+        ],
+    },
+    {
+        category: 'BUTCHERY OPERATIONS',
+        items: [
+            {
+                name: 'Butchery Management', icon: Icons.scale, id: 'butchery-ops',
+                subItems: [
+                    { name: 'Butchery Dashboard', icon: Icons.dashboard, href: '/dashboard/butchery', badge: 'HUB', permission: 'store_stock_adjustment' },
+                    { name: 'Cyber Butchery POS', icon: Icons.pos, href: '/dashboard/butchery/pos', badge: 'LIVE', permission: 'pos_view_terminal' },
+                    { name: 'Meat Intake & Batches', icon: Icons.cart, href: '/dashboard/butchery/batches', badge: 'PURCHASE', permission: 'store_purchase_orders' },
+                    { name: 'Drying, Bones & Waste', icon: Icons.scale, href: '/dashboard/butchery/weight-loss', badge: 'YIELD', permission: 'store_stock_adjustment' },
+                    { name: 'Chiller Inventory Stock', icon: Icons.store, href: '/dashboard/butchery/stock', permission: 'store_stock_adjustment' },
+                    { name: 'Meat Cut Catalog', icon: Icons.tag, href: '/dashboard/butchery/meat-types', permission: 'catalog_products_manage' },
+                    { name: 'Meat Sales & Profit Report', icon: Icons.report, href: '/dashboard/butchery/sales-report', badge: 'AUDIT', permission: 'reports_daily_sales_view' },
+                ],
+            },
         ],
     },
     {
@@ -342,7 +378,15 @@ const buildMenu = (): MenuSection[] => [
                 name: 'Sales', icon: Icons.money, id: 'sales',
                 subItems: [
                     { name: 'Financial Reports', icon: Icons.report, href: '/dashboard/financial-reports', badge: 'FINANCE', permission: 'finance_chart_of_accounts' },
-                    { name: 'Master Reports', icon: Icons.report, href: '/dashboard/reports', permission: 'reports_daily_sales_view' },
+                    { name: 'Master Reports Hub', icon: Icons.report, href: '/dashboard/reports', badge: 'HUB', permission: 'reports_daily_sales_view' },
+                    { name: 'Void & Cancel Audit', icon: Icons.warn, href: '/dashboard/reports/void-audit', badge: 'THEFT', permission: 'reports_daily_sales_view' },
+                    { name: 'Official Z-Report (80mm)', icon: Icons.printer, href: '/dashboard/reports/z-report', badge: 'KRA', permission: 'reports_kra_tax_breakdown' },
+                    { name: 'Kitchen Bleed Variance', icon: Icons.scale, href: '/dashboard/reports/consumption-variance', badge: 'BLEED', permission: 'kitchen_dish_stock_view' },
+                    { name: 'Menu Engineering Matrix', icon: Icons.grid, href: '/dashboard/reports/menu-engineering', badge: 'PROFIT', permission: 'reports_recipe_costing' },
+                    { name: 'Hourly Peak Rush & Labor', icon: Icons.clock, href: '/dashboard/reports/hourly-productivity', badge: 'RUSH', permission: 'reports_daily_sales_view' },
+                    { name: 'VIP Comp & Spillage', icon: Icons.voucher, href: '/dashboard/reports/complimentary-spillage', badge: 'WASTE', permission: 'finance_manage_expenses' },
+                    { name: 'Debtor & Credit Aging', icon: Icons.account, href: '/dashboard/reports/debtor-aging', badge: 'AGING', permission: 'finance_bill_payment_settle' },
+                    { name: 'Butchery Meat Sales', icon: Icons.scale, href: '/dashboard/butchery/sales-report', badge: 'MEAT', permission: 'reports_daily_sales_view' },
                     { name: 'Sales Records', icon: Icons.doc, href: '/dashboard/sales', permission: 'reports_daily_sales_view' },
                     { name: 'Dish Report', icon: Icons.report, href: '/dashboard/reports/dish-report', permission: 'reports_itemized_pos' },
                     { name: 'Recipe Report', icon: Icons.report, href: '/dashboard/reports/recipe-report', permission: 'reports_recipe_costing' },
@@ -420,6 +464,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         'front-office': true,
         'products': true,
         'inventory': true,
+        'sales': true,
+        'butchery-ops': true,
+        'fraud-audit-reports': true,
     });
 
     useSessionTimeout();
