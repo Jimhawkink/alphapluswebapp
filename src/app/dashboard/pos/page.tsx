@@ -138,6 +138,13 @@ export interface EndOfDayAdvanceItem {
     date?: string;
 }
 
+export interface EndOfDayPurchaseItem {
+    purchaseNo: string;
+    supplierName: string;
+    amount: number;
+    time?: string;
+}
+
 export interface EndOfDayWaiterSummary {
     waiterId?: number | string;
     waiterName: string;
@@ -192,6 +199,8 @@ export interface EndOfDayReportData {
     expensesList: EndOfDayExpenseItem[];
     totalAdvances: number;
     advancesList: EndOfDayAdvanceItem[];
+    totalSimplePurchases: number;
+    simplePurchasesList: EndOfDayPurchaseItem[];
     
     // Net Sales & Net Profit
     netSales: number;
@@ -3748,6 +3757,7 @@ export default function POSPage() {
   <div class="r b"><span>Gross Kitchen Profit:</span><span class="b">Ksh ${d.grossProfit.toLocaleString()} (${d.grossMarginPercent.toFixed(1)}%)</span></div>
   <div class="r"><span>Less Petty Cash Expenses:</span><span>-Ksh ${d.totalExpenses.toLocaleString()}</span></div>
   <div class="r"><span>Less Salary Advances:</span><span>-Ksh ${d.totalAdvances.toLocaleString()}</span></div>
+  ${d.totalSimplePurchases > 0 ? `<div class="r"><span>Less Purchases &lt; 3,000:</span><span>-Ksh ${d.totalSimplePurchases.toLocaleString()}</span></div>` : ''}
   <div class="d"></div>
   <div class="r b" style="font-size:10px;"><span>NET SALES REVENUE:</span><span class="big">Ksh ${d.netSales.toLocaleString()}</span></div>
   <div class="r b" style="font-size:11px;"><span>NET REALIZED PROFIT:</span><span class="hero">Ksh ${d.netProfit.toLocaleString()}</span></div>
@@ -3764,6 +3774,7 @@ export default function POSPage() {
   <div class="r"><span>➕ Cash Sales Collected:</span><span>+Ksh ${d.cashSales.toLocaleString()}</span></div>
   <div class="r"><span>➖ Cash Expenses Paid:</span><span>-Ksh ${d.totalExpenses.toLocaleString()}</span></div>
   <div class="r"><span>➖ Cash Advances Issued:</span><span>-Ksh ${d.totalAdvances.toLocaleString()}</span></div>
+  ${d.totalSimplePurchases > 0 ? `<div class="r"><span>➖ Cash Purchases &lt; 3,000:</span><span>-Ksh ${d.totalSimplePurchases.toLocaleString()}</span></div>` : ''}
   <div class="dd"></div>
   <div class="r b"><span>EXPECTED TILL CASH:</span><span class="big">Ksh ${d.expectedTillCash.toLocaleString()}</span></div>
   <div class="r b"><span>ACTUAL COUNTED CASH:</span><span class="big">Ksh ${counted.toLocaleString()}</span></div>
@@ -3817,6 +3828,18 @@ export default function POSPage() {
   `).join('')}
   <div class="r b" style="border-top:0.5px dashed #000;margin-top:2px;padding-top:2px;font-size:9px;">
     <span>TOTAL SALARY ADVANCES:</span><span>-Ksh ${d.totalAdvances.toLocaleString()}</span>
+  </div>` : ''}
+
+  ${d.simplePurchasesList && d.simplePurchasesList.length > 0 ? `
+  <div class="sec">PETTY PURCHASES &lt; 3,000 (${d.simplePurchasesList.length})</div>
+  ${d.simplePurchasesList.map(p => `
+    <div class="r" style="font-size:8.5px;">
+      <span>• ${p.supplierName.slice(0, 18)} (${p.purchaseNo})</span>
+      <span class="b">-Ksh ${p.amount.toLocaleString()}</span>
+    </div>
+  `).join('')}
+  <div class="r b" style="border-top:0.5px dashed #000;margin-top:2px;padding-top:2px;font-size:9px;">
+    <span>TOTAL PURCHASES &lt; 3,000:</span><span>-Ksh ${d.totalSimplePurchases.toLocaleString()}</span>
   </div>` : ''}
 
   <div class="sec">ITEMS SOLD, PROFIT &amp; AVAILABLE STOCK</div>
@@ -4104,21 +4127,60 @@ export default function POSPage() {
 
             const totalExpenses = expensesList.reduce((sum, e) => sum + e.amount, 0);
 
-            // 3. Fetch Salary Advances
+            // 3. Fetch Salary Advances (multi-source: advance_date, created_at, vouchers table, shift vouchers)
             const advancesList: EndOfDayAdvanceItem[] = [];
             try {
-                const { data: advData } = await supabase
+                // Match by advance_date (standard in advances page)
+                const { data: advByDate } = await supabase
                     .from('salary_advances')
                     .select('*')
-                    .gte('created_at', `${targetDate}T00:00:00`)
-                    .lte('created_at', `${targetDate}T23:59:59`);
-                if (advData && advData.length > 0) {
-                    advData.forEach((a: any) => {
+                    .eq('advance_date', targetDate);
+
+                if (advByDate && advByDate.length > 0) {
+                    advByDate.forEach((a: any) => {
                         advancesList.push({
                             employeeName: a.employee_name || `Employee #${a.employee_id}`,
                             amount: Number(a.amount) || 0,
                             reason: a.reason || a.notes || 'Salary Advance',
-                            date: a.created_at ? new Date(a.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''
+                            date: a.advance_date || targetDate
+                        });
+                    });
+                } else {
+                    // Fallback to created_at range
+                    const { data: advFallback } = await supabase
+                        .from('salary_advances')
+                        .select('*')
+                        .gte('created_at', `${targetDate}T00:00:00`)
+                        .lte('created_at', `${targetDate}T23:59:59`);
+                    if (advFallback && advFallback.length > 0) {
+                        advFallback.forEach((a: any) => {
+                            advancesList.push({
+                                employeeName: a.employee_name || `Employee #${a.employee_id}`,
+                                amount: Number(a.amount) || 0,
+                                reason: a.reason || a.notes || 'Salary Advance',
+                                date: a.created_at ? new Date(a.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : targetDate
+                            });
+                        });
+                    }
+                }
+            } catch (_) {}
+
+            // Fallback: check vouchers table for advance payments
+            try {
+                const { data: vData } = await supabase
+                    .from('vouchers')
+                    .select('*')
+                    .eq('voucher_date', targetDate);
+                if (vData && vData.length > 0) {
+                    vData.filter((v: any) => {
+                        const t = ((v.voucher_type || '') + ' ' + (v.description || '')).toLowerCase();
+                        return t.includes('advance') || t.includes('salary');
+                    }).forEach((v: any) => {
+                        advancesList.push({
+                            employeeName: v.payee_name || 'Staff Member',
+                            amount: Number(v.amount) || 0,
+                            reason: v.description || v.voucher_no || 'Voucher Advance',
+                            date: v.voucher_date || targetDate
                         });
                     });
                 }
@@ -4135,9 +4197,33 @@ export default function POSPage() {
 
             const totalAdvances = advancesList.reduce((sum, a) => sum + a.amount, 0);
 
+            // 3b. Fetch Simple Purchases < 3,000 (Paid from daily counter cash)
+            const simplePurchasesList: EndOfDayPurchaseItem[] = [];
+            try {
+                const { data: pData } = await supabase
+                    .from('purchases')
+                    .select('*')
+                    .eq('purchase_date', targetDate);
+                if (pData && pData.length > 0) {
+                    pData.filter((p: any) => {
+                        const amt = Number(p.grand_total ?? p.sub_total ?? 0);
+                        return amt > 0 && amt <= 3000;
+                    }).forEach((p: any) => {
+                        simplePurchasesList.push({
+                            purchaseNo: p.purchase_no || `PO-${p.purchase_id}`,
+                            supplierName: p.supplier_name || 'Direct Market/Store Supplier',
+                            amount: Number(p.grand_total ?? p.sub_total ?? 0),
+                            time: p.created_at ? new Date(p.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''
+                        });
+                    });
+                }
+            } catch (_) {}
+
+            const totalSimplePurchases = simplePurchasesList.reduce((sum, p) => sum + p.amount, 0);
+
             // Net Financials
-            const netSales = Math.max(0, totalSales - totalExpenses - totalAdvances);
-            const netProfit = grossProfit - totalExpenses - totalAdvances;
+            const netSales = Math.max(0, totalSales - totalExpenses - totalAdvances - totalSimplePurchases);
+            const netProfit = grossProfit - totalExpenses - totalAdvances - totalSimplePurchases;
             const netMarginPercent = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
 
             // 4. Fetch Stock Available for Products & Batches
@@ -4236,7 +4322,7 @@ export default function POSPage() {
 
             // Till Cash Calculation
             const openingFloat = shift?.openingCash || defaultOpeningFloat || 0;
-            const expectedTillCash = Math.max(0, openingFloat + cashSales - totalExpenses - totalAdvances);
+            const expectedTillCash = Math.max(0, openingFloat + cashSales - totalExpenses - totalAdvances - totalSimplePurchases);
             const initialCounted = expectedTillCash;
             setEndOfDayCountedCash(String(initialCounted));
 
@@ -4269,6 +4355,8 @@ export default function POSPage() {
                 expensesList,
                 totalAdvances,
                 advancesList,
+                totalSimplePurchases,
+                simplePurchasesList,
                 netSales,
                 netProfit,
                 netMarginPercent,
@@ -6002,15 +6090,6 @@ export default function POSPage() {
                                             <span>⏹️</span>
                                             <span>End Shift</span>
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleOpenEndOfDayReport}
-                                            className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-950/60 border border-[#00e676]/60 transition-all cursor-pointer"
-                                            title="Open Daily End of Day (EOD) Comprehensive Audit & Thermal Report"
-                                        >
-                                            <span>🌅</span>
-                                            <span>End of Day</span>
-                                        </button>
                                     </>
                                 ) : (
                                     <button
@@ -6027,15 +6106,6 @@ export default function POSPage() {
                                         <span>Start Shift</span>
                                     </button>
                                 )}
-                                <button
-                                    type="button"
-                                    onClick={handleOpenEndOfDayReport}
-                                    className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-950/60 border border-[#00e676]/60 transition-all cursor-pointer"
-                                    title="Open Daily End of Day (EOD) Comprehensive Audit & Thermal Report"
-                                >
-                                    <span>🌅</span>
-                                    <span>End of Day</span>
-                                </button>
 
                                 <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-[#00e676]/40 px-3 py-1 rounded-full text-xs text-[#00e676] font-bold shadow-[0_0_10px_rgba(0,230,118,0.15)]">
                                     <span className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse" />
@@ -6527,11 +6597,12 @@ export default function POSPage() {
                                         <button
                                             type="button"
                                             onClick={handleOpenEndOfDayReport}
-                                            className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border border-[#00e676]/60 hover:border-[#00e676] text-xs font-black text-[#00e676] hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(0,230,118,0.2)]"
+                                            className="group relative px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500 via-teal-400 to-[#00e676] hover:from-emerald-400 hover:to-[#00ff88] text-slate-950 text-xs font-black flex items-center gap-2 transition-all duration-200 cursor-pointer shadow-[0_0_20px_rgba(0,230,118,0.45)] hover:shadow-[0_0_28px_rgba(0,230,118,0.75)] hover:scale-105 active:scale-95 border border-[#00e676]"
                                             title="Open Comprehensive End of Day (EOD) Z-Audit Report"
                                         >
-                                            <span>🌅</span>
-                                            <span>End of Day</span>
+                                            <span className="text-sm drop-shadow animate-pulse">🌅</span>
+                                            <span className="tracking-wide">End of Day</span>
+                                            <span className="w-1.5 h-1.5 rounded-full bg-slate-950/70" />
                                         </button>
 
                                         <button
@@ -7125,15 +7196,6 @@ export default function POSPage() {
                                             <span className="text-sm">⏹️</span>
                                             <span className="tracking-wide">End Shift</span>
                                         </button>
-                                        <button
-                                            type="button"
-                                            onClick={handleOpenEndOfDayReport}
-                                            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-900/30 transition-all cursor-pointer border border-emerald-400/50"
-                                            title="Open Daily End of Day (EOD) Comprehensive Audit & Thermal Report"
-                                        >
-                                            <span className="text-sm">🌅</span>
-                                            <span className="tracking-wide">End of Day</span>
-                                        </button>
                                     </>
                                 ) : (
                                     <button
@@ -7150,15 +7212,6 @@ export default function POSPage() {
                                         <span className="tracking-wide">Start Shift</span>
                                     </button>
                                 )}
-                                <button
-                                    type="button"
-                                    onClick={handleOpenEndOfDayReport}
-                                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-900/30 transition-all cursor-pointer border border-emerald-400/50"
-                                    title="Open Daily End of Day (EOD) Comprehensive Audit & Thermal Report"
-                                >
-                                    <span className="text-sm">🌅</span>
-                                    <span className="tracking-wide">End of Day</span>
-                                </button>
                                 {/* Waiter / Staff Active Session Pill & Fast Switch */}
                                 {isWaiterUser ? (
                                     <div className="flex items-center gap-1.5">
@@ -8903,6 +8956,12 @@ export default function POSPage() {
                                                         <span className="text-gray-400">Staff Salary Advances:</span>
                                                         <span className="font-mono font-bold text-rose-400">-Ksh {endOfDayData.totalAdvances.toLocaleString()}</span>
                                                     </div>
+                                                    {endOfDayData.totalSimplePurchases > 0 && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-gray-400">Purchases &lt; 3,000 (Petty):</span>
+                                                            <span className="font-mono font-bold text-amber-400">-Ksh {endOfDayData.totalSimplePurchases.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
                                                     <div className="flex justify-between font-black text-sm pt-1 border-t border-[#162a2e]">
                                                         <span className="text-white">Net Realized Profit:</span>
                                                         <span className="text-[#00e676] font-mono">Ksh {endOfDayData.netProfit.toLocaleString()}</span>
@@ -8937,6 +8996,12 @@ export default function POSPage() {
                                                             <span className="text-gray-300">➖ Salary Advances Paid:</span>
                                                             <span className="font-mono font-bold text-rose-400">-Ksh {endOfDayData.totalAdvances.toLocaleString()}</span>
                                                         </div>
+                                                        {endOfDayData.totalSimplePurchases > 0 && (
+                                                            <div className="flex justify-between p-2 bg-[#071015] rounded-xl border border-[#142628]">
+                                                                <span className="text-gray-300">➖ Petty Purchases &lt; 3,000:</span>
+                                                                <span className="font-mono font-bold text-amber-400">-Ksh {endOfDayData.totalSimplePurchases.toLocaleString()}</span>
+                                                            </div>
+                                                        )}
 
                                                         <div className="flex justify-between p-2.5 bg-[#00e676]/10 rounded-xl border border-[#00e676]/40 shadow-[0_0_12px_rgba(0,230,118,0.15)]">
                                                             <span className="font-black text-white">EXPECTED TILL CASH:</span>
