@@ -1264,7 +1264,6 @@ export default function MasterReportsPage() {
                         </Link>
                     </div>
                 </div>
-            </div>
 
             {/* ─── KPI Stat Cards (Light Theme matching Users Page) ─── */}
             <div className="grid grid-cols-2 sm:grid-cols-4 xl:grid-cols-8 gap-3 w-full min-w-0">
@@ -2226,5 +2225,6 @@ export default function MasterReportsPage() {
                     </div>
                 </div>
             )}
+        </div>
     );
 }
