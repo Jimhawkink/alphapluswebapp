@@ -111,6 +111,107 @@ interface CloseShiftData {
     expensesList: Array<{ description: string; category?: string; amount: number; time?: string }>;
 }
 
+export interface EndOfDayItemSold {
+    productId: number;
+    productName: string;
+    qtySold: number;
+    unitPrice: number;
+    costPrice: number;
+    totalRevenue: number;
+    totalCost: number;
+    profit: number;
+    marginPercent: number;
+    availableStock: number;
+}
+
+export interface EndOfDayExpenseItem {
+    description: string;
+    category?: string;
+    amount: number;
+    time?: string;
+}
+
+export interface EndOfDayAdvanceItem {
+    employeeName: string;
+    amount: number;
+    reason?: string;
+    date?: string;
+}
+
+export interface EndOfDayWaiterSummary {
+    waiterId?: number | string;
+    waiterName: string;
+    totalSales: number;
+    ordersCount: number;
+    cashSales: number;
+    cashCount: number;
+    mpesaSales: number;
+    mpesaCount: number;
+    creditSales: number;
+    creditCount: number;
+    cardSales: number;
+    cardCount: number;
+    unpaidBillsCount: number;
+    unpaidBillsAmount: number;
+}
+
+export interface EndOfDayReportData {
+    reportDate: string;
+    generatedAt: string;
+    hotelName: string;
+    cashierName: string;
+    
+    // Turnover / Sales
+    totalSales: number;
+    totalCostPrice: number;
+    grossProfit: number;
+    grossMarginPercent: number;
+    
+    // Payment Channels
+    cashSales: number;
+    cashCount: number;
+    mpesaSales: number;
+    mpesaCount: number;
+    cardSales: number;
+    cardCount: number;
+    creditSales: number;
+    creditCount: number;
+    splitSales: number;
+    splitCount: number;
+    
+    // Bills Status & Exceptions
+    completedOrdersCount: number;
+    pendingOrdersCount: number;
+    pendingTotalAmount: number;
+    voidedOrdersCount: number;
+    voidedTotalAmount: number;
+    totalDiscounts: number;
+    
+    // Expenses & Advances
+    totalExpenses: number;
+    expensesList: EndOfDayExpenseItem[];
+    totalAdvances: number;
+    advancesList: EndOfDayAdvanceItem[];
+    
+    // Net Sales & Net Profit
+    netSales: number;
+    netProfit: number;
+    netMarginPercent: number;
+    
+    // Till Reconciliation
+    openingFloat: number;
+    expectedTillCash: number;
+    countedCash: number;
+    cashVariance: number;
+    
+    // Waiter Performance Breakdown
+    waitersSummary: EndOfDayWaiterSummary[];
+    
+    // Items Sold & Stock Ledger
+    itemsSold: EndOfDayItemSold[];
+    totalUnitsSold: number;
+}
+
 interface Category {
     category_id: number;
     category_name: string;
@@ -2999,6 +3100,17 @@ export default function POSPage() {
     const [countedCashInput, setCountedCashInput] = useState<string>('');
     const [isLoadingRegister, setIsLoadingRegister] = useState(false);
 
+    // ─── END OF DAY (EOD) COMPREHENSIVE REPORT STATE ───
+    const [showEndOfDayModal, setShowEndOfDayModal] = useState(false);
+    const [endOfDayDate, setEndOfDayDate] = useState<string>(() => new Date().toISOString().split('T')[0]);
+    const [endOfDayData, setEndOfDayData] = useState<EndOfDayReportData | null>(null);
+    const [isLoadingEndOfDay, setIsLoadingEndOfDay] = useState(false);
+    const [isPrintingEndOfDay, setIsPrintingEndOfDay] = useState(false);
+    const [endOfDayCountedCash, setEndOfDayCountedCash] = useState<string>('');
+    const [endOfDayActiveTab, setEndOfDayActiveTab] = useState<'overview' | 'waiters' | 'items' | 'receipt'>('overview');
+    const [endOfDayItemSearch, setEndOfDayItemSearch] = useState('');
+    const [endOfDayWaiterSearch, setEndOfDayWaiterSearch] = useState('');
+
     // Detect whether current time falls under Day or Night Shift
     const detectCurrentShiftCycle = useCallback((timeStr?: string): 'Day Shift' | 'Night Shift' => {
         const t = timeStr || new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
@@ -3580,6 +3692,636 @@ export default function POSPage() {
         } catch (_) {}
     };
 
+    // ─── GENERATE END OF DAY (EOD) THERMAL RECEIPT HTML ────────────────────────
+    const generateEndOfDayThermalHTML = (d: EndOfDayReportData, actualCash?: number): string => {
+        const counted = actualCash !== undefined ? actualCash : d.countedCash;
+        const variance = counted - d.expectedTillCash;
+        const varianceText = variance === 0
+            ? '0.00 (EXACT BALANCED)'
+            : variance > 0
+            ? `+Ksh ${variance.toLocaleString()} (OVERAGE / SURPLUS)`
+            : `-Ksh ${Math.abs(variance).toLocaleString()} (SHORTAGE / DEFICIT)`;
+
+        const cashPct = d.totalSales > 0 ? Math.round((d.cashSales / d.totalSales) * 100) : 0;
+        const mpesaPct = d.totalSales > 0 ? Math.round((d.mpesaSales / d.totalSales) * 100) : 0;
+        const cardPct = d.totalSales > 0 ? Math.round((d.cardSales / d.totalSales) * 100) : 0;
+        const creditPct = d.totalSales > 0 ? Math.round((d.creditSales / d.totalSales) * 100) : 0;
+
+        return `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>End of Day Z-Report</title>
+<style>
+  @page{margin:0;size:80mm auto;}
+  *{margin:0;padding:0;box-sizing:border-box;}
+  body{font-family:'Courier New',Courier,monospace;font-size:10px;font-weight:700;width:76mm;padding:3mm 2mm;background:#fff;color:#000;line-height:1.35;}
+  .c{text-align:center;} .r{display:flex;justify-content:space-between;padding:1.5px 0;}
+  .b{font-weight:900;} .big{font-size:12px;font-weight:900;} .hero{font-size:15px;font-weight:900;}
+  .d{border:none;border-top:1px solid #000;margin:3px 0;} .dd{border:none;border-top:1px dashed #000;margin:3px 0;}
+  .sec{font-size:9.5px;font-weight:900;text-align:center;text-transform:uppercase;border-top:1px dashed #000;border-bottom:1px dashed #000;padding:2px 0;margin:4px 0;}
+  .badge{display:inline-block;padding:2px 6px;border:1px solid #000;font-size:9.5px;font-weight:900;text-transform:uppercase;margin:2px 0;}
+  .item-box{margin-bottom:3.5px;padding-bottom:3px;border-bottom:0.5px dashed #000;}
+  .sig{margin-top:12px;border-top:1px solid #000;padding-top:2px;font-size:8.5px;}
+  @media print{body{width:76mm;}}
+</style></head><body>
+  <div class="c">
+    <div style="font-size:14px;font-weight:900;text-transform:uppercase;">${d.hotelName}</div>
+    <div style="font-size:8.5px;margin-top:1px;">EXECUTIVE DAILY AUDIT &amp; CLOSING REPORT</div>
+    <div class="badge">🌅 END OF DAY (EOD) Z-REPORT</div>
+  </div>
+  <div class="dd"></div>
+  <div class="r"><span>Audit Date:</span><span class="b">${d.reportDate}</span></div>
+  <div class="r"><span>Generated At:</span><span>${d.generatedAt}</span></div>
+  <div class="r"><span>Cashier on Duty:</span><span class="b">${d.cashierName}</span></div>
+  <div class="r"><span>Completed Receipts:</span><span class="b">${d.completedOrdersCount} orders</span></div>
+
+  <div class="sec">TURNOVER &amp; SALES CHANNELS</div>
+  <div class="r"><span>💵 Cash Sales (${cashPct}%):</span><span class="big">Ksh ${d.cashSales.toLocaleString()}</span></div>
+  <div class="r" style="font-size:8.5px;color:#333;margin-top:-2px;"><span>&nbsp;&nbsp;(${d.cashCount} cash payments settled)</span></div>
+  <div class="r"><span>📱 M-Pesa Sales (${mpesaPct}%):</span><span class="big">Ksh ${d.mpesaSales.toLocaleString()}</span></div>
+  <div class="r" style="font-size:8.5px;color:#333;margin-top:-2px;"><span>&nbsp;&nbsp;(${d.mpesaCount} Safaricom M-Pesa receipts)</span></div>
+  <div class="r"><span>💳 Card / PDQ (${cardPct}%):</span><span>Ksh ${d.cardSales.toLocaleString()}</span></div>
+  <div class="r"><span>📋 Room Folio / Credit (${creditPct}%):</span><span>Ksh ${d.creditSales.toLocaleString()}</span></div>
+  <div class="d"></div>
+  <div class="r b" style="font-size:11px;"><span>GROSS SETTLED REVENUE:</span><span class="hero">Ksh ${d.totalSales.toLocaleString()}</span></div>
+
+  <div class="sec">FINANCIAL PROFITABILITY &amp; MARGINS</div>
+  <div class="r"><span>Gross Settled Sales:</span><span class="b">Ksh ${d.totalSales.toLocaleString()}</span></div>
+  <div class="r"><span>Cost of Goods (COGS):</span><span>-Ksh ${d.totalCostPrice.toLocaleString()}</span></div>
+  <div class="r b"><span>Gross Kitchen Profit:</span><span class="b">Ksh ${d.grossProfit.toLocaleString()} (${d.grossMarginPercent.toFixed(1)}%)</span></div>
+  <div class="r"><span>Less Petty Cash Expenses:</span><span>-Ksh ${d.totalExpenses.toLocaleString()}</span></div>
+  <div class="r"><span>Less Salary Advances:</span><span>-Ksh ${d.totalAdvances.toLocaleString()}</span></div>
+  <div class="d"></div>
+  <div class="r b" style="font-size:10px;"><span>NET SALES REVENUE:</span><span class="big">Ksh ${d.netSales.toLocaleString()}</span></div>
+  <div class="r b" style="font-size:11px;"><span>NET REALIZED PROFIT:</span><span class="hero">Ksh ${d.netProfit.toLocaleString()}</span></div>
+  <div class="r" style="font-size:8.5px;"><span>Realized Net Margin:</span><span class="b">${d.netMarginPercent.toFixed(1)}%</span></div>
+
+  <div class="sec">BILLS AUDIT &amp; UNSETTLED FOLIOS</div>
+  <div class="r"><span>✓ Paid Settled Bills:</span><span class="b">${d.completedOrdersCount} orders</span></div>
+  <div class="r"><span>⏳ Unpaid Pending Bills:</span><span class="b">${d.pendingOrdersCount} bills (Ksh ${d.pendingTotalAmount.toLocaleString()})</span></div>
+  <div class="r"><span>❌ Voided / Cancelled Bills:</span><span class="b">${d.voidedOrdersCount} bills (Ksh ${d.voidedTotalAmount.toLocaleString()})</span></div>
+  <div class="r"><span>💰 Customer Discounts:</span><span>-Ksh ${d.totalDiscounts.toLocaleString()}</span></div>
+
+  <div class="sec">CASH TILL RECONCILIATION</div>
+  <div class="r"><span>🟢 Opening Float:</span><span class="b">Ksh ${d.openingFloat.toLocaleString()}</span></div>
+  <div class="r"><span>➕ Cash Sales Collected:</span><span>+Ksh ${d.cashSales.toLocaleString()}</span></div>
+  <div class="r"><span>➖ Cash Expenses Paid:</span><span>-Ksh ${d.totalExpenses.toLocaleString()}</span></div>
+  <div class="r"><span>➖ Cash Advances Issued:</span><span>-Ksh ${d.totalAdvances.toLocaleString()}</span></div>
+  <div class="dd"></div>
+  <div class="r b"><span>EXPECTED TILL CASH:</span><span class="big">Ksh ${d.expectedTillCash.toLocaleString()}</span></div>
+  <div class="r b"><span>ACTUAL COUNTED CASH:</span><span class="big">Ksh ${counted.toLocaleString()}</span></div>
+  <div class="d"></div>
+  <div class="r b" style="font-size:10px;"><span>TILL DISCREPANCY:</span><span>${varianceText}</span></div>
+
+  ${d.waitersSummary && d.waitersSummary.length > 0 ? `
+  <div class="sec">WAITER SALES BREAKDOWN (${d.waitersSummary.length} STAFF)</div>
+  ${d.waitersSummary.map((w, i) => `
+    <div class="item-box">
+      <div class="r b">
+        <span>[${String(i+1).padStart(2, '0')}] ${w.waiterName.toUpperCase()}</span>
+        <span class="big">Ksh ${w.totalSales.toLocaleString()}</span>
+      </div>
+      <div class="r" style="font-size:8.5px;">
+        <span>• Settled Orders: ${w.ordersCount}</span>
+        <span>Cash: Ksh ${w.cashSales.toLocaleString()}</span>
+      </div>
+      <div class="r" style="font-size:8.5px;">
+        <span>• M-Pesa: Ksh ${w.mpesaSales.toLocaleString()}</span>
+        <span>Credit: Ksh ${w.creditSales.toLocaleString()}</span>
+      </div>
+      ${w.unpaidBillsCount > 0 ? `
+      <div class="r" style="font-size:8.5px;color:#000;">
+        <span class="b">⚠️ Unpaid / Pending:</span>
+        <span class="b">${w.unpaidBillsCount} bills (Ksh ${w.unpaidBillsAmount.toLocaleString()})</span>
+      </div>` : ''}
+    </div>
+  `).join('')}
+  ` : ''}
+
+  ${d.expensesList && d.expensesList.length > 0 ? `
+  <div class="sec">PETTY CASH EXPENSES DEDUCTIONS (${d.expensesList.length})</div>
+  ${d.expensesList.map(e => `
+    <div class="r" style="font-size:8.5px;">
+      <span>• ${e.description.slice(0, 22)}${e.time ? ' (' + e.time + ')' : ''}</span>
+      <span class="b">-Ksh ${e.amount.toLocaleString()}</span>
+    </div>
+  `).join('')}
+  <div class="r b" style="border-top:0.5px dashed #000;margin-top:2px;padding-top:2px;font-size:9px;">
+    <span>TOTAL EXPENSES:</span><span>-Ksh ${d.totalExpenses.toLocaleString()}</span>
+  </div>` : ''}
+
+  ${d.advancesList && d.advancesList.length > 0 ? `
+  <div class="sec">STAFF SALARY ADVANCES (${d.advancesList.length})</div>
+  ${d.advancesList.map(a => `
+    <div class="r" style="font-size:8.5px;">
+      <span>• ${a.employeeName.slice(0, 22)}${a.reason ? ' - ' + a.reason.slice(0, 10) : ''}</span>
+      <span class="b">-Ksh ${a.amount.toLocaleString()}</span>
+    </div>
+  `).join('')}
+  <div class="r b" style="border-top:0.5px dashed #000;margin-top:2px;padding-top:2px;font-size:9px;">
+    <span>TOTAL SALARY ADVANCES:</span><span>-Ksh ${d.totalAdvances.toLocaleString()}</span>
+  </div>` : ''}
+
+  <div class="sec">ITEMS SOLD, PROFIT &amp; AVAILABLE STOCK</div>
+  <div class="r b" style="font-size:8.5px;margin-bottom:2px;">
+    <span>ITEM &amp; BREAKDOWN</span>
+    <span>AVAILABLE STOCK</span>
+  </div>
+  ${d.itemsSold.length === 0 ? '<div class="c" style="padding:6px;font-style:italic;">No dish sales recorded for this date.</div>' : ''}
+  ${d.itemsSold.map((itm, i) => `
+    <div class="item-box">
+      <div class="r">
+        <span class="b">[${String(i+1).padStart(2, '0')}] ${itm.productName.toUpperCase()}</span>
+      </div>
+      <div class="r" style="font-size:8.5px;">
+        <span>Sold: ${itm.qtySold}x @ Ksh ${itm.unitPrice.toLocaleString()}</span>
+        <span class="b">Ksh ${itm.totalRevenue.toLocaleString()}</span>
+      </div>
+      <div class="r" style="font-size:8.5px;color:#222;">
+        <span>Cost: ${itm.qtySold}x @ Ksh ${itm.costPrice.toLocaleString()}</span>
+        <span>-Ksh ${itm.totalCost.toLocaleString()}</span>
+      </div>
+      <div class="r" style="font-size:8.5px;">
+        <span class="b">Profit: +Ksh ${itm.profit.toLocaleString()}</span>
+        <span>(${itm.marginPercent.toFixed(0)}% Margin)</span>
+      </div>
+      <div class="r" style="font-size:8.5px;font-weight:900;">
+        <span>📦 Available Stock:</span>
+        <span style="font-weight:900;${itm.availableStock === 0 ? 'text-decoration:underline;' : ''}">
+          ${itm.availableStock > 0 ? itm.availableStock + ' Portions' : 'OUT OF STOCK (0)'}
+        </span>
+      </div>
+    </div>
+  `).join('')}
+  
+  <div class="r b" style="border-top:1px solid #000;padding-top:2px;font-size:9.5px;">
+    <span>TOTAL DISH UNITS SOLD:</span>
+    <span class="big">${d.totalUnitsSold} Portions</span>
+  </div>
+  <div class="r b" style="font-size:10px;">
+    <span>TOTAL DISH REVENUE:</span>
+    <span>Ksh ${d.totalSales.toLocaleString()}</span>
+  </div>
+  <div class="r b" style="font-size:10.5px;">
+    <span>TOTAL DISH PROFIT:</span>
+    <span>+Ksh ${d.grossProfit.toLocaleString()}</span>
+  </div>
+
+  <div class="sig c">Cashier on Duty: _______________________</div>
+  <div class="sig c">Duty Manager Signature: _______________________</div>
+  <div class="sig c">Auditor / General Manager: _______________________</div>
+  <div class="dd"></div>
+  <div class="c" style="font-size:7.5px;padding-top:2px;">
+    Printed: ${d.reportDate} ${d.generatedAt} EAT<br/>
+    AlphaPlus Enterprise Hotel POS • Verified End of Day Z-Archive
+  </div>
+</body></html>`;
+    };
+
+    // ─── LOAD END OF DAY REPORT DATA ───────────────────────────────────────────
+    const loadEndOfDayReport = useCallback(async (selectedDate?: string) => {
+        setIsLoadingEndOfDay(true);
+        const targetDate = selectedDate || endOfDayDate || new Date().toISOString().split('T')[0];
+        setEndOfDayDate(targetDate);
+
+        try {
+            // 1. Fetch Sales with Sales Items for the selected date
+            let allSales: any[] = [];
+            const { data: salesByDate, error: salesErr } = await supabase
+                .from('sales')
+                .select(`
+                    *,
+                    sales_items (
+                        item_id,
+                        sale_id,
+                        product_id,
+                        product_name,
+                        quantity,
+                        unit_price,
+                        cost_price,
+                        subtotal,
+                        profit,
+                        batch_id,
+                        batch_number
+                    )
+                `)
+                .eq('sale_date', targetDate);
+
+            if (!salesErr && salesByDate && salesByDate.length > 0) {
+                allSales = salesByDate;
+            } else {
+                // Fallback: check created_at matching target date
+                const { data: salesFallback } = await supabase
+                    .from('sales')
+                    .select(`
+                        *,
+                        sales_items (
+                            item_id,
+                            sale_id,
+                            product_id,
+                            product_name,
+                            quantity,
+                            unit_price,
+                            cost_price,
+                            subtotal,
+                            profit,
+                            batch_id,
+                            batch_number
+                        )
+                    `)
+                    .gte('created_at', `${targetDate}T00:00:00`)
+                    .lte('created_at', `${targetDate}T23:59:59`);
+                if (salesFallback) {
+                    allSales = salesFallback;
+                }
+            }
+
+            // Categorize sales
+            const completedSales = allSales.filter(s => s.status === 'Completed' || s.status === 'Paid');
+            const pendingSales = allSales.filter(s => s.status === 'Pending');
+            const voidedSales = allSales.filter(s => s.status === 'Voided' || s.status === 'Cancelled');
+
+            // Turnover metrics
+            const totalSales = completedSales.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
+            const totalCostPrice = completedSales.reduce((sum, s) => sum + (Number(s.total_cost) || 0), 0);
+            const grossProfit = totalSales - totalCostPrice;
+            const grossMarginPercent = totalSales > 0 ? (grossProfit / totalSales) * 100 : 0;
+            const totalDiscounts = allSales.reduce((sum, s) => sum + (Number(s.discount) || 0), 0);
+
+            // Payment modes detection helper
+            const checkIsMpesaLocal = (s: any) => {
+                if (s.mpesa_code && String(s.mpesa_code).trim().length > 0) return true;
+                const combined = ((s.payment_method || '') + ' ' + (s.last_payment_method || '')).toLowerCase();
+                const clean = combined.replace(/[^a-z0-9]/g, '');
+                return clean.includes('mpesa') || clean.includes('c2b') || clean.includes('stk') || combined.includes('m-pesa');
+            };
+            const checkIsCashLocal = (s: any) => {
+                if (checkIsMpesaLocal(s)) return false;
+                const combined = ((s.payment_method || '') + ' ' + (s.last_payment_method || '')).toLowerCase();
+                return combined.includes('cash') || combined.includes('till') || combined.includes('counter');
+            };
+            const checkIsCreditLocal = (s: any) => {
+                if (checkIsMpesaLocal(s) || checkIsCashLocal(s)) return false;
+                const combined = ((s.payment_method || '') + ' ' + (s.last_payment_method || '')).toLowerCase();
+                return combined.includes('credit') || combined.includes('room') || combined.includes('folio') || combined.includes('debtor');
+            };
+            const checkIsCardLocal = (s: any) => {
+                if (checkIsMpesaLocal(s) || checkIsCashLocal(s) || checkIsCreditLocal(s)) return false;
+                const combined = ((s.payment_method || '') + ' ' + (s.last_payment_method || '')).toLowerCase();
+                return combined.includes('card') || combined.includes('pdq') || combined.includes('bank') || combined.includes('visa');
+            };
+
+            let cashSales = 0; let cashCount = 0;
+            let mpesaSales = 0; let mpesaCount = 0;
+            let cardSales = 0; let cardCount = 0;
+            let creditSales = 0; let creditCount = 0;
+            let splitSales = 0; let splitCount = 0;
+
+            completedSales.forEach(s => {
+                const amt = Number(s.total_amount) || 0;
+                const pm = (s.payment_method || '').toLowerCase();
+                if (pm.includes('split')) {
+                    splitSales += amt;
+                    splitCount += 1;
+                }
+                if (checkIsMpesaLocal(s)) {
+                    mpesaSales += amt;
+                    mpesaCount += 1;
+                } else if (checkIsCashLocal(s)) {
+                    cashSales += amt;
+                    cashCount += 1;
+                } else if (checkIsCreditLocal(s)) {
+                    creditSales += amt;
+                    creditCount += 1;
+                } else if (checkIsCardLocal(s)) {
+                    cardSales += amt;
+                    cardCount += 1;
+                } else {
+                    cashSales += amt;
+                    cashCount += 1;
+                }
+            });
+
+            // Pending (Unpaid) & Voided
+            const pendingOrdersCount = pendingSales.length;
+            const pendingTotalAmount = pendingSales.reduce((sum, s) => sum + Math.max(0, (Number(s.total_amount) || 0) - (Number(s.amount_paid) || 0)), 0);
+            const voidedOrdersCount = voidedSales.length;
+            const voidedTotalAmount = voidedSales.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
+
+            // ─── WAITER SALES BREAKDOWN COMPILATION ───
+            const waiterMap = new Map<string, EndOfDayWaiterSummary>();
+            const getOrCreateWaiter = (wName: string, wId?: any): EndOfDayWaiterSummary => {
+                const cleanName = (wName || 'Counter / Cashier').trim();
+                if (!waiterMap.has(cleanName)) {
+                    waiterMap.set(cleanName, {
+                        waiterId: wId,
+                        waiterName: cleanName,
+                        totalSales: 0,
+                        ordersCount: 0,
+                        cashSales: 0,
+                        cashCount: 0,
+                        mpesaSales: 0,
+                        mpesaCount: 0,
+                        creditSales: 0,
+                        creditCount: 0,
+                        cardSales: 0,
+                        cardCount: 0,
+                        unpaidBillsCount: 0,
+                        unpaidBillsAmount: 0
+                    });
+                }
+                return waiterMap.get(cleanName)!;
+            };
+
+            completedSales.forEach(s => {
+                const wName = s.waiter_name || s.created_by || 'Counter / Cashier';
+                const row = getOrCreateWaiter(wName, s.waiter_id);
+                const amt = Number(s.total_amount) || 0;
+                row.totalSales += amt;
+                row.ordersCount += 1;
+
+                if (checkIsMpesaLocal(s)) {
+                    row.mpesaSales += amt;
+                    row.mpesaCount += 1;
+                } else if (checkIsCashLocal(s)) {
+                    row.cashSales += amt;
+                    row.cashCount += 1;
+                } else if (checkIsCreditLocal(s)) {
+                    row.creditSales += amt;
+                    row.creditCount += 1;
+                } else if (checkIsCardLocal(s)) {
+                    row.cardSales += amt;
+                    row.cardCount += 1;
+                } else {
+                    row.cashSales += amt;
+                    row.cashCount += 1;
+                }
+            });
+
+            pendingSales.forEach(s => {
+                const wName = s.waiter_name || s.created_by || 'Counter / Cashier';
+                const row = getOrCreateWaiter(wName, s.waiter_id);
+                const pendingBalance = Math.max(0, (Number(s.total_amount) || 0) - (Number(s.amount_paid) || 0));
+                row.unpaidBillsCount += 1;
+                row.unpaidBillsAmount += pendingBalance;
+            });
+
+            const waitersSummary = Array.from(waiterMap.values()).sort((a, b) => b.totalSales - a.totalSales);
+
+            // 2. Fetch Expenses (shift_expenses & general expenses)
+            const expensesList: EndOfDayExpenseItem[] = [];
+            try {
+                const { data: sExp } = await supabase
+                    .from('shift_expenses')
+                    .select('*')
+                    .gte('recorded_at', `${targetDate}T00:00:00`)
+                    .lte('recorded_at', `${targetDate}T23:59:59`);
+                if (sExp && sExp.length > 0) {
+                    sExp.forEach((e: any) => {
+                        expensesList.push({
+                            description: e.expense_description || e.expense_category || 'Petty Cash Expense',
+                            category: e.expense_category || 'Shift Expense',
+                            amount: Number(e.amount) || 0,
+                            time: e.recorded_at ? new Date(e.recorded_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''
+                        });
+                    });
+                }
+            } catch (_) {}
+
+            try {
+                const { data: gExp } = await supabase
+                    .from('expenses')
+                    .select('*')
+                    .eq('expense_date', targetDate);
+                if (gExp && gExp.length > 0) {
+                    gExp.forEach((e: any) => {
+                        expensesList.push({
+                            description: e.expense_name || e.description || 'General Expense',
+                            category: e.category || 'Expense',
+                            amount: Number(e.amount) || 0,
+                            time: e.created_at ? new Date(e.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''
+                        });
+                    });
+                }
+            } catch (_) {}
+
+            const totalExpenses = expensesList.reduce((sum, e) => sum + e.amount, 0);
+
+            // 3. Fetch Salary Advances
+            const advancesList: EndOfDayAdvanceItem[] = [];
+            try {
+                const { data: advData } = await supabase
+                    .from('salary_advances')
+                    .select('*')
+                    .gte('created_at', `${targetDate}T00:00:00`)
+                    .lte('created_at', `${targetDate}T23:59:59`);
+                if (advData && advData.length > 0) {
+                    advData.forEach((a: any) => {
+                        advancesList.push({
+                            employeeName: a.employee_name || `Employee #${a.employee_id}`,
+                            amount: Number(a.amount) || 0,
+                            reason: a.reason || a.notes || 'Salary Advance',
+                            date: a.created_at ? new Date(a.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''
+                        });
+                    });
+                }
+            } catch (_) {}
+
+            if (advancesList.length === 0 && (shift as any)?.total_vouchers > 0) {
+                const vAmt = Number((shift as any).total_vouchers) || 0;
+                advancesList.push({
+                    employeeName: 'Shift Cash Vouchers',
+                    amount: vAmt,
+                    reason: 'Cash advances issued during shift'
+                });
+            }
+
+            const totalAdvances = advancesList.reduce((sum, a) => sum + a.amount, 0);
+
+            // Net Financials
+            const netSales = Math.max(0, totalSales - totalExpenses - totalAdvances);
+            const netProfit = grossProfit - totalExpenses - totalAdvances;
+            const netMarginPercent = totalSales > 0 ? (netProfit / totalSales) * 100 : 0;
+
+            // 4. Fetch Stock Available for Products & Batches
+            const batchStockMap: Record<number, number> = {};
+            try {
+                const { data: batchData } = await supabase
+                    .from('production_batches')
+                    .select('product_id, qty_remaining')
+                    .in('status', ['In Stock', 'Active'])
+                    .gt('qty_remaining', 0);
+                if (batchData) {
+                    batchData.forEach((b: any) => {
+                        const pid = b.product_id;
+                        batchStockMap[pid] = (batchStockMap[pid] || 0) + (Number(b.qty_remaining) || 0);
+                    });
+                }
+            } catch (_) {}
+
+            const productCatalogMap: Record<number, { name: string; cost: number; price: number; stock: number }> = {};
+            try {
+                const { data: prodData } = await supabase
+                    .from('products')
+                    .select('pid, product_name, purchase_cost, sales_cost');
+                if (prodData) {
+                    prodData.forEach((p: any) => {
+                        productCatalogMap[p.pid] = {
+                            name: p.product_name,
+                            cost: Number(p.purchase_cost) || 0,
+                            price: Number(p.sales_cost) || 0,
+                            stock: batchStockMap[p.pid] || 0
+                        };
+                    });
+                }
+            } catch (_) {}
+
+            // 5. Aggregate Items Sold
+            const saleIds = completedSales.map(s => s.sale_id).filter(Boolean);
+            let rawItems: any[] = [];
+
+            if (saleIds.length > 0) {
+                const { data: directItems } = await supabase
+                    .from('sales_items')
+                    .select('*')
+                    .in('sale_id', saleIds);
+                if (directItems && directItems.length > 0) {
+                    rawItems = directItems;
+                }
+            }
+
+            if (rawItems.length === 0) {
+                completedSales.forEach(s => {
+                    if (s.sales_items && Array.isArray(s.sales_items)) {
+                        rawItems.push(...s.sales_items);
+                    }
+                });
+            }
+
+            const itemAggMap = new Map<string, EndOfDayItemSold>();
+            rawItems.forEach(item => {
+                const pid = item.product_id || 0;
+                const name = item.product_name || productCatalogMap[pid]?.name || 'Dish Item';
+                const key = `${pid}-${name}`;
+                const qty = Number(item.quantity) || 1;
+                const uPrice = Number(item.unit_price) || productCatalogMap[pid]?.price || 0;
+                const cPrice = Number(item.cost_price) || productCatalogMap[pid]?.cost || 0;
+                const sub = Number(item.subtotal) || (qty * uPrice);
+                const cost = qty * cPrice;
+                const prof = Number(item.profit) || (sub - cost);
+                const avail = batchStockMap[pid] ?? productCatalogMap[pid]?.stock ?? 0;
+
+                if (itemAggMap.has(key)) {
+                    const row = itemAggMap.get(key)!;
+                    row.qtySold += qty;
+                    row.totalRevenue += sub;
+                    row.totalCost += cost;
+                    row.profit += prof;
+                    row.marginPercent = row.totalRevenue > 0 ? (row.profit / row.totalRevenue) * 100 : 0;
+                } else {
+                    itemAggMap.set(key, {
+                        productId: pid,
+                        productName: name,
+                        qtySold: qty,
+                        unitPrice: uPrice,
+                        costPrice: cPrice,
+                        totalRevenue: sub,
+                        totalCost: cost,
+                        profit: prof,
+                        marginPercent: sub > 0 ? (prof / sub) * 100 : 0,
+                        availableStock: avail
+                    });
+                }
+            });
+
+            const itemsSold = Array.from(itemAggMap.values()).sort((a, b) => b.totalRevenue - a.totalRevenue);
+            const totalUnitsSold = itemsSold.reduce((sum, itm) => sum + itm.qtySold, 0);
+
+            // Till Cash Calculation
+            const openingFloat = shift?.openingCash || defaultOpeningFloat || 0;
+            const expectedTillCash = Math.max(0, openingFloat + cashSales - totalExpenses - totalAdvances);
+            const initialCounted = expectedTillCash;
+            setEndOfDayCountedCash(String(initialCounted));
+
+            const report: EndOfDayReportData = {
+                reportDate: targetDate,
+                generatedAt: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+                hotelName: hotelName || 'AlphaPlus Hotel & Restaurant',
+                cashierName: loggedInUserName || shift?.openedBy || 'Duty Cashier',
+                totalSales,
+                totalCostPrice,
+                grossProfit,
+                grossMarginPercent,
+                cashSales,
+                cashCount,
+                mpesaSales,
+                mpesaCount,
+                cardSales,
+                cardCount,
+                creditSales,
+                creditCount,
+                splitSales,
+                splitCount,
+                completedOrdersCount: completedSales.length,
+                pendingOrdersCount,
+                pendingTotalAmount,
+                voidedOrdersCount,
+                voidedTotalAmount,
+                totalDiscounts,
+                totalExpenses,
+                expensesList,
+                totalAdvances,
+                advancesList,
+                netSales,
+                netProfit,
+                netMarginPercent,
+                openingFloat,
+                expectedTillCash,
+                countedCash: initialCounted,
+                cashVariance: 0,
+                waitersSummary,
+                itemsSold,
+                totalUnitsSold
+            };
+
+            setEndOfDayData(report);
+            setShowEndOfDayModal(true);
+        } catch (err: any) {
+            console.error('Error generating End of Day report:', err);
+            toast.error('Failed to generate End of Day report: ' + (err.message || 'Unknown error'));
+        } finally {
+            setIsLoadingEndOfDay(false);
+        }
+    }, [endOfDayDate, shift, defaultOpeningFloat, hotelName, loggedInUserName]);
+
+    // Handle Open End of Day with Cashier and above access restriction
+    const handleOpenEndOfDayReport = () => {
+        playPOSChime('click');
+        if (isWaiterUser || !verifyPosAccess('pos_end_of_day', 'End of Day Report')) {
+            toast.error('🚫 Access Denied: End of Day report is restricted to Cashiers & Supervisors only.', {
+                id: 'pos-eod-access-denied',
+                icon: '🔒',
+                duration: 4000
+            });
+            return;
+        }
+        loadEndOfDayReport();
+    };
+
+    // Print End of Day Thermal Report
+    const printEndOfDayThermalReport = async () => {
+        if (!endOfDayData) return;
+        setIsPrintingEndOfDay(true);
+        try {
+            const counted = Number(endOfDayCountedCash) || endOfDayData.expectedTillCash;
+            const html = generateEndOfDayThermalHTML(endOfDayData, counted);
+            await executeDirectPrint(html, { printerRole: 'customer' });
+            toast.success('🖨️ End of Day Detailed Thermal Z-Report printed!');
+        } catch (err: any) {
+            console.error('Direct print failed:', err);
+            toast.error('Print failed: ' + (err.message || 'Check printer connection'));
+        } finally {
+            setIsPrintingEndOfDay(false);
+        }
+    };
+
     // Load products from database
     const loadProducts = useCallback(async () => {
         setIsLoadingProducts(true);
@@ -4108,6 +4850,7 @@ export default function POSPage() {
                 setShowBatchModal(false);
                 setShowHeldSalesModal(false);
                 setShowCloseRegister(false);
+                setShowEndOfDayModal(false);
                 setShowSplitModal(false);
                 setShowMoveTableModal(false);
                 setShowMergeModal(false);
@@ -5259,6 +6002,15 @@ export default function POSPage() {
                                             <span>⏹️</span>
                                             <span>End Shift</span>
                                         </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenEndOfDayReport}
+                                            className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-950/60 border border-[#00e676]/60 transition-all cursor-pointer"
+                                            title="Open Daily End of Day (EOD) Comprehensive Audit & Thermal Report"
+                                        >
+                                            <span>🌅</span>
+                                            <span>End of Day</span>
+                                        </button>
                                     </>
                                 ) : (
                                     <button
@@ -5275,6 +6027,15 @@ export default function POSPage() {
                                         <span>Start Shift</span>
                                     </button>
                                 )}
+                                <button
+                                    type="button"
+                                    onClick={handleOpenEndOfDayReport}
+                                    className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs rounded-xl shadow-md shadow-emerald-950/60 border border-[#00e676]/60 transition-all cursor-pointer"
+                                    title="Open Daily End of Day (EOD) Comprehensive Audit & Thermal Report"
+                                >
+                                    <span>🌅</span>
+                                    <span>End of Day</span>
+                                </button>
 
                                 <div className="flex items-center gap-1.5 bg-emerald-950/60 border border-[#00e676]/40 px-3 py-1 rounded-full text-xs text-[#00e676] font-bold shadow-[0_0_10px_rgba(0,230,118,0.15)]">
                                     <span className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse" />
@@ -5761,6 +6522,16 @@ export default function POSPage() {
                                         >
                                             <span className="text-[#00e676]">📈</span>
                                             <span>Day Sales</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenEndOfDayReport}
+                                            className="px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-emerald-950/80 to-teal-950/80 border border-[#00e676]/60 hover:border-[#00e676] text-xs font-black text-[#00e676] hover:text-white flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_12px_rgba(0,230,118,0.2)]"
+                                            title="Open Comprehensive End of Day (EOD) Z-Audit Report"
+                                        >
+                                            <span>🌅</span>
+                                            <span>End of Day</span>
                                         </button>
 
                                         <button
@@ -6354,6 +7125,15 @@ export default function POSPage() {
                                             <span className="text-sm">⏹️</span>
                                             <span className="tracking-wide">End Shift</span>
                                         </button>
+                                        <button
+                                            type="button"
+                                            onClick={handleOpenEndOfDayReport}
+                                            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-900/30 transition-all cursor-pointer border border-emerald-400/50"
+                                            title="Open Daily End of Day (EOD) Comprehensive Audit & Thermal Report"
+                                        >
+                                            <span className="text-sm">🌅</span>
+                                            <span className="tracking-wide">End of Day</span>
+                                        </button>
                                     </>
                                 ) : (
                                     <button
@@ -6370,6 +7150,15 @@ export default function POSPage() {
                                         <span className="tracking-wide">Start Shift</span>
                                     </button>
                                 )}
+                                <button
+                                    type="button"
+                                    onClick={handleOpenEndOfDayReport}
+                                    className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-900/30 transition-all cursor-pointer border border-emerald-400/50"
+                                    title="Open Daily End of Day (EOD) Comprehensive Audit & Thermal Report"
+                                >
+                                    <span className="text-sm">🌅</span>
+                                    <span className="tracking-wide">End of Day</span>
+                                </button>
                                 {/* Waiter / Staff Active Session Pill & Fast Switch */}
                                 {isWaiterUser ? (
                                     <div className="flex items-center gap-1.5">
@@ -7803,6 +8592,728 @@ export default function POSPage() {
                                 <span>Confirm &amp; Finalize Close Shift</span>
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* ─── CYBER EMERALD END OF DAY (EOD) COMPREHENSIVE Z-AUDIT REPORT MODAL ─── */}
+            {showEndOfDayModal && (
+                <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-[100] p-3 sm:p-5 animate-in fade-in duration-200">
+                    <div className="bg-[#081015] rounded-3xl shadow-[0_0_60px_rgba(0,230,118,0.18)] p-5 sm:p-7 w-[1140px] max-w-[96vw] max-h-[94vh] overflow-y-auto border border-[#00e676]/40 space-y-5 text-white">
+                        {/* Header Banner */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-[#162a2e]">
+                            <div>
+                                <div className="flex items-center gap-2 flex-wrap mb-1">
+                                    <span className="px-3 py-1 bg-[#00e676]/15 text-[#00e676] border border-[#00e676]/40 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-[0_0_12px_rgba(0,230,118,0.2)]">
+                                        <span className="w-2 h-2 rounded-full bg-[#00e676] animate-pulse" />
+                                        <span>Cyber Emerald EOD Audit</span>
+                                    </span>
+                                    <span className="font-mono text-xs font-bold text-gray-300 bg-[#0c161e] px-2.5 py-0.5 rounded-lg border border-[#162a2e]">
+                                        {hotelName || 'AlphaPlus Hotel'}
+                                    </span>
+                                    <span className="text-xs text-gray-500">•</span>
+                                    <span className="text-xs font-bold text-gray-300">
+                                        Duty Auditor: <strong className="text-[#00e676]">{loggedInUserName || 'Hawkins'}</strong>
+                                    </span>
+                                </div>
+                                <h3 className="text-xl sm:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+                                    <span>🌅</span> End of Day Master Sales, Waiters, Expenses &amp; Stock Report
+                                </h3>
+                            </div>
+
+                            {/* Date Picker & Fast Quick Selectors */}
+                            <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                                <div className="flex items-center gap-1.5 bg-[#0c161e] p-1 rounded-2xl border border-[#162a2e]">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const today = new Date().toISOString().split('T')[0];
+                                            loadEndOfDayReport(today);
+                                        }}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                                            endOfDayDate === new Date().toISOString().split('T')[0]
+                                                ? 'bg-[#00e676] text-black shadow-[0_0_12px_rgba(0,230,118,0.4)] font-black'
+                                                : 'text-gray-400 hover:text-white hover:bg-[#122329]'
+                                        }`}
+                                    >
+                                        Today
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            const d = new Date();
+                                            d.setDate(d.getDate() - 1);
+                                            const yest = d.toISOString().split('T')[0];
+                                            loadEndOfDayReport(yest);
+                                        }}
+                                        className="px-3 py-1.5 rounded-xl text-xs font-bold text-gray-400 hover:text-white hover:bg-[#122329] transition-all"
+                                    >
+                                        Yesterday
+                                    </button>
+                                </div>
+                                <input
+                                    type="date"
+                                    value={endOfDayDate}
+                                    onChange={(e) => loadEndOfDayReport(e.target.value)}
+                                    className="px-3 py-1.5 bg-[#0c161e] border border-[#162a2e] focus:border-[#00e676] rounded-xl text-xs font-bold text-white outline-none transition-colors"
+                                    title="Choose report audit date"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => { setShowEndOfDayModal(false); setEndOfDayData(null); }}
+                                    className="w-8 h-8 rounded-full bg-[#122329] hover:bg-[#1c363f] text-gray-300 hover:text-white border border-[#1e3b37] flex items-center justify-center font-bold text-sm transition-colors"
+                                    title="Close End of Day Modal"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        </div>
+
+                        {isLoadingEndOfDay || !endOfDayData ? (
+                            <div className="py-20 text-center space-y-3">
+                                <div className="w-10 h-10 border-4 border-[#00e676]/30 border-t-[#00e676] rounded-full animate-spin mx-auto" />
+                                <p className="text-sm font-bold text-[#00e676]">Compiling Cyber Emerald End of Day Audit &amp; Stock Ledger...</p>
+                                <p className="text-xs text-gray-400">Querying settled sales, M-Pesa receipts, waiter breakdown, petty cash, advances and available inventory</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-5">
+                                {/* Top 8 Executive Cyber Emerald KPI Metric Cards */}
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                                    {/* 1. Gross Settled Sales */}
+                                    <div className="bg-[#0c161e] p-3.5 rounded-2xl border border-[#162a2e] hover:border-indigo-400/50 transition-all shadow-sm">
+                                        <p className="text-[10px] font-black uppercase text-indigo-400 tracking-wider">Gross Settled Sales</p>
+                                        <p className="text-xl font-black text-white mt-0.5 font-mono">Ksh {endOfDayData.totalSales.toLocaleString()}</p>
+                                        <p className="text-[10px] text-indigo-300/80 font-bold mt-1">✓ {endOfDayData.completedOrdersCount} Paid Receipts</p>
+                                    </div>
+
+                                    {/* 2. Cash Sales */}
+                                    <div className="bg-[#0c161e] p-3.5 rounded-2xl border border-[#162a2e] hover:border-amber-400/50 transition-all shadow-sm">
+                                        <p className="text-[10px] font-black uppercase text-amber-400 tracking-wider flex items-center gap-1">
+                                            <span>💵</span> Cash at Till
+                                        </p>
+                                        <p className="text-xl font-black text-amber-300 mt-0.5 font-mono">Ksh {endOfDayData.cashSales.toLocaleString()}</p>
+                                        <p className="text-[10px] text-amber-400/80 font-bold mt-1">
+                                            {endOfDayData.totalSales > 0 ? Math.round((endOfDayData.cashSales / endOfDayData.totalSales) * 100) : 0}% • {endOfDayData.cashCount} txns
+                                        </p>
+                                    </div>
+
+                                    {/* 3. M-Pesa Sales */}
+                                    <div className="bg-[#0c161e] p-3.5 rounded-2xl border border-[#00e676]/40 hover:border-[#00e676] transition-all shadow-[0_0_15px_rgba(0,230,118,0.1)]">
+                                        <p className="text-[10px] font-black uppercase text-[#00e676] tracking-wider flex items-center gap-1">
+                                            <span>📱</span> M-Pesa Total
+                                        </p>
+                                        <p className="text-xl font-black text-white mt-0.5 font-mono">Ksh {endOfDayData.mpesaSales.toLocaleString()}</p>
+                                        <p className="text-[10px] text-[#00e676] font-bold mt-1">
+                                            {endOfDayData.totalSales > 0 ? Math.round((endOfDayData.mpesaSales / endOfDayData.totalSales) * 100) : 0}% • {endOfDayData.mpesaCount} txns
+                                        </p>
+                                    </div>
+
+                                    {/* 4. Real Net Profit */}
+                                    <div className="bg-gradient-to-br from-emerald-950 via-[#0a2720] to-[#041a15] p-3.5 rounded-2xl border-2 border-[#00e676] text-white shadow-[0_0_20px_rgba(0,230,118,0.25)]">
+                                        <p className="text-[10px] font-black uppercase text-[#00e676] tracking-wider flex items-center gap-1">
+                                            <span>💎</span> Real Net Profit
+                                        </p>
+                                        <p className="text-xl font-black text-white mt-0.5 font-mono">Ksh {endOfDayData.netProfit.toLocaleString()}</p>
+                                        <p className="text-[10px] text-[#00e676] font-black mt-1">{endOfDayData.netMarginPercent.toFixed(1)}% Realized Margin</p>
+                                    </div>
+
+                                    {/* 5. Unpaid / Pending Bills */}
+                                    <div className="bg-[#0c161e] p-3 rounded-2xl border border-amber-900/50">
+                                        <p className="text-[10px] font-black uppercase text-amber-400 tracking-wider flex items-center gap-1">
+                                            <span>⏳</span> Unpaid Pending
+                                        </p>
+                                        <p className="text-base font-black text-amber-200 mt-0.5 font-mono">Ksh {endOfDayData.pendingTotalAmount.toLocaleString()}</p>
+                                        <p className="text-[10px] text-amber-400/80 font-semibold">{endOfDayData.pendingOrdersCount} open tables/rooms</p>
+                                    </div>
+
+                                    {/* 6. Voided Bills */}
+                                    <div className="bg-[#0c161e] p-3 rounded-2xl border border-rose-900/50">
+                                        <p className="text-[10px] font-black uppercase text-rose-400 tracking-wider flex items-center gap-1">
+                                            <span>❌</span> Voided Bills
+                                        </p>
+                                        <p className="text-base font-black text-rose-200 mt-0.5 font-mono">Ksh {endOfDayData.voidedTotalAmount.toLocaleString()}</p>
+                                        <p className="text-[10px] text-rose-400/80 font-semibold">{endOfDayData.voidedOrdersCount} voided orders</p>
+                                    </div>
+
+                                    {/* 7. Expenses & Advances */}
+                                    <div className="bg-[#0c161e] p-3 rounded-2xl border border-[#162a2e]">
+                                        <p className="text-[10px] font-black uppercase text-gray-400 tracking-wider flex items-center gap-1">
+                                            <span>💸</span> Exp &amp; Advances
+                                        </p>
+                                        <p className="text-base font-black text-rose-400 mt-0.5 font-mono">-Ksh {(endOfDayData.totalExpenses + endOfDayData.totalAdvances).toLocaleString()}</p>
+                                        <p className="text-[10px] text-gray-400 font-semibold">{endOfDayData.expensesList.length} exp • {endOfDayData.advancesList.length} adv</p>
+                                    </div>
+
+                                    {/* 8. Items Sold Quantity */}
+                                    <div className="bg-[#0c161e] p-3 rounded-2xl border border-[#00e676]/30">
+                                        <p className="text-[10px] font-black uppercase text-[#00e676] tracking-wider flex items-center gap-1">
+                                            <span>🍽️</span> Dishes Sold
+                                        </p>
+                                        <p className="text-base font-black text-white mt-0.5 font-mono">{endOfDayData.totalUnitsSold} Portions</p>
+                                        <p className="text-[10px] text-emerald-400 font-semibold">{endOfDayData.itemsSold.length} distinct dishes</p>
+                                    </div>
+                                </div>
+
+                                {/* Four View Tabs Navigation */}
+                                <div className="flex items-center gap-2 border-b border-[#162a2e] pb-1 overflow-x-auto">
+                                    <button
+                                        type="button"
+                                        onClick={() => setEndOfDayActiveTab('overview')}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap ${
+                                            endOfDayActiveTab === 'overview'
+                                                ? 'bg-[#00e676] text-black shadow-[0_0_12px_rgba(0,230,118,0.4)]'
+                                                : 'text-gray-400 hover:text-white hover:bg-[#122329]'
+                                        }`}
+                                    >
+                                        <span>📊</span>
+                                        <span>Financial Overview &amp; Till Reconciliation</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setEndOfDayActiveTab('waiters')}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap ${
+                                            endOfDayActiveTab === 'waiters'
+                                                ? 'bg-[#00e676] text-black shadow-[0_0_12px_rgba(0,230,118,0.4)]'
+                                                : 'text-gray-400 hover:text-white hover:bg-[#122329]'
+                                        }`}
+                                    >
+                                        <span>🤵</span>
+                                        <span>Waiter Sales Breakdown ({endOfDayData.waitersSummary.length} Staff)</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setEndOfDayActiveTab('items')}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap ${
+                                            endOfDayActiveTab === 'items'
+                                                ? 'bg-[#00e676] text-black shadow-[0_0_12px_rgba(0,230,118,0.4)]'
+                                                : 'text-gray-400 hover:text-white hover:bg-[#122329]'
+                                        }`}
+                                    >
+                                        <span>🍽️</span>
+                                        <span>Items Sold, Profit &amp; Available Stock ({endOfDayData.itemsSold.length})</span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setEndOfDayActiveTab('receipt')}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap ${
+                                            endOfDayActiveTab === 'receipt'
+                                                ? 'bg-[#00e676] text-black shadow-[0_0_12px_rgba(0,230,118,0.4)]'
+                                                : 'text-gray-400 hover:text-white hover:bg-[#122329]'
+                                        }`}
+                                    >
+                                        <span>🧾</span>
+                                        <span>Thermal Receipt Preview (80mm)</span>
+                                    </button>
+                                </div>
+
+                                {/* TAB 1: FINANCIAL OVERVIEW & TILL RECONCILIATION */}
+                                {endOfDayActiveTab === 'overview' && (
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {/* Left: Detailed Turnover & Margin Channels */}
+                                            <div className="bg-[#0c161e] p-4 rounded-2xl border border-[#162a2e] space-y-3">
+                                                <h4 className="text-xs font-black uppercase text-[#00e676] tracking-wider flex items-center justify-between">
+                                                    <span>Turnover by Payment Channel</span>
+                                                    <span className="text-[10px] text-gray-400 font-bold">{endOfDayData.completedOrdersCount} Total Receipts</span>
+                                                </h4>
+
+                                                <div className="space-y-2 text-xs">
+                                                    <div className="flex justify-between items-center bg-[#071015] p-2.5 rounded-xl border border-[#142628]">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-base">💵</span>
+                                                            <div>
+                                                                <span className="font-bold text-white">Cash Received at Counter</span>
+                                                                <span className="text-[10px] text-gray-400 block">{endOfDayData.cashCount} transactions settled</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="font-mono font-black text-amber-300 text-sm">Ksh {endOfDayData.cashSales.toLocaleString()}</span>
+                                                            <span className="text-[10px] text-amber-400 font-bold block">
+                                                                {endOfDayData.totalSales > 0 ? Math.round((endOfDayData.cashSales / endOfDayData.totalSales) * 100) : 0}% of turnover
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex justify-between items-center bg-[#071015] p-2.5 rounded-xl border border-[#00e676]/30">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-base">📱</span>
+                                                            <div>
+                                                                <span className="font-bold text-white">Safaricom M-Pesa Total</span>
+                                                                <span className="text-[10px] text-gray-400 block">{endOfDayData.mpesaCount} STK &amp; Mobile Money txns</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="font-mono font-black text-[#00e676] text-sm">Ksh {endOfDayData.mpesaSales.toLocaleString()}</span>
+                                                            <span className="text-[10px] text-[#00e676] font-bold block">
+                                                                {endOfDayData.totalSales > 0 ? Math.round((endOfDayData.mpesaSales / endOfDayData.totalSales) * 100) : 0}% of turnover
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex justify-between items-center bg-[#071015] p-2.5 rounded-xl border border-[#142628]">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-base">💳</span>
+                                                            <div>
+                                                                <span className="font-bold text-white">Card / PDQ Terminal</span>
+                                                                <span className="text-[10px] text-gray-400 block">{endOfDayData.cardCount} card swipes</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="font-mono font-black text-indigo-300 text-sm">Ksh {endOfDayData.cardSales.toLocaleString()}</span>
+                                                            <span className="text-[10px] text-indigo-400 font-bold block">
+                                                                {endOfDayData.totalSales > 0 ? Math.round((endOfDayData.cardSales / endOfDayData.totalSales) * 100) : 0}%
+                                                            </span>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="flex justify-between items-center bg-[#071015] p-2.5 rounded-xl border border-[#142628]">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-base">📋</span>
+                                                            <div>
+                                                                <span className="font-bold text-white">Credit / Room Folio</span>
+                                                                <span className="text-[10px] text-gray-400 block">{endOfDayData.creditCount} room billed orders</span>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <span className="font-mono font-black text-purple-300 text-sm">Ksh {endOfDayData.creditSales.toLocaleString()}</span>
+                                                            <span className="text-[10px] text-purple-400 font-bold block">
+                                                                {endOfDayData.totalSales > 0 ? Math.round((endOfDayData.creditSales / endOfDayData.totalSales) * 100) : 0}%
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-2 border-t border-[#162a2e] space-y-1 text-xs">
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-400">Cost of Goods (COGS):</span>
+                                                        <span className="font-mono font-bold text-slate-300">-Ksh {endOfDayData.totalCostPrice.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-400">Gross Kitchen Profit:</span>
+                                                        <span className="font-mono font-bold text-[#00e676]">Ksh {endOfDayData.grossProfit.toLocaleString()} ({endOfDayData.grossMarginPercent.toFixed(1)}%)</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-400">Petty Cash Deductions:</span>
+                                                        <span className="font-mono font-bold text-rose-400">-Ksh {endOfDayData.totalExpenses.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-gray-400">Staff Salary Advances:</span>
+                                                        <span className="font-mono font-bold text-rose-400">-Ksh {endOfDayData.totalAdvances.toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex justify-between font-black text-sm pt-1 border-t border-[#162a2e]">
+                                                        <span className="text-white">Net Realized Profit:</span>
+                                                        <span className="text-[#00e676] font-mono">Ksh {endOfDayData.netProfit.toLocaleString()}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Right: Cash Till Reconciliation */}
+                                            <div className="bg-[#0c161e] p-4 rounded-2xl border border-[#162a2e] space-y-3 flex flex-col justify-between">
+                                                <div>
+                                                    <h4 className="text-xs font-black uppercase text-[#00e676] tracking-wider flex items-center justify-between">
+                                                        <span>Daily Cash Till Reconciliation</span>
+                                                        <span className="text-[10px] font-bold text-[#00e676] bg-[#00e676]/10 px-2 py-0.5 rounded-full border border-[#00e676]/30">
+                                                            Audit Formula
+                                                        </span>
+                                                    </h4>
+
+                                                    <div className="space-y-2 mt-3 text-xs">
+                                                        <div className="flex justify-between p-2 bg-[#071015] rounded-xl border border-[#142628]">
+                                                            <span className="text-gray-300">🟢 Opening Float:</span>
+                                                            <span className="font-mono font-bold text-white">Ksh {endOfDayData.openingFloat.toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between p-2 bg-[#071015] rounded-xl border border-[#142628]">
+                                                            <span className="text-gray-300">➕ Cash Sales Collected:</span>
+                                                            <span className="font-mono font-bold text-[#00e676]">+Ksh {endOfDayData.cashSales.toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between p-2 bg-[#071015] rounded-xl border border-[#142628]">
+                                                            <span className="text-gray-300">➖ Petty Cash Expenses:</span>
+                                                            <span className="font-mono font-bold text-rose-400">-Ksh {endOfDayData.totalExpenses.toLocaleString()}</span>
+                                                        </div>
+                                                        <div className="flex justify-between p-2 bg-[#071015] rounded-xl border border-[#142628]">
+                                                            <span className="text-gray-300">➖ Salary Advances Paid:</span>
+                                                            <span className="font-mono font-bold text-rose-400">-Ksh {endOfDayData.totalAdvances.toLocaleString()}</span>
+                                                        </div>
+
+                                                        <div className="flex justify-between p-2.5 bg-[#00e676]/10 rounded-xl border border-[#00e676]/40 shadow-[0_0_12px_rgba(0,230,118,0.15)]">
+                                                            <span className="font-black text-white">EXPECTED TILL CASH:</span>
+                                                            <span className="font-mono font-black text-[#00e676] text-base">
+                                                                Ksh {endOfDayData.expectedTillCash.toLocaleString()}
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Actual Cash Input & Live Variance */}
+                                                <div className="pt-3 border-t border-[#162a2e] space-y-2">
+                                                    <label className="text-xs font-black uppercase text-gray-300 block">
+                                                        Actual Counted Till Cash (Ksh)
+                                                    </label>
+                                                    <input
+                                                        type="number"
+                                                        value={endOfDayCountedCash}
+                                                        onChange={(e) => setEndOfDayCountedCash(e.target.value)}
+                                                        className="w-full px-3.5 py-2.5 bg-[#071015] border-2 border-[#162a2e] focus:border-[#00e676] rounded-xl text-base font-black font-mono text-white outline-none transition-colors"
+                                                        placeholder="Enter counted physical cash..."
+                                                    />
+
+                                                    {(() => {
+                                                        const counted = Number(endOfDayCountedCash) || 0;
+                                                        const diff = counted - endOfDayData.expectedTillCash;
+                                                        return (
+                                                            <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
+                                                                diff === 0
+                                                                    ? 'bg-[#00e676]/15 border-[#00e676]/50 text-[#00e676]'
+                                                                    : diff > 0
+                                                                    ? 'bg-blue-950/80 border-blue-500/50 text-blue-300'
+                                                                    : 'bg-rose-950/80 border-rose-500/50 text-rose-300'
+                                                            }`}>
+                                                                <span>{diff === 0 ? '✓ TILL BALANCED' : diff > 0 ? '▲ CASH SURPLUS (OVERAGE)' : '▼ CASH DEFICIT (SHORTAGE)'}</span>
+                                                                <span className="font-mono font-black text-sm">
+                                                                    {diff === 0 ? 'Ksh 0.00' : (diff > 0 ? `+Ksh ${diff.toLocaleString()}` : `-Ksh ${Math.abs(diff).toLocaleString()}`)}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Bottom Row: Itemized Petty Cash & Advances Lists */}
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {/* Petty Cash Expenses */}
+                                            <div className="bg-[#0c161e] p-3.5 rounded-2xl border border-[#162a2e]">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <h5 className="text-xs font-black uppercase text-gray-300 flex items-center gap-1">
+                                                        <span>💸</span> Petty Cash Expenses ({endOfDayData.expensesList.length})
+                                                    </h5>
+                                                    <span className="font-mono font-bold text-rose-400 text-xs">
+                                                        -Ksh {endOfDayData.totalExpenses.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                {endOfDayData.expensesList.length === 0 ? (
+                                                    <p className="text-xs text-gray-500 italic py-2">No petty cash deductions recorded for this day.</p>
+                                                ) : (
+                                                    <div className="space-y-1 max-h-32 overflow-y-auto text-xs pr-1">
+                                                        {endOfDayData.expensesList.map((exp, i) => (
+                                                            <div key={i} className="flex justify-between items-center p-1.5 bg-[#071015] rounded-lg border border-[#142628]">
+                                                                <div className="truncate pr-2">
+                                                                    <p className="font-bold text-white truncate">{exp.description}</p>
+                                                                    <p className="text-[10px] text-gray-400">{exp.category} {exp.time ? '• ' + exp.time : ''}</p>
+                                                                </div>
+                                                                <span className="font-mono font-bold text-rose-400 shrink-0">
+                                                                    -Ksh {exp.amount.toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* Salary Advances */}
+                                            <div className="bg-[#0c161e] p-3.5 rounded-2xl border border-[#162a2e]">
+                                                <div className="flex justify-between items-center mb-2">
+                                                    <h5 className="text-xs font-black uppercase text-gray-300 flex items-center gap-1">
+                                                        <span>👥</span> Staff Salary Advances ({endOfDayData.advancesList.length})
+                                                    </h5>
+                                                    <span className="font-mono font-bold text-rose-400 text-xs">
+                                                        -Ksh {endOfDayData.totalAdvances.toLocaleString()}
+                                                    </span>
+                                                </div>
+                                                {endOfDayData.advancesList.length === 0 ? (
+                                                    <p className="text-xs text-gray-500 italic py-2">No salary advances issued on this date.</p>
+                                                ) : (
+                                                    <div className="space-y-1 max-h-32 overflow-y-auto text-xs pr-1">
+                                                        {endOfDayData.advancesList.map((adv, i) => (
+                                                            <div key={i} className="flex justify-between items-center p-1.5 bg-[#071015] rounded-lg border border-[#142628]">
+                                                                <div className="truncate pr-2">
+                                                                    <p className="font-bold text-white truncate">{adv.employeeName}</p>
+                                                                    <p className="text-[10px] text-gray-400">{adv.reason} {adv.date ? '• ' + adv.date : ''}</p>
+                                                                </div>
+                                                                <span className="font-mono font-bold text-rose-400 shrink-0">
+                                                                    -Ksh {adv.amount.toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* TAB 2: WAITER SALES BREAKDOWN (SUPER MASSIVE) */}
+                                {endOfDayActiveTab === 'waiters' && (
+                                    <div className="space-y-3">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#0c161e] p-3 rounded-2xl border border-[#162a2e]">
+                                            <div>
+                                                <h4 className="text-xs font-black uppercase text-[#00e676] tracking-wider flex items-center gap-1.5">
+                                                    <span>🤵</span> Individual Waiter Sales, Cash, M-Pesa &amp; Unpaid Bills
+                                                </h4>
+                                                <p className="text-[11px] text-gray-400 font-medium">
+                                                    Full accountability breakdown for each floor service staff member
+                                                </p>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={endOfDayWaiterSearch}
+                                                    onChange={(e) => setEndOfDayWaiterSearch(e.target.value)}
+                                                    placeholder="Search staff name..."
+                                                    className="px-3 py-1.5 bg-[#071015] border border-[#162a2e] focus:border-[#00e676] rounded-xl text-xs font-medium text-white outline-none"
+                                                />
+                                                <span className="text-xs font-bold text-[#00e676] bg-[#00e676]/10 px-2.5 py-1.5 rounded-xl border border-[#00e676]/30">
+                                                    {endOfDayData.waitersSummary.length} Staff Active
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="overflow-x-auto max-h-[440px] overflow-y-auto border border-[#162a2e] rounded-2xl">
+                                            <table className="w-full text-xs text-left">
+                                                <thead className="bg-[#060c10] text-[#00e676] text-[10px] font-black uppercase sticky top-0 z-10 border-b border-[#162a2e]">
+                                                    <tr>
+                                                        <th className="py-3 px-3">#</th>
+                                                        <th className="py-3 px-3">Waiter / Staff Name</th>
+                                                        <th className="py-3 px-3 text-center">Settled Orders</th>
+                                                        <th className="py-3 px-3 text-right">Cash Sales</th>
+                                                        <th className="py-3 px-3 text-right">M-Pesa Sales</th>
+                                                        <th className="py-3 px-3 text-right">Credit Sales</th>
+                                                        <th className="py-3 px-3 text-right">Total Settled</th>
+                                                        <th className="py-3 px-3 text-center">Unpaid / Pending Bills</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-[#142327] font-medium">
+                                                    {endOfDayData.waitersSummary.length === 0 ? (
+                                                        <tr>
+                                                            <td colSpan={8} className="py-8 text-center text-gray-500 italic">
+                                                                No waiter sales recorded for this date.
+                                                            </td>
+                                                        </tr>
+                                                    ) : (
+                                                        endOfDayData.waitersSummary
+                                                            .filter(w => !endOfDayWaiterSearch || w.waiterName.toLowerCase().includes(endOfDayWaiterSearch.toLowerCase()))
+                                                            .map((w, idx) => (
+                                                                <tr key={idx} className="bg-[#0c161e] hover:bg-[#112228] transition-colors">
+                                                                    <td className="py-2.5 px-3 font-mono text-gray-500 font-bold">{idx + 1}</td>
+                                                                    <td className="py-2.5 px-3 font-black text-white flex items-center gap-2">
+                                                                        <span className="w-6 h-6 rounded-full bg-[#122329] text-[#00e676] flex items-center justify-center font-bold text-xs border border-[#1e3b37]">
+                                                                            {w.waiterName.slice(0, 1).toUpperCase()}
+                                                                        </span>
+                                                                        <span>{w.waiterName}</span>
+                                                                    </td>
+                                                                    <td className="py-2.5 px-3 text-center font-bold text-gray-300">
+                                                                        <span className="px-2 py-0.5 rounded-md bg-[#071015] border border-[#162a2e] font-mono">{w.ordersCount}</span>
+                                                                    </td>
+                                                                    <td className="py-2.5 px-3 text-right font-mono font-bold text-amber-300">
+                                                                        Ksh {w.cashSales.toLocaleString()}
+                                                                        <span className="text-[10px] text-gray-500 block">({w.cashCount} txns)</span>
+                                                                    </td>
+                                                                    <td className="py-2.5 px-3 text-right font-mono font-bold text-[#00e676]">
+                                                                        Ksh {w.mpesaSales.toLocaleString()}
+                                                                        <span className="text-[10px] text-gray-500 block">({w.mpesaCount} txns)</span>
+                                                                    </td>
+                                                                    <td className="py-2.5 px-3 text-right font-mono text-purple-300 font-bold">
+                                                                        Ksh {w.creditSales.toLocaleString()}
+                                                                    </td>
+                                                                    <td className="py-2.5 px-3 text-right font-mono font-black text-white text-sm">
+                                                                        Ksh {w.totalSales.toLocaleString()}
+                                                                    </td>
+                                                                    <td className="py-2.5 px-3 text-center">
+                                                                        {w.unpaidBillsCount > 0 ? (
+                                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-950/80 text-amber-300 border border-amber-500/40 inline-flex items-center gap-1">
+                                                                                <span>⚠️</span>
+                                                                                <span>{w.unpaidBillsCount} bills (Ksh {w.unpaidBillsAmount.toLocaleString()})</span>
+                                                                            </span>
+                                                                        ) : (
+                                                                            <span className="text-[10px] text-gray-500 font-bold">✓ Clear (0)</span>
+                                                                        )}
+                                                                    </td>
+                                                                </tr>
+                                                            ))
+                                                    )}
+                                                </tbody>
+                                                <tfoot className="bg-[#060c10] border-t-2 border-[#162a2e] font-black text-xs text-white">
+                                                    <tr>
+                                                        <td colSpan={2} className="py-3 px-3 uppercase text-gray-300">Staff Totals</td>
+                                                        <td className="py-3 px-3 text-center font-mono text-white">{endOfDayData.completedOrdersCount}</td>
+                                                        <td className="py-3 px-3 text-right font-mono text-amber-300">Ksh {endOfDayData.cashSales.toLocaleString()}</td>
+                                                        <td className="py-3 px-3 text-right font-mono text-[#00e676]">Ksh {endOfDayData.mpesaSales.toLocaleString()}</td>
+                                                        <td className="py-3 px-3 text-right font-mono text-purple-300">Ksh {endOfDayData.creditSales.toLocaleString()}</td>
+                                                        <td className="py-3 px-3 text-right font-mono text-white text-sm">Ksh {endOfDayData.totalSales.toLocaleString()}</td>
+                                                        <td className="py-3 px-3 text-center font-mono text-amber-400">
+                                                            {endOfDayData.pendingOrdersCount} bills (Ksh {endOfDayData.pendingTotalAmount.toLocaleString()})
+                                                        </td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* TAB 3: ITEMS SOLD, PROFIT & AVAILABLE STOCK LEDGER (SUPER MASSIVE) */}
+                                {endOfDayActiveTab === 'items' && (
+                                    <div className="space-y-3">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#0c161e] p-3 rounded-2xl border border-[#162a2e]">
+                                            <div>
+                                                <h4 className="text-xs font-black uppercase text-[#00e676] tracking-wider">
+                                                    Itemized Dishes Sold &amp; Kitchen Inventory Availability
+                                                </h4>
+                                                <p className="text-[11px] text-gray-400 font-medium">
+                                                    Real-time profit per plate and remaining ready stock in kitchen &amp; stores
+                                                </p>
+                                            </div>
+
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="text"
+                                                    value={endOfDayItemSearch}
+                                                    onChange={(e) => setEndOfDayItemSearch(e.target.value)}
+                                                    placeholder="Filter dish name..."
+                                                    className="px-3 py-1.5 bg-[#071015] border border-[#162a2e] focus:border-[#00e676] rounded-xl text-xs font-medium text-white outline-none"
+                                                />
+                                                <span className="text-xs font-bold text-[#00e676] bg-[#00e676]/10 px-2.5 py-1.5 rounded-xl border border-[#00e676]/30">
+                                                    {endOfDayData.totalUnitsSold} Total Portions
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="overflow-x-auto max-h-[440px] overflow-y-auto border border-[#162a2e] rounded-2xl">
+                                            <table className="w-full text-xs text-left">
+                                                <thead className="bg-[#060c10] text-[#00e676] text-[10px] font-black uppercase sticky top-0 z-10 border-b border-[#162a2e]">
+                                                    <tr>
+                                                        <th className="py-3 px-3">#</th>
+                                                        <th className="py-3 px-3">Dish / Product Name</th>
+                                                        <th className="py-3 px-3 text-center">Qty Sold</th>
+                                                        <th className="py-3 px-3 text-right">Selling Price</th>
+                                                        <th className="py-3 px-3 text-right">Revenue</th>
+                                                        <th className="py-3 px-3 text-right">Cost (COGS)</th>
+                                                        <th className="py-3 px-3 text-right">Dish Profit</th>
+                                                        <th className="py-3 px-3 text-center">Margin %</th>
+                                                        <th className="py-3 px-3 text-center">Available Stock</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-[#142327] font-medium">
+                                                    {endOfDayData.itemsSold
+                                                        .filter(itm => !endOfDayItemSearch || itm.productName.toLowerCase().includes(endOfDayItemSearch.toLowerCase()))
+                                                        .map((itm, idx) => {
+                                                            const isLowStock = itm.availableStock > 0 && itm.availableStock <= 5;
+                                                            const isOut = itm.availableStock === 0;
+                                                            return (
+                                                                <tr key={idx} className="bg-[#0c161e] hover:bg-[#112228] transition-colors">
+                                                                    <td className="py-2.5 px-3 font-mono text-gray-500 font-bold">{idx + 1}</td>
+                                                                    <td className="py-2.5 px-3 font-black text-white">{itm.productName}</td>
+                                                                    <td className="py-2.5 px-3 text-center font-bold text-gray-300">
+                                                                        <span className="px-2 py-0.5 rounded-md bg-[#071015] border border-[#162a2e] font-mono">{itm.qtySold}x</span>
+                                                                    </td>
+                                                                    <td className="py-2.5 px-3 text-right font-mono text-gray-300">Ksh {itm.unitPrice.toLocaleString()}</td>
+                                                                    <td className="py-2.5 px-3 text-right font-mono font-bold text-white">Ksh {itm.totalRevenue.toLocaleString()}</td>
+                                                                    <td className="py-2.5 px-3 text-right font-mono text-gray-400">
+                                                                        {itm.totalCost > 0 ? `Ksh ${itm.totalCost.toLocaleString()}` : '—'}
+                                                                    </td>
+                                                                    <td className="py-2.5 px-3 text-right font-mono font-black text-[#00e676]">
+                                                                        +Ksh {itm.profit.toLocaleString()}
+                                                                    </td>
+                                                                    <td className="py-2.5 px-3 text-center">
+                                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${
+                                                                            itm.marginPercent >= 50
+                                                                                ? 'bg-[#00e676]/20 text-[#00e676] border border-[#00e676]/40'
+                                                                                : itm.marginPercent >= 25
+                                                                                ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40'
+                                                                                : 'bg-gray-800 text-gray-300'
+                                                                        }`}>
+                                                                            {itm.marginPercent.toFixed(0)}%
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="py-2.5 px-3 text-center">
+                                                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-black inline-flex items-center gap-1 ${
+                                                                            isOut
+                                                                                ? 'bg-rose-950/80 text-rose-300 border border-rose-500/40'
+                                                                                : isLowStock
+                                                                                ? 'bg-amber-950/80 text-amber-300 border border-amber-500/40'
+                                                                                : 'bg-[#00e676]/15 text-[#00e676] border border-[#00e676]/40'
+                                                                        }`}>
+                                                                            <span>{isOut ? '❌' : isLowStock ? '⚠️' : '📦'}</span>
+                                                                            <span>{itm.availableStock > 0 ? `${itm.availableStock} Portions` : 'OUT OF STOCK'}</span>
+                                                                        </span>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                </tbody>
+                                                <tfoot className="bg-[#060c10] border-t-2 border-[#162a2e] font-black text-xs text-white">
+                                                    <tr>
+                                                        <td colSpan={2} className="py-3 px-3 uppercase text-gray-300">Total Dishes Sold</td>
+                                                        <td className="py-3 px-3 text-center font-mono text-[#00e676]">{endOfDayData.totalUnitsSold}x</td>
+                                                        <td className="py-3 px-3" />
+                                                        <td className="py-3 px-3 text-right font-mono text-white">Ksh {endOfDayData.totalSales.toLocaleString()}</td>
+                                                        <td className="py-3 px-3 text-right font-mono text-gray-400">-Ksh {endOfDayData.totalCostPrice.toLocaleString()}</td>
+                                                        <td className="py-3 px-3 text-right font-mono text-[#00e676]">+Ksh {endOfDayData.grossProfit.toLocaleString()}</td>
+                                                        <td className="py-3 px-3 text-center font-mono text-[#00e676]">{endOfDayData.grossMarginPercent.toFixed(1)}%</td>
+                                                        <td className="py-3 px-3 text-center text-[10px] text-gray-400 font-bold">Kitchen Inventory</td>
+                                                    </tr>
+                                                </tfoot>
+                                            </table>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* TAB 4: THERMAL RECEIPT PREVIEW (80MM) */}
+                                {endOfDayActiveTab === 'receipt' && (
+                                    <div className="flex flex-col items-center justify-center p-3 bg-[#060c10] rounded-2xl border border-[#162a2e]">
+                                        <div className="w-[380px] max-w-full bg-white shadow-2xl rounded-xl p-4 font-mono text-xs overflow-y-auto max-h-[500px] text-black">
+                                            <div
+                                                dangerouslySetInnerHTML={{
+                                                    __html: generateEndOfDayThermalHTML(
+                                                        endOfDayData,
+                                                        Number(endOfDayCountedCash) || endOfDayData.expectedTillCash
+                                                    )
+                                                }}
+                                            />
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 font-bold mt-2">
+                                            80mm Standard Thermal Paper Layout • High-Contrast Direct Thermal Stream
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Footer Action Buttons */}
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-3 border-t border-[#162a2e]">
+                                    <button
+                                        type="button"
+                                        onClick={() => { setShowEndOfDayModal(false); setEndOfDayData(null); }}
+                                        className="w-full sm:w-auto px-5 py-3 border-2 border-[#162a2e] hover:bg-[#122329] text-gray-300 rounded-2xl text-xs font-black transition-colors"
+                                    >
+                                        Close Modal
+                                    </button>
+
+                                    <div className="flex items-center gap-2 w-full sm:w-auto">
+                                        <button
+                                            type="button"
+                                            onClick={() => loadEndOfDayReport()}
+                                            disabled={isLoadingEndOfDay}
+                                            className="px-4 py-3 bg-[#0c161e] hover:bg-[#122329] text-white border border-[#162a2e] rounded-2xl text-xs font-black transition-colors flex items-center justify-center gap-1.5"
+                                        >
+                                            <span>🔄</span>
+                                            <span>Refresh Data</span>
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            onClick={printEndOfDayThermalReport}
+                                            disabled={isPrintingEndOfDay}
+                                            className="flex-1 sm:flex-initial px-6 py-3 bg-gradient-to-r from-emerald-500 via-teal-500 to-[#00e676] hover:brightness-110 text-black rounded-2xl text-xs font-black shadow-[0_0_20px_rgba(0,230,118,0.35)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                        >
+                                            <span>🖨️</span>
+                                            <span>{isPrintingEndOfDay ? 'Printing...' : 'Thermal Print (80mm Detailed)'}</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
