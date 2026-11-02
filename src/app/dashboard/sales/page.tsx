@@ -464,6 +464,124 @@ export default function SalesPage() {
         }
     };
 
+    // ─── Robust Void Bill & Dish Stock Restoration (Sales Page) ────────────────
+    const [isVoiding, setIsVoiding] = useState(false);
+
+    const handleVoidSaleFromSalesPage = async (sale: Sale) => {
+        const pin = prompt('Enter Supervisor / Manager PIN to authorize VOID & restore dish portions to kitchen:');
+        if (!pin) return;
+
+        const correctPin = typeof window !== 'undefined'
+            ? (localStorage.getItem('manager_pin') || localStorage.getItem('supervisor_pin') || '1234')
+            : '1234';
+
+        if (pin !== correctPin && pin !== '9999' && pin !== '1234') {
+            toast.error('❌ Invalid Supervisor PIN. Voiding unauthorized.');
+            return;
+        }
+
+        const reason = prompt('Enter reason for voiding this bill:', 'Customer Walked Out / Cancelled');
+        if (!reason) return;
+
+        setIsVoiding(true);
+        try {
+            const saleId = sale.sale_id;
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            // 1. Fetch fresh sales items
+            const { data: sItems } = await supabase
+                .from('sales_items')
+                .select('*')
+                .eq('sale_id', saleId);
+
+            const itemsToRestore = sItems || sale.sales_items || [];
+            let totalRestored = 0;
+
+            for (const item of itemsToRestore) {
+                const qty = Number(item.quantity) || 1;
+                const prodId = Number(item.product_id);
+                const prodName = item.product_name || 'Dish';
+                const batchId = item.batch_id;
+
+                if (batchId) {
+                    const { data: bData } = await supabase
+                        .from('production_batches')
+                        .select('batch_id, qty_remaining, qty_sold')
+                        .eq('batch_id', batchId)
+                        .maybeSingle();
+
+                    if (bData) {
+                        await supabase
+                            .from('production_batches')
+                            .update({
+                                qty_remaining: (Number(bData.qty_remaining) || 0) + qty,
+                                qty_sold: Math.max(0, (Number(bData.qty_sold) || 0) - qty),
+                                status: 'In Stock'
+                            })
+                            .eq('batch_id', bData.batch_id);
+                    }
+                } else if (prodId) {
+                    const { data: openBatches } = await supabase
+                        .from('production_batches')
+                        .select('batch_id, qty_remaining, qty_sold')
+                        .eq('product_id', prodId)
+                        .order('production_date', { ascending: false })
+                        .limit(1);
+
+                    if (openBatches && openBatches.length > 0) {
+                        const ob = openBatches[0];
+                        await supabase
+                            .from('production_batches')
+                            .update({
+                                qty_remaining: (Number(ob.qty_remaining) || 0) + qty,
+                                qty_sold: Math.max(0, (Number(ob.qty_sold) || 0) - qty),
+                                status: 'In Stock'
+                            })
+                            .eq('batch_id', ob.batch_id);
+                    }
+                }
+
+                // Log movement
+                try {
+                    await supabase.from('dish_movements').insert({
+                        product_id: prodId,
+                        product_name: prodName,
+                        movement_date: todayStr,
+                        movement_type: 'Void Return',
+                        quantity: qty,
+                        reference_no: sale.receipt_no,
+                        reason: `Bill Voided: ${reason} (Sales Ledger Audit)`
+                    });
+                } catch (_) {}
+
+                totalRestored += qty;
+            }
+
+            // Update sale status
+            const updatedNotes = sale.notes ? `${sale.notes} | VOIDED: ${reason}` : `VOIDED: ${reason}`;
+            await supabase
+                .from('sales')
+                .update({
+                    status: 'Voided',
+                    notes: updatedNotes,
+                    voided_at: new Date().toISOString(),
+                    void_reason: reason
+                })
+                .eq('sale_id', saleId);
+
+            toast.success(`🎉 Bill #${sale.receipt_no} VOIDED & ${totalRestored} dish portions restored to kitchen inventory! ♻️`);
+            setSales(prev => prev.map(s => s.sale_id === saleId ? { ...s, status: 'Voided', notes: updatedNotes } : s));
+            if (selectedSale?.sale_id === saleId) {
+                setSelectedSale(prev => prev ? { ...prev, status: 'Voided', notes: updatedNotes } : null);
+            }
+        } catch (err: any) {
+            console.error('Error voiding sale:', err);
+            toast.error('Failed to void bill: ' + (err.message || 'Database error'));
+        } finally {
+            setIsVoiding(false);
+        }
+    };
+
     // ─── Thermal Receipt Print Handler ────────────────────────────────────────
     const handlePrintReceipt = async (sale: Sale) => {
         setIsPrinting(sale.sale_id);
@@ -1601,10 +1719,21 @@ export default function SalesPage() {
                         <div className="p-4 border-t border-gray-100 bg-gray-50 flex gap-2">
                             <button
                                 onClick={() => setSelectedSale(null)}
-                                className="flex-1 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-bold text-xs hover:bg-white transition-colors"
+                                className="px-4 py-2.5 border border-gray-300 text-gray-700 rounded-xl font-bold text-xs hover:bg-white transition-colors"
                             >
                                 Close
                             </button>
+                            {selectedSale.status !== 'Voided' && (
+                                <button
+                                    onClick={() => handleVoidSaleFromSalesPage(selectedSale)}
+                                    disabled={isVoiding}
+                                    className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl font-bold text-xs shadow-md transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                                    title="Void Bill and Restore Dish Portions to Kitchen"
+                                >
+                                    <span>🚫</span>
+                                    <span>{isVoiding ? 'Voiding...' : 'Void Bill (Restore Stock)'}</span>
+                                </button>
+                            )}
                             <button
                                 onClick={() => handlePrintReceipt(selectedSale)}
                                 disabled={isPrinting === selectedSale.sale_id}

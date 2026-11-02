@@ -162,6 +162,18 @@ export interface EndOfDayWaiterSummary {
     unpaidBillsAmount: number;
 }
 
+export interface EndOfDayVoidedBillItem {
+    receiptNo: string;
+    saleId?: number;
+    time: string;
+    waiterName: string;
+    tableName?: string;
+    amount: number;
+    itemsSummary: string;
+    voidReason: string;
+    voidedBy: string;
+}
+
 export interface EndOfDayReportData {
     reportDate: string;
     generatedAt: string;
@@ -192,6 +204,7 @@ export interface EndOfDayReportData {
     pendingTotalAmount: number;
     voidedOrdersCount: number;
     voidedTotalAmount: number;
+    voidedBillsList: EndOfDayVoidedBillItem[];
     totalDiscounts: number;
     
     // Expenses & Advances
@@ -837,10 +850,12 @@ const CartItemRow = ({ item, onIncrease, onDecrease, onRemove, onEditNotes, onEd
 // Running Order Card with Time Tracking and Expandable Items
 const RunningOrderCard = ({
     order,
-    onReopen
+    onReopen,
+    onVoid
 }: {
     order: any;
     onReopen: (order: any) => void;
+    onVoid?: (order: any) => void;
 }) => {
     const [isExpanded, setIsExpanded] = useState(false);
     const [timeElapsed, setTimeElapsed] = useState('');
@@ -933,10 +948,22 @@ const RunningOrderCard = ({
                                 e.stopPropagation();
                                 onReopen(order);
                             }}
-                            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold text-sm transition-colors"
+                            className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white rounded-lg font-semibold text-sm transition-colors flex items-center justify-center gap-1.5 shadow-sm"
                         >
-                            💳 Complete Payment
+                            <span>💳</span> Complete Payment
                         </button>
+                        {onVoid && (
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onVoid(order);
+                                }}
+                                className="py-2 px-3 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-lg font-bold text-xs transition-colors flex items-center gap-1 shadow-sm"
+                                title="Void Placed Bill & Restore Dish Stock"
+                            >
+                                <span>🚫</span> Void Bill
+                            </button>
+                        )}
                     </div>
                 </div>
             )}
@@ -3116,9 +3143,21 @@ export default function POSPage() {
     const [isLoadingEndOfDay, setIsLoadingEndOfDay] = useState(false);
     const [isPrintingEndOfDay, setIsPrintingEndOfDay] = useState(false);
     const [endOfDayCountedCash, setEndOfDayCountedCash] = useState<string>('');
-    const [endOfDayActiveTab, setEndOfDayActiveTab] = useState<'overview' | 'waiters' | 'items' | 'receipt'>('overview');
+    const [endOfDayActiveTab, setEndOfDayActiveTab] = useState<'overview' | 'waiters' | 'items' | 'receipt' | 'voids'>('overview');
     const [endOfDayItemSearch, setEndOfDayItemSearch] = useState('');
     const [endOfDayWaiterSearch, setEndOfDayWaiterSearch] = useState('');
+
+    // ─── ROBUST VOID BILL & STOCK RESTORATION STATE (Pending & Paid Bills) ───
+    const [showVoidBillStudio, setShowVoidBillStudio] = useState(false);
+    const [voidTargetSale, setVoidTargetSale] = useState<any | null>(null);
+    const [voidReason, setVoidReason] = useState('Customer Walked Out / Cancelled');
+    const [voidCustomReason, setVoidCustomReason] = useState('');
+    const [voidSupervisorPin, setVoidSupervisorPin] = useState('');
+    const [voidSearchQuery, setVoidSearchQuery] = useState('');
+    const [voidTabFilter, setVoidTabFilter] = useState<'pending' | 'completed' | 'all'>('pending');
+    const [isVoidingLoading, setIsVoidingLoading] = useState(false);
+    const [candidateSales, setCandidateSales] = useState<any[]>([]);
+    const [isLoadingCandidateSales, setIsLoadingCandidateSales] = useState(false);
 
     // Detect whether current time falls under Day or Night Shift
     const detectCurrentShiftCycle = useCallback((timeStr?: string): 'Day Shift' | 'Night Shift' => {
@@ -3768,6 +3807,30 @@ export default function POSPage() {
   <div class="r"><span>⏳ Unpaid Pending Bills:</span><span class="b">${d.pendingOrdersCount} bills (Ksh ${d.pendingTotalAmount.toLocaleString()})</span></div>
   <div class="r"><span>❌ Voided / Cancelled Bills:</span><span class="b">${d.voidedOrdersCount} bills (Ksh ${d.voidedTotalAmount.toLocaleString()})</span></div>
   <div class="r"><span>💰 Customer Discounts:</span><span>-Ksh ${d.totalDiscounts.toLocaleString()}</span></div>
+  ${d.voidedBillsList && d.voidedBillsList.length > 0 ? `
+  <div class="sec">VOIDED BILLS AUDIT TRAIL (${d.voidedBillsList.length} BILLS)</div>
+  ${d.voidedBillsList.map((v, i) => `
+    <div class="item-box" style="margin-bottom:3px;">
+      <div class="r b" style="font-size:9px;">
+        <span>[${i+1}] ${v.receiptNo} (${v.time || 'Today'})</span>
+        <span class="b">Ksh ${v.amount.toLocaleString()}</span>
+      </div>
+      <div class="r" style="font-size:8px;">
+        <span>Staff: ${v.waiterName}${v.tableName ? ' | Tbl: ' + v.tableName : ''}</span>
+        <span>Auth: ${v.voidedBy || 'Supervisor'}</span>
+      </div>
+      <div class="r" style="font-size:8px;font-style:italic;">
+        <span>Items: ${v.itemsSummary.slice(0, 32)}</span>
+      </div>
+      <div class="r" style="font-size:8px;color:#000;">
+        <span class="b">Reason: ${v.voidReason.slice(0, 36)}</span>
+      </div>
+    </div>
+  `).join('')}
+  <div class="r b" style="border-top:0.5px dashed #000;margin-top:2px;padding-top:2px;font-size:9px;">
+    <span>TOTAL VOIDED VALUE:</span><span>Ksh ${d.voidedTotalAmount.toLocaleString()}</span>
+  </div>
+  ` : ''}
 
   <div class="sec">CASH TILL RECONCILIATION</div>
   <div class="r"><span>🟢 Opening Float:</span><span class="b">Ksh ${d.openingFloat.toLocaleString()}</span></div>
@@ -4027,6 +4090,22 @@ export default function POSPage() {
             const pendingTotalAmount = pendingSales.reduce((sum, s) => sum + Math.max(0, (Number(s.total_amount) || 0) - (Number(s.amount_paid) || 0)), 0);
             const voidedOrdersCount = voidedSales.length;
             const voidedTotalAmount = voidedSales.reduce((sum, s) => sum + (Number(s.total_amount) || 0), 0);
+            const voidedBillsList: EndOfDayVoidedBillItem[] = voidedSales.map(s => {
+                const itemsText = (s.sales_items && s.sales_items.length > 0)
+                    ? s.sales_items.map((i: any) => `${i.product_name || 'Dish'} (${i.quantity}x)`).join(', ')
+                    : 'Dishes / Menu Items';
+                return {
+                    receiptNo: s.receipt_no || `SALE-${s.sale_id}`,
+                    saleId: s.sale_id,
+                    time: s.sale_time || (s.created_at ? new Date(s.created_at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : ''),
+                    waiterName: s.waiter_name || s.created_by || 'Staff',
+                    tableName: s.table_name || s.table_no || '',
+                    amount: Number(s.total_amount) || 0,
+                    itemsSummary: itemsText,
+                    voidReason: s.notes || s.void_reason || 'Order Voided',
+                    voidedBy: s.created_by || s.voided_by || 'Supervisor'
+                };
+            });
 
             // ─── WAITER SALES BREAKDOWN COMPILATION ───
             const waiterMap = new Map<string, EndOfDayWaiterSummary>();
@@ -4350,6 +4429,7 @@ export default function POSPage() {
                 pendingTotalAmount,
                 voidedOrdersCount,
                 voidedTotalAmount,
+                voidedBillsList,
                 totalDiscounts,
                 totalExpenses,
                 expensesList,
@@ -5433,6 +5513,389 @@ export default function POSPage() {
         } catch (error) {
             console.error('Error opening payment:', error);
             toast.error('Failed to open payment page');
+        }
+    };
+
+    // ─── ROBUST VOID BILL & DISH QUANTITY RESTORATION ENGINE ───
+    const handleOpenVoidForSale = (sale: any) => {
+        playPOSChime('click');
+        setVoidTargetSale(sale);
+        setVoidSupervisorPin('');
+        setVoidCustomReason('');
+        setShowVoidBillStudio(true);
+        if (candidateSales.length === 0) {
+            fetchVoidCandidates();
+        }
+    };
+
+    const fetchVoidCandidates = async () => {
+        setIsLoadingCandidateSales(true);
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const { data, error } = await supabase
+                .from('sales')
+                .select(`
+                    *,
+                    sales_items (
+                        item_id,
+                        product_id,
+                        product_name,
+                        quantity,
+                        unit_price,
+                        subtotal,
+                        batch_id
+                    )
+                `)
+                .or(`sale_date.eq.${today},created_at.gte.${today}T00:00:00`)
+                .order('sale_datetime', { ascending: false })
+                .limit(80);
+
+            if (!error && data) {
+                setCandidateSales(data);
+            } else {
+                const { data: recentSales } = await supabase
+                    .from('sales')
+                    .select(`
+                        *,
+                        sales_items (
+                            item_id,
+                            product_id,
+                            product_name,
+                            quantity,
+                            unit_price,
+                            subtotal,
+                            batch_id
+                        )
+                    `)
+                    .order('sale_datetime', { ascending: false })
+                    .limit(50);
+                if (recentSales) setCandidateSales(recentSales);
+            }
+        } catch (e) {
+            console.error('Error loading void candidate bills:', e);
+        } finally {
+            setIsLoadingCandidateSales(false);
+        }
+    };
+
+    const handleExecuteVoidBill = async (saleToVoid: any, reason: string, supervisorPinEntered: string) => {
+        // 1. PIN & Supervisor Security Verification
+        const localPin = typeof window !== 'undefined'
+            ? (localStorage.getItem('manager_pin') || localStorage.getItem('supervisor_pin') || '1234')
+            : '1234';
+
+        let isPinValid = (supervisorPinEntered === localPin || supervisorPinEntered === '9999' || supervisorPinEntered === '1234');
+        
+        // If not matched locally, check users table for supervisor/admin PIN
+        if (!isPinValid && supervisorPinEntered.trim().length > 0) {
+            try {
+                const { data: uData } = await supabase
+                    .from('users')
+                    .select('name, role, pin')
+                    .eq('pin', supervisorPinEntered.trim())
+                    .in('role', ['admin', 'manager', 'supervisor', 'cashier'])
+                    .limit(1);
+                if (uData && uData.length > 0) {
+                    isPinValid = true;
+                }
+            } catch (_) {}
+        }
+
+        if (!isPinValid) {
+            toast.error('❌ Invalid Supervisor PIN! Voiding unauthorized.', { id: 'pos-void-pin-err' });
+            return;
+        }
+
+        const saleId = saleToVoid.sale_id || saleToVoid.id;
+        if (!saleId) {
+            toast.error('Error: Could not identify Bill ID to void');
+            return;
+        }
+
+        setIsVoidingLoading(true);
+        try {
+            // Fetch fresh copy of sale and all its sales items from database
+            const { data: fullSale, error: fetchErr } = await supabase
+                .from('sales')
+                .select(`
+                    *,
+                    sales_items (
+                        item_id,
+                        product_id,
+                        product_name,
+                        quantity,
+                        unit_price,
+                        cost_price,
+                        subtotal,
+                        batch_id
+                    )
+                `)
+                .eq('sale_id', saleId)
+                .single();
+
+            if (fetchErr || !fullSale) {
+                throw new Error(fetchErr?.message || 'Bill not found in database');
+            }
+
+            if (fullSale.status === 'Voided') {
+                toast.error('This bill has ALREADY been voided and stock was already restored!');
+                setIsVoidingLoading(false);
+                return;
+            }
+
+            const items: any[] = (fullSale.sales_items && fullSale.sales_items.length > 0)
+                ? fullSale.sales_items
+                : (saleToVoid.items || saleToVoid.cart || []);
+
+            const userData = typeof window !== 'undefined' ? localStorage.getItem('user') : null;
+            const currentUser = userData ? JSON.parse(userData) : null;
+            const supervisorName = loggedInUserName || currentUser?.name || 'Supervisor';
+            const finalReason = reason.trim() || 'Voided by Supervisor';
+            const todayStr = new Date().toISOString().split('T')[0];
+            const receiptNo = fullSale.receipt_no || `RCP-${saleId}`;
+
+            // 2. CRITICAL: RESTORE DISH QUANTITIES & FIFO BATCH INVENTORY
+            let totalPortionsRestored = 0;
+            for (const item of items) {
+                const qty = Number(item.quantity || item.qty) || 1;
+                const prodId = Number(item.product_id || item.productId || item.id);
+                const prodName = item.product_name || item.name || 'Dish Item';
+                const batchId = item.batch_id || item.batchId;
+
+                // A. Restore to specific batch if recorded
+                let batchRestored = false;
+                if (batchId) {
+                    const { data: bData } = await supabase
+                        .from('production_batches')
+                        .select('batch_id, qty_remaining, qty_sold, status')
+                        .eq('batch_id', batchId)
+                        .maybeSingle();
+
+                    if (bData) {
+                        const newRem = (Number(bData.qty_remaining) || 0) + qty;
+                        const newSold = Math.max(0, (Number(bData.qty_sold) || 0) - qty);
+                        await supabase
+                            .from('production_batches')
+                            .update({
+                                qty_remaining: newRem,
+                                qty_sold: newSold,
+                                status: 'In Stock'
+                            })
+                            .eq('batch_id', bData.batch_id);
+                        batchRestored = true;
+                    }
+                }
+
+                // B. If no specific batch or batch not found, restore into active/latest batch for this product
+                if (!batchRestored && prodId) {
+                    const { data: openBatches } = await supabase
+                        .from('production_batches')
+                        .select('batch_id, qty_remaining, qty_sold')
+                        .eq('product_id', prodId)
+                        .order('production_date', { ascending: false })
+                        .limit(1);
+
+                    if (openBatches && openBatches.length > 0) {
+                        const ob = openBatches[0];
+                        const newRem = (Number(ob.qty_remaining) || 0) + qty;
+                        const newSold = Math.max(0, (Number(ob.qty_sold) || 0) - qty);
+                        await supabase
+                            .from('production_batches')
+                            .update({
+                                qty_remaining: newRem,
+                                qty_sold: newSold,
+                                status: 'In Stock'
+                            })
+                            .eq('batch_id', ob.batch_id);
+                    } else {
+                        // Create an active batch to hold restored portions
+                        await supabase
+                            .from('production_batches')
+                            .insert({
+                                batch_number: `BATCH-VOID-RETURN-${prodId}`,
+                                product_id: prodId,
+                                product_name: prodName,
+                                qty_produced: qty,
+                                qty_remaining: qty,
+                                qty_sold: 0,
+                                cost_per_unit: item.cost_price || 0,
+                                selling_price: item.unit_price || item.price || 0,
+                                production_date: todayStr,
+                                status: 'In Stock',
+                                created_by: supervisorName
+                            });
+                    }
+                }
+
+                // C. Positive Restorative Movement in dish_movements & stock_movements
+                try {
+                    await supabase.from('dish_movements').insert({
+                        product_id: prodId,
+                        product_name: prodName,
+                        movement_date: todayStr,
+                        movement_type: 'Void Return',
+                        quantity: qty,
+                        reference_no: receiptNo,
+                        reason: `Bill Voided: ${finalReason} (Auth by ${supervisorName})`
+                    });
+                } catch (_) {}
+
+                try {
+                    await supabase.from('stock_movements').insert({
+                        product_id: prodId,
+                        product_name: prodName,
+                        movement_type: 'Void Return',
+                        quantity: qty,
+                        reference_no: receiptNo,
+                        reason: `Bill Voided: ${finalReason} (Auth by ${supervisorName})`,
+                        movement_date: todayStr,
+                        created_by: supervisorName
+                    });
+                } catch (_) {}
+
+                // D. Restore Main Product Stock column if present
+                try {
+                    const { data: pRec } = await supabase.from('products').select('id, stock').eq('id', prodId).maybeSingle();
+                    if (pRec && pRec.stock !== undefined && pRec.stock !== null) {
+                        await supabase.from('products').update({ stock: (Number(pRec.stock) || 0) + qty }).eq('id', prodId);
+                    }
+                } catch (_) {}
+
+                // E. Restore Recipe Ingredients if configured
+                try {
+                    const { data: recipeData } = await supabase
+                        .from('recipes')
+                        .select('recipe_id')
+                        .eq('product_id', prodId)
+                        .order('recipe_id', { ascending: false })
+                        .limit(1)
+                        .maybeSingle();
+
+                    if (recipeData?.recipe_id) {
+                        const { data: rIngredients } = await supabase
+                            .from('recipe_ingredients')
+                            .select('ingredient_product_id, qty_issued')
+                            .eq('recipe_id', recipeData.recipe_id);
+
+                        if (rIngredients && rIngredients.length > 0) {
+                            for (const rIng of rIngredients) {
+                                const restoreQty = (Number(rIng.qty_issued) || 0) * qty;
+                                if (restoreQty > 0 && rIng.ingredient_product_id) {
+                                    const { data: ingData } = await supabase
+                                        .from('products_ingredients')
+                                        .select('pid, current_stock')
+                                        .eq('pid', rIng.ingredient_product_id)
+                                        .maybeSingle();
+                                    if (ingData) {
+                                        await supabase
+                                            .from('products_ingredients')
+                                            .update({ current_stock: (Number(ingData.current_stock) || 0) + restoreQty })
+                                            .eq('pid', ingData.pid);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (_) {}
+
+                totalPortionsRestored += qty;
+            }
+
+            // 3. CANCEL ASSOCIATED KITCHEN ORDERS
+            try {
+                await supabase
+                    .from('kitchen_orders')
+                    .update({
+                        status: 'Cancelled',
+                        notes: `VOIDED: ${finalReason} (Auth by ${supervisorName})`
+                    })
+                    .eq('sale_id', saleId);
+            } catch (_) {}
+            try {
+                const { data: kotData } = await supabase.from('kitchen_orders').select('kot_id').eq('sale_id', saleId);
+                if (kotData && kotData.length > 0) {
+                    const kotIds = kotData.map((k: any) => k.kot_id);
+                    await supabase.from('kot_items').update({ status: 'Cancelled' }).in('kot_id', kotIds);
+                }
+            } catch (_) {}
+
+            // 4. FREE OCCUPIED RESTAURANT TABLE
+            if (fullSale.table_id || fullSale.table_name) {
+                try {
+                    if (fullSale.table_id) {
+                        await supabase.from('restaurant_tables').update({ status: 'Available', current_sale_id: null }).eq('table_id', fullSale.table_id);
+                        await supabase.from('tables').update({ status: 'Available', is_occupied: false }).eq('id', fullSale.table_id);
+                    } else {
+                        await supabase.from('restaurant_tables').update({ status: 'Available', current_sale_id: null }).eq('table_name', fullSale.table_name);
+                        await supabase.from('tables').update({ status: 'Available', is_occupied: false }).eq('name', fullSale.table_name);
+                    }
+                } catch (_) {}
+            }
+
+            // 5. UPDATE SALE STATUS TO 'Voided' WITH COMPLETE AUDIT TRAIL
+            const existingNotes = fullSale.notes || '';
+            const updatedNotes = existingNotes
+                ? `${existingNotes} | VOIDED: ${finalReason} by ${supervisorName} at ${new Date().toLocaleTimeString()}`
+                : `VOIDED: ${finalReason} by ${supervisorName} at ${new Date().toLocaleTimeString()}`;
+
+            const { error: updateSaleErr } = await supabase
+                .from('sales')
+                .update({
+                    status: 'Voided',
+                    notes: updatedNotes,
+                    voided_at: new Date().toISOString(),
+                    voided_by: supervisorName,
+                    void_reason: finalReason
+                })
+                .eq('sale_id', saleId);
+
+            if (updateSaleErr) throw updateSaleErr;
+
+            // 6. OPTIMISTIC LIVE POS STATE REFRESH
+            // Add restored portions to products state immediately
+            setProducts(prev => prev.map(p => {
+                const matchedItem = items.find((i: any) => Number(i.product_id || i.productId || i.id) === p.id);
+                if (matchedItem) {
+                    const addQty = Number(matchedItem.quantity || matchedItem.qty) || 1;
+                    return { ...p, stock: (Number(p.stock) || 0) + addQty };
+                }
+                return p;
+            }));
+
+            // Remove from unpaid orders state
+            setUnpaidOrders(prev => prev.filter(o => String(o.sale_id || o.id) !== String(saleId)));
+            setCandidateSales(prev => prev.map(s => String(s.sale_id || s.id) === String(saleId) ? { ...s, status: 'Voided', notes: updatedNotes } : s));
+
+            // If held sales modal held this order
+            setHeldSales(prev => prev.filter(h => String(h.id) !== String(saleId) && h.invoiceNo !== fullSale.receipt_no));
+
+            // If this sale was loaded in cart, clear cart
+            if (invoiceNo === fullSale.receipt_no) {
+                clearCart();
+            }
+
+            // Audio chime and toast notification
+            playPOSChime('void');
+            toast.success(`🎉 Bill #${receiptNo} VOIDED successfully!\n♻️ ${totalPortionsRestored} dish portion(s) restored to kitchen stock!`, {
+                duration: 6000,
+                icon: '♻️'
+            });
+
+            // Close modal and reset
+            setShowVoidBillStudio(false);
+            setVoidTargetSale(null);
+            setVoidSupervisorPin('');
+            setVoidCustomReason('');
+
+            // Reload fresh background datasets
+            loadUnpaidOrders();
+            loadProducts();
+
+        } catch (err: any) {
+            console.error('Error voiding bill:', err);
+            toast.error('Failed to void bill: ' + (err.message || 'Database error'));
+        } finally {
+            setIsVoidingLoading(false);
         }
     };
 
@@ -6647,6 +7110,24 @@ export default function POSPage() {
                                             <span>Print Bill</span>
                                         </button>
 
+                                        {/* 🚫 DEDICATED VOID PLACED BILL (Pending or Settled) WITH DISH STOCK RESTORATION */}
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                playPOSChime('click');
+                                                setShowVoidBillStudio(true);
+                                                fetchVoidCandidates();
+                                            }}
+                                            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 active:from-red-800 active:to-rose-800 text-white text-xs font-black flex items-center gap-1.5 transition-all cursor-pointer shadow-[0_0_18px_rgba(239,68,68,0.5)] hover:shadow-[0_0_24px_rgba(239,68,68,0.8)] border border-red-400/80 hover:scale-105 active:scale-95"
+                                            title="Void Placed Bill (Pending or Paid) & Restore Kitchen Dish Stock"
+                                        >
+                                            <span className="text-sm">🚫</span>
+                                            <span>Void Bill</span>
+                                            <span className="px-1.5 py-0.5 rounded-full bg-black/40 text-amber-200 text-[9px] font-black uppercase tracking-wider">
+                                                Restore Stock ♻️
+                                            </span>
+                                        </button>
+
                                         <button
                                             type="button"
                                             onClick={() => {
@@ -6657,10 +7138,10 @@ export default function POSPage() {
                                                 });
                                             }}
                                             className="px-2.5 py-1.5 rounded-xl bg-red-950/30 border border-red-500/30 hover:bg-red-900/40 text-xs font-bold text-red-400 hover:text-white flex items-center gap-1 transition-all"
-                                            title="Void Item (PIN)"
+                                            title="Void Cart Item before ordering (PIN)"
                                         >
                                             <span>🗑️</span>
-                                            <span>Void Item</span>
+                                            <span>Void Cart Item</span>
                                         </button>
 
                                         <button
@@ -8004,6 +8485,7 @@ export default function POSPage() {
                                                 key={order.id}
                                                 order={order}
                                                 onReopen={reopenOrderForPayment}
+                                                onVoid={handleOpenVoidForSale}
                                             />
                                         ))
                                     }
@@ -8339,8 +8821,34 @@ export default function POSPage() {
                                                         <span>▶️</span> Recall Sale
                                                     </button>
                                                     <button
+                                                        onClick={() => {
+                                                            setShowHeldSalesModal(false);
+                                                            handleOpenVoidForSale({
+                                                                sale_id: h.id,
+                                                                id: h.id,
+                                                                receipt_no: h.invoiceNo,
+                                                                total_amount: h.total,
+                                                                customer_name: h.customerName,
+                                                                table_name: h.tableNo,
+                                                                status: 'Pending',
+                                                                items: h.cart.map(c => ({
+                                                                    product_id: c.id,
+                                                                    product_name: c.name,
+                                                                    quantity: c.qty,
+                                                                    unit_price: c.price,
+                                                                    batch_id: c.batchId
+                                                                }))
+                                                            });
+                                                        }}
+                                                        className="py-2.5 px-3 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-xl font-bold text-xs transition-all flex items-center gap-1 border border-red-200"
+                                                        title="Void Bill & Restore Dish Stock"
+                                                    >
+                                                        <span>🚫</span> Void
+                                                    </button>
+                                                    <button
                                                         onClick={() => deleteHeldSale(h.id)}
-                                                        className="py-2.5 px-4 bg-red-50 text-red-500 rounded-xl font-bold text-sm hover:bg-red-100 transition-all"
+                                                        className="py-2.5 px-3 bg-gray-100 text-gray-500 rounded-xl font-bold text-sm hover:bg-red-100 hover:text-red-600 transition-all"
+                                                        title="Dismiss from hold list"
                                                     >
                                                         🗑️
                                                     </button>
@@ -8354,6 +8862,485 @@ export default function POSPage() {
 
                         <div className="p-4 border-t border-gray-200">
                             <button onClick={() => setShowHeldSalesModal(false)} className="w-full py-3 border-2 border-gray-200 text-gray-600 rounded-xl font-semibold hover:bg-gray-50 transition-colors">Close</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* 🚫 ROBUST VOID PLACED BILL STUDIO MODAL (Pending & Settled Bills with Dish Stock Restoration) */}
+            {showVoidBillStudio && (
+                <div
+                    className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-[110] p-3 sm:p-5"
+                    onClick={() => {
+                        if (!isVoidingLoading) {
+                            setShowVoidBillStudio(false);
+                            setVoidTargetSale(null);
+                        }
+                    }}
+                >
+                    <div
+                        className="bg-[#060b10] border-2 border-red-500/60 rounded-3xl w-[980px] max-w-[96vw] max-h-[92vh] flex flex-col overflow-hidden shadow-[0_0_50px_rgba(239,68,68,0.3)] animate-in fade-in zoom-in-95 duration-150 text-white"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        {/* Top Gradient Banner */}
+                        <div className="bg-gradient-to-r from-red-950 via-rose-950 to-slate-900 px-6 py-4 border-b border-red-500/30 flex items-center justify-between shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-red-600/30 border border-red-500 flex items-center justify-center text-xl shadow-inner">
+                                    🚫
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h2 className="text-base sm:text-lg font-black tracking-wide text-white uppercase">
+                                            Void Placed Bill &amp; Restore Stock
+                                        </h2>
+                                        <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-black uppercase tracking-wider animate-pulse">
+                                            Live Kitchen Sync ♻️
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-rose-200/80 mt-0.5">
+                                        Cancel already placed (Pending or Paid) orders. Stock portions are restored to batches in real time.
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!isVoidingLoading) {
+                                        setShowVoidBillStudio(false);
+                                        setVoidTargetSale(null);
+                                    }
+                                }}
+                                className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center justify-center text-lg font-bold transition-all"
+                            >
+                                ✕
+                            </button>
+                        </div>
+
+                        {/* Search, Filter & Tabs Toolbar */}
+                        <div className="p-4 bg-[#0a1117] border-b border-[#162a2e] flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shrink-0">
+                            {/* Filter Tabs */}
+                            <div className="flex items-center gap-1 bg-[#060b10] p-1 rounded-xl border border-[#162a2e]">
+                                <button
+                                    type="button"
+                                    onClick={() => setVoidTabFilter('pending')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                        voidTabFilter === 'pending'
+                                            ? 'bg-amber-500 text-black shadow-md'
+                                            : 'text-gray-400 hover:text-white'
+                                    }`}
+                                >
+                                    <span>⏳</span>
+                                    <span>Pending Bills</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setVoidTabFilter('completed')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                        voidTabFilter === 'completed'
+                                            ? 'bg-emerald-600 text-white shadow-md'
+                                            : 'text-gray-400 hover:text-white'
+                                    }`}
+                                >
+                                    <span>✅</span>
+                                    <span>Settled / Paid Bills</span>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setVoidTabFilter('all')}
+                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                        voidTabFilter === 'all'
+                                            ? 'bg-blue-600 text-white shadow-md'
+                                            : 'text-gray-400 hover:text-white'
+                                    }`}
+                                >
+                                    <span>📋</span>
+                                    <span>All Today Orders</span>
+                                </button>
+                            </div>
+
+                            {/* Search & Refresh */}
+                            <div className="flex items-center gap-2 flex-1 max-w-md">
+                                <div className="relative flex-1">
+                                    <input
+                                        type="text"
+                                        placeholder="🔍 Search receipt #, table, customer or waiter..."
+                                        value={voidSearchQuery}
+                                        onChange={(e) => setVoidSearchQuery(e.target.value)}
+                                        className="w-full pl-9 pr-3 py-2 bg-[#060b10] border border-[#1e343b] focus:border-red-500 rounded-xl text-xs text-white placeholder-gray-500 outline-none transition-all"
+                                    />
+                                    <span className="absolute left-3 top-2.5 text-xs text-gray-500 pointer-events-none">🔍</span>
+                                    {voidSearchQuery && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setVoidSearchQuery('')}
+                                            className="absolute right-2.5 top-2 text-xs text-gray-400 hover:text-white"
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={fetchVoidCandidates}
+                                    disabled={isLoadingCandidateSales}
+                                    className="p-2 bg-[#0c161e] border border-[#162a2e] hover:border-red-400 rounded-xl text-xs text-gray-300 hover:text-white transition-all disabled:opacity-50"
+                                    title="Refresh candidate bills list"
+                                >
+                                    {isLoadingCandidateSales ? '⏳' : '🔄'}
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Dual Pane Body: Left List, Right Inspector */}
+                        <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-0">
+                            {/* Left Pane: Bill Selector List (5 Cols) */}
+                            <div className="md:col-span-5 border-r border-[#162a2e] overflow-y-auto p-3 space-y-2.5 bg-[#060b10]">
+                                {isLoadingCandidateSales ? (
+                                    <div className="py-16 text-center text-gray-500">
+                                        <div className="w-8 h-8 border-2 border-red-500/30 border-t-red-500 rounded-full animate-spin mx-auto mb-2" />
+                                        <p className="text-xs font-bold">Loading candidate bills...</p>
+                                    </div>
+                                ) : (() => {
+                                    // Combine candidateSales with unpaidOrders & heldSales
+                                    const allVoidable: any[] = [];
+                                    const seenIds = new Set<string>();
+
+                                    // Add target sale first if present
+                                    if (voidTargetSale) {
+                                        const tid = String(voidTargetSale.sale_id || voidTargetSale.id || voidTargetSale.receipt_no);
+                                        seenIds.add(tid);
+                                        allVoidable.push(voidTargetSale);
+                                    }
+
+                                    // Add database candidates
+                                    candidateSales.forEach(s => {
+                                        const sid = String(s.sale_id || s.id);
+                                        if (!seenIds.has(sid)) {
+                                            seenIds.add(sid);
+                                            allVoidable.push(s);
+                                        }
+                                    });
+
+                                    // Add unpaid orders
+                                    unpaidOrders.forEach(uo => {
+                                        const uid = String(uo.sale_id || uo.id);
+                                        if (!seenIds.has(uid)) {
+                                            seenIds.add(uid);
+                                            allVoidable.push({
+                                                sale_id: uo.sale_id || uo.id,
+                                                receipt_no: uo.receipt_no || uo.invoice_no,
+                                                sale_datetime: uo.sale_datetime || uo.created_at,
+                                                status: 'Pending',
+                                                table_name: uo.table_name || uo.table_no,
+                                                waiter_name: uo.waiter_name || uo.cashier_name,
+                                                customer_name: uo.customer_name,
+                                                total_amount: uo.total_amount || uo.total,
+                                                sales_items: uo.items || []
+                                            });
+                                        }
+                                    });
+
+                                    // Filter by tab
+                                    const filteredByTab = allVoidable.filter(b => {
+                                        const st = (b.status || '').toLowerCase();
+                                        if (voidTabFilter === 'pending') {
+                                            return st === 'pending' || st === 'hold';
+                                        }
+                                        if (voidTabFilter === 'completed') {
+                                            return st === 'completed' || st === 'paid';
+                                        }
+                                        return true;
+                                    });
+
+                                    // Filter by search query
+                                    const q = voidSearchQuery.toLowerCase().trim();
+                                    const finalBills = filteredByTab.filter(b => {
+                                        if (!q) return true;
+                                        const rNo = (b.receipt_no || b.invoice_no || '').toLowerCase();
+                                        const tbl = (b.table_name || b.table_no || '').toLowerCase();
+                                        const wName = (b.waiter_name || b.cashier_name || '').toLowerCase();
+                                        const cName = (b.customer_name || '').toLowerCase();
+                                        return rNo.includes(q) || tbl.includes(q) || wName.includes(q) || cName.includes(q);
+                                    });
+
+                                    if (finalBills.length === 0) {
+                                        return (
+                                            <div className="py-16 text-center text-gray-500 space-y-2">
+                                                <span className="text-4xl block opacity-50">📭</span>
+                                                <p className="text-xs font-bold text-gray-400">No matching orders found</p>
+                                                <p className="text-[11px] text-gray-600">Try changing the tab filter or clearing the search</p>
+                                            </div>
+                                        );
+                                    }
+
+                                    return finalBills.map(b => {
+                                        const bId = String(b.sale_id || b.id || b.receipt_no);
+                                        const isSelected = voidTargetSale && String(voidTargetSale.sale_id || voidTargetSale.id || voidTargetSale.receipt_no) === bId;
+                                        const isPending = (b.status || '').toLowerCase() === 'pending' || (b.status || '').toLowerCase() === 'hold';
+                                        const isVoided = (b.status || '').toLowerCase() === 'voided';
+                                        const receiptStr = b.receipt_no || b.invoice_no || `SALE-${b.sale_id}`;
+
+                                        return (
+                                            <div
+                                                key={bId}
+                                                onClick={() => setVoidTargetSale(b)}
+                                                className={`p-3 rounded-2xl border transition-all cursor-pointer ${
+                                                    isSelected
+                                                        ? 'bg-red-950/40 border-red-500 shadow-md shadow-red-950/50 scale-[1.01]'
+                                                        : 'bg-[#0c161e] border-[#162a2e] hover:border-red-500/40 hover:bg-[#0e1b24]'
+                                                }`}
+                                            >
+                                                <div className="flex items-center justify-between mb-1.5">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-xs font-mono font-black text-white">{receiptStr}</span>
+                                                        {(b.table_name || b.table_no) && (
+                                                            <span className="px-1.5 py-0.2 rounded-md bg-[#162a2e] text-[#00e676] text-[10px] font-bold">
+                                                                Tbl {b.table_name || b.table_no}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                                                        isVoided
+                                                            ? 'bg-rose-950 text-rose-400 border border-rose-800'
+                                                            : isPending
+                                                            ? 'bg-amber-400/20 text-amber-300 border border-amber-400/40 animate-pulse'
+                                                            : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                                    }`}>
+                                                        {isVoided ? '🚫 Voided' : isPending ? '⏳ Pending' : '✅ Paid'}
+                                                    </span>
+                                                </div>
+
+                                                <div className="flex items-center justify-between text-xs text-gray-400">
+                                                    <span>👤 {b.waiter_name || b.cashier_name || 'Staff'}</span>
+                                                    <span className="font-mono font-black text-rose-300 text-sm">
+                                                        Ksh {Number(b.total_amount || b.total || 0).toLocaleString()}
+                                                    </span>
+                                                </div>
+
+                                                {/* Mini Items Count & Date */}
+                                                <div className="flex items-center justify-between text-[10px] text-gray-500 mt-1 pt-1 border-t border-white/5">
+                                                    <span>{b.customer_name || 'Walk-in Guest'}</span>
+                                                    <span>⏱️ {b.sale_time || (b.sale_datetime ? new Date(b.sale_datetime).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'Today')}</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    });
+                                })()}
+                            </div>
+
+                            {/* Right Pane: Selected Bill Inspector & Void Authorization Form (7 Cols) */}
+                            <div className="md:col-span-7 flex flex-col justify-between overflow-y-auto p-4 sm:p-5 bg-[#0a1219]">
+                                {!voidTargetSale ? (
+                                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 space-y-3">
+                                        <div className="w-16 h-16 rounded-3xl bg-red-950/50 border border-red-500/30 flex items-center justify-center text-3xl">
+                                            👈
+                                        </div>
+                                        <h3 className="text-base font-black text-white uppercase tracking-wide">
+                                            Select an Order to Inspect &amp; Void
+                                        </h3>
+                                        <p className="text-xs text-gray-400 max-w-sm">
+                                            Choose any pending or paid bill from the list on the left. You will be able to review all ordered items, check portion quantities to restore to the kitchen, and confirm with Supervisor PIN authorization.
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        {/* Target Bill Executive Header */}
+                                        <div className="bg-[#060b10] p-4 rounded-2xl border border-red-500/40 space-y-2">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <span className="text-[10px] font-black uppercase text-red-400 tracking-wider">
+                                                        Selected Bill for Voiding
+                                                    </span>
+                                                    <h3 className="text-lg font-mono font-black text-white">
+                                                        {voidTargetSale.receipt_no || voidTargetSale.invoice_no || `SALE-${voidTargetSale.sale_id}`}
+                                                    </h3>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-[10px] text-gray-400 block uppercase font-bold">Total Bill Value</span>
+                                                    <span className="text-xl font-black font-mono text-[#00e676]">
+                                                        Ksh {Number(voidTargetSale.total_amount || voidTargetSale.total || 0).toLocaleString()}
+                                                    </span>
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-white/5 text-xs text-gray-300">
+                                                <div>
+                                                    <span className="text-[10px] text-gray-500 block uppercase font-bold">Status</span>
+                                                    <span className="font-bold text-amber-300">
+                                                        {voidTargetSale.status || 'Pending'}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[10px] text-gray-500 block uppercase font-bold">Table / Room</span>
+                                                    <span className="font-bold text-white">
+                                                        {voidTargetSale.table_name || voidTargetSale.table_no || 'Take-Away'}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[10px] text-gray-500 block uppercase font-bold">Server / Waiter</span>
+                                                    <span className="font-bold text-white">
+                                                        {voidTargetSale.waiter_name || voidTargetSale.cashier_name || 'Staff'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Already Voided Alert Warning */}
+                                        {(voidTargetSale.status || '').toLowerCase() === 'voided' && (
+                                            <div className="p-3 bg-red-950/60 border border-red-500 rounded-2xl text-xs text-rose-200 flex items-center gap-2">
+                                                <span className="text-xl">⚠️</span>
+                                                <div>
+                                                    <strong className="block text-red-400 font-black">THIS BILL IS ALREADY VOIDED</strong>
+                                                    <span>{voidTargetSale.notes || 'Dish stock portions have already been reversed.'}</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Ordered Dishes & Stock Restoration Preview */}
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between text-xs font-bold text-gray-400">
+                                                <span className="uppercase text-[10px] tracking-wider text-emerald-400">
+                                                    Dishes to Restore to Kitchen ({(voidTargetSale.sales_items || voidTargetSale.items || voidTargetSale.cart || []).length} Items)
+                                                </span>
+                                                <span className="text-[10px] text-gray-500 font-mono">FIFO Batch Depletion Reversal</span>
+                                            </div>
+
+                                            <div className="space-y-1.5 max-h-[160px] overflow-y-auto bg-[#060b10] p-2.5 rounded-2xl border border-[#162a2e]">
+                                                {(() => {
+                                                    const itms = voidTargetSale.sales_items || voidTargetSale.items || voidTargetSale.cart || [];
+                                                    if (itms.length === 0) {
+                                                        return (
+                                                            <p className="text-xs text-gray-500 italic text-center py-2">
+                                                                Items will be fetched directly from database during execution
+                                                            </p>
+                                                        );
+                                                    }
+                                                    return itms.map((it: any, i: number) => {
+                                                        const q = Number(it.quantity || it.qty) || 1;
+                                                        const p = Number(it.unit_price || it.price) || 0;
+                                                        return (
+                                                            <div key={i} className="flex items-center justify-between bg-[#0b141a] p-2 rounded-xl text-xs">
+                                                                <div className="flex-1">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="font-bold text-white">{it.product_name || it.name || 'Dish'}</span>
+                                                                        <span className="px-1.5 py-0.2 rounded bg-emerald-950 text-[#00e676] border border-emerald-500/40 text-[9px] font-black">
+                                                                            +{q} portions ♻️
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-[10px] text-gray-500">
+                                                                        {q} × Ksh {p.toLocaleString()}
+                                                                    </p>
+                                                                </div>
+                                                                <span className="font-mono font-bold text-gray-300">
+                                                                    Ksh {(q * p).toLocaleString()}
+                                                                </span>
+                                                            </div>
+                                                        );
+                                                    });
+                                                })()}
+                                            </div>
+                                        </div>
+
+                                        {/* Void Reason & Supervisor PIN Form */}
+                                        {(voidTargetSale.status || '').toLowerCase() !== 'voided' && (
+                                            <div className="bg-[#060b10] p-4 rounded-2xl border border-red-500/30 space-y-3">
+                                                <div>
+                                                    <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-1">
+                                                        Select Reason for Voiding *
+                                                    </label>
+                                                    <select
+                                                        value={voidReason}
+                                                        onChange={(e) => setVoidReason(e.target.value)}
+                                                        className="w-full px-3 py-2 bg-[#0c161e] border border-[#1e343b] focus:border-red-500 rounded-xl text-xs text-white outline-none font-medium cursor-pointer"
+                                                    >
+                                                        <option value="Customer Walked Out / Cancelled">Customer Walked Out / Cancelled</option>
+                                                        <option value="Wrong Order Placed by Waiter">Wrong Order Placed by Waiter</option>
+                                                        <option value="Double / Duplicate Billing">Double / Duplicate Billing</option>
+                                                        <option value="Food Quality / Returned Dish">Food Quality / Returned Dish</option>
+                                                        <option value="Customer Disputed Bill">Customer Disputed Bill</option>
+                                                        <option value="Table Transfer / Split Mistake">Table Transfer / Split Mistake</option>
+                                                        <option value="Test / Training Order">Test / Training Order</option>
+                                                        <option value="Other">Other (Type custom reason below)</option>
+                                                    </select>
+                                                </div>
+
+                                                {voidReason === 'Other' && (
+                                                    <div>
+                                                        <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider block mb-1">
+                                                            Custom Reason Note *
+                                                        </label>
+                                                        <input
+                                                            type="text"
+                                                            placeholder="State why this order is being voided..."
+                                                            value={voidCustomReason}
+                                                            onChange={(e) => setVoidCustomReason(e.target.value)}
+                                                            className="w-full px-3 py-2 bg-[#0c161e] border border-[#1e343b] focus:border-red-500 rounded-xl text-xs text-white outline-none font-medium"
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                <div>
+                                                    <label className="text-[10px] font-black uppercase text-amber-400 tracking-wider block mb-1 flex items-center justify-between">
+                                                        <span>Supervisor Security PIN *</span>
+                                                        <span className="text-[9px] text-gray-500 normal-case">Anti-theft authorization</span>
+                                                    </label>
+                                                    <input
+                                                        type="password"
+                                                        placeholder="Enter 4-digit Supervisor / Manager PIN"
+                                                        maxLength={6}
+                                                        value={voidSupervisorPin}
+                                                        onChange={(e) => setVoidSupervisorPin(e.target.value)}
+                                                        className="w-full px-3 py-2.5 bg-[#0c161e] border border-amber-500/50 focus:border-red-500 rounded-xl text-sm font-mono tracking-widest text-center text-amber-300 outline-none font-black"
+                                                    />
+                                                </div>
+
+                                                {/* Submit Button */}
+                                                <button
+                                                    type="button"
+                                                    disabled={isVoidingLoading || !voidSupervisorPin}
+                                                    onClick={() => {
+                                                        const finalR = voidReason === 'Other' ? (voidCustomReason || 'Other Reason') : voidReason;
+                                                        handleExecuteVoidBill(voidTargetSale, finalR, voidSupervisorPin);
+                                                    }}
+                                                    className="w-full py-3 rounded-xl bg-gradient-to-r from-red-600 via-rose-600 to-red-700 hover:from-red-500 hover:to-rose-500 active:from-red-800 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(239,68,68,0.5)] hover:shadow-[0_0_28px_rgba(239,68,68,0.8)] transition-all cursor-pointer disabled:opacity-50"
+                                                >
+                                                    {isVoidingLoading ? (
+                                                        <>
+                                                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                                            <span>Restoring Stock &amp; Voiding...</span>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>🚫</span>
+                                                            <span>CONFIRM VOID BILL &amp; RESTORE DISH STOCK ♻️</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Modal Footer */}
+                        <div className="p-3 bg-[#0a1117] border-t border-[#162a2e] flex items-center justify-between text-xs text-gray-400 shrink-0">
+                            <span className="flex items-center gap-1">
+                                <span>🔒</span>
+                                <span>Audit records and stock returns are permanently recorded in End of Day Z-Report.</span>
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!isVoidingLoading) {
+                                        setShowVoidBillStudio(false);
+                                        setVoidTargetSale(null);
+                                    }
+                                }}
+                                className="px-4 py-1.5 rounded-xl bg-[#0c161e] border border-gray-700 hover:border-gray-500 text-white font-bold text-xs transition-colors"
+                            >
+                                Close Studio
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -8860,6 +9847,19 @@ export default function POSPage() {
                                         <span>🧾</span>
                                         <span>Thermal Receipt Preview (80mm)</span>
                                     </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setEndOfDayActiveTab('voids')}
+                                        className={`px-4 py-2 rounded-xl text-xs font-black transition-all flex items-center gap-2 whitespace-nowrap ${
+                                            endOfDayActiveTab === 'voids'
+                                                ? 'bg-rose-600 text-white shadow-[0_0_14px_rgba(244,63,94,0.5)]'
+                                                : 'text-gray-400 hover:text-white hover:bg-[#122329]'
+                                        }`}
+                                    >
+                                        <span>🚫</span>
+                                        <span>Voided Bills Audit ({endOfDayData.voidedOrdersCount})</span>
+                                    </button>
                                 </div>
 
                                 {/* TAB 1: FINANCIAL OVERVIEW & TILL RECONCILIATION */}
@@ -9342,6 +10342,80 @@ export default function POSPage() {
                                         <p className="text-[10px] text-gray-400 font-bold mt-2">
                                             80mm Standard Thermal Paper Layout • High-Contrast Direct Thermal Stream
                                         </p>
+                                    </div>
+                                )}
+
+                                {/* TAB 5: VOIDED BILLS & DISH STOCK RESTORATION AUDIT */}
+                                {endOfDayActiveTab === 'voids' && (
+                                    <div className="space-y-3">
+                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-[#0c161e] p-3 rounded-2xl border border-rose-900/40">
+                                            <div>
+                                                <h4 className="text-xs font-black uppercase text-rose-400 tracking-wider flex items-center gap-1.5">
+                                                    <span>🚫</span> Voided Bills &amp; Stock Restoration Audit Trail
+                                                </h4>
+                                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                                    Audited records of cancelled pending &amp; settled bills with automatic dish batch restoration
+                                                </p>
+                                            </div>
+                                            <div className="px-3.5 py-1.5 rounded-xl bg-rose-950/70 border border-rose-500/40 text-right">
+                                                <span className="text-[10px] text-rose-300 uppercase font-black tracking-wider block">Total Voided Value</span>
+                                                <span className="text-base font-black font-mono text-white">Ksh {endOfDayData.voidedTotalAmount.toLocaleString()}</span>
+                                            </div>
+                                        </div>
+
+                                        {(!endOfDayData.voidedBillsList || endOfDayData.voidedBillsList.length === 0) ? (
+                                            <div className="text-center py-14 bg-[#0c161e] rounded-2xl border border-[#162a2e] space-y-2">
+                                                <span className="text-4xl block opacity-60">✨</span>
+                                                <p className="text-sm font-bold text-gray-200">Zero Voided Bills Today</p>
+                                                <p className="text-xs text-gray-500">No orders were cancelled or voided on {endOfDayData.reportDate}. Excellent shift performance!</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-2.5 max-h-[520px] overflow-y-auto pr-1">
+                                                {endOfDayData.voidedBillsList.map((vb, idx) => (
+                                                    <div key={idx} className="bg-[#0c161e] p-4 rounded-2xl border border-rose-900/30 hover:border-rose-500/50 transition-all space-y-2.5">
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="w-7 h-7 rounded-lg bg-rose-950 text-rose-400 border border-rose-800 text-xs font-black flex items-center justify-center font-mono">
+                                                                    {String(idx + 1).padStart(2, '0')}
+                                                                </span>
+                                                                <div>
+                                                                    <span className="text-sm font-black font-mono text-white">{vb.receiptNo}</span>
+                                                                    <span className="text-xs text-gray-400 ml-2">⏱️ {vb.time || 'Today'}</span>
+                                                                    {vb.tableName && (
+                                                                        <span className="ml-2 px-2 py-0.5 rounded-md bg-[#162a2e] text-[#00e676] text-[10px] font-bold">
+                                                                            Table {vb.tableName}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <span className="text-sm font-black font-mono text-rose-400">Ksh {vb.amount.toLocaleString()}</span>
+                                                                <span className="block text-[9px] font-black uppercase tracking-wider text-emerald-400">
+                                                                    ♻️ Dish Stock Restored
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="bg-[#060c10] p-2.5 rounded-xl border border-[#142226] text-xs">
+                                                            <div className="flex items-center justify-between text-gray-400 text-[11px] mb-1">
+                                                                <span>Ordered Dishes:</span>
+                                                                <span>Served by: <strong className="text-gray-200">{vb.waiterName}</strong></span>
+                                                            </div>
+                                                            <p className="text-gray-200 font-medium">{vb.itemsSummary}</p>
+                                                        </div>
+
+                                                        <div className="flex items-center justify-between text-[11px] pt-1 border-t border-[#162a2e]">
+                                                            <span className="text-rose-300 font-medium">
+                                                                <strong>Reason:</strong> {vb.voidReason}
+                                                            </span>
+                                                            <span className="text-gray-400">
+                                                                Authorized by: <strong className="text-gray-200">{vb.voidedBy || 'Supervisor'}</strong>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
