@@ -688,36 +688,30 @@ export default function StoresPage() {
     const totalStoreValue = storeItems.reduce((sum, i) => sum + i.stock_value, 0);
 
     return (
-        <div className="space-y-6 max-w-[1600px] mx-auto pb-16 font-sans">
+        <div className="space-y-3.5 pb-16 font-sans">
             {/* ── 1. ULTRA EXECUTIVE HEADER ─────────────────────────────────────── */}
-            <div className="bg-white rounded-3xl p-6 border border-gray-200/80 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 rounded-2xl flex items-center justify-center text-white text-3xl shadow-md shadow-indigo-100 flex-shrink-0">
-                        🏪
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-2.5 border-b border-gray-200/80">
+                <div>
+                    <div className="flex items-center gap-2.5">
+                        <h1 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
+                            <span>🏪</span> Central Stores &amp; Kitchen Requisitions
+                        </h1>
+                        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            Warehouse Active
+                        </span>
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-                                Central Stores &amp; Kitchen Requisitions
-                            </h1>
-                            <span className="px-3 py-1 rounded-full text-[11px] font-black tracking-wide uppercase bg-indigo-50 text-indigo-700 border border-indigo-200 flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                                Central Warehouse Active
-                            </span>
-                        </div>
-                        <p className="text-xs text-gray-500 font-medium mt-1">
-                            Live inventory control, kitchen department requisitions, manager verification, goods receipt &amp; movement ledgers.
-                        </p>
-                    </div>
+                    <p className="text-gray-500 text-xs mt-0.5">
+                        Live inventory control, kitchen department requisitions, manager verification &amp; goods receipt ledgers
+                    </p>
                 </div>
 
-                {/* Header Action Buttons */}
-                <div className="flex items-center gap-2.5 flex-wrap">
+                {/* Header Action Buttons & Status */}
+                <div className="flex items-center gap-2 flex-wrap">
                     {/* Refresh */}
                     <button
                         onClick={() => loadAllData(true)}
                         disabled={refreshing || loading}
-                        className="px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold border border-gray-200 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                        className="px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-semibold border border-gray-200 shadow-sm transition-all flex items-center gap-1.5 disabled:opacity-50"
                         title="Reload inventory database"
                     >
                         <span className={refreshing ? 'animate-spin' : ''}>🔄</span>
@@ -727,17 +721,17 @@ export default function StoresPage() {
                     {/* Export CSV */}
                     <button
                         onClick={exportCSV}
-                        className="px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold border border-gray-200 transition-all flex items-center gap-1.5"
+                        className="px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-semibold border border-gray-200 shadow-sm transition-all flex items-center gap-1.5"
                         title="Download CSV report"
                     >
                         <span>📥</span>
-                        <span>Export CSV</span>
+                        <span>Export</span>
                     </button>
 
                     {/* New Purchase Order Link */}
                     <Link
                         href="/dashboard/purchase"
-                        className="px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 rounded-xl text-xs font-black border border-emerald-200 transition-all flex items-center gap-1.5"
+                        className="px-3.5 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 rounded-xl text-xs font-semibold border border-emerald-200 transition-all flex items-center gap-1.5"
                     >
                         <span>📦</span>
                         <span>New PO / Delivery →</span>
@@ -746,93 +740,107 @@ export default function StoresPage() {
                     {/* Quick Requisition Trigger */}
                     <button
                         onClick={() => setActiveTab('requisition')}
-                        className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-indigo-700 to-purple-700 hover:from-indigo-700 hover:to-purple-800 text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-md shadow-indigo-200 hover:-translate-y-0.5"
+                        className="px-4 py-1.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm"
                     >
                         <span>📋</span>
-                        <span>Create Kitchen Requisition</span>
+                        <span>New Requisition</span>
                     </button>
+
+                    <div className="hidden sm:flex bg-white px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs items-center gap-1.5 shadow-sm text-gray-600">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-[11px] font-semibold">Online</span>
+                    </div>
+
+                    <Link
+                        href="/dashboard/notifications"
+                        title="Notification Centre"
+                        className="h-8 w-8 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-500 shadow-sm hover:bg-gray-50 hover:text-indigo-600 transition-colors relative"
+                    >
+                        <span className="text-sm">🔔</span>
+                        <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 border border-white rounded-full" />
+                    </Link>
                 </div>
             </div>
 
             {/* ── 2. EXECUTIVE METRIC KPI CARDS ─────────────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {/* 1. Store Asset Value */}
-                <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-xs relative overflow-hidden">
-                    <div className="flex items-center justify-between text-gray-500 mb-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-indigo-700">💎 Total Store Asset</span>
-                        <span className="text-base">💰</span>
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-gray-500 mb-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-700">💎 Total Asset</span>
+                        <span className="text-sm">💰</span>
                     </div>
-                    <p className="text-xl font-black text-gray-900 tracking-tight">
+                    <p className="text-lg font-bold text-gray-800 tracking-tight">
                         {fmt(totalStoreValue)}
                     </p>
-                    <p className="text-[10px] text-gray-400 font-medium mt-1">Based on unit purchase cost</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Unit purchase cost</p>
                 </div>
 
                 {/* 2. Total SKUs */}
-                <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-xs relative overflow-hidden">
-                    <div className="flex items-center justify-between text-gray-500 mb-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">📦 Total SKUs</span>
-                        <span className="text-base">🧂</span>
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-gray-500 mb-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-700">📦 Total SKUs</span>
+                        <span className="text-sm">🧂</span>
                     </div>
-                    <p className="text-xl font-black text-gray-900 tracking-tight">
-                        {storeItems.length} <span className="text-xs text-gray-400 font-semibold">items</span>
+                    <p className="text-lg font-bold text-gray-800 tracking-tight">
+                        {storeItems.length} <span className="text-xs text-gray-400 font-normal">items</span>
                     </p>
-                    <p className="text-[10px] text-gray-400 font-medium mt-1">Across {categoriesList.length} categories</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{categoriesList.length} categories</p>
                 </div>
 
                 {/* 3. Pending Approvals */}
-                <div className={`rounded-2xl p-4 border shadow-xs relative overflow-hidden ${
+                <div className={`rounded-2xl p-3.5 border shadow-sm relative overflow-hidden ${
                     pendingCount > 0 ? 'bg-amber-50/70 border-amber-200' : 'bg-white border-gray-200/80'
                 }`}>
-                    <div className="flex items-center justify-between text-amber-800 mb-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider">⏳ Pending Approvals</span>
-                        <span className="text-base">📋</span>
+                    <div className="flex items-center justify-between text-amber-800 mb-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider">⏳ Pending</span>
+                        <span className="text-sm">📋</span>
                     </div>
-                    <p className={`text-xl font-black tracking-tight ${pendingCount > 0 ? 'text-amber-800' : 'text-gray-900'}`}>
-                        {pendingCount} <span className="text-xs font-semibold">requests</span>
+                    <p className={`text-lg font-bold tracking-tight ${pendingCount > 0 ? 'text-amber-800' : 'text-gray-800'}`}>
+                        {pendingCount} <span className="text-xs font-normal">requests</span>
                     </p>
-                    <p className="text-[10px] text-amber-700 font-medium mt-1">Awaiting manager sign-off</p>
+                    <p className="text-[10px] text-amber-700 mt-0.5">Awaiting sign-off</p>
                 </div>
 
                 {/* 4. Safe Level */}
-                <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-xs relative overflow-hidden">
-                    <div className="flex items-center justify-between text-emerald-700 mb-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider">🟢 Optimal Stock</span>
-                        <span className="text-base">✅</span>
+                <div className="bg-white rounded-2xl p-3.5 border border-emerald-100 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-emerald-700 mb-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider">🟢 Optimal</span>
+                        <span className="text-sm">✅</span>
                     </div>
-                    <p className="text-xl font-black text-emerald-700 tracking-tight">
-                        {safeCount} <span className="text-xs text-emerald-600 font-semibold">items</span>
+                    <p className="text-lg font-bold text-emerald-700 tracking-tight">
+                        {safeCount} <span className="text-xs text-emerald-600 font-normal">items</span>
                     </p>
-                    <p className="text-[10px] text-emerald-600 font-medium mt-1">Above safety reorder level</p>
+                    <p className="text-[10px] text-emerald-600 mt-0.5">Above reorder point</p>
                 </div>
 
                 {/* 5. Low Stock */}
-                <div className="bg-white rounded-2xl p-4 border border-amber-100 shadow-xs relative overflow-hidden">
-                    <div className="flex items-center justify-between text-amber-700 mb-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider">🟡 Reorder Warning</span>
-                        <span className="text-base">⚠️</span>
+                <div className="bg-white rounded-2xl p-3.5 border border-amber-100 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-amber-700 mb-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider">🟡 Low Stock</span>
+                        <span className="text-sm">⚠️</span>
                     </div>
-                    <p className="text-xl font-black text-amber-700 tracking-tight">
-                        {lowStockCount} <span className="text-xs text-amber-600 font-semibold">items</span>
+                    <p className="text-lg font-bold text-amber-700 tracking-tight">
+                        {lowStockCount} <span className="text-xs text-amber-600 font-normal">items</span>
                     </p>
-                    <p className="text-[10px] text-amber-600 font-medium mt-1">At or near safety threshold</p>
+                    <p className="text-[10px] text-amber-600 mt-0.5">Near safety threshold</p>
                 </div>
 
                 {/* 6. Stockout Alert */}
-                <div className="bg-white rounded-2xl p-4 border border-red-100 shadow-xs relative overflow-hidden">
-                    <div className="flex items-center justify-between text-red-700 mb-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider">🔴 Stockout Alert</span>
-                        <span className="text-base">🚫</span>
+                <div className="bg-white rounded-2xl p-3.5 border border-red-100 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-red-700 mb-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider">🔴 Stockout</span>
+                        <span className="text-sm">🚫</span>
                     </div>
-                    <p className="text-xl font-black text-red-700 tracking-tight">
-                        {outCount} <span className="text-xs text-red-600 font-semibold">items</span>
+                    <p className="text-lg font-bold text-red-700 tracking-tight">
+                        {outCount} <span className="text-xs text-red-600 font-normal">items</span>
                     </p>
-                    <p className="text-[10px] text-red-600 font-medium mt-1">Requires purchase delivery</p>
+                    <p className="text-[10px] text-red-600 mt-0.5">Needs delivery</p>
                 </div>
             </div>
 
-            {/* ── 3. LUXURY TAB NAVIGATION BAR ─────────────────────────────────── */}
-            <div className="bg-white rounded-2xl p-1.5 border border-gray-200/80 shadow-xs flex items-center gap-1.5 overflow-x-auto">
+            {/* ── 3. TAB NAVIGATION BAR ─────────────────────────────────── */}
+            <div className="bg-white rounded-2xl p-1 border border-gray-200/80 shadow-sm flex items-center gap-1 overflow-x-auto text-xs">
                 {TABS.map(tab => {
                     const isActive = activeTab === tab.id;
                     const showBadge = tab.id === 'approvals' && pendingCount > 0;
@@ -841,16 +849,16 @@ export default function StoresPage() {
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 min-w-[170px] py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 relative ${
+                            className={`flex-1 min-w-[150px] py-2 px-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 relative ${
                                 isActive
-                                    ? 'bg-indigo-600 text-white shadow-sm'
+                                    ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-sm'
                                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                             }`}
                         >
                             <span>{tab.icon}</span>
                             <span>{tab.label}</span>
                             {showBadge && (
-                                <span className="ml-1 bg-amber-400 text-gray-950 text-[10px] font-black px-1.5 py-0.2 rounded-full animate-pulse shadow-xs">
+                                <span className="ml-1 bg-amber-400 text-gray-950 text-[10px] font-bold px-1.5 py-0.2 rounded-full animate-pulse shadow-xs">
                                     {pendingCount}
                                 </span>
                             )}
@@ -863,7 +871,7 @@ export default function StoresPage() {
             {activeTab === 'stock' && (
                 <div className="space-y-4">
                     {/* Toolbar */}
-                    <div className="bg-white rounded-3xl p-5 border border-gray-200/80 shadow-sm space-y-4">
+                    <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-sm space-y-4">
                         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-3">
                             {/* Search Field (5 cols) */}
                             <div className="md:col-span-5 relative">
@@ -980,7 +988,7 @@ export default function StoresPage() {
                     </div>
 
                     {/* Stock Table */}
-                    <div className="bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden">
+                    <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
                         {loading ? (
                             <div className="py-24 text-center">
                                 <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
@@ -1151,7 +1159,7 @@ export default function StoresPage() {
             {activeTab === 'requisition' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
                     {/* Left Requisition Form (7 cols) */}
-                    <div className="lg:col-span-7 bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden flex flex-col justify-between">
+                    <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden flex flex-col justify-between">
                         <div>
                             <div className="px-6 py-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b border-indigo-100 flex items-center justify-between">
                                 <div className="flex items-center gap-2.5">
@@ -1304,7 +1312,7 @@ export default function StoresPage() {
                     </div>
 
                     {/* Right Item Selector Panel (5 cols) */}
-                    <div className="lg:col-span-5 bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden flex flex-col">
+                    <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden flex flex-col">
                         <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                             <h3 className="font-black text-gray-800 text-xs uppercase tracking-wider flex items-center gap-2">
                                 <span>🔍</span> Store Inventory Browser
@@ -1420,7 +1428,7 @@ export default function StoresPage() {
             {activeTab === 'approvals' && (
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
                     {/* Requisitions List (5 cols) */}
-                    <div className="lg:col-span-5 bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden flex flex-col">
+                    <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden flex flex-col">
                         <div className="px-5 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                             <h3 className="font-black text-gray-800 text-xs uppercase tracking-wider flex items-center gap-2">
                                 <span>📋</span> Requisition Vouchers
@@ -1487,7 +1495,7 @@ export default function StoresPage() {
                     </div>
 
                     {/* Detailed Review & Issue Action Panel (7 cols) */}
-                    <div className="lg:col-span-7 bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden flex flex-col justify-between">
+                    <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden flex flex-col justify-between">
                         {selectedRequest ? (
                             <div>
                                 <div className="px-6 py-4 bg-slate-50 border-b border-gray-200 flex items-center justify-between">
@@ -1618,7 +1626,7 @@ export default function StoresPage() {
 
             {/* ── 7. TAB 4: PURCHASES & GOODS RECEIVED (GRN) ───────────────────── */}
             {activeTab === 'purchases' && (
-                <div className="bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
                         <div>
                             <h3 className="font-black text-gray-800 text-sm">Goods Received Notes (GRN) &amp; Deliveries</h3>
@@ -1691,7 +1699,7 @@ export default function StoresPage() {
 
             {/* ── 8. TAB 5: AUDIT MOVEMENTS LEDGER ─────────────────────────────── */}
             {activeTab === 'history' && (
-                <div className="bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden">
+                <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
                     <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between flex-wrap gap-3">
                         <div>
                             <h3 className="font-black text-gray-800 text-sm">Store Stock Movements Audit Ledger</h3>
@@ -1756,7 +1764,7 @@ export default function StoresPage() {
             {/* ── 9. QUICK STOCK IN MODAL ──────────────────────────────────────── */}
             {showQuickInModal && quickInItem && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
                         <div className="bg-emerald-600 px-6 py-4 text-white flex items-center justify-between">
                             <h3 className="text-sm font-black flex items-center gap-2">
                                 <span>📥</span> Receive Goods Delivery
@@ -1826,7 +1834,7 @@ export default function StoresPage() {
             {/* ── 10. STOCK TAKE AUDIT MODAL ───────────────────────────────────── */}
             {showAuditModal && auditTarget && (
                 <div className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-gray-100 animate-in fade-in zoom-in-95 duration-150">
                         <div className="bg-slate-900 px-6 py-4 text-white flex items-center justify-between">
                             <h3 className="text-sm font-black flex items-center gap-2">
                                 <span>⚖️</span> Physical Count Audit
