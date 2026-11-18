@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
 import { executeDirectPrint } from '@/lib/printerSettings';
@@ -1043,9 +1044,9 @@ export default function RecipePage() {
     }, [batches, dishes]);
 
     return (
-        <div className="space-y-4">
-            {/* Top Header & Navigation matching tax-settings design */}
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-gray-200/80">
+        <div className="space-y-3.5">
+            {/* Top Unified Header & Navigation */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-2.5 border-b border-gray-200/80">
                 <div>
                     <div className="flex items-center gap-2.5">
                         <h1 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -1060,41 +1061,57 @@ export default function RecipePage() {
                     </p>
                 </div>
 
-                {/* Segmented Tab Switcher */}
-                <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200 text-xs shadow-inner">
-                    <button
-                        onClick={() => setActiveTab('studio')}
-                        className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-                            activeTab === 'studio'
-                                ? 'bg-white text-gray-900 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-900'
-                        }`}
+                <div className="flex items-center gap-2 flex-wrap">
+                    {/* Segmented Tab Switcher */}
+                    <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200 text-xs shadow-inner">
+                        <button
+                            onClick={() => setActiveTab('studio')}
+                            className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                                activeTab === 'studio'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            <span>🧪</span>
+                            <span>Recipe Studio</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('library')}
+                            className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                                activeTab === 'library'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            <span>📚</span>
+                            <span>Master Library ({savedRecipes.length})</span>
+                        </button>
+                        <button
+                            onClick={() => setActiveTab('batches')}
+                            className={`px-3 py-1.5 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                                activeTab === 'batches'
+                                    ? 'bg-white text-gray-900 shadow-sm'
+                                    : 'text-gray-600 hover:text-gray-900'
+                            }`}
+                        >
+                            <span>🏭</span>
+                            <span>Cooked Batches ({batches.length})</span>
+                        </button>
+                    </div>
+
+                    <div className="hidden sm:flex bg-white px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs items-center gap-1.5 shadow-sm text-gray-600">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-[11px] font-semibold">Online</span>
+                    </div>
+
+                    <Link
+                        href="/dashboard/notifications"
+                        title="Notification Centre"
+                        className="h-8 w-8 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-500 shadow-sm hover:bg-gray-50 hover:text-indigo-600 transition-colors relative"
                     >
-                        <span>🧪</span>
-                        <span>Recipe Studio</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('library')}
-                        className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-                            activeTab === 'library'
-                                ? 'bg-white text-gray-900 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        <span>📚</span>
-                        <span>Master Library ({savedRecipes.length})</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('batches')}
-                        className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
-                            activeTab === 'batches'
-                                ? 'bg-white text-gray-900 shadow-sm'
-                                : 'text-gray-600 hover:text-gray-900'
-                        }`}
-                    >
-                        <span>🏭</span>
-                        <span>Cooked Batches ({batches.length})</span>
-                    </button>
+                        <span className="text-sm">🔔</span>
+                        <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 border border-white rounded-full" />
+                    </Link>
                 </div>
             </div>
 
