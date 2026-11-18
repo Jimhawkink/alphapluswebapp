@@ -394,160 +394,165 @@ export default function CashierBillsPage() {
     };
 
     return (
-        <div className="space-y-6 pb-20 font-sans">
-            {/* ── 1. HERO BANNER ─────────────────────────────────────────────── */}
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-slate-900 via-indigo-950 to-emerald-950 p-6 md:p-8 text-white shadow-2xl border border-white/10">
-                <div className="absolute top-0 right-0 -mt-10 -mr-10 w-72 h-72 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute bottom-0 left-1/3 -mb-10 w-60 h-60 bg-blue-500/15 rounded-full blur-3xl pointer-events-none" />
-
-                <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-                    <div>
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs font-black tracking-wider uppercase mb-3">
-                            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                            CASHIER EXIT CONTROL & BILLS VERIFICATION
-                        </div>
-                        <h1 className="text-2xl md:text-4xl font-black tracking-tight text-white drop-shadow-sm flex items-center gap-3">
-                            <span>🧾 Cashier Checkout Desk</span>
+        <div className="space-y-3.5 pb-16 font-sans">
+            {/* ── 1. ULTRA SLEEK EXECUTIVE HEADER (Matching tax-settings style) ─────────────────── */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-2.5 border-b border-gray-200/80">
+                <div>
+                    <div className="flex items-center gap-2.5">
+                        <h1 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
+                            <span>🧾</span> Cashier Checkout Desk
                         </h1>
-                        <p className="text-sm md:text-base text-slate-300 max-w-2xl mt-1 leading-relaxed">
-                            Monitor real-time customer QR M-Pesa payments, verify bills handed over at exit, and manage checkout clearing.
-                        </p>
+                        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                            Exit Control & Verification
+                        </span>
                     </div>
+                    <p className="text-gray-500 text-xs mt-0.5">
+                        Monitor real-time customer QR M-Pesa payments, verify bills handed over at exit, and manage checkout clearing
+                    </p>
+                </div>
 
-                    {/* Quick Action Buttons */}
-                    <div className="flex flex-wrap items-center gap-2.5">
-                        <button
-                            onClick={() => setIsLiveSync(!isLiveSync)}
-                            className={`px-4 py-2.5 rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-md ${
-                                isLiveSync
-                                    ? 'bg-emerald-600 text-white shadow-emerald-500/30 hover:bg-emerald-500'
-                                    : 'bg-white/10 text-slate-300 hover:bg-white/20 border border-white/10'
-                            }`}
-                        >
-                            <span className={`w-2 h-2 rounded-full ${isLiveSync ? 'bg-white animate-pulse' : 'bg-slate-400'}`} />
-                            {isLiveSync ? 'Live Sync Active' : 'Live Sync Paused'}
-                        </button>
+                {/* Header Action Buttons & Status */}
+                <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                        onClick={() => setIsLiveSync(!isLiveSync)}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all border ${
+                            isLiveSync
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200 shadow-xs hover:bg-emerald-100'
+                                : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'
+                        }`}
+                    >
+                        <span className={`w-2 h-2 rounded-full ${isLiveSync ? 'bg-emerald-500 animate-pulse' : 'bg-gray-400'}`} />
+                        {isLiveSync ? 'Live Sync Active' : 'Live Sync Paused'}
+                    </button>
 
-                        <button
-                            onClick={() => fetchBills(false)}
-                            className="px-4 py-2.5 bg-white/15 hover:bg-white/25 active:scale-95 border border-white/20 text-white rounded-xl font-bold text-xs flex items-center gap-2 transition-all shadow-md backdrop-blur-md"
-                            title="Refresh bills now"
-                        >
-                            <span className={isLoading ? 'animate-spin' : ''}>🔄</span>
-                            Refresh {lastSyncTime && <span className="opacity-70 text-[10px]">({lastSyncTime})</span>}
-                        </button>
+                    <button
+                        onClick={() => fetchBills(false)}
+                        className="px-3 py-1.5 bg-white hover:bg-gray-50 active:scale-95 border border-gray-200/80 text-gray-700 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
+                        title="Refresh bills now"
+                    >
+                        <span className={isLoading ? 'animate-spin' : ''}>🔄</span>
+                        Refresh {lastSyncTime && <span className="text-gray-400 text-[10px]">({lastSyncTime})</span>}
+                    </button>
 
-                        <a
-                            href="/dashboard/bill-payment"
-                            className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl flex items-center gap-2 shadow-lg shadow-blue-500/30 transition-all hover:scale-105"
-                        >
-                            <span>💳</span>
-                            <span>Payment Terminal</span>
-                        </a>
+                    <a
+                        href="/dashboard/bill-payment"
+                        className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition-all hover:scale-105"
+                    >
+                        <span>💳</span>
+                        <span>Payment Terminal</span>
+                    </a>
+
+                    {/* System Online Badge & Notification */}
+                    <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
+                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                        <span>Online</span>
                     </div>
+                    <button
+                        aria-label="Notification bell"
+                        className="relative p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors border border-gray-200/80"
+                    >
+                        <span className="text-sm">🔔</span>
+                        {kpis.pendingCount > 0 && (
+                            <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-amber-500 rounded-full" />
+                        )}
+                    </button>
                 </div>
             </div>
 
-            {/* ── 2. VIBRANT GLASSMORPHIC KPI CARDS (Matching Dashboard Style) ── */}
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3.5">
+            {/* ── 2. REFINED EXECUTIVE KPI CARDS (Matching tax-settings Style) ── */}
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                 {/* 1. Today's Revenue */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-teal-700 p-4 text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/15 rounded-full -mr-4 -mt-4 pointer-events-none" />
-                    <div className="flex items-center justify-between text-xs text-emerald-100 font-bold uppercase tracking-wider mb-1">
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">
                         <span>Total Paid</span>
                         <span>💰</span>
                     </div>
-                    <div className="text-xl md:text-2xl font-black tracking-tight text-white font-mono">
+                    <div className="text-lg font-bold text-gray-800 font-mono tracking-tight">
                         Ksh {kpis.totalRevenue.toLocaleString()}
                     </div>
-                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/20 text-[11px] font-bold text-white/95">
-                        <span>✓</span> {kpis.paidCount} bills settled
+                    <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span>✓</span> {kpis.paidCount} settled
                     </div>
                 </div>
 
                 {/* 2. M-Pesa Paid */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-green-600 to-emerald-700 p-4 text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/15 rounded-full -mr-4 -mt-4 pointer-events-none" />
-                    <div className="flex items-center justify-between text-xs text-green-100 font-bold uppercase tracking-wider mb-1">
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">
                         <span>M-Pesa Verified</span>
                         <span>📱</span>
                     </div>
-                    <div className="text-xl md:text-2xl font-black tracking-tight text-white font-mono">
+                    <div className="text-lg font-bold text-emerald-700 font-mono tracking-tight">
                         Ksh {kpis.mpesaTotal.toLocaleString()}
                     </div>
-                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/20 text-[11px] font-bold text-white/95">
-                        <span>⚡</span> {kpis.mpesaCount} QR payments
+                    <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-green-50 text-green-700 border border-green-200">
+                        <span>⚡</span> {kpis.mpesaCount} QR pay
                     </div>
                 </div>
 
                 {/* 3. Pending Unpaid */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 p-4 text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/15 rounded-full -mr-4 -mt-4 pointer-events-none" />
-                    <div className="flex items-center justify-between text-xs text-amber-100 font-bold uppercase tracking-wider mb-1">
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">
                         <span>Pending Unpaid</span>
                         <span>⏳</span>
                     </div>
-                    <div className="text-xl md:text-2xl font-black tracking-tight text-white font-mono">
+                    <div className="text-lg font-bold text-amber-700 font-mono tracking-tight">
                         Ksh {kpis.pendingTotal.toLocaleString()}
                     </div>
-                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/20 text-[11px] font-bold text-white/95">
+                    <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                         <span>⚠️</span> {kpis.pendingCount} at tables
                     </div>
                 </div>
 
                 {/* 4. Cashier Verified Handed Over */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-600 to-indigo-700 p-4 text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/15 rounded-full -mr-4 -mt-4 pointer-events-none" />
-                    <div className="flex items-center justify-between text-xs text-purple-100 font-bold uppercase tracking-wider mb-1">
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">
                         <span>Handed at Exit</span>
                         <span>🛡️</span>
                     </div>
-                    <div className="text-xl md:text-2xl font-black tracking-tight text-white font-mono">
+                    <div className="text-lg font-bold text-purple-700 font-mono tracking-tight">
                         {kpis.verifiedCount}
                     </div>
-                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/20 text-[11px] font-bold text-white/95">
-                        <span>☑</span> Verified by Cashier
+                    <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
+                        <span>☑</span> Verified by Exit
                     </div>
                 </div>
 
                 {/* 5. Cash / Card Paid */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-700 p-4 text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/15 rounded-full -mr-4 -mt-4 pointer-events-none" />
-                    <div className="flex items-center justify-between text-xs text-blue-100 font-bold uppercase tracking-wider mb-1">
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">
                         <span>Cash / Card</span>
                         <span>💵</span>
                     </div>
-                    <div className="text-xl md:text-2xl font-black tracking-tight text-white font-mono">
+                    <div className="text-lg font-bold text-indigo-700 font-mono tracking-tight">
                         Ksh {kpis.cashCardTotal.toLocaleString()}
                     </div>
-                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/20 text-[11px] font-bold text-white/95">
+                    <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
                         <span>💳</span> {kpis.cashCardCount} counter bills
                     </div>
                 </div>
 
                 {/* 6. Total Bills Count */}
-                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-700 to-slate-900 p-4 text-white shadow-lg transition-all hover:scale-[1.02] hover:shadow-xl">
-                    <div className="absolute top-0 right-0 w-16 h-16 bg-white/15 rounded-full -mr-4 -mt-4 pointer-events-none" />
-                    <div className="flex items-center justify-between text-xs text-slate-300 font-bold uppercase tracking-wider mb-1">
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-gray-600 uppercase tracking-wider mb-1">
                         <span>Total Bills</span>
                         <span>📋</span>
                     </div>
-                    <div className="text-xl md:text-2xl font-black tracking-tight text-white font-mono">
+                    <div className="text-lg font-bold text-gray-800 font-mono tracking-tight">
                         {kpis.totalBillsCount}
                     </div>
-                    <div className="mt-2.5 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-black/20 text-[11px] font-bold text-white/95">
-                        <span>📅</span> Selected Period
+                    <div className="mt-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-600 border border-gray-200">
+                        <span>📅</span> Selected Range
                     </div>
                 </div>
             </div>
 
-            {/* ── 3. SUPER ROBUST FILTER BAR ─────────────────────────────────── */}
-            <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200/80 space-y-3.5">
+            {/* ── 3. REFINED FILTER BAR ─────────────────────────────────── */}
+            <div className="bg-white rounded-2xl p-3.5 shadow-sm border border-gray-200/80 space-y-3">
                 {/* Search Bar + Presets + View Toggle */}
-                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+                <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5">
                     {/* Search Input */}
                     <div className="relative flex-1">
-                        <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400 text-sm">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400 text-xs">
                             🔍
                         </span>
                         <input
@@ -555,12 +560,12 @@ export default function CashierBillsPage() {
                             placeholder="Search Receipt No, M-Pesa Code, Phone, Waiter, Table, Customer..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 transition-all font-medium"
+                            className="w-full pl-8 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs text-gray-800 placeholder-gray-400 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all font-medium"
                         />
                         {searchQuery && (
                             <button
                                 onClick={() => setSearchQuery('')}
-                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 text-xs"
+                                className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 text-xs"
                             >
                                 ✕
                             </button>
@@ -568,12 +573,12 @@ export default function CashierBillsPage() {
                     </div>
 
                     {/* Waiter Dropdown */}
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-500 whitespace-nowrap">👨‍🍳 Waiter:</span>
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-gray-600 whitespace-nowrap">👨‍🍳 Waiter:</span>
                         <select
                             value={waiterFilter}
                             onChange={(e) => setWaiterFilter(e.target.value)}
-                            className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-indigo-500"
+                            className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-semibold text-gray-700 focus:outline-none focus:border-purple-500"
                         >
                             <option value="ALL">All Waiters & Staff</option>
                             {waitersList.map(w => (
@@ -583,15 +588,15 @@ export default function CashierBillsPage() {
                     </div>
 
                     {/* Date Presets */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                    <div className="flex items-center gap-0.5 bg-gray-100 p-0.5 rounded-xl">
                         {(['TODAY', 'YESTERDAY', 'WEEK', 'CUSTOM'] as const).map(p => (
                             <button
                                 key={p}
                                 onClick={() => applyDatePreset(p)}
-                                className={`px-2.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                                     datePreset === p
-                                        ? 'bg-white text-indigo-700 shadow-sm'
-                                        : 'text-slate-600 hover:text-slate-900'
+                                        ? 'bg-white text-purple-700 shadow-xs font-bold'
+                                        : 'text-gray-600 hover:text-gray-900'
                                 }`}
                             >
                                 {p === 'TODAY' && 'Today'}
@@ -604,31 +609,31 @@ export default function CashierBillsPage() {
 
                     {/* Custom Date Inputs if CUSTOM is active */}
                     {datePreset === 'CUSTOM' && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                             <input
                                 type="date"
                                 value={dateFrom}
                                 onChange={(e) => setDateFrom(e.target.value)}
-                                className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700"
+                                className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-700"
                             />
-                            <span className="text-xs text-slate-400">to</span>
+                            <span className="text-xs text-gray-400">to</span>
                             <input
                                 type="date"
                                 value={dateTo}
                                 onChange={(e) => setDateTo(e.target.value)}
-                                className="px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700"
+                                className="px-2 py-1 bg-gray-50 border border-gray-200 rounded-lg text-xs font-semibold text-gray-700"
                             />
                         </div>
                     )}
 
                     {/* View Switcher: Cards vs Table */}
-                    <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+                    <div className="flex items-center gap-0.5 bg-gray-100 p-0.5 rounded-xl">
                         <button
                             onClick={() => setViewMode('CARDS')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
                                 viewMode === 'CARDS'
-                                    ? 'bg-white text-indigo-700 shadow-sm'
-                                    : 'text-slate-600 hover:text-slate-900'
+                                    ? 'bg-white text-purple-700 shadow-xs font-bold'
+                                    : 'text-gray-600 hover:text-gray-900'
                             }`}
                         >
                             <span>🎴</span>
@@ -636,10 +641,10 @@ export default function CashierBillsPage() {
                         </button>
                         <button
                             onClick={() => setViewMode('TABLE')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all ${
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all ${
                                 viewMode === 'TABLE'
-                                    ? 'bg-white text-indigo-700 shadow-sm'
-                                    : 'text-slate-600 hover:text-slate-900'
+                                    ? 'bg-white text-purple-700 shadow-xs font-bold'
+                                    : 'text-gray-600 hover:text-gray-900'
                             }`}
                         >
                             <span>📊</span>
@@ -649,61 +654,61 @@ export default function CashierBillsPage() {
                 </div>
 
                 {/* Filter Status Pills */}
-                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-wider mr-1">Status:</span>
+                <div className="flex flex-wrap items-center gap-1.5 pt-1.5 border-t border-gray-100">
+                    <span className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider mr-1">Status:</span>
                     {[
-                        { id: 'ALL', label: 'All Bills', count: bills.length, color: 'bg-slate-200 text-slate-700' },
-                        { id: 'PAID', label: '✅ Paid & Cleared', count: kpis.paidCount, color: 'bg-emerald-100 text-emerald-800' },
-                        { id: 'MPESA_SUCCESS', label: '⚡ M-Pesa QR Success', count: kpis.mpesaCount, color: 'bg-green-100 text-green-800' },
-                        { id: 'PENDING', label: '⏳ Unpaid at Table', count: kpis.pendingCount, color: 'bg-amber-100 text-amber-800' },
-                        { id: 'VERIFIED', label: '🛡️ Handed & Verified', count: kpis.verifiedCount, color: 'bg-purple-100 text-purple-800' },
-                        { id: 'UNVERIFIED', label: '⚠️ Exit Unverified', count: Math.max(0, kpis.paidCount - kpis.verifiedCount), color: 'bg-rose-100 text-rose-800' },
+                        { id: 'ALL', label: 'All Bills', count: bills.length, color: 'bg-gray-100 text-gray-700' },
+                        { id: 'PAID', label: '✅ Paid & Cleared', count: kpis.paidCount, color: 'bg-emerald-50 text-emerald-800' },
+                        { id: 'MPESA_SUCCESS', label: '⚡ M-Pesa QR Success', count: kpis.mpesaCount, color: 'bg-green-50 text-green-800' },
+                        { id: 'PENDING', label: '⏳ Unpaid at Table', count: kpis.pendingCount, color: 'bg-amber-50 text-amber-800' },
+                        { id: 'VERIFIED', label: '🛡️ Handed & Verified', count: kpis.verifiedCount, color: 'bg-purple-50 text-purple-800' },
+                        { id: 'UNVERIFIED', label: '⚠️ Exit Unverified', count: Math.max(0, kpis.paidCount - kpis.verifiedCount), color: 'bg-rose-50 text-rose-800' },
                     ].map(st => (
                         <button
                             key={st.id}
                             onClick={() => setStatusFilter(st.id as any)}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all ${
+                            className={`px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all ${
                                 statusFilter === st.id
-                                    ? 'bg-slate-900 text-white shadow-md scale-105'
-                                    : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200/80'
+                                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-xs'
+                                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200/80'
                             }`}
                         >
                             <span>{st.label}</span>
-                            <span className={`px-1.5 py-0.5 rounded-md text-[10px] font-black ${statusFilter === st.id ? 'bg-white/20 text-white' : st.color}`}>
+                            <span className={`px-1.5 py-0.2 rounded-md text-[10px] font-bold ${statusFilter === st.id ? 'bg-white/20 text-white' : st.color}`}>
                                 {st.count}
                             </span>
                         </button>
                     ))}
 
-                    <span className="ml-auto text-xs font-bold text-slate-500">
-                        Showing <strong className="text-slate-900">{filteredBills.length}</strong> bills
+                    <span className="ml-auto text-xs font-medium text-gray-500">
+                        Showing <strong className="text-gray-800 font-bold">{filteredBills.length}</strong> bills
                     </span>
                 </div>
             </div>
 
             {/* ── 4. MAIN BILLS DISPLAY ───────────────────────────────────────── */}
             {isLoading ? (
-                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-3xl border border-slate-200/80 shadow-sm">
-                    <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-                    <p className="mt-4 text-sm font-bold text-slate-600">Loading cashier bills desk...</p>
+                <div className="flex flex-col items-center justify-center py-16 bg-white rounded-2xl border border-gray-200/80 shadow-sm">
+                    <div className="w-10 h-10 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin" />
+                    <p className="mt-3 text-xs font-semibold text-gray-600">Loading cashier bills desk...</p>
                 </div>
             ) : filteredBills.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16 bg-white rounded-3xl border border-slate-200/80 shadow-sm text-center p-6">
-                    <span className="text-5xl mb-3">🔍</span>
-                    <h3 className="text-lg font-bold text-slate-800">No bills match your current filters</h3>
-                    <p className="text-sm text-slate-500 max-w-md mt-1">
+                <div className="flex flex-col items-center justify-center py-14 bg-white rounded-2xl border border-gray-200/80 shadow-sm text-center p-6">
+                    <span className="text-4xl mb-2">🔍</span>
+                    <h3 className="text-base font-bold text-gray-800">No bills match your current filters</h3>
+                    <p className="text-xs text-gray-500 max-w-md mt-0.5">
                         Try resetting your search query or picking a broader date range.
                     </p>
                     <button
                         onClick={() => { setSearchQuery(''); setStatusFilter('ALL'); setWaiterFilter('ALL'); applyDatePreset('TODAY'); }}
-                        className="mt-4 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 font-bold text-xs rounded-xl transition-all"
+                        className="mt-3 px-3.5 py-1.5 bg-purple-50 text-purple-700 hover:bg-purple-100 font-semibold text-xs rounded-xl transition-all border border-purple-200"
                     >
                         Reset All Filters
                     </button>
                 </div>
             ) : viewMode === 'CARDS' ? (
-                /* ── CARDS VIEW: SUPER BEAUTIFUL BOARDING-PASS BILL CARDS ─────── */
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+                /* ── CARDS VIEW: REFINED BILL CARDS ─────── */
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
                     {filteredBills.map(bill => {
                         const isPaid = bill.status === 'Paid' || bill.status === 'Completed';
                         const isVerified = Boolean(verifiedIds[bill.sale_id] || bill.notes?.includes('[VERIFIED_EXIT]'));
@@ -713,29 +718,29 @@ export default function CashierBillsPage() {
                             <div
                                 key={bill.sale_id}
                                 onClick={() => { setSelectedBill(bill); setIsDrawerOpen(true); }}
-                                className={`group relative rounded-2xl p-5 transition-all duration-200 cursor-pointer shadow-md hover:shadow-xl hover:-translate-y-1 bg-white border-2 flex flex-col justify-between ${
+                                className={`group relative rounded-2xl p-4 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-md bg-white border flex flex-col justify-between ${
                                     isVerified
                                         ? 'border-purple-300 ring-2 ring-purple-100'
                                         : isPaid
-                                            ? 'border-emerald-300 hover:border-emerald-400 ring-1 ring-emerald-50'
-                                            : 'border-amber-300 hover:border-amber-400 bg-amber-50/20'
+                                            ? 'border-emerald-200 hover:border-emerald-300'
+                                            : 'border-amber-200 hover:border-amber-300 bg-amber-50/10'
                                 }`}
                             >
                                 {/* Top Badges */}
                                 <div>
-                                    <div className="flex items-start justify-between gap-2 mb-3">
+                                    <div className="flex items-start justify-between gap-2 mb-2.5">
                                         <div>
                                             <div className="flex items-center gap-2">
-                                                <span className="font-mono text-base font-black text-slate-900 group-hover:text-indigo-600 transition-colors">
+                                                <span className="font-mono text-sm font-bold text-gray-800 group-hover:text-purple-700 transition-colors">
                                                     #{bill.receipt_no}
                                                 </span>
                                                 {isVerified && (
-                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-purple-100 text-purple-700 border border-purple-200 flex items-center gap-1">
-                                                        <span>🛡️</span> HANDED & VERIFIED
+                                                    <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-700 border border-purple-200 flex items-center gap-1">
+                                                        <span>🛡️</span> VERIFIED EXIT
                                                     </span>
                                                 )}
                                             </div>
-                                            <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                                            <p className="text-[11px] font-medium text-gray-500 mt-0.5">
                                                 🕐 {bill.sale_time || 'Just now'} • {bill.sale_date}
                                             </p>
                                         </div>
@@ -743,60 +748,60 @@ export default function CashierBillsPage() {
                                         {/* Status Badge */}
                                         <div>
                                             {isPaid ? (
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-sm">
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
                                                     {isMpesa ? 'PAID • M-PESA' : `PAID • ${bill.payment_method.toUpperCase()}`}
                                                 </span>
                                             ) : (
-                                                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-200 shadow-sm">
-                                                    <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                                     UNPAID (TABLE)
                                                 </span>
                                             )}
                                         </div>
                                     </div>
 
-                                    {/* Big Amount */}
-                                    <div className="bg-slate-50 rounded-xl p-3 mb-3 border border-slate-100 flex items-baseline justify-between">
-                                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Bill Amount</span>
-                                        <span className={`text-2xl font-black font-mono tracking-tight ${isPaid ? 'text-emerald-700' : 'text-amber-700'}`}>
+                                    {/* Amount Box */}
+                                    <div className="bg-gray-50/80 rounded-xl p-2.5 mb-2.5 border border-gray-100 flex items-baseline justify-between">
+                                        <span className="text-[11px] font-semibold text-gray-600 uppercase tracking-wider">Bill Amount</span>
+                                        <span className={`text-lg font-bold font-mono tracking-tight ${isPaid ? 'text-emerald-700' : 'text-amber-700'}`}>
                                             Ksh {bill.total_amount.toLocaleString()}
                                         </span>
                                     </div>
 
-                                    {/* M-PESA CODE & VERIFICATION BOX (PROMINENT IF M-PESA) */}
+                                    {/* M-PESA CODE & VERIFICATION BOX */}
                                     {isMpesa && bill.mpesa_code && (
-                                        <div className="bg-gradient-to-r from-amber-50 to-emerald-50 border border-emerald-200 rounded-xl p-3 mb-3 shadow-sm">
+                                        <div className="bg-emerald-50/60 border border-emerald-200 rounded-xl p-2.5 mb-2.5 shadow-2xs">
                                             <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-1.5 text-emerald-800 text-[11px] font-black uppercase tracking-wider">
+                                                <div className="flex items-center gap-1 text-emerald-800 text-[10px] font-bold uppercase tracking-wider">
                                                     <span>⚡</span> M-Pesa Transaction
                                                 </div>
-                                                <span className="text-[10px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                                                <span className="text-[10px] font-semibold text-emerald-700 bg-white px-1.5 py-0.2 rounded border border-emerald-200">
                                                     ✓ Verified
                                                 </span>
                                             </div>
-                                            <div className="mt-1 text-base font-black font-mono text-emerald-900 tracking-wider">
+                                            <div className="mt-0.5 text-sm font-bold font-mono text-emerald-900 tracking-wider">
                                                 {bill.mpesa_code}
                                             </div>
                                             {bill.customer_phone && (
-                                                <p className="text-[11px] font-semibold text-slate-600 mt-1">
-                                                    📱 Customer: <span className="font-mono font-bold text-slate-800">{bill.customer_phone}</span>
+                                                <p className="text-[10px] font-medium text-gray-600 mt-0.5">
+                                                    Customer: <span className="font-mono font-bold text-gray-800">{bill.customer_phone}</span>
                                                 </p>
                                             )}
                                         </div>
                                     )}
 
                                     {/* Staff & Table Info */}
-                                    <div className="grid grid-cols-2 gap-2 text-xs mb-3">
-                                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Served By</span>
-                                            <span className="font-bold text-slate-800 truncate block mt-0.5">
+                                    <div className="grid grid-cols-2 gap-2 text-xs mb-2.5">
+                                        <div className="bg-gray-50/80 p-2 rounded-xl border border-gray-100">
+                                            <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider block">Served By</span>
+                                            <span className="font-semibold text-gray-800 truncate block mt-0.5">
                                                 👨‍🍳 {bill.waiter_name}
                                             </span>
                                         </div>
-                                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-100">
-                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Table / Room</span>
-                                            <span className="font-bold text-slate-800 truncate block mt-0.5">
+                                        <div className="bg-gray-50/80 p-2 rounded-xl border border-gray-100">
+                                            <span className="text-[10px] font-semibold text-gray-600 uppercase tracking-wider block">Table / Room</span>
+                                            <span className="font-semibold text-gray-800 truncate block mt-0.5">
                                                 🪑 {bill.table_name}
                                             </span>
                                         </div>
@@ -804,32 +809,32 @@ export default function CashierBillsPage() {
 
                                     {/* Items Preview */}
                                     {bill.items && bill.items.length > 0 && (
-                                        <div className="text-[11px] text-slate-500 mb-3 bg-slate-50/70 p-2 rounded-lg border border-slate-100">
-                                            <span className="font-bold text-slate-700 block mb-1">
+                                        <div className="text-[11px] text-gray-500 mb-2.5 bg-gray-50/70 p-2 rounded-xl border border-gray-100">
+                                            <span className="font-semibold text-gray-700 block mb-0.5">
                                                 🍽️ Order Items ({bill.items.length}):
                                             </span>
-                                            <p className="line-clamp-2 leading-relaxed text-slate-600">
+                                            <p className="line-clamp-2 leading-relaxed text-gray-600">
                                                 {bill.items.map(it => `${it.quantity}× ${it.product_name}`).join(', ')}
                                             </p>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* ── CASHIER VERIFICATION CHECKBOX & HANDOVER CONTROL ──── */}
-                                <div className="pt-3 border-t border-slate-100 space-y-2">
+                                {/* ── CASHIER VERIFICATION CHECKBOX & ACTIONS ──── */}
+                                <div className="pt-2.5 border-t border-gray-100 space-y-2">
                                     <label
                                         onClick={(e) => toggleVerification(bill.sale_id, e)}
-                                        className={`flex items-center gap-2.5 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                                        className={`flex items-center gap-2 p-2 rounded-xl border transition-all cursor-pointer ${
                                             isVerified
-                                                ? 'bg-purple-50 border-purple-300 text-purple-900 font-bold'
-                                                : 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700 font-semibold'
+                                                ? 'bg-purple-50 border-purple-300 text-purple-900 font-semibold'
+                                                : 'bg-gray-50 hover:bg-gray-100 border-gray-200 text-gray-700 font-medium'
                                         }`}
                                     >
                                         <input
                                             type="checkbox"
                                             checked={isVerified}
-                                            onChange={() => {}} // handled by parent onClick
-                                            className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500 cursor-pointer"
+                                            onChange={() => {}}
+                                            className="w-3.5 h-3.5 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
                                         />
                                         <span className="text-xs">
                                             {isVerified
@@ -839,11 +844,11 @@ export default function CashierBillsPage() {
                                     </label>
 
                                     {/* Quick Actions Row */}
-                                    <div className="flex items-center gap-2 pt-1" onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex items-center gap-1.5 pt-0.5" onClick={(e) => e.stopPropagation()}>
                                         {!isPaid && (
                                             <button
                                                 onClick={() => handleMarkAsCashPaid(bill)}
-                                                className="flex-1 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-lg shadow-sm transition-all flex items-center justify-center gap-1"
+                                                className="flex-1 py-1.5 px-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1"
                                                 title="Customer paying cash right now at cashier desk"
                                             >
                                                 <span>💵</span>
@@ -854,7 +859,7 @@ export default function CashierBillsPage() {
                                         <button
                                             onClick={() => handlePrint(bill, isPaid)}
                                             disabled={isPrinting}
-                                            className="py-1.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-1"
+                                            className="py-1.5 px-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold text-xs rounded-xl transition-all flex items-center justify-center gap-1"
                                             title="Print Thermal Receipt"
                                         >
                                             <span>🖨️</span>
@@ -865,16 +870,16 @@ export default function CashierBillsPage() {
                                             href={`/pay/${encodeURIComponent(bill.receipt_no)}`}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="py-1.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs rounded-lg transition-all flex items-center justify-center gap-1"
-                                            title="View Customer QR Pay Link (Shows 'BILL PAID' with details locked once paid)"
+                                            className="py-1.5 px-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs rounded-xl border border-purple-200 transition-all flex items-center justify-center gap-1"
+                                            title="View Customer QR Pay Link"
                                         >
                                             <span>📱</span>
-                                            <span>QR View</span>
+                                            <span>QR</span>
                                         </a>
 
                                         <button
                                             onClick={() => { setSelectedBill(bill); setIsDrawerOpen(true); }}
-                                            className="py-1.5 px-3 bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs rounded-lg transition-all ml-auto"
+                                            className="py-1.5 px-3 bg-gray-800 hover:bg-gray-900 text-white font-semibold text-xs rounded-xl transition-all ml-auto"
                                         >
                                             Details →
                                         </button>
@@ -885,24 +890,24 @@ export default function CashierBillsPage() {
                     })}
                 </div>
             ) : (
-                /* ── TABLE VIEW: HIGH CONTRAST DATAGRID ───────────────────────── */
-                <div className="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden">
+                /* ── TABLE VIEW: REFINED DATAGRID ───────────────────────── */
+                <div className="bg-white rounded-2xl shadow-sm border border-gray-200/80 overflow-hidden">
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse text-xs">
                             <thead>
-                                <tr className="bg-slate-900 text-white uppercase text-[10px] tracking-wider font-extrabold">
-                                    <th className="py-3 px-4 text-center">Verify Exit</th>
-                                    <th className="py-3 px-4">Receipt No</th>
-                                    <th className="py-3 px-4">Date / Time</th>
-                                    <th className="py-3 px-4">Served By</th>
-                                    <th className="py-3 px-4">Table</th>
-                                    <th className="py-3 px-4 text-right">Amount</th>
-                                    <th className="py-3 px-4 text-center">Status</th>
-                                    <th className="py-3 px-4">Payment / M-Pesa Code</th>
-                                    <th className="py-3 px-4 text-right">Actions</th>
+                                <tr className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white uppercase text-[11px] tracking-wider font-semibold">
+                                    <th className="py-3 px-3.5 text-center">Verify Exit</th>
+                                    <th className="py-3 px-3.5">Receipt No</th>
+                                    <th className="py-3 px-3.5">Date / Time</th>
+                                    <th className="py-3 px-3.5">Served By</th>
+                                    <th className="py-3 px-3.5">Table</th>
+                                    <th className="py-3 px-3.5 text-right">Amount</th>
+                                    <th className="py-3 px-3.5 text-center">Status</th>
+                                    <th className="py-3 px-3.5">Payment / M-Pesa Code</th>
+                                    <th className="py-3 px-3.5 text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-slate-100">
+                            <tbody className="divide-y divide-gray-100">
                                 {filteredBills.map((bill, idx) => {
                                     const isPaid = bill.status === 'Paid' || bill.status === 'Completed';
                                     const isVerified = Boolean(verifiedIds[bill.sale_id] || bill.notes?.includes('[VERIFIED_EXIT]'));
@@ -912,85 +917,85 @@ export default function CashierBillsPage() {
                                         <tr
                                             key={bill.sale_id}
                                             onClick={() => { setSelectedBill(bill); setIsDrawerOpen(true); }}
-                                            className={`hover:bg-slate-50 transition-colors cursor-pointer ${
-                                                isVerified ? 'bg-purple-50/40' : idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'
+                                            className={`hover:bg-purple-50/20 transition-colors cursor-pointer ${
+                                                isVerified ? 'bg-purple-50/40' : idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'
                                             }`}
                                         >
                                             {/* Cashier Handover Checkbox */}
-                                            <td className="py-3 px-4 text-center" onClick={(e) => toggleVerification(bill.sale_id, e)}>
+                                            <td className="py-3 px-3.5 text-center" onClick={(e) => toggleVerification(bill.sale_id, e)}>
                                                 <input
                                                     type="checkbox"
                                                     checked={isVerified}
                                                     onChange={() => {}}
-                                                    className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500 cursor-pointer"
+                                                    className="w-3.5 h-3.5 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
                                                 />
                                             </td>
 
                                             {/* Receipt No */}
-                                            <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                                            <td className="py-3 px-3.5 font-mono font-bold text-gray-800">
                                                 #{bill.receipt_no}
                                             </td>
 
                                             {/* Date / Time */}
-                                            <td className="py-3 px-4 text-slate-600">
-                                                <div className="font-semibold">{bill.sale_time || '-'}</div>
-                                                <div className="text-[10px] text-slate-400">{bill.sale_date}</div>
+                                            <td className="py-3 px-3.5 text-gray-600">
+                                                <div className="font-semibold text-gray-800">{bill.sale_time || '-'}</div>
+                                                <div className="text-[10px] text-gray-400">{bill.sale_date}</div>
                                             </td>
 
                                             {/* Served By */}
-                                            <td className="py-3 px-4 font-medium text-slate-800">
+                                            <td className="py-3 px-3.5 font-medium text-gray-800">
                                                 👨‍🍳 {bill.waiter_name}
                                             </td>
 
                                             {/* Table */}
-                                            <td className="py-3 px-4 font-medium text-slate-700">
+                                            <td className="py-3 px-3.5 font-medium text-gray-700">
                                                 🪑 {bill.table_name}
                                             </td>
 
                                             {/* Amount */}
-                                            <td className="py-3 px-4 text-right font-mono font-black text-sm text-slate-900">
+                                            <td className="py-3 px-3.5 text-right font-mono font-bold text-xs text-gray-900">
                                                 Ksh {bill.total_amount.toLocaleString()}
                                             </td>
 
                                             {/* Status Badge */}
-                                            <td className="py-3 px-4 text-center">
+                                            <td className="py-3 px-3.5 text-center">
                                                 {isPaid ? (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                                                         <span>✓</span> PAID
                                                     </span>
                                                 ) : (
-                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-200">
+                                                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200">
                                                         <span>⏳</span> UNPAID
                                                     </span>
                                                 )}
                                             </td>
 
                                             {/* M-Pesa / Method */}
-                                            <td className="py-3 px-4">
+                                            <td className="py-3 px-3.5">
                                                 {bill.mpesa_code ? (
                                                     <div>
-                                                        <span className="font-mono font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                                        <span className="font-mono font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                                             {bill.mpesa_code}
                                                         </span>
                                                         {bill.customer_phone && (
-                                                            <div className="text-[10px] text-slate-400 font-mono mt-0.5">
+                                                            <div className="text-[10px] text-gray-400 font-mono mt-0.5">
                                                                 {bill.customer_phone}
                                                             </div>
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <span className="font-medium text-slate-600">
+                                                    <span className="font-medium text-gray-600">
                                                         {bill.payment_method || 'Cash'}
                                                     </span>
                                                 )}
                                             </td>
 
                                             {/* Actions */}
-                                            <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                                            <td className="py-3 px-3.5 text-right" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     <button
                                                         onClick={() => handlePrint(bill, isPaid)}
-                                                        className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-700 transition-colors"
+                                                        className="p-1 hover:bg-gray-100 rounded-lg text-gray-700 transition-colors"
                                                         title="Print"
                                                     >
                                                         🖨️
@@ -999,14 +1004,14 @@ export default function CashierBillsPage() {
                                                         href={`/pay/${encodeURIComponent(bill.receipt_no)}`}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="p-1.5 hover:bg-indigo-100 rounded-lg text-indigo-700 transition-colors"
+                                                        className="p-1 hover:bg-purple-100 rounded-lg text-purple-700 transition-colors"
                                                         title="QR Page"
                                                     >
                                                         📱
                                                     </a>
                                                     <button
                                                         onClick={() => { setSelectedBill(bill); setIsDrawerOpen(true); }}
-                                                        className="px-2 py-1 bg-slate-900 text-white font-bold rounded-lg text-[10px]"
+                                                        className="px-2 py-1 bg-gray-800 text-white font-semibold rounded-lg text-[10px]"
                                                     >
                                                         View
                                                     </button>
@@ -1023,33 +1028,33 @@ export default function CashierBillsPage() {
 
             {/* ── 5. SLIDE-IN BILL DETAILS DRAWER ─────────────────────────────── */}
             {isDrawerOpen && selectedBill && (
-                <div className="fixed inset-0 z-50 flex justify-end bg-black/60 backdrop-blur-sm transition-all">
+                <div className="fixed inset-0 z-50 flex justify-end bg-black/50 backdrop-blur-xs transition-all">
                     <div className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col justify-between overflow-y-auto animate-in slide-in-from-right duration-300">
                         {/* Drawer Header */}
-                        <div className="p-6 bg-slate-900 text-white sticky top-0 z-10">
+                        <div className="p-5 bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white sticky top-0 z-10">
                             <div className="flex items-start justify-between">
                                 <div>
-                                    <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-300">
+                                    <span className="text-[10px] uppercase font-semibold tracking-wider text-purple-200">
                                         Cashier Bill Verification
                                     </span>
-                                    <h2 className="text-2xl font-black font-mono tracking-tight text-white mt-1">
+                                    <h2 className="text-xl font-bold font-mono tracking-tight text-white mt-0.5">
                                         #{selectedBill.receipt_no}
                                     </h2>
-                                    <p className="text-xs text-slate-400 mt-1">
+                                    <p className="text-xs text-purple-200/80 mt-0.5">
                                         {selectedBill.sale_date} at {selectedBill.sale_time || '-'}
                                     </p>
                                 </div>
                                 <button
                                     onClick={() => setIsDrawerOpen(false)}
-                                    className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-sm"
+                                    className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white text-xs"
                                 >
                                     ✕
                                 </button>
                             </div>
 
                             {/* Status Header Pill */}
-                            <div className="mt-4 flex items-center gap-2">
-                                <span className={`px-3 py-1 rounded-full text-xs font-black flex items-center gap-1.5 ${
+                            <div className="mt-3 flex items-center gap-2">
+                                <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold flex items-center gap-1.5 ${
                                     selectedBill.status === 'Paid'
                                         ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-400/30'
                                         : 'bg-amber-500/20 text-amber-300 border border-amber-400/30'
@@ -1059,7 +1064,7 @@ export default function CashierBillsPage() {
                                 </span>
 
                                 {verifiedIds[selectedBill.sale_id] && (
-                                    <span className="px-3 py-1 rounded-full text-xs font-black bg-purple-500/20 text-purple-300 border border-purple-400/30 flex items-center gap-1">
+                                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-400/30 flex items-center gap-1">
                                         <span>🛡️</span> HANDED OVER & VERIFIED
                                     </span>
                                 )}
@@ -1067,129 +1072,129 @@ export default function CashierBillsPage() {
                         </div>
 
                         {/* Drawer Body */}
-                        <div className="p-6 space-y-5 flex-1">
+                        <div className="p-5 space-y-4 flex-1">
                             {/* Handover Checkbox Button */}
                             <div
                                 onClick={() => toggleVerification(selectedBill.sale_id)}
-                                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center justify-between ${
+                                className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex items-center justify-between ${
                                     verifiedIds[selectedBill.sale_id]
-                                        ? 'bg-purple-50 border-purple-400 text-purple-900'
-                                        : 'bg-slate-50 border-slate-300 hover:border-slate-400 text-slate-800'
+                                        ? 'bg-purple-50 border-purple-300 text-purple-900'
+                                        : 'bg-gray-50 border-gray-200 hover:border-gray-300 text-gray-800'
                                 }`}
                             >
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2.5">
                                     <input
                                         type="checkbox"
                                         checked={Boolean(verifiedIds[selectedBill.sale_id])}
                                         onChange={() => {}}
-                                        className="w-5 h-5 text-purple-600 rounded border-slate-300 focus:ring-purple-500"
+                                        className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500"
                                     />
                                     <div>
-                                        <p className="font-bold text-sm">
+                                        <p className="font-bold text-xs text-gray-800">
                                             {verifiedIds[selectedBill.sale_id]
                                                 ? '✓ Verified at Cashier Exit'
                                                 : 'Verify Customer Handover at Exit'}
                                         </p>
-                                        <p className="text-xs text-slate-500 mt-0.5">
+                                        <p className="text-[11px] text-gray-500 mt-0.5">
                                             {verifiedIds[selectedBill.sale_id]
                                                 ? 'Customer handed over physical receipt upon exit.'
                                                 : 'Check this box when customer hands over physical bill.'}
                                         </p>
                                     </div>
                                 </div>
-                                <span className="text-xl">🛡️</span>
+                                <span className="text-lg">🛡️</span>
                             </div>
 
                             {/* M-Pesa Transaction Audit Details */}
                             {selectedBill.mpesa_code && (
-                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-300 rounded-2xl p-4 shadow-sm">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                                <div className="bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 rounded-2xl p-3.5 shadow-2xs">
+                                    <div className="flex items-center justify-between mb-1.5">
+                                        <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider flex items-center gap-1">
                                             <span>⚡</span> M-Pesa Payment Details
                                         </span>
-                                        <span className="text-[11px] font-bold text-emerald-700 bg-white px-2 py-0.5 rounded border border-emerald-200">
+                                        <span className="text-[10px] font-semibold text-emerald-700 bg-white px-1.5 py-0.2 rounded border border-emerald-200">
                                             ✓ Verified Code
                                         </span>
                                     </div>
-                                    <div className="text-2xl font-black font-mono text-emerald-950 tracking-wider mb-2">
+                                    <div className="text-xl font-bold font-mono text-emerald-950 tracking-wider mb-1.5">
                                         {selectedBill.mpesa_code}
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2 text-xs text-slate-700 pt-2 border-t border-emerald-200">
+                                    <div className="grid grid-cols-2 gap-2 text-xs text-gray-700 pt-1.5 border-t border-emerald-200/60">
                                         <div>
-                                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Phone</span>
-                                            <span className="font-mono font-bold">{selectedBill.customer_phone || 'Verified'}</span>
+                                            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Phone</span>
+                                            <span className="font-mono font-bold text-gray-800">{selectedBill.customer_phone || 'Verified'}</span>
                                         </div>
                                         <div>
-                                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Paid Time</span>
-                                            <span className="font-semibold">{selectedBill.paid_at || selectedBill.sale_time}</span>
+                                            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Paid Time</span>
+                                            <span className="font-semibold text-gray-800">{selectedBill.paid_at || selectedBill.sale_time}</span>
                                         </div>
                                     </div>
                                 </div>
                             )}
 
                             {/* Service Details Grid */}
-                            <div className="grid grid-cols-2 gap-3 text-xs">
-                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Served By (Waiter)</span>
-                                    <span className="font-bold text-slate-900 text-sm block mt-0.5">
+                            <div className="grid grid-cols-2 gap-2.5 text-xs">
+                                <div className="bg-gray-50/80 p-2.5 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] text-gray-400 uppercase font-semibold block">Served By (Waiter)</span>
+                                    <span className="font-semibold text-gray-800 text-xs block mt-0.5">
                                         👨‍🍳 {selectedBill.waiter_name}
                                     </span>
                                 </div>
-                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Table / Location</span>
-                                    <span className="font-bold text-slate-900 text-sm block mt-0.5">
+                                <div className="bg-gray-50/80 p-2.5 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] text-gray-400 uppercase font-semibold block">Table / Location</span>
+                                    <span className="font-semibold text-gray-800 text-xs block mt-0.5">
                                         🪑 {selectedBill.table_name}
                                     </span>
                                 </div>
-                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Customer</span>
-                                    <span className="font-bold text-slate-900 text-sm block mt-0.5">
+                                <div className="bg-gray-50/80 p-2.5 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] text-gray-400 uppercase font-semibold block">Customer</span>
+                                    <span className="font-semibold text-gray-800 text-xs block mt-0.5">
                                         👤 {selectedBill.customer_name}
                                     </span>
                                 </div>
-                                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                                    <span className="text-[10px] text-slate-400 uppercase font-bold block">Payment Method</span>
-                                    <span className="font-bold text-slate-900 text-sm block mt-0.5">
+                                <div className="bg-gray-50/80 p-2.5 rounded-xl border border-gray-200">
+                                    <span className="text-[10px] text-gray-400 uppercase font-semibold block">Payment Method</span>
+                                    <span className="font-semibold text-gray-800 text-xs block mt-0.5">
                                         💳 {selectedBill.payment_method}
                                     </span>
                                 </div>
                             </div>
 
                             {/* Items List */}
-                            <div className="bg-white rounded-2xl border border-slate-200 p-4">
-                                <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-3">
+                            <div className="bg-white rounded-2xl border border-gray-200 p-3.5">
+                                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2.5">
                                     🍽️ Bill Items & Breakdown
                                 </h4>
                                 {selectedBill.items && selectedBill.items.length > 0 ? (
-                                    <div className="divide-y divide-slate-100 text-xs">
+                                    <div className="divide-y divide-gray-100 text-xs">
                                         {selectedBill.items.map((it, i) => (
-                                            <div key={i} className="py-2 flex justify-between items-center">
+                                            <div key={i} className="py-1.5 flex justify-between items-center">
                                                 <div>
-                                                    <span className="font-bold text-slate-800">{it.quantity}× {it.product_name}</span>
+                                                    <span className="font-semibold text-gray-800">{it.quantity}× {it.product_name}</span>
                                                     {it.notes && <p className="text-[10px] text-amber-600 italic">📝 {it.notes}</p>}
                                                 </div>
-                                                <span className="font-mono font-bold text-slate-900">
+                                                <span className="font-mono font-bold text-gray-900">
                                                     Ksh {it.subtotal.toFixed(2)}
                                                 </span>
                                             </div>
                                         ))}
                                     </div>
                                 ) : (
-                                    <p className="text-xs text-slate-400 py-2">Item details loaded from total amount.</p>
+                                    <p className="text-xs text-gray-400 py-1.5">Item details loaded from total amount.</p>
                                 )}
 
-                                <div className="mt-3 pt-3 border-t-2 border-slate-200 space-y-1.5 text-xs">
-                                    <div className="flex justify-between text-slate-600">
+                                <div className="mt-2.5 pt-2.5 border-t border-gray-200 space-y-1 text-xs">
+                                    <div className="flex justify-between text-gray-600">
                                         <span>Subtotal:</span>
                                         <span className="font-mono">Ksh {selectedBill.subtotal.toFixed(2)}</span>
                                     </div>
                                     {selectedBill.discount > 0 && (
-                                        <div className="flex justify-between text-emerald-600 font-semibold">
+                                        <div className="flex justify-between text-emerald-600 font-medium">
                                             <span>Discount:</span>
                                             <span className="font-mono">-Ksh {selectedBill.discount.toFixed(2)}</span>
                                         </div>
                                     )}
-                                    <div className="flex justify-between text-base font-black text-slate-900 pt-1 border-t border-slate-100">
+                                    <div className="flex justify-between text-sm font-bold text-gray-900 pt-1 border-t border-gray-100">
                                         <span>Total Amount:</span>
                                         <span className="font-mono text-emerald-700">Ksh {selectedBill.total_amount.toFixed(2)}</span>
                                     </div>
@@ -1197,17 +1202,17 @@ export default function CashierBillsPage() {
                             </div>
 
                             {/* Privacy Lock Reminder */}
-                            <div className="bg-slate-100 rounded-xl p-3 text-xs text-slate-600 leading-relaxed border border-slate-200">
-                                🔒 <strong>Privacy Protection Active:</strong> When customers or strangers scan the physical receipt QR code after payment, order items and server details are automatically locked and hidden.
+                            <div className="bg-gray-50 rounded-xl p-2.5 text-xs text-gray-600 leading-relaxed border border-gray-200">
+                                🔒 <strong>Privacy Protection Active:</strong> When customers scan the physical receipt QR code after payment, order items and server details are automatically locked and hidden.
                             </div>
                         </div>
 
                         {/* Drawer Footer Actions */}
-                        <div className="p-6 bg-slate-50 border-t border-slate-200 flex items-center gap-2 sticky bottom-0">
+                        <div className="p-4 bg-gray-50 border-t border-gray-200 flex items-center gap-2 sticky bottom-0">
                             <button
                                 onClick={() => handlePrint(selectedBill, selectedBill.status === 'Paid')}
                                 disabled={isPrinting}
-                                className="flex-1 py-3 px-4 bg-slate-900 hover:bg-black text-white font-black text-xs rounded-xl shadow-lg transition-all flex items-center justify-center gap-2"
+                                className="flex-1 py-2.5 px-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold text-xs rounded-xl shadow-xs transition-all flex items-center justify-center gap-1.5"
                             >
                                 <span>🖨️</span>
                                 <span>Print Thermal Receipt</span>
@@ -1217,7 +1222,7 @@ export default function CashierBillsPage() {
                                 href={`/pay/${encodeURIComponent(selectedBill.receipt_no)}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="py-3 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-black text-xs rounded-xl border border-indigo-200 transition-all flex items-center justify-center gap-1.5"
+                                className="py-2.5 px-3 bg-purple-50 hover:bg-purple-100 text-purple-700 font-semibold text-xs rounded-xl border border-purple-200 transition-all flex items-center justify-center gap-1"
                                 title="Open customer QR payment view"
                             >
                                 <span>📱</span>

@@ -814,10 +814,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                         transition: 'margin-left 0.25s ease',
                         minHeight: '100vh',
                     }}
-                    className={pathname === '/dashboard/pos' ? 'p-0 overflow-hidden' : (pathname.startsWith('/dashboard/recipe') || pathname.startsWith('/dashboard/stores') || pathname.startsWith('/dashboard/reports/z-report')) ? 'p-3 md:p-4' : 'p-4 md:p-6'}
+                    className={pathname === '/dashboard/pos' ? 'p-0 overflow-hidden' : (pathname.startsWith('/dashboard/recipe') || pathname.startsWith('/dashboard/stores') || pathname.startsWith('/dashboard/reports/z-report') || pathname.startsWith('/dashboard/bills')) ? 'p-3 md:p-4' : 'p-4 md:p-6'}
                 >
-                    {/* Top Bar - hidden on POS, Recipe Studio, Stores & Z-Report which have their own native header */}
-                    {pathname !== '/dashboard/pos' && !pathname.startsWith('/dashboard/recipe') && !pathname.startsWith('/dashboard/stores') && !pathname.startsWith('/dashboard/reports/z-report') && (
+                    {/* Top Bar - hidden on POS, Recipe Studio, Stores, Z-Report & Bills which have their own native header */}
+                    {pathname !== '/dashboard/pos' && !pathname.startsWith('/dashboard/recipe') && !pathname.startsWith('/dashboard/stores') && !pathname.startsWith('/dashboard/reports/z-report') && !pathname.startsWith('/dashboard/bills') && (
                         <header className="mb-6 flex items-center justify-between">
                             <div>
                                 <h2 className="text-xl font-bold text-[#1a2332]">
