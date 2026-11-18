@@ -80,6 +80,7 @@ export default function RecipePage() {
 
     // Studio Selected Dish & Header Config
     const [selectedDish, setSelectedDish] = useState<Dish | null>(null);
+    const [customSellingPrice, setCustomSellingPrice] = useState<number | ''>('');
     const [portionsYield, setPortionsYield] = useState<number>(1);
     const [numIngredients, setNumIngredients] = useState<number>(2);
     const [recipeDate, setRecipeDate] = useState(new Date().toISOString().split('T')[0]);
@@ -398,23 +399,65 @@ export default function RecipePage() {
         setRecipeIngredients(prev => prev.filter(r => r.ingredient_id !== ingId));
     };
 
-    // Cost calculations
+    // =========================================================================
+    // FINANCIAL COST & PROFIT ENGINE (Per Dish & Batch Total vs Production Cost)
+    // =========================================================================
+    // Total raw ingredient production cost to cook this batch
     const totalRecipeCost = useMemo(() => {
         return recipeIngredients.reduce((sum, r) => sum + r.total_cost, 0);
     }, [recipeIngredients]);
 
+    // Raw ingredient cost per individual plate/portion (COGS)
     const portionCost = useMemo(() => {
         return portionsYield > 0 ? (totalRecipeCost / portionsYield) : totalRecipeCost;
     }, [totalRecipeCost, portionsYield]);
 
-    const dishSellingPrice = selectedDish?.sales_cost || 0;
-    const grossProfitPortion = dishSellingPrice - portionCost;
-    const foodCostPercentage = dishSellingPrice > 0 ? ((portionCost / dishSellingPrice) * 100) : 0;
+    // Effective selling price per dish (allows interactive simulation in Studio)
+    const effectiveSellingPrice = useMemo(() => {
+        if (customSellingPrice !== '' && !isNaN(Number(customSellingPrice))) {
+            return Number(customSellingPrice);
+        }
+        return selectedDish?.sales_cost || 0;
+    }, [customSellingPrice, selectedDish]);
+    const dishSellingPrice = effectiveSellingPrice;
+
+    // Profit per individual plate/portion
+    const profitPerDish = useMemo(() => {
+        return effectiveSellingPrice - portionCost;
+    }, [effectiveSellingPrice, portionCost]);
+    const grossProfitPortion = profitPerDish;
+
+    // Profit margin percentage per dish
+    const profitMarginPercent = useMemo(() => {
+        return effectiveSellingPrice > 0 ? ((profitPerDish / effectiveSellingPrice) * 100) : 0;
+    }, [profitPerDish, effectiveSellingPrice]);
+
+    // Total Financials if all portions in this batch are sold
+    const totalProductionCost = totalRecipeCost; // raw ingredients cost
+    const totalSalesRevenue = useMemo(() => {
+        return effectiveSellingPrice * portionsYield;
+    }, [effectiveSellingPrice, portionsYield]);
+
+    // Total profit if all portions are sold
+    const totalProfitIfAllSold = useMemo(() => {
+        return totalSalesRevenue - totalProductionCost;
+    }, [totalSalesRevenue, totalProductionCost]);
+
+    // Markup / ROI percentage on ingredient spend
+    const markupPercent = useMemo(() => {
+        return totalProductionCost > 0 ? ((totalProfitIfAllSold / totalProductionCost) * 100) : 0;
+    }, [totalProfitIfAllSold, totalProductionCost]);
+
+    // Theoretical Food Cost % (COGS %)
+    const foodCostPercentage = useMemo(() => {
+        return effectiveSellingPrice > 0 ? ((portionCost / effectiveSellingPrice) * 100) : 0;
+    }, [portionCost, effectiveSellingPrice]);
 
     // Load saved recipe into studio
     const loadRecipeIntoStudio = async (r: SavedRecipe) => {
         const dish = dishes.find(d => d.pid === r.product_id) || null;
         setSelectedDish(dish);
+        setCustomSellingPrice(r.selling_price || dish?.sales_cost || 0);
         setPortionsYield(r.qty_produced || 1);
         setRecipeDate(r.recipe_date || new Date().toISOString().split('T')[0]);
 
@@ -458,9 +501,11 @@ export default function RecipePage() {
         const dish = dishes.find(d => d.pid === dishId) || null;
         setSelectedDish(dish);
         if (!dish) {
+            setCustomSellingPrice('');
             setRecipeIngredients([]);
             return;
         }
+        setCustomSellingPrice(dish.sales_cost || 0);
 
         const dateStr = recipeDate.replace(/-/g, '').slice(2);
         setBatchNumber(`B-${dish.product_code || dish.pid}-${dateStr}`);
@@ -628,7 +673,7 @@ export default function RecipePage() {
                     qty_remaining: portionsYield,
                     cost_per_unit: portionCost,
                     total_production_cost: totalRecipeCost,
-                    selling_price: selectedDish.sales_cost,
+                    selling_price: effectiveSellingPrice || selectedDish.sales_cost,
                     production_date: recipeDate,
                     status: 'In Stock'
                 });
@@ -735,10 +780,13 @@ export default function RecipePage() {
     </tbody>
   </table>
   <div class="total">
-    <div>Total Batch Cost: Ksh ${totalRecipeCost.toLocaleString()}</div>
-    <div>Cost / Portion: Ksh ${portionCost.toFixed(2)}</div>
-    <div>Selling Price: Ksh ${dishSellingPrice.toLocaleString()}</div>
-    <div>Food Cost: ${foodCostPercentage.toFixed(1)}%</div>
+    <div>Total Production Cost: Ksh ${totalRecipeCost.toLocaleString()}</div>
+    <div>Cost / Portion (COGS): Ksh ${portionCost.toFixed(2)}</div>
+    <div>Sale Price Per Dish: Ksh ${effectiveSellingPrice.toLocaleString()}</div>
+    <div>Profit Per Dish: Ksh ${profitPerDish.toFixed(2)} (${profitMarginPercent.toFixed(1)}%)</div>
+    <div>Total Revenue (If All Sold): Ksh ${totalSalesRevenue.toLocaleString()}</div>
+    <div>Total Profit (If All Sold): Ksh ${totalProfitIfAllSold.toLocaleString()}</div>
+    <div>Theoretical Food Cost: ${foodCostPercentage.toFixed(1)}%</div>
   </div>
 </body>
 </html>`;
@@ -760,6 +808,39 @@ export default function RecipePage() {
         const sum = valid.reduce((acc, r) => acc + ((r.cost_per_unit / (r.selling_price || 1)) * 100), 0);
         return Math.round((sum / valid.length) * 10) / 10;
     }, [savedRecipes]);
+
+    // Financial aggregates across all active kitchen production batches
+    const batchesFinancials = useMemo(() => {
+        let totalActiveCost = 0;
+        let totalActivePotentialRevenue = 0;
+        let totalActivePotentialProfit = 0;
+        let activeBatchesCount = 0;
+
+        batches.forEach(b => {
+            const rem = Number(b.qty_remaining) || 0;
+            if (rem > 0) {
+                activeBatchesCount++;
+                const costUnit = Number(b.cost_per_unit) || 0;
+                const matchedDish = dishes.find(d => d.pid === b.product_id);
+                const sPrice = Number(b.selling_price) || Number(matchedDish?.sales_cost) || 0;
+
+                const batchCost = rem * costUnit;
+                const batchRev = rem * sPrice;
+                const batchProf = batchRev - batchCost;
+
+                totalActiveCost += batchCost;
+                totalActivePotentialRevenue += batchRev;
+                totalActivePotentialProfit += batchProf;
+            }
+        });
+
+        return {
+            totalActiveCost,
+            totalActivePotentialRevenue,
+            totalActivePotentialProfit,
+            activeBatchesCount
+        };
+    }, [batches, dishes]);
 
     return (
         <div className="space-y-6 max-w-[1600px] mx-auto p-2 sm:p-4">
@@ -813,16 +894,11 @@ export default function RecipePage() {
             </div>
 
             {/* KPI Metric Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5">
                     <p className="text-xs font-bold text-gray-500 uppercase">Active Master Recipes</p>
                     <p className="text-3xl font-black text-gray-900 mt-1">{savedRecipes.length}</p>
-                    <p className="text-[11px] text-emerald-600 font-semibold mt-1">● Standardized Culinary Formulas</p>
-                </div>
-                <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5">
-                    <p className="text-xs font-bold text-gray-500 uppercase">Average Food Cost % (COGS)</p>
-                    <p className="text-3xl font-black text-emerald-700 mt-1">{avgFoodCost}%</p>
-                    <p className="text-[11px] text-emerald-600 font-semibold mt-1">✓ Target benchmark: 28% – 32%</p>
+                    <p className="text-[11px] text-emerald-600 font-semibold mt-1">Avg Food Cost: {avgFoodCost}%</p>
                 </div>
                 <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5">
                     <p className="text-xs font-bold text-gray-500 uppercase">Raw Store Ingredients</p>
@@ -831,8 +907,21 @@ export default function RecipePage() {
                 </div>
                 <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5">
                     <p className="text-xs font-bold text-gray-500 uppercase">Active Kitchen Batches</p>
-                    <p className="text-3xl font-black text-purple-700 mt-1">{batches.filter(b => (b.qty_remaining || 0) > 0).length}</p>
-                    <p className="text-[11px] text-purple-600 font-semibold mt-1">In kitchen ready for service</p>
+                    <p className="text-3xl font-black text-purple-700 mt-1">{batchesFinancials.activeBatchesCount}</p>
+                    <p className="text-[11px] text-purple-600 font-semibold mt-1">Ready for POS service</p>
+                </div>
+                <div className="bg-gradient-to-br from-emerald-900 via-teal-950 to-[#062c1e] text-white p-5 rounded-3xl border border-emerald-500/40 shadow-lg shadow-emerald-950/20">
+                    <div className="flex items-center justify-between">
+                        <p className="text-[10px] font-black text-emerald-300 uppercase tracking-wider">Batches Potential Profit</p>
+                        <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-full text-emerald-300 font-bold border border-emerald-400/30">vs Cost</span>
+                    </div>
+                    <p className="text-2xl font-black text-[#00e676] font-mono mt-1">
+                        +Ksh {batchesFinancials.totalActivePotentialProfit.toLocaleString()}
+                    </p>
+                    <p className="text-[11px] text-emerald-200/80 font-medium mt-1 flex items-center justify-between">
+                        <span>Cost: Ksh {batchesFinancials.totalActiveCost.toLocaleString()}</span>
+                        <span className="font-bold text-white">Rev: Ksh {batchesFinancials.totalActivePotentialRevenue.toLocaleString()}</span>
+                    </p>
                 </div>
             </div>
 
@@ -864,18 +953,39 @@ export default function RecipePage() {
                             </div>
 
                             {selectedDish && (
-                                <div className="p-3 bg-emerald-50/70 border border-emerald-200/60 rounded-2xl space-y-1 text-xs">
-                                    <div className="flex justify-between">
-                                        <span className="text-emerald-800 font-semibold">Selling Price:</span>
-                                        <span className="font-mono font-black text-emerald-900">Ksh {selectedDish.sales_cost.toLocaleString()}</span>
+                                <div className="p-3.5 bg-gradient-to-br from-emerald-50/90 to-teal-50/70 border border-emerald-200/80 rounded-2xl space-y-2 text-xs">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-emerald-950 font-bold flex items-center gap-1">
+                                            <span>🏷️</span> Sale Price / Dish:
+                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                            <span className="text-xs font-bold text-gray-500">Ksh</span>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="1"
+                                                value={customSellingPrice}
+                                                onChange={(e) => setCustomSellingPrice(e.target.value === '' ? '' : Math.max(0, parseFloat(e.target.value) || 0))}
+                                                className="w-24 px-2.5 py-1 bg-white border border-emerald-300 focus:border-emerald-500 rounded-xl text-xs font-black font-mono text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-right shadow-sm"
+                                                title="Edit selling price to simulate recipe profit"
+                                            />
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-emerald-800 font-semibold">Barcode:</span>
-                                        <span className="font-mono text-gray-600">{selectedDish.barcode || 'N/A'}</span>
+                                    <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-emerald-200/60 text-[11px]">
+                                        <div>
+                                            <span className="text-gray-500 block">Cost Per Plate:</span>
+                                            <span className="font-mono font-bold text-gray-800">Ksh {portionCost.toFixed(2)}</span>
+                                        </div>
+                                        <div>
+                                            <span className="text-gray-500 block">Profit Per Plate:</span>
+                                            <span className={`font-mono font-black ${profitPerDish >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                                                {profitPerDish >= 0 ? `+Ksh ${profitPerDish.toFixed(2)}` : `-Ksh ${Math.abs(profitPerDish).toFixed(2)}`}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex justify-between">
-                                        <span className="text-emerald-800 font-semibold">Kitchen Stock:</span>
-                                        <span className="font-bold text-gray-800">{selectedDish.current_stock || 0} Portions</span>
+                                    <div className="flex justify-between items-center text-[10px] text-gray-500 pt-1 border-t border-emerald-200/40">
+                                        <span>Barcode: <strong className="font-mono text-gray-700">{selectedDish.barcode || 'N/A'}</strong></span>
+                                        <span>Ready Stock: <strong className="font-bold text-emerald-800">{selectedDish.current_stock || 0} Pax</strong></span>
                                     </div>
                                 </div>
                             )}
@@ -915,45 +1025,120 @@ export default function RecipePage() {
                             </div>
                         </div>
 
-                        {/* Portion Cost & Profit Matrix */}
+                        {/* Portion Cost & Profit Performance Matrix */}
                         <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-4">
-                            <h2 className="text-base font-black text-gray-900 flex items-center gap-2">
-                                <span>📊</span> Live Cost &amp; Profit Matrix
-                            </h2>
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-base font-black text-gray-900 flex items-center gap-2">
+                                    <span>📊</span> Cost &amp; Profit Performance
+                                </h2>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                    Live Financials
+                                </span>
+                            </div>
 
-                            <div className="space-y-3">
-                                <div className="p-3 bg-gray-50 rounded-2xl flex justify-between items-center">
-                                    <span className="text-xs font-bold text-gray-500">Total Batch Cost ({portionsYield} portions)</span>
-                                    <span className="text-base font-black font-mono text-gray-900">Ksh {totalRecipeCost.toLocaleString()}</span>
+                            <div className="space-y-2.5">
+                                {/* 1. PER DISH BREAKDOWN */}
+                                <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50/60 rounded-2xl border border-amber-200/80 flex justify-between items-center">
+                                    <div>
+                                        <span className="text-xs font-bold text-amber-950 flex items-center gap-1">
+                                            <span>🏷️</span> Sale Price Per Dish
+                                        </span>
+                                        <span className="text-[10px] text-amber-800 font-medium">Menu price at POS</span>
+                                    </div>
+                                    <span className="text-lg font-black font-mono text-amber-950">
+                                        Ksh {effectiveSellingPrice.toLocaleString()}
+                                    </span>
                                 </div>
 
-                                <div className="p-3 bg-emerald-50 rounded-2xl flex justify-between items-center border border-emerald-200">
+                                <div className="p-3 bg-slate-50 rounded-2xl border border-gray-200 flex justify-between items-center">
                                     <div>
-                                        <span className="text-xs font-bold text-emerald-900 block">Cost Per Portion (COGS)</span>
-                                        <span className="text-[10px] text-emerald-700">Raw ingredient cost per plate</span>
+                                        <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
+                                            <span>🥣</span> Production Cost / Dish (COGS)
+                                        </span>
+                                        <span className="text-[10px] text-gray-500">Raw ingredient cost per portion</span>
                                     </div>
-                                    <span className="text-xl font-black font-mono text-emerald-800">Ksh {portionCost.toFixed(2)}</span>
+                                    <span className="text-base font-black font-mono text-gray-900">
+                                        Ksh {portionCost.toFixed(2)}
+                                    </span>
                                 </div>
 
-                                <div className="p-3 bg-blue-50 rounded-2xl flex justify-between items-center border border-blue-200">
+                                <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50/60 rounded-2xl border border-blue-200/80 flex justify-between items-center">
                                     <div>
-                                        <span className="text-xs font-bold text-blue-900 block">Gross Profit Per Portion</span>
-                                        <span className="text-[10px] text-blue-700">Margin contribution</span>
+                                        <span className="text-xs font-bold text-blue-950 flex items-center gap-1">
+                                            <span>💰</span> Profit Per Dish
+                                        </span>
+                                        <span className="text-[10px] text-blue-800 font-semibold">
+                                            Margin: {profitMarginPercent.toFixed(1)}% per plate
+                                        </span>
                                     </div>
-                                    <span className="text-xl font-black font-mono text-blue-800">Ksh {grossProfitPortion.toFixed(2)}</span>
+                                    <div className="text-right">
+                                        <span className={`text-xl font-black font-mono ${profitPerDish >= 0 ? 'text-blue-900' : 'text-red-700'}`}>
+                                            {profitPerDish >= 0 ? `+Ksh ${profitPerDish.toFixed(2)}` : `-Ksh ${Math.abs(profitPerDish).toFixed(2)}`}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* 2. TOTAL PROFIT IF ALL SOLD VERSUS PRODUCTION COST SHOWCASE */}
+                                <div className="mt-3 p-4 rounded-2xl bg-gradient-to-br from-[#0c161e] via-[#062c1e] to-[#041d14] text-white border-2 border-[#00e676]/60 shadow-xl shadow-emerald-950/20 space-y-3">
+                                    <div className="flex items-center justify-between pb-2 border-b border-emerald-500/30">
+                                        <div>
+                                            <span className="text-xs font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                                                <span>🚀</span> Total Profit If All Sold
+                                            </span>
+                                            <p className="text-[10px] text-gray-300">Batch Yield: {portionsYield} Portions</p>
+                                        </div>
+                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-[#00e676]/20 text-[#00e676] border border-[#00e676]/40 uppercase tracking-wide">
+                                            vs Production Cost
+                                        </span>
+                                    </div>
+
+                                    {/* Big Total Profit Number */}
+                                    <div className="text-center py-1">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Net Batch Profit</p>
+                                        <p className="text-3xl sm:text-4xl font-black font-mono text-[#00e676] tracking-tight drop-shadow-[0_0_12px_rgba(0,230,118,0.4)]">
+                                            {totalProfitIfAllSold >= 0 ? `+Ksh ${totalProfitIfAllSold.toLocaleString()}` : `-Ksh ${Math.abs(totalProfitIfAllSold).toLocaleString()}`}
+                                        </p>
+                                        <p className="text-[11px] text-emerald-300 font-semibold mt-0.5">
+                                            {markupPercent >= 0 ? `+${markupPercent.toFixed(0)}% ROI on raw ingredients` : 'Loss-making formula'}
+                                        </p>
+                                    </div>
+
+                                    {/* Side-by-side comparison: Cost vs Revenue vs Profit */}
+                                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-emerald-500/20 text-xs">
+                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/10">
+                                            <span className="text-[10px] text-gray-400 uppercase font-bold block">Production Cost</span>
+                                            <span className="text-sm font-black font-mono text-rose-300">
+                                                Ksh {totalProductionCost.toLocaleString()}
+                                            </span>
+                                            <span className="text-[9px] text-gray-400 block mt-0.5">{portionsYield} portions COGS</span>
+                                        </div>
+
+                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/10">
+                                            <span className="text-[10px] text-gray-400 uppercase font-bold block">Total Sales Revenue</span>
+                                            <span className="text-sm font-black font-mono text-emerald-200">
+                                                Ksh {totalSalesRevenue.toLocaleString()}
+                                            </span>
+                                            <span className="text-[9px] text-gray-400 block mt-0.5">If all {portionsYield} sold</span>
+                                        </div>
+                                    </div>
+
+                                    {/* Summary Callout Banner */}
+                                    <div className="p-2 bg-emerald-950/60 rounded-xl border border-emerald-500/30 text-[10px] text-emerald-200 leading-relaxed">
+                                        💡 Spend <strong className="text-white">Ksh {totalProductionCost.toLocaleString()}</strong> on raw ingredients ➔ Generate <strong className="text-white">Ksh {totalSalesRevenue.toLocaleString()}</strong> in POS revenue ➔ Keep <strong className="text-[#00e676] font-bold">+Ksh {totalProfitIfAllSold.toLocaleString()}</strong> in clear profit!
+                                    </div>
                                 </div>
 
                                 {/* Food Cost Benchmark Badge */}
-                                <div className={`p-4 rounded-2xl border text-center ${
+                                <div className={`p-3.5 rounded-2xl border text-center ${
                                     foodCostPercentage <= 28
                                         ? 'bg-green-50 border-green-200 text-green-900'
                                         : foodCostPercentage <= 35
                                             ? 'bg-amber-50 border-amber-200 text-amber-900'
                                             : 'bg-red-50 border-red-200 text-red-900'
                                 }`}>
-                                    <p className="text-xs font-bold uppercase tracking-wider">Theoretical Food Cost %</p>
-                                    <p className="text-3xl font-black mt-0.5">{foodCostPercentage.toFixed(1)}%</p>
-                                    <p className="text-[11px] font-semibold mt-1">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600">Theoretical Food Cost (COGS %)</p>
+                                    <p className="text-2xl font-black mt-0.5">{foodCostPercentage.toFixed(1)}%</p>
+                                    <p className="text-[10px] font-semibold mt-0.5">
                                         {foodCostPercentage <= 28 && '🟢 High Profit Margin (<28%)'}
                                         {foodCostPercentage > 28 && foodCostPercentage <= 35 && '🟡 Healthy Restaurant Benchmark (28% – 35%)'}
                                         {foodCostPercentage > 35 && '🔴 High Portion Cost — Consider recipe re-portioning!'}
@@ -987,8 +1172,19 @@ export default function RecipePage() {
                                     Target formula: <strong className="text-gray-800">{numIngredients} ingredients</strong>. Add raw store ingredients with auto conversions.
                                 </p>
                             </div>
-                            <div className="flex items-center gap-2 text-xs font-bold text-gray-500">
-                                <span>Yield: <strong className="text-emerald-900 font-mono text-sm">{portionsYield}</strong> Portions</span>
+                            <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
+                                <span className="px-2.5 py-1 rounded-xl bg-gray-100 text-gray-700">
+                                    Yield: <strong className="text-emerald-900 font-mono">{portionsYield}</strong> Pax
+                                </span>
+                                <span className="px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 font-mono">
+                                    🏷️ Sale Price: <strong>Ksh {effectiveSellingPrice.toLocaleString()}</strong>
+                                </span>
+                                <span className="px-2.5 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 font-mono">
+                                    💰 Profit/Dish: <strong>{profitPerDish >= 0 ? `+Ksh ${profitPerDish.toFixed(2)}` : `-Ksh ${Math.abs(profitPerDish).toFixed(2)}`}</strong>
+                                </span>
+                                <span className="px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 font-mono">
+                                    🚀 Batch Profit: <strong>+Ksh {totalProfitIfAllSold.toLocaleString()}</strong> <span className="text-[10px] text-gray-500 font-normal">(vs Ksh {totalProductionCost.toLocaleString()} cost)</span>
+                                </span>
                             </div>
                         </div>
 
@@ -1177,8 +1373,11 @@ export default function RecipePage() {
                                     <th className="py-3 px-3">Dish Name</th>
                                     <th className="py-3 px-3">Portions Yield</th>
                                     <th className="py-3 px-3 text-right">Cost/Portion (COGS)</th>
-                                    <th className="py-3 px-3 text-right">Menu Selling Price</th>
-                                    <th className="py-3 px-3 text-right">Gross Profit</th>
+                                    <th className="py-3 px-3 text-right">Sale Price / Dish</th>
+                                    <th className="py-3 px-3 text-right">Profit / Dish</th>
+                                    <th className="py-3 px-3 text-right">Total Production Cost</th>
+                                    <th className="py-3 px-3 text-right">Total Revenue (If Sold)</th>
+                                    <th className="py-3 px-3 text-right">Total Profit If Sold</th>
                                     <th className="py-3 px-3 text-center">Food Cost %</th>
                                     <th className="py-3 px-3 text-center">Actions</th>
                                 </tr>
@@ -1187,7 +1386,11 @@ export default function RecipePage() {
                                 {filteredRecipes.map(r => {
                                     const sellPrice = r.selling_price || 0;
                                     const cogs = r.cost_per_unit || 0;
-                                    const profit = sellPrice - cogs;
+                                    const profitPerDish = sellPrice - cogs;
+                                    const yieldCount = r.qty_produced || 1;
+                                    const totalCost = Number(r.total_cost) || (cogs * yieldCount);
+                                    const totalRevenue = sellPrice * yieldCount;
+                                    const totalProfit = totalRevenue - totalCost;
                                     const fcPct = sellPrice > 0 ? (cogs / sellPrice) * 100 : 0;
                                     return (
                                         <tr key={r.recipe_id} className="hover:bg-gray-50/80 transition-colors">
@@ -1197,11 +1400,29 @@ export default function RecipePage() {
                                             <td className="py-3 px-3 text-right font-black font-mono text-emerald-800">
                                                 Ksh {cogs.toFixed(2)}
                                             </td>
-                                            <td className="py-3 px-3 text-right font-mono font-bold text-gray-900">
+                                            <td className="py-3 px-3 text-right font-mono font-bold text-amber-950">
                                                 {sellPrice > 0 ? `Ksh ${sellPrice.toLocaleString()}` : 'Not Set'}
                                             </td>
                                             <td className="py-3 px-3 text-right font-mono font-black text-blue-700">
-                                                {sellPrice > 0 ? `Ksh ${profit.toFixed(2)}` : '—'}
+                                                {sellPrice > 0 ? (profitPerDish >= 0 ? `+Ksh ${profitPerDish.toFixed(2)}` : `-Ksh ${Math.abs(profitPerDish).toFixed(2)}`) : '—'}
+                                            </td>
+                                            <td className="py-3 px-3 text-right font-mono text-gray-700 font-bold">
+                                                Ksh {totalCost.toLocaleString()}
+                                            </td>
+                                            <td className="py-3 px-3 text-right font-mono text-gray-900 font-bold">
+                                                {sellPrice > 0 ? `Ksh ${totalRevenue.toLocaleString()}` : '—'}
+                                            </td>
+                                            <td className="py-3 px-3 text-right">
+                                                {sellPrice > 0 ? (
+                                                    <div>
+                                                        <span className={`font-mono font-black text-xs block ${totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                                                            {totalProfit >= 0 ? `+Ksh ${totalProfit.toLocaleString()}` : `-Ksh ${Math.abs(totalProfit).toLocaleString()}`}
+                                                        </span>
+                                                        <span className="text-[10px] text-gray-400 font-semibold block">
+                                                            vs Ksh {totalCost.toLocaleString()} cost
+                                                        </span>
+                                                    </div>
+                                                ) : '—'}
                                             </td>
                                             <td className="py-3 px-3 text-center">
                                                 <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${
@@ -1242,34 +1463,68 @@ export default function RecipePage() {
                                     <th className="py-3 px-3">Batch Code</th>
                                     <th className="py-3 px-3">Dish Name</th>
                                     <th className="py-3 px-3">Production Date</th>
-                                    <th className="py-3 px-3 text-right">Qty Produced</th>
-                                    <th className="py-3 px-3 text-right">Qty Remaining</th>
-                                    <th className="py-3 px-3 text-right">Cost / Unit</th>
+                                    <th className="py-3 px-3 text-right">Produced / Left</th>
+                                    <th className="py-3 px-3 text-right">Cost / Dish</th>
                                     <th className="py-3 px-3 text-right">Total Production Cost</th>
+                                    <th className="py-3 px-3 text-right">Sale Price / Dish</th>
+                                    <th className="py-3 px-3 text-right">Profit / Dish</th>
+                                    <th className="py-3 px-3 text-right">Total Revenue (If Sold)</th>
+                                    <th className="py-3 px-3 text-right">Total Profit If Sold</th>
                                     <th className="py-3 px-3 text-center">Status</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 font-medium">
-                                {batches.map(b => (
-                                    <tr key={b.batch_id} className="hover:bg-gray-50/80 transition-colors">
-                                        <td className="py-3 px-3 font-mono font-bold text-gray-800">{b.batch_number}</td>
-                                        <td className="py-3 px-3 font-bold text-gray-900">{b.product_name}</td>
-                                        <td className="py-3 px-3 text-gray-500">{b.production_date}</td>
-                                        <td className="py-3 px-3 text-right font-semibold">{b.qty_produced}</td>
-                                        <td className="py-3 px-3 text-right font-black font-mono text-emerald-800">
-                                            {b.qty_remaining}
-                                        </td>
-                                        <td className="py-3 px-3 text-right font-mono text-gray-600">Ksh {Number(b.cost_per_unit || 0).toFixed(2)}</td>
-                                        <td className="py-3 px-3 text-right font-black font-mono text-gray-900">Ksh {Number(b.total_production_cost || 0).toLocaleString()}</td>
-                                        <td className="py-3 px-3 text-center">
-                                            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                b.qty_remaining > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'
-                                            }`}>
-                                                {b.qty_remaining > 0 ? 'In Stock' : 'Depleted'}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {batches.map(b => {
+                                    const matchedDish = dishes.find(d => d.pid === b.product_id);
+                                    const sPrice = Number(b.selling_price) || Number(matchedDish?.sales_cost) || 0;
+                                    const costUnit = Number(b.cost_per_unit) || 0;
+                                    const profitUnit = sPrice - costUnit;
+                                    const batchProdCost = Number(b.total_production_cost) || (costUnit * b.qty_produced);
+                                    const totalBatchRev = sPrice * b.qty_produced;
+                                    const totalBatchProfit = totalBatchRev - batchProdCost;
+                                    return (
+                                        <tr key={b.batch_id} className="hover:bg-gray-50/80 transition-colors">
+                                            <td className="py-3 px-3 font-mono font-bold text-gray-800">{b.batch_number}</td>
+                                            <td className="py-3 px-3 font-bold text-gray-900">{b.product_name}</td>
+                                            <td className="py-3 px-3 text-gray-500">{b.production_date}</td>
+                                            <td className="py-3 px-3 text-right">
+                                                <span className="font-semibold text-gray-600">{b.qty_produced}</span>
+                                                <span className="text-gray-400 mx-1">/</span>
+                                                <span className="font-black font-mono text-emerald-800">{b.qty_remaining} rem</span>
+                                            </td>
+                                            <td className="py-3 px-3 text-right font-mono text-gray-600">Ksh {costUnit.toFixed(2)}</td>
+                                            <td className="py-3 px-3 text-right font-black font-mono text-gray-900">Ksh {batchProdCost.toLocaleString()}</td>
+                                            <td className="py-3 px-3 text-right font-mono font-bold text-amber-950">
+                                                {sPrice > 0 ? `Ksh ${sPrice.toLocaleString()}` : 'Not Set'}
+                                            </td>
+                                            <td className="py-3 px-3 text-right font-mono font-black text-blue-700">
+                                                {sPrice > 0 ? (profitUnit >= 0 ? `+Ksh ${profitUnit.toFixed(2)}` : `-Ksh ${Math.abs(profitUnit).toFixed(2)}`) : '—'}
+                                            </td>
+                                            <td className="py-3 px-3 text-right font-mono font-bold text-gray-900">
+                                                {sPrice > 0 ? `Ksh ${totalBatchRev.toLocaleString()}` : '—'}
+                                            </td>
+                                            <td className="py-3 px-3 text-right">
+                                                {sPrice > 0 ? (
+                                                    <div>
+                                                        <span className={`font-mono font-black text-xs block ${totalBatchProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                                                            {totalBatchProfit >= 0 ? `+Ksh ${totalBatchProfit.toLocaleString()}` : `-Ksh ${Math.abs(totalBatchProfit).toLocaleString()}`}
+                                                        </span>
+                                                        <span className="text-[10px] text-gray-400 font-semibold block">
+                                                            vs Ksh {batchProdCost.toLocaleString()} cost
+                                                        </span>
+                                                    </div>
+                                                ) : '—'}
+                                            </td>
+                                            <td className="py-3 px-3 text-center">
+                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                    b.qty_remaining > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'
+                                                }`}>
+                                                    {b.qty_remaining > 0 ? 'In Stock' : 'Depleted'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     </div>
