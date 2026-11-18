@@ -196,47 +196,41 @@ export default function ZReportPage() {
     };
 
     return (
-        <div className="space-y-6 max-w-[1600px] mx-auto pb-16 font-sans">
+        <div className="space-y-3.5 pb-16 font-sans">
             <Toaster position="top-right" />
 
-            {/* ── 1. ULTRA EXECUTIVE HEADER (BRIGHT WHITE THEME) ─────────────────── */}
-            <div className="bg-white rounded-3xl p-6 border border-gray-200/80 shadow-sm flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-                <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-emerald-600 via-teal-700 to-indigo-800 rounded-2xl flex items-center justify-center text-white text-3xl shadow-md shadow-emerald-100 flex-shrink-0">
-                        🧾
+            {/* ── 1. ULTRA EXECUTIVE HEADER ─────────────────── */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-2.5 border-b border-gray-200/80">
+                <div>
+                    <div className="flex items-center gap-2.5">
+                        <h1 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
+                            <span>🧾</span> Official {reportType === 'Z' ? 'End-of-Day (EOD) Z-Report' : 'Mid-Day X-Report'}
+                        </h1>
+                        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            KRA Fiscal Compliant 80mm
+                        </span>
                     </div>
-                    <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                            <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-                                Official {reportType === 'Z' ? 'End-of-Day (EOD) Z-Report' : 'Mid-Day X-Report'}
-                            </h1>
-                            <span className="px-3 py-1 rounded-full text-[11px] font-black tracking-wide uppercase bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center gap-1.5">
-                                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                KRA Fiscal Compliant 80mm
-                            </span>
-                        </div>
-                        <p className="text-xs text-gray-500 font-medium mt-1">
-                            Certified fiscal closing, 16% VAT, 2% Tourism Levy, tender breakdown &amp; cash drawer reconciliation.
-                        </p>
-                    </div>
+                    <p className="text-gray-500 text-xs mt-0.5">
+                        Certified fiscal closing, 16% VAT, 2% Tourism Levy, tender breakdown &amp; cash drawer reconciliation
+                    </p>
                 </div>
 
-                {/* Header Action Buttons */}
-                <div className="flex items-center gap-2.5 flex-wrap">
+                {/* Header Action Buttons & Status */}
+                <div className="flex items-center gap-2 flex-wrap">
                     {/* Mode Toggle */}
-                    <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200">
+                    <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200 text-xs shadow-inner">
                         <button
                             onClick={() => setReportType('Z')}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                                reportType === 'Z' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-900'
+                            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                                reportType === 'Z' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                             }`}
                         >
                             End-of-Day (Z)
                         </button>
                         <button
                             onClick={() => setReportType('X')}
-                            className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all ${
-                                reportType === 'X' ? 'bg-white text-gray-900 shadow-xs' : 'text-gray-500 hover:text-gray-900'
+                            className={`px-3 py-1.5 rounded-xl font-bold transition-all ${
+                                reportType === 'X' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
                             }`}
                         >
                             Mid-Day Reading (X)
@@ -245,7 +239,7 @@ export default function ZReportPage() {
 
                     <button
                         onClick={exportCSV}
-                        className="px-3.5 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-xl text-xs font-bold border border-gray-200 transition-all flex items-center gap-1.5"
+                        className="px-3 py-1.5 bg-white hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-semibold border border-gray-200 shadow-sm transition-all flex items-center gap-1.5"
                     >
                         <span>📥</span>
                         <span>Export CSV</span>
@@ -253,102 +247,116 @@ export default function ZReportPage() {
 
                     <button
                         onClick={() => window.print()}
-                        className="px-5 py-2.5 bg-gradient-to-r from-emerald-600 via-emerald-700 to-teal-800 hover:from-emerald-700 hover:to-teal-900 text-white rounded-xl text-xs font-black transition-all flex items-center gap-2 shadow-md shadow-emerald-200 hover:-translate-y-0.5"
+                        className="px-4 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-xl text-xs font-semibold transition-all flex items-center gap-1.5 shadow-sm"
                     >
                         <span>🖨️</span>
-                        <span>Print Certified 80mm Slip</span>
+                        <span>Print Certified Slip</span>
                     </button>
+
+                    <div className="hidden sm:flex bg-white px-2.5 py-1.5 rounded-xl border border-gray-200 text-xs items-center gap-1.5 shadow-sm text-gray-600">
+                        <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                        <span className="text-[11px] font-semibold">Online</span>
+                    </div>
+
+                    <Link
+                        href="/dashboard/notifications"
+                        title="Notification Centre"
+                        className="h-8 w-8 rounded-xl bg-white border border-gray-200 flex items-center justify-center text-gray-500 shadow-sm hover:bg-gray-50 hover:text-indigo-600 transition-colors relative"
+                    >
+                        <span className="text-sm">🔔</span>
+                        <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 border border-white rounded-full" />
+                    </Link>
                 </div>
             </div>
 
             {/* ── 2. EXECUTIVE METRIC KPI CARDS ─────────────────────────────────── */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 {/* 1. Gross Revenue */}
-                <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-xs relative overflow-hidden">
-                    <div className="flex items-center justify-between text-gray-500 mb-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-emerald-800">💰 Gross Sales</span>
-                        <span className="text-base text-emerald-600">📈</span>
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-gray-500 mb-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-emerald-800">💰 Gross Sales</span>
+                        <span className="text-sm text-emerald-600">📈</span>
                     </div>
-                    <p className="text-xl font-black text-gray-900 tracking-tight">
+                    <p className="text-lg font-bold text-gray-800 tracking-tight">
                         {fmt(salesSummary.grossSales)}
                     </p>
-                    <p className="text-[10px] text-gray-400 font-medium mt-1">{salesSummary.totalOrders} total checks</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{salesSummary.totalOrders} total checks</p>
                 </div>
 
                 {/* 2. Net Revenue */}
-                <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-xs relative overflow-hidden">
-                    <div className="flex items-center justify-between text-gray-500 mb-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-indigo-700">💎 Net Revenue</span>
-                        <span className="text-base text-indigo-600">💳</span>
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-gray-500 mb-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-700">💎 Net Revenue</span>
+                        <span className="text-sm text-indigo-600">💳</span>
                     </div>
-                    <p className="text-xl font-black text-gray-900 tracking-tight">
+                    <p className="text-lg font-bold text-gray-800 tracking-tight">
                         {fmt(salesSummary.netSales)}
                     </p>
-                    <p className="text-[10px] text-gray-400 font-medium mt-1">Less {fmt(salesSummary.discounts)} discount</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Less {fmt(salesSummary.discounts)} discount</p>
                 </div>
 
                 {/* 3. Tax A (16% VAT) */}
-                <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-xs relative overflow-hidden">
-                    <div className="flex items-center justify-between text-gray-500 mb-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">🏛️ VAT (16%)</span>
-                        <span className="text-base text-slate-600">⚖️</span>
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-gray-500 mb-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-700">🏛️ VAT (16%)</span>
+                        <span className="text-sm text-slate-600">⚖️</span>
                     </div>
-                    <p className="text-xl font-black text-gray-900 tracking-tight">
+                    <p className="text-lg font-bold text-gray-800 tracking-tight">
                         {fmt(salesSummary.taxA_vat)}
                     </p>
-                    <p className="text-[10px] text-gray-400 font-medium mt-1">KRA Tax A liability</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">KRA Tax A liability</p>
                 </div>
 
                 {/* 4. Tax B (Tourism Levy 2%) */}
-                <div className="bg-white rounded-2xl p-4 border border-gray-200/80 shadow-xs relative overflow-hidden">
-                    <div className="flex items-center justify-between text-gray-500 mb-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-700">🏖️ Tourism (2%)</span>
-                        <span className="text-base text-slate-600">🏨</span>
+                <div className="bg-white rounded-2xl p-3.5 border border-gray-200/80 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-gray-500 mb-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-700">🏖️ Tourism (2%)</span>
+                        <span className="text-sm text-slate-600">🏨</span>
                     </div>
-                    <p className="text-xl font-black text-gray-900 tracking-tight">
+                    <p className="text-lg font-bold text-gray-800 tracking-tight">
                         {fmt(salesSummary.taxB_tourism)}
                     </p>
-                    <p className="text-[10px] text-gray-400 font-medium mt-1">KRA Tax B liability</p>
+                    <p className="text-[10px] text-gray-400 mt-0.5">KRA Tax B liability</p>
                 </div>
 
                 {/* 5. M-Pesa Total */}
-                <div className="bg-white rounded-2xl p-4 border border-emerald-100 shadow-xs relative overflow-hidden">
-                    <div className="flex items-center justify-between text-emerald-800 mb-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider">📱 M-Pesa Tenders</span>
-                        <span className="text-base">🟢</span>
+                <div className="bg-white rounded-2xl p-3.5 border border-emerald-100 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-emerald-800 mb-1.5">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider">📱 M-Pesa</span>
+                        <span className="text-sm">🟢</span>
                     </div>
-                    <p className="text-xl font-black text-emerald-800 tracking-tight">
+                    <p className="text-lg font-bold text-emerald-800 tracking-tight">
                         {fmt(salesSummary.tenderMpesa)}
                     </p>
-                    <p className="text-[10px] text-emerald-600 font-medium mt-1">STK Push &amp; Till Buy Goods</p>
+                    <p className="text-[10px] text-emerald-600 mt-0.5">STK Push &amp; Till</p>
                 </div>
 
                 {/* 6. Cash Drawer Variance */}
-                <div className={`rounded-2xl p-4 border shadow-xs relative overflow-hidden ${
+                <div className={`rounded-2xl p-3.5 border shadow-sm relative overflow-hidden ${
                     drawerVariance < 0 ? 'bg-rose-50/70 border-rose-200' : 'bg-emerald-50/70 border-emerald-200'
                 }`}>
-                    <div className="flex items-center justify-between mb-2">
-                        <span className={`text-[11px] font-black uppercase tracking-wider ${drawerVariance < 0 ? 'text-rose-700' : 'text-emerald-800'}`}>
-                            {drawerVariance < 0 ? '🔴 Drawer Shortage' : '🟢 Drawer Balanced'}
+                    <div className="flex items-center justify-between mb-1.5">
+                        <span className={`text-[11px] font-semibold uppercase tracking-wider ${drawerVariance < 0 ? 'text-rose-700' : 'text-emerald-800'}`}>
+                            {drawerVariance < 0 ? '🔴 Shortage' : '🟢 Balanced'}
                         </span>
-                        <span className="text-base">{drawerVariance < 0 ? '⚠️' : '✅'}</span>
+                        <span className="text-sm">{drawerVariance < 0 ? '⚠️' : '✅'}</span>
                     </div>
-                    <p className={`text-xl font-black tracking-tight ${drawerVariance < 0 ? 'text-rose-700' : 'text-emerald-800'}`}>
+                    <p className={`text-lg font-bold tracking-tight ${drawerVariance < 0 ? 'text-rose-700' : 'text-emerald-800'}`}>
                         {drawerVariance >= 0 ? '+' : ''}{fmt(drawerVariance)}
                     </p>
-                    <p className={`text-[10px] font-medium mt-1 ${drawerVariance < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                    <p className={`text-[10px] font-medium mt-0.5 ${drawerVariance < 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
                         Count: {fmt(physicalCashCounted)} vs Exp: {fmt(expectedDrawerCash)}
                     </p>
                 </div>
             </div>
 
-            {/* ── 3. LUXURY TAB NAVIGATION BAR ─────────────────────────────────── */}
-            <div className="bg-white rounded-2xl p-1.5 border border-gray-200/80 shadow-xs flex items-center gap-1.5 overflow-x-auto">
+            {/* ── 3. TAB NAVIGATION BAR ─────────────────────────────────── */}
+            <div className="bg-white rounded-2xl p-1 border border-gray-200/80 shadow-sm flex items-center gap-1 overflow-x-auto text-xs">
                 <button
                     onClick={() => setActiveTab('thermal_view')}
-                    className={`flex-1 min-w-[170px] py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 min-w-[150px] py-2 px-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
                         activeTab === 'thermal_view'
-                            ? 'bg-indigo-600 text-white shadow-sm'
+                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
                             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                 >
@@ -357,9 +365,9 @@ export default function ZReportPage() {
                 </button>
                 <button
                     onClick={() => setActiveTab('drawer_recon')}
-                    className={`flex-1 min-w-[170px] py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 min-w-[150px] py-2 px-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
                         activeTab === 'drawer_recon'
-                            ? 'bg-indigo-600 text-white shadow-sm'
+                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
                             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                 >
@@ -368,9 +376,9 @@ export default function ZReportPage() {
                 </button>
                 <button
                     onClick={() => setActiveTab('tax_matrix')}
-                    className={`flex-1 min-w-[170px] py-2.5 px-4 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 ${
+                    className={`flex-1 min-w-[150px] py-2 px-3 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 ${
                         activeTab === 'tax_matrix'
-                            ? 'bg-indigo-600 text-white shadow-sm'
+                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
                             : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                     }`}
                 >
@@ -381,15 +389,15 @@ export default function ZReportPage() {
 
             {/* ── 4. CONTENT SECTIONS ──────────────────────────────────────────── */}
             {activeTab === 'thermal_view' && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                     {/* Left: 80mm Certified Slip */}
                     <div className="lg:col-span-6 flex justify-center">
-                        <div className="bg-white rounded-3xl p-6 border-2 border-gray-300 shadow-md max-w-sm w-full font-mono text-xs text-gray-900 space-y-3">
+                        <div className="bg-white rounded-2xl p-5 border border-gray-300 shadow-sm max-w-sm w-full font-mono text-xs text-gray-900 space-y-3">
                             <div className="text-center space-y-1 pb-3 border-b border-dashed border-gray-300">
-                                <h2 className="font-black text-sm uppercase tracking-wide">ALPHAPLUS HOTEL &amp; RESTAURANT</h2>
+                                <h2 className="font-bold text-sm uppercase tracking-wide">ALPHAPLUS HOTEL &amp; RESTAURANT</h2>
                                 <p className="text-[11px] text-gray-500">P.O. BOX 1024 - 00100 NAIROBI, KENYA</p>
                                 <p className="text-[11px] text-gray-500">PIN: P051938210Z • VAT REG: 0192834-A</p>
-                                <div className="inline-block mt-1 px-3 py-0.5 rounded-full bg-black text-white text-[11px] font-black uppercase">
+                                <div className="inline-block mt-1 px-3 py-0.5 rounded-full bg-gray-900 text-white text-[10px] font-bold uppercase tracking-wider">
                                     {reportType === 'Z' ? '*** OFFICIAL Z-REPORT ***' : '*** MID-DAY X-REPORT ***'}
                                 </div>
                             </div>
@@ -426,7 +434,7 @@ export default function ZReportPage() {
                                     <span>LESS DISCOUNTS:</span>
                                     <span>-{fmtDec(salesSummary.discounts)}</span>
                                 </div>
-                                <div className="flex justify-between text-xs font-black pt-1 border-t border-gray-200">
+                                <div className="flex justify-between text-xs font-bold pt-1 border-t border-gray-200">
                                     <span>NET REVENUE:</span>
                                     <span>{fmtDec(salesSummary.netSales)}</span>
                                 </div>
@@ -434,7 +442,7 @@ export default function ZReportPage() {
 
                             {/* KRA Tax Schedule */}
                             <div className="space-y-1 pb-3 border-b border-dashed border-gray-300">
-                                <div className="text-[10px] font-black uppercase text-gray-500">KRA TAX BREAKDOWN</div>
+                                <div className="text-[10px] font-bold uppercase text-gray-500 tracking-wider">KRA TAX BREAKDOWN</div>
                                 <div className="flex justify-between text-[11px]">
                                     <span>TAX A (VAT 16%):</span>
                                     <span>{fmtDec(salesSummary.taxA_vat)}</span>
@@ -451,7 +459,7 @@ export default function ZReportPage() {
 
                             {/* Tenders */}
                             <div className="space-y-1 pb-3 border-b border-dashed border-gray-300">
-                                <div className="text-[10px] font-black uppercase text-gray-500">PAYMENT TENDER DETAILS</div>
+                                <div className="text-[10px] font-bold uppercase text-gray-500 tracking-wider">PAYMENT TENDER DETAILS</div>
                                 <div className="flex justify-between text-[11px]">
                                     <span>CASH TENDER:</span>
                                     <span>{fmtDec(salesSummary.tenderCash)}</span>
@@ -476,7 +484,7 @@ export default function ZReportPage() {
                                     <span>COUNTED CASH:</span>
                                     <span>{fmtDec(physicalCashCounted)}</span>
                                 </div>
-                                <div className="flex justify-between text-xs font-black">
+                                <div className="flex justify-between text-xs font-bold">
                                     <span>CASH VARIANCE:</span>
                                     <span className={drawerVariance < 0 ? 'text-rose-600' : 'text-emerald-700'}>
                                         {drawerVariance >= 0 ? '+' : ''}{fmtDec(drawerVariance)}
@@ -484,8 +492,8 @@ export default function ZReportPage() {
                                 </div>
                             </div>
 
-                            <div className="pt-4 text-center space-y-6 text-[10px] text-gray-500">
-                                <div className="flex justify-between pt-6 border-t border-gray-300">
+                            <div className="pt-3 text-center space-y-4 text-[10px] text-gray-500">
+                                <div className="flex justify-between pt-4 border-t border-gray-300">
                                     <div>CASHIER SIGN: ________________</div>
                                     <div>MANAGER: ________________</div>
                                 </div>
@@ -498,8 +506,8 @@ export default function ZReportPage() {
 
                     {/* Right: Certified Actions & Settings */}
                     <div className="lg:col-span-6 space-y-4">
-                        <div className="bg-white rounded-3xl p-6 border border-gray-200/80 shadow-sm space-y-4">
-                            <h3 className="text-base font-black text-gray-900 flex items-center gap-2">
+                        <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-sm space-y-3.5">
+                            <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                                 <span>🛡️</span>
                                 <span>Closing Manager Authorization</span>
                             </h3>
@@ -507,47 +515,47 @@ export default function ZReportPage() {
                                 Generating an official End-of-Day Z-Report finalizes the day’s accounting ledgers and stamps the receipt sequence.
                             </p>
 
-                            <div className="space-y-3 pt-2">
+                            <div className="space-y-3 pt-1">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">Audit Date Filter</label>
+                                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Audit Date Filter</label>
                                     <input
                                         type="date"
                                         value={selectedDate}
                                         onChange={(e) => setSelectedDate(e.target.value)}
-                                        className="w-full py-2 px-3 bg-gray-50 border border-gray-200 text-xs text-gray-900 rounded-xl font-medium focus:bg-white"
+                                        className="w-full py-2 px-3 bg-gray-50 border border-gray-300 text-xs text-gray-900 rounded-xl font-medium focus:bg-white focus:border-purple-600 focus:outline-none"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">Supervisor Sign-Off Notes</label>
+                                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Supervisor Sign-Off Notes</label>
                                     <textarea
                                         rows={3}
                                         value={managerNotes}
                                         onChange={(e) => setManagerNotes(e.target.value)}
                                         placeholder="Enter drawer check notes, unbanked cash reasons, or shift remarks..."
-                                        className="w-full p-3 bg-gray-50 border border-gray-200 text-xs text-gray-900 rounded-xl font-medium focus:bg-white"
+                                        className="w-full p-2.5 bg-gray-50 border border-gray-300 text-xs text-gray-900 rounded-xl font-medium focus:bg-white focus:border-purple-600 focus:outline-none"
                                     />
                                 </div>
 
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-700 mb-1">Supervisor PIN Verification</label>
+                                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-gray-600 mb-1">Supervisor PIN Verification</label>
                                     <input
                                         type="password"
                                         placeholder="••••"
                                         maxLength={6}
                                         value={managerPin}
                                         onChange={(e) => setManagerPin(e.target.value)}
-                                        className="w-48 py-2 px-3 bg-gray-50 border border-gray-200 text-xs text-gray-900 rounded-xl font-bold tracking-widest text-center"
+                                        className="w-48 py-2 px-3 bg-gray-50 border border-gray-300 text-xs text-gray-900 rounded-xl font-bold tracking-widest text-center focus:bg-white focus:border-purple-600 focus:outline-none"
                                     />
                                 </div>
 
-                                <div className="pt-2 flex items-center gap-3">
+                                <div className="pt-1 flex items-center gap-3">
                                     <button
                                         onClick={() => {
                                             window.print();
                                             toast.success('Dispatched certified 80mm Z-Report to thermal printer!');
                                         }}
-                                        className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-xl text-xs font-black shadow-md shadow-emerald-100 flex items-center justify-center gap-2"
+                                        className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-purple-500/20 flex items-center justify-center gap-2 transition-all"
                                     >
                                         <span>🖨️</span>
                                         <span>Print Official 80mm Z-Slip</span>
@@ -560,13 +568,13 @@ export default function ZReportPage() {
             )}
 
             {activeTab === 'drawer_recon' && (
-                <div className="bg-white rounded-3xl p-6 border border-gray-200/80 shadow-sm space-y-6">
+                <div className="bg-white rounded-2xl p-5 border border-gray-200/80 shadow-sm space-y-4">
                     <div>
-                        <h3 className="text-lg font-black text-gray-900">Physical Cash Drawer Reconciliation</h3>
+                        <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">Physical Cash Drawer Reconciliation</h3>
                         <p className="text-xs text-gray-500 mt-0.5">Count each banknote and coin denomination in the cash register drawer.</p>
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                         {[
                             { key: '1000', label: 'Ksh 1,000 Notes', mult: 1000 },
                             { key: '500', label: 'Ksh 500 Notes', mult: 500 },
@@ -575,8 +583,8 @@ export default function ZReportPage() {
                             { key: '50', label: 'Ksh 50 Notes', mult: 50 },
                             { key: 'coins', label: 'Coins (Total KES)', mult: 1 },
                         ].map(item => (
-                            <div key={item.key} className="bg-gray-50 rounded-2xl p-4 border border-gray-200 space-y-2">
-                                <label className="text-[11px] font-black text-gray-700 block uppercase">{item.label}</label>
+                            <div key={item.key} className="bg-gray-50/80 rounded-xl p-3 border border-gray-200 space-y-1.5">
+                                <label className="text-[11px] font-semibold text-gray-700 block uppercase">{item.label}</label>
                                 <input
                                     type="number"
                                     min={0}
@@ -585,7 +593,7 @@ export default function ZReportPage() {
                                         ...prev,
                                         [item.key]: parseInt(e.target.value) || 0
                                     }))}
-                                    className="w-full py-2 px-3 bg-white border border-gray-300 rounded-xl text-sm font-bold text-gray-900 text-center"
+                                    className="w-full py-1.5 px-2 bg-white border border-gray-300 rounded-lg text-xs font-bold text-gray-800 text-center focus:border-purple-600 focus:outline-none"
                                 />
                                 <div className="text-[11px] text-gray-500 text-right font-mono font-bold">
                                     = {fmt((cashDenominations[item.key] || 0) * item.mult)}
@@ -594,14 +602,14 @@ export default function ZReportPage() {
                         ))}
                     </div>
 
-                    <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="bg-emerald-50/70 rounded-xl p-3.5 border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div>
-                            <div className="text-xs font-bold text-emerald-800 uppercase tracking-wide">Physical Cash Count Result</div>
-                            <div className="text-2xl font-black text-emerald-900 font-mono mt-0.5">{fmt(physicalCashCounted)}</div>
+                            <div className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">Physical Cash Count Result</div>
+                            <div className="text-xl font-bold text-emerald-900 font-mono mt-0.5">{fmt(physicalCashCounted)}</div>
                         </div>
                         <div className="text-right">
-                            <div className="text-xs font-bold text-gray-600">Expected in Drawer: <span className="font-mono">{fmt(expectedDrawerCash)}</span></div>
-                            <div className={`text-sm font-black font-mono ${drawerVariance < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
+                            <div className="text-xs text-gray-600 font-medium">Expected in Drawer: <span className="font-mono font-bold">{fmt(expectedDrawerCash)}</span></div>
+                            <div className={`text-xs font-bold font-mono ${drawerVariance < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
                                 Variance: {drawerVariance >= 0 ? '+' : ''}{fmt(drawerVariance)}
                             </div>
                         </div>
@@ -610,47 +618,47 @@ export default function ZReportPage() {
             )}
 
             {activeTab === 'tax_matrix' && (
-                <div className="bg-white rounded-3xl border border-gray-200/80 shadow-sm overflow-hidden">
-                    <div className="p-6 border-b border-gray-200">
-                        <h3 className="text-base font-black text-gray-900">KRA Tax Category Breakdown</h3>
-                        <p className="text-xs text-gray-500 mt-0.5">Itemized VAT and tourism levy declarations for KRA iTax portal.</p>
+                <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm overflow-hidden">
+                    <div className="p-4 border-b border-gray-100">
+                        <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">KRA Tax Category Breakdown</h3>
+                        <p className="text-gray-500 text-xs mt-0.5">Itemized VAT and tourism levy declarations for KRA iTax portal.</p>
                     </div>
                     <div className="overflow-x-auto">
                         <table className="w-full text-left border-collapse">
                             <thead>
-                                <tr className="bg-gray-50/80 border-b border-gray-200 text-[11px] font-black text-gray-500 uppercase tracking-wider">
-                                    <th className="p-4 pl-6">Tax Code</th>
-                                    <th className="p-4">Description</th>
-                                    <th className="p-4 text-center">Tax Rate</th>
-                                    <th className="p-4 text-right">Taxable Gross Amount</th>
-                                    <th className="p-4 pr-6 text-right">Tax Liability (KES)</th>
+                                <tr className="bg-gray-50 text-[11px] font-semibold uppercase tracking-wider text-gray-600 border-b border-gray-200/80">
+                                    <th className="p-3.5 pl-5">Tax Code</th>
+                                    <th className="p-3.5">Description</th>
+                                    <th className="p-3.5 text-center">Tax Rate</th>
+                                    <th className="p-3.5 text-right">Taxable Gross Amount</th>
+                                    <th className="p-3.5 pr-5 text-right">Tax Liability (KES)</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 text-xs text-gray-700 font-medium">
-                                <tr className="hover:bg-indigo-50/30">
-                                    <td className="p-4 pl-6 font-mono font-bold text-gray-900">TAX A</td>
-                                    <td className="p-4">Standard Value Added Tax (16% VAT)</td>
-                                    <td className="p-4 text-center font-bold">16.0%</td>
-                                    <td className="p-4 text-right font-mono">{fmt(salesSummary.netSales * 0.6)}</td>
-                                    <td className="p-4 pr-6 text-right font-mono font-black text-emerald-800">{fmt(salesSummary.taxA_vat)}</td>
+                                <tr className="hover:bg-purple-50/30 transition-colors">
+                                    <td className="p-3.5 pl-5 font-mono font-bold text-gray-800">TAX A</td>
+                                    <td className="p-3.5 font-semibold text-gray-800">Standard Value Added Tax (16% VAT)</td>
+                                    <td className="p-3.5 text-center font-bold text-purple-700">16.0%</td>
+                                    <td className="p-3.5 text-right font-mono text-gray-700">{fmt(salesSummary.netSales * 0.6)}</td>
+                                    <td className="p-3.5 pr-5 text-right font-mono font-bold text-emerald-700">{fmt(salesSummary.taxA_vat)}</td>
                                 </tr>
-                                <tr className="hover:bg-indigo-50/30">
-                                    <td className="p-4 pl-6 font-mono font-bold text-gray-900">TAX B</td>
-                                    <td className="p-4">Kenya Tourism Promotion Levy (TRA)</td>
-                                    <td className="p-4 text-center font-bold">2.0%</td>
-                                    <td className="p-4 text-right font-mono">{fmt(salesSummary.netSales)}</td>
-                                    <td className="p-4 pr-6 text-right font-mono font-black text-emerald-800">{fmt(salesSummary.taxB_tourism)}</td>
+                                <tr className="hover:bg-purple-50/30 transition-colors">
+                                    <td className="p-3.5 pl-5 font-mono font-bold text-gray-800">TAX B</td>
+                                    <td className="p-3.5 font-semibold text-gray-800">Kenya Tourism Promotion Levy (TRA)</td>
+                                    <td className="p-3.5 text-center font-bold text-purple-700">2.0%</td>
+                                    <td className="p-3.5 text-right font-mono text-gray-700">{fmt(salesSummary.netSales)}</td>
+                                    <td className="p-3.5 pr-5 text-right font-mono font-bold text-emerald-700">{fmt(salesSummary.taxB_tourism)}</td>
                                 </tr>
-                                <tr className="hover:bg-indigo-50/30">
-                                    <td className="p-4 pl-6 font-mono font-bold text-gray-900">TAX C</td>
-                                    <td className="p-4">Zero-Rated Unprocessed Foods &amp; Milk</td>
-                                    <td className="p-4 text-center font-bold">0.0%</td>
-                                    <td className="p-4 text-right font-mono">{fmt(salesSummary.taxC_zeroRated)}</td>
-                                    <td className="p-4 pr-6 text-right font-mono font-black text-gray-400">Ksh 0</td>
+                                <tr className="hover:bg-purple-50/30 transition-colors">
+                                    <td className="p-3.5 pl-5 font-mono font-bold text-gray-800">TAX C</td>
+                                    <td className="p-3.5 font-semibold text-gray-800">Zero-Rated Unprocessed Foods &amp; Milk</td>
+                                    <td className="p-3.5 text-center font-bold text-gray-500">0.0%</td>
+                                    <td className="p-3.5 text-right font-mono text-gray-700">{fmt(salesSummary.taxC_zeroRated)}</td>
+                                    <td className="p-3.5 pr-5 text-right font-mono font-bold text-gray-400">Ksh 0</td>
                                 </tr>
-                                <tr className="bg-gray-50/90 font-black text-gray-900">
-                                    <td colSpan={4} className="p-4 pl-6 text-right">TOTAL TAX REMITTANCE:</td>
-                                    <td className="p-4 pr-6 text-right font-mono text-sm text-indigo-700">
+                                <tr className="bg-gray-50/90 font-bold text-gray-900 border-t border-gray-200">
+                                    <td colSpan={4} className="p-3.5 pl-5 text-right text-xs">TOTAL TAX REMITTANCE:</td>
+                                    <td className="p-3.5 pr-5 text-right font-mono text-xs font-bold text-indigo-700">
                                         {fmt(salesSummary.taxA_vat + salesSummary.taxB_tourism)}
                                     </td>
                                 </tr>
