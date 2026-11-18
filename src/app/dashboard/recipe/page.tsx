@@ -100,6 +100,16 @@ export default function RecipePage() {
     const [isSaving, setIsSaving] = useState(false);
     const [searchLibrary, setSearchLibrary] = useState('');
 
+    // Batches tab pagination & filtering state
+    const [batchSearch, setBatchSearch] = useState('');
+    const [batchStatusFilter, setBatchStatusFilter] = useState<'all' | 'in_stock' | 'low_stock' | 'depleted'>('all');
+    const [batchCurrentPage, setBatchCurrentPage] = useState(1);
+    const [batchPageSize, setBatchPageSize] = useState(8);
+
+    // Saved recipes library pagination
+    const [libraryCurrentPage, setLibraryCurrentPage] = useState(1);
+    const [libraryPageSize, setLibraryPageSize] = useState(8);
+
     // =========================================================================
     // UNIT CONVERSION ENGINE & UNITS CATALOG
     // Matches Ingredient Stock (ingredient-stock) base tracking units
@@ -801,6 +811,196 @@ export default function RecipePage() {
         return savedRecipes.filter(r => (r.dish_name || '').toLowerCase().includes(q));
     }, [savedRecipes, searchLibrary]);
 
+    // Library pagination
+    const totalLibraryPages = Math.max(1, Math.ceil(filteredRecipes.length / libraryPageSize));
+    const paginatedRecipes = useMemo(() => {
+        const start = (libraryCurrentPage - 1) * libraryPageSize;
+        return filteredRecipes.slice(start, start + libraryPageSize);
+    }, [filteredRecipes, libraryCurrentPage, libraryPageSize]);
+
+    // Batches tab filtering & pagination
+    const filteredBatches = useMemo(() => {
+        return batches.filter(b => {
+            if (batchSearch) {
+                const q = batchSearch.toLowerCase();
+                const matchName = (b.product_name || '').toLowerCase().includes(q);
+                const matchCode = (b.batch_number || '').toLowerCase().includes(q);
+                if (!matchName && !matchCode) return false;
+            }
+
+            const rem = Number(b.qty_remaining) || 0;
+            if (batchStatusFilter === 'in_stock' && rem <= 0) return false;
+            if (batchStatusFilter === 'low_stock' && (rem <= 0 || rem > 10)) return false;
+            if (batchStatusFilter === 'depleted' && rem > 0) return false;
+
+            return true;
+        });
+    }, [batches, batchSearch, batchStatusFilter]);
+
+    const totalBatchPages = Math.max(1, Math.ceil(filteredBatches.length / batchPageSize));
+    const paginatedBatches = useMemo(() => {
+        const start = (batchCurrentPage - 1) * batchPageSize;
+        return filteredBatches.slice(start, start + batchPageSize);
+    }, [filteredBatches, batchCurrentPage, batchPageSize]);
+
+    // Reset pagination to page 1 on filter/search changes
+    useEffect(() => {
+        setBatchCurrentPage(1);
+    }, [batchSearch, batchStatusFilter, batchPageSize]);
+
+    useEffect(() => {
+        setLibraryCurrentPage(1);
+    }, [searchLibrary, libraryPageSize]);
+
+    // Side-by-side Batch Analytics: Depletion, Top Profit Dishes, Freshness
+    const batchAnalytics = useMemo(() => {
+        let totalProduced = 0;
+        let totalRemaining = 0;
+        let totalSold = 0;
+        let totalCost = 0;
+        let totalRevenue = 0;
+        let totalProfit = 0;
+
+        // Group by product to find top profit dishes currently in kitchen
+        const dishAggMap: Record<number, { name: string; readyPax: number; potentialProfit: number; potentialRevenue: number; cost: number; batchesCount: number; sPrice: number; costUnit: number }> = {};
+
+        batches.forEach(b => {
+            const prod = Number(b.qty_produced) || 0;
+            const rem = Number(b.qty_remaining) || 0;
+            const sold = Math.max(0, prod - rem);
+            const costUnit = Number(b.cost_per_unit) || 0;
+            const matchedDish = dishes.find(d => d.pid === b.product_id);
+            const sPrice = Number(b.selling_price) || Number(matchedDish?.sales_cost) || 0;
+
+            const bCost = prod * costUnit;
+            const bRev = prod * sPrice;
+            const bProf = bRev - bCost;
+
+            totalProduced += prod;
+            totalRemaining += rem;
+            totalSold += sold;
+            totalCost += bCost;
+            totalRevenue += bRev;
+            totalProfit += bProf;
+
+            if (rem > 0) {
+                const pid = b.product_id;
+                if (!dishAggMap[pid]) {
+                    dishAggMap[pid] = {
+                        name: b.product_name,
+                        readyPax: 0,
+                        potentialProfit: 0,
+                        potentialRevenue: 0,
+                        cost: 0,
+                        batchesCount: 0,
+                        sPrice,
+                        costUnit
+                    };
+                }
+                dishAggMap[pid].readyPax += rem;
+                dishAggMap[pid].cost += (rem * costUnit);
+                dishAggMap[pid].potentialRevenue += (rem * sPrice);
+                dishAggMap[pid].potentialProfit += ((rem * sPrice) - (rem * costUnit));
+                dishAggMap[pid].batchesCount += 1;
+            }
+        });
+
+        const topProfitDishes = Object.values(dishAggMap)
+            .sort((a, b) => b.potentialProfit - a.potentialProfit)
+            .slice(0, 5);
+
+        const depletionRate = totalProduced > 0 ? ((totalSold / totalProduced) * 100) : 0;
+        const avgMargin = totalRevenue > 0 ? ((totalProfit / totalRevenue) * 100) : 0;
+
+        // Aging: cooked today vs older
+        const todayStr = new Date().toISOString().split('T')[0];
+        const todayBatchesCount = batches.filter(b => b.production_date === todayStr).length;
+        const agingBatchesCount = batches.filter(b => {
+            if (!b.production_date) return false;
+            const diffDays = Math.floor((new Date().getTime() - new Date(b.production_date).getTime()) / (1000 * 3600 * 24));
+            return diffDays >= 3 && (b.qty_remaining || 0) > 0;
+        }).length;
+
+        const inStockCount = batches.filter(b => (b.qty_remaining || 0) > 0).length;
+        const lowStockCount = batches.filter(b => (b.qty_remaining || 0) > 0 && (b.qty_remaining || 0) <= 10).length;
+        const depletedCount = batches.filter(b => (b.qty_remaining || 0) <= 0).length;
+
+        return {
+            totalProduced,
+            totalRemaining,
+            totalSold,
+            totalCost,
+            totalRevenue,
+            totalProfit,
+            topProfitDishes,
+            depletionRate,
+            avgMargin,
+            todayBatchesCount,
+            agingBatchesCount,
+            inStockCount,
+            lowStockCount,
+            depletedCount
+        };
+    }, [batches, dishes]);
+
+    // Quick Action: Jump to Studio with a specific dish ready to cook
+    const quickCookDishInStudio = (dishName: string) => {
+        const matchDish = dishes.find(d => d.product_name.toLowerCase() === dishName.toLowerCase()) || dishes.find(d => dishName.toLowerCase().includes(d.product_name.toLowerCase()));
+        if (matchDish) {
+            handleSelectDish(matchDish.pid);
+            setActiveTab('studio');
+            toast.success(`Loaded ${matchDish.product_name} into Studio 🍳`);
+        } else {
+            setActiveTab('studio');
+            toast('Switched to Studio. Select target dish to cook.');
+        }
+    };
+
+    // Thermal Print of Kitchen Batches Inventory
+    const handlePrintBatchesThermalSummary = async () => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        const activeList = batches.filter(b => (b.qty_remaining || 0) > 0);
+        const html = `<!DOCTYPE html><html><head><style>
+          body{font-family:Arial,sans-serif;width:80mm;padding:4mm;font-size:11px;margin:0;}
+          .center{text-align:center;}
+          .bold{font-weight:bold;}
+          .table{width:100%;border-collapse:collapse;margin-top:6px;}
+          .table th,.table td{padding:3px 1px;border-bottom:1px dashed #666;font-size:10px;}
+          .total{border-top:2px dashed #000;padding-top:4px;margin-top:6px;font-weight:bold;}
+        </style></head><body>
+          <div class="center bold" style="font-size:13px;">${companyName}</div>
+          <div class="center bold">KITCHEN BATCHES INVENTORY</div>
+          <div class="center" style="font-size:9px;">Date: ${todayStr} • ${new Date().toLocaleTimeString()}</div>
+          <div class="center bold" style="margin-top:4px;">ACTIVE PORTIONS: ${batchAnalytics.totalRemaining}</div>
+          <table class="table">
+            <thead>
+              <tr><th align="left">Dish</th><th align="right">Batch</th><th align="right">Rem</th><th align="right">Profit</th></tr>
+            </thead>
+            <tbody>
+              ${activeList.slice(0, 30).map(b => {
+                const matchedDish = dishes.find(d => d.pid === b.product_id);
+                const sPrice = Number(b.selling_price) || Number(matchedDish?.sales_cost) || 0;
+                const costUnit = Number(b.cost_per_unit) || 0;
+                const bProfit = (sPrice - costUnit) * b.qty_remaining;
+                return `<tr>
+                  <td>${b.product_name.slice(0, 15)}</td>
+                  <td align="right" style="font-size:8px;">${b.batch_number.slice(-7)}</td>
+                  <td align="right"><b>${b.qty_remaining}</b></td>
+                  <td align="right">Ksh ${Math.round(bProfit)}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+          <div class="total">
+            <div>Total Active Batches: ${activeList.length}</div>
+            <div>Potential Net Profit: Ksh ${Math.round(batchAnalytics.totalProfit).toLocaleString()}</div>
+            <div>Production Cost: Ksh ${Math.round(batchAnalytics.totalCost).toLocaleString()}</div>
+          </div>
+        </body></html>`;
+        await executeDirectPrint(html, { printerRole: 'kitchen' });
+        toast.success('Kitchen Batches Inventory slip dispatched! 🧾');
+    };
+
     // Average Food Cost % across all recipes
     const avgFoodCost = useMemo(() => {
         const valid = savedRecipes.filter(r => r.selling_price && r.selling_price > 0 && r.cost_per_unit > 0);
@@ -1383,150 +1583,592 @@ export default function RecipePage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 font-medium">
-                                {filteredRecipes.map(r => {
-                                    const sellPrice = r.selling_price || 0;
-                                    const cogs = r.cost_per_unit || 0;
-                                    const profitPerDish = sellPrice - cogs;
-                                    const yieldCount = r.qty_produced || 1;
-                                    const totalCost = Number(r.total_cost) || (cogs * yieldCount);
-                                    const totalRevenue = sellPrice * yieldCount;
-                                    const totalProfit = totalRevenue - totalCost;
-                                    const fcPct = sellPrice > 0 ? (cogs / sellPrice) * 100 : 0;
-                                    return (
-                                        <tr key={r.recipe_id} className="hover:bg-gray-50/80 transition-colors">
-                                            <td className="py-3 px-3 font-mono font-bold text-gray-500">#{r.recipe_id}</td>
-                                            <td className="py-3 px-3 font-bold text-gray-900 text-sm">{r.dish_name}</td>
-                                            <td className="py-3 px-3 text-gray-600">{r.qty_produced} Portions</td>
-                                            <td className="py-3 px-3 text-right font-black font-mono text-emerald-800">
-                                                Ksh {cogs.toFixed(2)}
-                                            </td>
-                                            <td className="py-3 px-3 text-right font-mono font-bold text-amber-950">
-                                                {sellPrice > 0 ? `Ksh ${sellPrice.toLocaleString()}` : 'Not Set'}
-                                            </td>
-                                            <td className="py-3 px-3 text-right font-mono font-black text-blue-700">
-                                                {sellPrice > 0 ? (profitPerDish >= 0 ? `+Ksh ${profitPerDish.toFixed(2)}` : `-Ksh ${Math.abs(profitPerDish).toFixed(2)}`) : '—'}
-                                            </td>
-                                            <td className="py-3 px-3 text-right font-mono text-gray-700 font-bold">
-                                                Ksh {totalCost.toLocaleString()}
-                                            </td>
-                                            <td className="py-3 px-3 text-right font-mono text-gray-900 font-bold">
-                                                {sellPrice > 0 ? `Ksh ${totalRevenue.toLocaleString()}` : '—'}
-                                            </td>
-                                            <td className="py-3 px-3 text-right">
-                                                {sellPrice > 0 ? (
-                                                    <div>
-                                                        <span className={`font-mono font-black text-xs block ${totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
-                                                            {totalProfit >= 0 ? `+Ksh ${totalProfit.toLocaleString()}` : `-Ksh ${Math.abs(totalProfit).toLocaleString()}`}
-                                                        </span>
-                                                        <span className="text-[10px] text-gray-400 font-semibold block">
-                                                            vs Ksh {totalCost.toLocaleString()} cost
-                                                        </span>
-                                                    </div>
-                                                ) : '—'}
-                                            </td>
-                                            <td className="py-3 px-3 text-center">
-                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${
-                                                    fcPct <= 28 ? 'bg-green-100 text-green-800' : fcPct <= 35 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
-                                                }`}>
-                                                    {fcPct > 0 ? `${fcPct.toFixed(1)}%` : '—'}
-                                                </span>
-                                            </td>
-                                            <td className="py-3 px-3 text-center">
-                                                <button
-                                                    onClick={() => loadRecipeIntoStudio(r)}
-                                                    className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-colors"
-                                                >
-                                                    ✏️ Edit in Studio
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                {paginatedRecipes.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={11} className="py-8 text-center text-gray-400 italic">
+                                            No recipe specifications match your search.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    paginatedRecipes.map((r: SavedRecipe) => {
+                                        const sellPrice = r.selling_price || 0;
+                                        const cogs = r.cost_per_unit || 0;
+                                        const profitPerDish = sellPrice - cogs;
+                                        const yieldCount = r.qty_produced || 1;
+                                        const totalCost = Number(r.total_cost) || (cogs * yieldCount);
+                                        const totalRevenue = sellPrice * yieldCount;
+                                        const totalProfit = totalRevenue - totalCost;
+                                        const fcPct = sellPrice > 0 ? (cogs / sellPrice) * 100 : 0;
+                                        return (
+                                            <tr key={r.recipe_id} className="hover:bg-gray-50/80 transition-colors">
+                                                <td className="py-3 px-3 font-mono font-bold text-gray-500">#{r.recipe_id}</td>
+                                                <td className="py-3 px-3 font-bold text-gray-900 text-sm">{r.dish_name}</td>
+                                                <td className="py-3 px-3 text-gray-600">{r.qty_produced} Portions</td>
+                                                <td className="py-3 px-3 text-right font-black font-mono text-emerald-800">
+                                                    Ksh {cogs.toFixed(2)}
+                                                </td>
+                                                <td className="py-3 px-3 text-right font-mono font-bold text-amber-950">
+                                                    {sellPrice > 0 ? `Ksh ${sellPrice.toLocaleString()}` : 'Not Set'}
+                                                </td>
+                                                <td className="py-3 px-3 text-right font-mono font-black text-blue-700">
+                                                    {sellPrice > 0 ? (profitPerDish >= 0 ? `+Ksh ${profitPerDish.toFixed(2)}` : `-Ksh ${Math.abs(profitPerDish).toFixed(2)}`) : '—'}
+                                                </td>
+                                                <td className="py-3 px-3 text-right font-mono text-gray-700 font-bold">
+                                                    Ksh {totalCost.toLocaleString()}
+                                                </td>
+                                                <td className="py-3 px-3 text-right font-mono text-gray-900 font-bold">
+                                                    {sellPrice > 0 ? `Ksh ${totalRevenue.toLocaleString()}` : '—'}
+                                                </td>
+                                                <td className="py-3 px-3 text-right">
+                                                    {sellPrice > 0 ? (
+                                                        <div>
+                                                            <span className={`font-mono font-black text-xs block ${totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                                                                {totalProfit >= 0 ? `+Ksh ${totalProfit.toLocaleString()}` : `-Ksh ${Math.abs(totalProfit).toLocaleString()}`}
+                                                            </span>
+                                                            <span className="text-[10px] text-gray-400 font-semibold block">
+                                                                vs Ksh {totalCost.toLocaleString()} cost
+                                                            </span>
+                                                        </div>
+                                                    ) : '—'}
+                                                </td>
+                                                <td className="py-3 px-3 text-center">
+                                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${
+                                                        fcPct <= 28 ? 'bg-green-100 text-green-800' : fcPct <= 35 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                                                    }`}>
+                                                        {fcPct > 0 ? `${fcPct.toFixed(1)}%` : '—'}
+                                                    </span>
+                                                </td>
+                                                <td className="py-3 px-3 text-center">
+                                                    <button
+                                                        onClick={() => loadRecipeIntoStudio(r)}
+                                                        className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-colors"
+                                                    >
+                                                        ✏️ Edit in Studio
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination Footer for Recipes Library */}
+                    {filteredRecipes.length > 0 && (
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-gray-100 text-xs text-gray-600">
+                            <div>
+                                Showing <strong className="text-gray-900">{((libraryCurrentPage - 1) * libraryPageSize) + 1}</strong> to <strong className="text-gray-900">{Math.min(filteredRecipes.length, libraryCurrentPage * libraryPageSize)}</strong> of <strong className="text-gray-900">{filteredRecipes.length}</strong> recipes
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <button
+                                    disabled={libraryCurrentPage <= 1}
+                                    onClick={() => setLibraryCurrentPage(prev => Math.max(1, prev - 1))}
+                                    className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                >
+                                    ‹ Prev
+                                </button>
+                                {Array.from({ length: totalLibraryPages }).map((_, i) => (
+                                    <button
+                                        key={i + 1}
+                                        onClick={() => setLibraryCurrentPage(i + 1)}
+                                        className={`w-8 h-8 rounded-xl font-bold transition-all ${
+                                            libraryCurrentPage === i + 1
+                                                ? 'bg-emerald-600 text-white shadow-sm'
+                                                : 'border border-gray-200 hover:bg-gray-100 text-gray-700'
+                                        }`}
+                                    >
+                                        {i + 1}
+                                    </button>
+                                ))}
+                                <button
+                                    disabled={libraryCurrentPage >= totalLibraryPages}
+                                    onClick={() => setLibraryCurrentPage(prev => Math.min(totalLibraryPages, prev + 1))}
+                                    className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                >
+                                    Next ›
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
-            {/* TAB 3: KITCHEN PRODUCTION BATCHES */}
+            {/* TAB 3: KITCHEN PRODUCTION BATCHES & SIDE-BY-SIDE ANALYTICS COCKPIT */}
             {activeTab === 'batches' && (
-                <div className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-4">
-                    <div className="pb-3 border-b border-gray-100">
-                        <h2 className="text-xl font-black text-gray-900">Kitchen Production Batches Ledger</h2>
-                        <p className="text-xs text-gray-500">Cooked kitchen batches with remaining portions (decremented by POS sales)</p>
-                    </div>
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                    {/* Left 8 Cols: Paginated Batches DataGrid */}
+                    <div className="xl:col-span-8 bg-white/80 backdrop-blur-xl p-5 sm:p-6 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-4">
+                        {/* Header & Controls */}
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
+                            <div>
+                                <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                                    <span>🏭</span> Kitchen Batches Ledger
+                                </h2>
+                                <p className="text-xs text-gray-500">
+                                    Cooked dish portions decremented in real-time as POS orders are placed
+                                </p>
+                            </div>
 
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-xs text-left">
-                            <thead className="bg-gray-50 text-[11px] font-bold uppercase text-gray-500 border-b border-gray-100">
-                                <tr>
-                                    <th className="py-3 px-3">Batch Code</th>
-                                    <th className="py-3 px-3">Dish Name</th>
-                                    <th className="py-3 px-3">Production Date</th>
-                                    <th className="py-3 px-3 text-right">Produced / Left</th>
-                                    <th className="py-3 px-3 text-right">Cost / Dish</th>
-                                    <th className="py-3 px-3 text-right">Total Production Cost</th>
-                                    <th className="py-3 px-3 text-right">Sale Price / Dish</th>
-                                    <th className="py-3 px-3 text-right">Profit / Dish</th>
-                                    <th className="py-3 px-3 text-right">Total Revenue (If Sold)</th>
-                                    <th className="py-3 px-3 text-right">Total Profit If Sold</th>
-                                    <th className="py-3 px-3 text-center">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100 font-medium">
-                                {batches.map(b => {
-                                    const matchedDish = dishes.find(d => d.pid === b.product_id);
-                                    const sPrice = Number(b.selling_price) || Number(matchedDish?.sales_cost) || 0;
-                                    const costUnit = Number(b.cost_per_unit) || 0;
-                                    const profitUnit = sPrice - costUnit;
-                                    const batchProdCost = Number(b.total_production_cost) || (costUnit * b.qty_produced);
-                                    const totalBatchRev = sPrice * b.qty_produced;
-                                    const totalBatchProfit = totalBatchRev - batchProdCost;
-                                    return (
-                                        <tr key={b.batch_id} className="hover:bg-gray-50/80 transition-colors">
-                                            <td className="py-3 px-3 font-mono font-bold text-gray-800">{b.batch_number}</td>
-                                            <td className="py-3 px-3 font-bold text-gray-900">{b.product_name}</td>
-                                            <td className="py-3 px-3 text-gray-500">{b.production_date}</td>
-                                            <td className="py-3 px-3 text-right">
-                                                <span className="font-semibold text-gray-600">{b.qty_produced}</span>
-                                                <span className="text-gray-400 mx-1">/</span>
-                                                <span className="font-black font-mono text-emerald-800">{b.qty_remaining} rem</span>
-                                            </td>
-                                            <td className="py-3 px-3 text-right font-mono text-gray-600">Ksh {costUnit.toFixed(2)}</td>
-                                            <td className="py-3 px-3 text-right font-black font-mono text-gray-900">Ksh {batchProdCost.toLocaleString()}</td>
-                                            <td className="py-3 px-3 text-right font-mono font-bold text-amber-950">
-                                                {sPrice > 0 ? `Ksh ${sPrice.toLocaleString()}` : 'Not Set'}
-                                            </td>
-                                            <td className="py-3 px-3 text-right font-mono font-black text-blue-700">
-                                                {sPrice > 0 ? (profitUnit >= 0 ? `+Ksh ${profitUnit.toFixed(2)}` : `-Ksh ${Math.abs(profitUnit).toFixed(2)}`) : '—'}
-                                            </td>
-                                            <td className="py-3 px-3 text-right font-mono font-bold text-gray-900">
-                                                {sPrice > 0 ? `Ksh ${totalBatchRev.toLocaleString()}` : '—'}
-                                            </td>
-                                            <td className="py-3 px-3 text-right">
-                                                {sPrice > 0 ? (
-                                                    <div>
-                                                        <span className={`font-mono font-black text-xs block ${totalBatchProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
-                                                            {totalBatchProfit >= 0 ? `+Ksh ${totalBatchProfit.toLocaleString()}` : `-Ksh ${Math.abs(totalBatchProfit).toLocaleString()}`}
-                                                        </span>
-                                                        <span className="text-[10px] text-gray-400 font-semibold block">
-                                                            vs Ksh {batchProdCost.toLocaleString()} cost
-                                                        </span>
-                                                    </div>
-                                                ) : '—'}
-                                            </td>
-                                            <td className="py-3 px-3 text-center">
-                                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                    b.qty_remaining > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-gray-100 text-gray-500'
-                                                }`}>
-                                                    {b.qty_remaining > 0 ? 'In Stock' : 'Depleted'}
-                                                </span>
+                            {/* Search and Page Size */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <div className="relative">
+                                    <input
+                                        type="text"
+                                        placeholder="Search dish or batch #..."
+                                        value={batchSearch}
+                                        onChange={(e) => setBatchSearch(e.target.value)}
+                                        className="pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium w-48 sm:w-56 focus:outline-none focus:border-emerald-500"
+                                    />
+                                    <span className="absolute left-2.5 top-2 text-gray-400 text-xs">🔍</span>
+                                    {batchSearch && (
+                                        <button
+                                            onClick={() => setBatchSearch('')}
+                                            className="absolute right-2.5 top-1.5 text-gray-400 hover:text-gray-700 text-xs font-bold"
+                                        >
+                                            ✕
+                                        </button>
+                                    )}
+                                </div>
+
+                                <select
+                                    value={batchPageSize}
+                                    onChange={(e) => setBatchPageSize(Number(e.target.value))}
+                                    className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 cursor-pointer focus:outline-none focus:border-emerald-500"
+                                    title="Rows per page"
+                                >
+                                    <option value={6}>6 / page</option>
+                                    <option value={8}>8 / page</option>
+                                    <option value={12}>12 / page</option>
+                                    <option value={20}>20 / page</option>
+                                    <option value={50}>50 / page</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        {/* Filter Status Pills */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                                onClick={() => setBatchStatusFilter('all')}
+                                className={`px-3 py-1 rounded-xl text-xs font-black transition-all ${
+                                    batchStatusFilter === 'all'
+                                        ? 'bg-gray-900 text-white shadow-sm'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                            >
+                                All ({batches.length})
+                            </button>
+                            <button
+                                onClick={() => setBatchStatusFilter('in_stock')}
+                                className={`px-3 py-1 rounded-xl text-xs font-black transition-all ${
+                                    batchStatusFilter === 'in_stock'
+                                        ? 'bg-emerald-600 text-white shadow-sm'
+                                        : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                                }`}
+                            >
+                                🟢 In Stock ({batchAnalytics.inStockCount})
+                            </button>
+                            <button
+                                onClick={() => setBatchStatusFilter('low_stock')}
+                                className={`px-3 py-1 rounded-xl text-xs font-black transition-all ${
+                                    batchStatusFilter === 'low_stock'
+                                        ? 'bg-amber-600 text-white shadow-sm'
+                                        : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                                }`}
+                            >
+                                ⚠️ Low Stock &le;10 ({batchAnalytics.lowStockCount})
+                            </button>
+                            <button
+                                onClick={() => setBatchStatusFilter('depleted')}
+                                className={`px-3 py-1 rounded-xl text-xs font-black transition-all ${
+                                    batchStatusFilter === 'depleted'
+                                        ? 'bg-gray-700 text-white shadow-sm'
+                                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                                }`}
+                            >
+                                ⚪ Depleted ({batchAnalytics.depletedCount})
+                            </button>
+                        </div>
+
+                        {/* The DataGrid Table */}
+                        <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                            <table className="w-full text-xs text-left">
+                                <thead className="bg-gray-50 text-[11px] font-bold uppercase text-gray-500 border-b border-gray-100 sticky top-0">
+                                    <tr>
+                                        <th className="py-3 px-3">Batch Code</th>
+                                        <th className="py-3 px-3">Dish Name</th>
+                                        <th className="py-3 px-3">Date</th>
+                                        <th className="py-3 px-3 text-right">Produced / Left</th>
+                                        <th className="py-3 px-3 text-right">Cost / Dish</th>
+                                        <th className="py-3 px-3 text-right">Sale Price</th>
+                                        <th className="py-3 px-3 text-right">Profit / Dish</th>
+                                        <th className="py-3 px-3 text-right">Total Profit If Sold</th>
+                                        <th className="py-3 px-3 text-center">Status</th>
+                                        <th className="py-3 px-3 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 font-medium">
+                                    {paginatedBatches.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={10} className="py-12 text-center text-gray-400 italic">
+                                                No kitchen batches match the selected filters.
                                             </td>
                                         </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
+                                    ) : (
+                                        paginatedBatches.map(b => {
+                                            const matchedDish = dishes.find(d => d.pid === b.product_id);
+                                            const sPrice = Number(b.selling_price) || Number(matchedDish?.sales_cost) || 0;
+                                            const costUnit = Number(b.cost_per_unit) || 0;
+                                            const profitUnit = sPrice - costUnit;
+                                            const batchProdCost = Number(b.total_production_cost) || (costUnit * b.qty_produced);
+                                            const totalBatchRev = sPrice * b.qty_produced;
+                                            const totalBatchProfit = totalBatchRev - batchProdCost;
+                                            const rem = Number(b.qty_remaining) || 0;
+                                            const prod = Number(b.qty_produced) || 1;
+                                            const pctRem = Math.round((rem / prod) * 100);
+
+                                            return (
+                                                <tr key={b.batch_id} className="hover:bg-gray-50/80 transition-colors">
+                                                    <td className="py-3 px-3 font-mono font-bold text-gray-700">
+                                                        <span className="text-[11px] text-gray-400">#</span>
+                                                        {b.batch_number}
+                                                    </td>
+                                                    <td className="py-3 px-3 font-bold text-gray-900">
+                                                        {b.product_name}
+                                                    </td>
+                                                    <td className="py-3 px-3 text-gray-500 whitespace-nowrap">
+                                                        {b.production_date}
+                                                    </td>
+                                                    <td className="py-3 px-3 text-right">
+                                                        <div className="flex flex-col items-end">
+                                                            <span className="font-mono text-xs">
+                                                                <strong className="text-emerald-800">{rem}</strong>
+                                                                <span className="text-gray-400"> / {prod} rem</span>
+                                                            </span>
+                                                            {/* Mini Progress Bar */}
+                                                            <div className="w-16 h-1.5 bg-gray-200 rounded-full overflow-hidden mt-1">
+                                                                <div
+                                                                    className={`h-full ${pctRem > 30 ? 'bg-emerald-500' : pctRem > 0 ? 'bg-amber-500' : 'bg-gray-400'}`}
+                                                                    style={{ width: `${Math.min(100, Math.max(0, pctRem))}%` }}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-3 text-right font-mono text-gray-600">
+                                                        Ksh {costUnit.toFixed(2)}
+                                                    </td>
+                                                    <td className="py-3 px-3 text-right font-mono font-bold text-amber-950">
+                                                        {sPrice > 0 ? `Ksh ${sPrice.toLocaleString()}` : 'Not Set'}
+                                                    </td>
+                                                    <td className="py-3 px-3 text-right font-mono font-black text-blue-700">
+                                                        {sPrice > 0 ? (profitUnit >= 0 ? `+Ksh ${profitUnit.toFixed(2)}` : `-Ksh ${Math.abs(profitUnit).toFixed(2)}`) : '—'}
+                                                    </td>
+                                                    <td className="py-3 px-3 text-right">
+                                                        {sPrice > 0 ? (
+                                                            <div>
+                                                                <span className={`font-mono font-black text-xs block ${totalBatchProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                                                                    {totalBatchProfit >= 0 ? `+Ksh ${totalBatchProfit.toLocaleString()}` : `-Ksh ${Math.abs(totalBatchProfit).toLocaleString()}`}
+                                                                </span>
+                                                                <span className="text-[10px] text-gray-400 font-semibold block">
+                                                                    vs Ksh {batchProdCost.toLocaleString()} cost
+                                                                </span>
+                                                            </div>
+                                                        ) : '—'}
+                                                    </td>
+                                                    <td className="py-3 px-3 text-center">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                            rem > 10 ? 'bg-emerald-100 text-emerald-800' : rem > 0 ? 'bg-amber-100 text-amber-800 animate-pulse' : 'bg-gray-100 text-gray-500'
+                                                        }`}>
+                                                            {rem > 10 ? 'In Stock' : rem > 0 ? 'Low Stock' : 'Depleted'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="py-3 px-3 text-center">
+                                                        <button
+                                                            onClick={() => quickCookDishInStudio(b.product_name)}
+                                                            className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-black transition-colors"
+                                                            title="Cook another batch of this dish in Studio"
+                                                        >
+                                                            🍳 Cook
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Pagination Footer */}
+                        {filteredBatches.length > 0 && (
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-gray-100 text-xs text-gray-600">
+                                <div>
+                                    Showing <strong className="text-gray-900">{((batchCurrentPage - 1) * batchPageSize) + 1}</strong> to <strong className="text-gray-900">{Math.min(filteredBatches.length, batchCurrentPage * batchPageSize)}</strong> of <strong className="text-gray-900">{filteredBatches.length}</strong> batches
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <button
+                                        disabled={batchCurrentPage <= 1}
+                                        onClick={() => setBatchCurrentPage(1)}
+                                        className="px-2 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                        title="First Page"
+                                    >
+                                        «
+                                    </button>
+                                    <button
+                                        disabled={batchCurrentPage <= 1}
+                                        onClick={() => setBatchCurrentPage(prev => Math.max(1, prev - 1))}
+                                        className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                    >
+                                        ‹ Prev
+                                    </button>
+
+                                    {/* Numbered Page Buttons */}
+                                    {Array.from({ length: totalBatchPages }).map((_, i) => {
+                                        const pageNum = i + 1;
+                                        if (
+                                            pageNum === 1 ||
+                                            pageNum === totalBatchPages ||
+                                            (pageNum >= batchCurrentPage - 1 && pageNum <= batchCurrentPage + 1)
+                                        ) {
+                                            return (
+                                                <button
+                                                    key={pageNum}
+                                                    onClick={() => setBatchCurrentPage(pageNum)}
+                                                    className={`w-8 h-8 rounded-xl font-bold transition-all ${
+                                                        batchCurrentPage === pageNum
+                                                            ? 'bg-emerald-600 text-white shadow-sm'
+                                                            : 'border border-gray-200 hover:bg-gray-100 text-gray-700'
+                                                    }`}
+                                                >
+                                                    {pageNum}
+                                                </button>
+                                            );
+                                        } else if (
+                                            pageNum === batchCurrentPage - 2 ||
+                                            pageNum === batchCurrentPage + 2
+                                        ) {
+                                            return <span key={pageNum} className="px-1 text-gray-400">...</span>;
+                                        }
+                                        return null;
+                                    })}
+
+                                    <button
+                                        disabled={batchCurrentPage >= totalBatchPages}
+                                        onClick={() => setBatchCurrentPage(prev => Math.min(totalBatchPages, prev + 1))}
+                                        className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                    >
+                                        Next ›
+                                    </button>
+                                    <button
+                                        disabled={batchCurrentPage >= totalBatchPages}
+                                        onClick={() => setBatchCurrentPage(totalBatchPages)}
+                                        className="px-2 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                        title="Last Page"
+                                    >
+                                        »
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right 4 Cols: Side-by-Side Analysis & Operations Cockpit */}
+                    <div className="xl:col-span-4 space-y-5">
+                        {/* 1. Financial Health & Depletion Velocity Card */}
+                        <div className="bg-gradient-to-br from-[#0c161e] via-[#062c1e] to-[#041d14] text-white p-5 rounded-3xl border-2 border-emerald-500/50 shadow-xl shadow-emerald-950/20 space-y-4">
+                            <div className="flex items-center justify-between pb-2 border-b border-emerald-500/30">
+                                <div>
+                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300">
+                                        Kitchen Batches Ledger
+                                    </span>
+                                    <h3 className="text-base font-black text-white flex items-center gap-1.5 mt-0.5">
+                                        <span>📊</span> Yield &amp; Profit Matrix
+                                    </h3>
+                                </div>
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#00e676]/20 text-[#00e676] border border-[#00e676]/40">
+                                    Live Kitchen
+                                </span>
+                            </div>
+
+                            {/* Net Unrealized Profit */}
+                            <div className="p-3.5 rounded-2xl bg-black/40 border border-emerald-500/30 text-center">
+                                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Unrealized Potential Profit</span>
+                                <p className="text-3xl font-black font-mono text-[#00e676] mt-0.5 drop-shadow-[0_0_10px_rgba(0,230,118,0.3)]">
+                                    +Ksh {batchAnalytics.totalProfit.toLocaleString()}
+                                </p>
+                                <span className="text-[11px] text-emerald-300 font-semibold mt-0.5 block">
+                                    vs Ksh {batchAnalytics.totalCost.toLocaleString()} ingredient cost
+                                </span>
+                            </div>
+
+                            {/* Key Stats Row */}
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="p-2.5 rounded-xl bg-black/30 border border-white/10">
+                                    <span className="text-[10px] text-gray-400 uppercase font-bold block">POS Revenue</span>
+                                    <span className="text-sm font-black font-mono text-emerald-200">
+                                        Ksh {batchAnalytics.totalRevenue.toLocaleString()}
+                                    </span>
+                                </div>
+                                <div className="p-2.5 rounded-xl bg-black/30 border border-white/10">
+                                    <span className="text-[10px] text-gray-400 uppercase font-bold block">Average Margin</span>
+                                    <span className="text-sm font-black font-mono text-[#00e676]">
+                                        {batchAnalytics.avgMargin.toFixed(1)}%
+                                    </span>
+                                </div>
+                            </div>
+
+                            {/* Depletion Velocity Progress */}
+                            <div className="space-y-1.5 pt-1">
+                                <div className="flex justify-between text-[11px]">
+                                    <span className="text-gray-300 font-bold">Kitchen Depletion Velocity:</span>
+                                    <span className="font-mono font-black text-[#00e676]">{batchAnalytics.depletionRate.toFixed(1)}% Sold</span>
+                                </div>
+                                <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden flex">
+                                    <div
+                                        className="h-full bg-[#00e676] transition-all"
+                                        style={{ width: `${Math.min(100, Math.max(0, batchAnalytics.depletionRate))}%` }}
+                                        title="Sold Portions"
+                                    />
+                                    <div
+                                        className="h-full bg-purple-500 transition-all"
+                                        style={{ width: `${Math.min(100, Math.max(0, 100 - batchAnalytics.depletionRate))}%` }}
+                                        title="Remaining Portions"
+                                    />
+                                </div>
+                                <div className="flex justify-between text-[10px] text-gray-400">
+                                    <span>{batchAnalytics.totalSold} sold at POS</span>
+                                    <span className="text-white font-bold">{batchAnalytics.totalRemaining} Portions in kitchen</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 2. Top Profit Generators in Stock Card */}
+                        <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-3">
+                            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                                <div>
+                                    <h3 className="text-sm font-black text-gray-900 flex items-center gap-1.5">
+                                        <span>🏆</span> Top Profit Dishes in Stock
+                                    </h3>
+                                    <p className="text-[11px] text-gray-500">Highest margin contributors currently ready</p>
+                                </div>
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                                    Top 5
+                                </span>
+                            </div>
+
+                            <div className="space-y-2">
+                                {batchAnalytics.topProfitDishes.length === 0 ? (
+                                    <p className="text-xs text-gray-400 italic py-3 text-center">No active batches in stock.</p>
+                                ) : (
+                                    batchAnalytics.topProfitDishes.map((d, idx) => (
+                                        <div
+                                            key={d.name}
+                                            className="p-2.5 rounded-2xl bg-gray-50 hover:bg-gray-100/80 border border-gray-200/70 transition-all flex items-center justify-between gap-2"
+                                        >
+                                            <div className="flex items-center gap-2">
+                                                <span className={`w-6 h-6 rounded-xl flex items-center justify-center text-xs font-black ${
+                                                    idx === 0 ? 'bg-amber-400 text-amber-950 shadow-sm' : idx === 1 ? 'bg-slate-300 text-slate-800' : 'bg-gray-200 text-gray-700'
+                                                }`}>
+                                                    #{idx + 1}
+                                                </span>
+                                                <div>
+                                                    <p className="text-xs font-bold text-gray-900 leading-tight">{d.name}</p>
+                                                    <p className="text-[10px] text-gray-500 mt-0.5">
+                                                        <strong className="text-emerald-800">{d.readyPax}</strong> portions in stock
+                                                    </p>
+                                                </div>
+                                            </div>
+                                            <div className="text-right flex items-center gap-2">
+                                                <div>
+                                                    <span className="font-mono font-black text-xs text-emerald-700 block">
+                                                        +Ksh {Math.round(d.potentialProfit).toLocaleString()}
+                                                    </span>
+                                                    <span className="text-[9px] text-gray-400 font-medium block">
+                                                        profit
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    onClick={() => quickCookDishInStudio(d.name)}
+                                                    className="p-1 px-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-black transition-all"
+                                                    title={`Cook more ${d.name}`}
+                                                >
+                                                    🍳+
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        </div>
+
+                        {/* 3. Freshness & Aging Radar Card */}
+                        <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-3">
+                            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                                <h3 className="text-sm font-black text-gray-900 flex items-center gap-1.5">
+                                    <span>🕒</span> Freshness &amp; Aging Radar
+                                </h3>
+                                <span className="text-[10px] font-bold text-gray-500">Kitchen Rotation</span>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2 text-center">
+                                <div className="p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200">
+                                    <span className="text-[10px] font-bold text-emerald-900 uppercase block">Cooked Today</span>
+                                    <span className="text-lg font-black font-mono text-emerald-800 block mt-0.5">
+                                        {batchAnalytics.todayBatchesCount}
+                                    </span>
+                                    <span className="text-[9px] text-emerald-600 block">Fresh</span>
+                                </div>
+
+                                <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-200">
+                                    <span className="text-[10px] font-bold text-blue-900 uppercase block">Active Rotation</span>
+                                    <span className="text-lg font-black font-mono text-blue-800 block mt-0.5">
+                                        {Math.max(0, batchAnalytics.inStockCount - batchAnalytics.agingBatchesCount)}
+                                    </span>
+                                    <span className="text-[9px] text-blue-600 block">Ready</span>
+                                </div>
+
+                                <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-200">
+                                    <span className="text-[10px] font-bold text-amber-900 uppercase block">Aging &ge;3 Days</span>
+                                    <span className="text-lg font-black font-mono text-amber-800 block mt-0.5">
+                                        {batchAnalytics.agingBatchesCount}
+                                    </span>
+                                    <span className="text-[9px] text-amber-600 block">Check</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 4. Quick Kitchen Actions Card */}
+                        <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-3">
+                            <h3 className="text-sm font-black text-gray-900 flex items-center gap-1.5">
+                                <span>⚡</span> Quick Kitchen Operations
+                            </h3>
+
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => setActiveTab('studio')}
+                                    className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-2xl text-xs font-black shadow-md shadow-emerald-700/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                    <span>🍳</span>
+                                    <span>Cook New Batch in Studio</span>
+                                </button>
+
+                                <button
+                                    onClick={handlePrintBatchesThermalSummary}
+                                    className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                    <span>🖨️</span>
+                                    <span>Print Batches Inventory Slip</span>
+                                </button>
+
+                                <button
+                                    onClick={() => loadAllData()}
+                                    className="w-full py-2 px-4 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                >
+                                    <span>🔄</span>
+                                    <span>Refresh Batches Data</span>
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
