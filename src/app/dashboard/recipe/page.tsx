@@ -1043,30 +1043,31 @@ export default function RecipePage() {
     }, [batches, dishes]);
 
     return (
-        <div className="space-y-6 max-w-[1600px] mx-auto p-2 sm:p-4">
-            {/* Top Cockpit Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5">
+        <div className="space-y-4">
+            {/* Top Header & Navigation matching tax-settings design */}
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 pb-3 border-b border-gray-200/80">
                 <div>
-                    <div className="flex items-center gap-2">
-                        <span className="px-3 py-1 bg-amber-100 text-amber-900 rounded-full text-xs font-black uppercase tracking-wider">
-                            Executive Kitchen COGS
+                    <div className="flex items-center gap-2.5">
+                        <h1 className="text-xl md:text-2xl font-bold text-gray-800 flex items-center gap-2">
+                            <span>🍳</span> Recipe Studio &amp; Portion Costing
+                        </h1>
+                        <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/80">
+                            COGS &amp; Batches
                         </span>
-                        <span className="text-xs text-gray-500 font-medium">{companyName}</span>
                     </div>
-                    <h1 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight mt-1 flex items-center gap-2">
-                        <span>🍳</span> Culinary Recipe Studio &amp; Portion Costing
-                    </h1>
-                    <p className="text-xs text-gray-500 mt-1">
-                        Standard yield formulas, dynamic multi-ingredient costing, real-time Food Cost % margin analysis, and store auto-depletion.
+                    <p className="text-gray-500 text-xs mt-0.5">
+                        Portion food costing, margin matrix, kitchen batch depletion &amp; real-time store stock deduction
                     </p>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex items-center bg-gray-100/80 p-1.5 rounded-2xl border border-gray-200">
+                {/* Segmented Tab Switcher */}
+                <div className="flex items-center bg-gray-100 p-1 rounded-2xl border border-gray-200 text-xs shadow-inner">
                     <button
                         onClick={() => setActiveTab('studio')}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-                            activeTab === 'studio' ? 'bg-white text-emerald-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                            activeTab === 'studio'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
                         }`}
                     >
                         <span>🧪</span>
@@ -1074,17 +1075,21 @@ export default function RecipePage() {
                     </button>
                     <button
                         onClick={() => setActiveTab('library')}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-                            activeTab === 'library' ? 'bg-white text-indigo-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                            activeTab === 'library'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
                         }`}
                     >
                         <span>📚</span>
-                        <span>Saved Recipes ({savedRecipes.length})</span>
+                        <span>Master Library ({savedRecipes.length})</span>
                     </button>
                     <button
                         onClick={() => setActiveTab('batches')}
-                        className={`px-4 py-2.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
-                            activeTab === 'batches' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
+                        className={`px-3.5 py-2 rounded-xl font-bold transition-all flex items-center gap-1.5 ${
+                            activeTab === 'batches'
+                                ? 'bg-white text-gray-900 shadow-sm'
+                                : 'text-gray-600 hover:text-gray-900'
                         }`}
                     >
                         <span>🏭</span>
@@ -1093,55 +1098,72 @@ export default function RecipePage() {
                 </div>
             </div>
 
-            {/* KPI Metric Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5">
-                    <p className="text-xs font-bold text-gray-500 uppercase">Active Master Recipes</p>
-                    <p className="text-3xl font-black text-gray-900 mt-1">{savedRecipes.length}</p>
-                    <p className="text-[11px] text-emerald-600 font-semibold mt-1">Avg Food Cost: {avgFoodCost}%</p>
-                </div>
-                <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5">
-                    <p className="text-xs font-bold text-gray-500 uppercase">Raw Store Ingredients</p>
-                    <p className="text-3xl font-black text-indigo-700 mt-1">{ingredients.length}</p>
-                    <p className="text-[11px] text-indigo-500 font-semibold mt-1">Monitored store inventory items</p>
-                </div>
-                <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5">
-                    <p className="text-xs font-bold text-gray-500 uppercase">Active Kitchen Batches</p>
-                    <p className="text-3xl font-black text-purple-700 mt-1">{batchesFinancials.activeBatchesCount}</p>
-                    <p className="text-[11px] text-purple-600 font-semibold mt-1">Ready for POS service</p>
-                </div>
-                <div className="bg-gradient-to-br from-emerald-900 via-teal-950 to-[#062c1e] text-white p-5 rounded-3xl border border-emerald-500/40 shadow-lg shadow-emerald-950/20">
+            {/* KPI Summary Cards - Refined Modern Typography matching tax-settings */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+                <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm hover:shadow-md transition-all">
                     <div className="flex items-center justify-between">
-                        <p className="text-[10px] font-black text-emerald-300 uppercase tracking-wider">Batches Potential Profit</p>
-                        <span className="text-[10px] bg-emerald-500/20 px-2 py-0.5 rounded-full text-emerald-300 font-bold border border-emerald-400/30">vs Cost</span>
+                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Master Recipes</span>
+                        <span className="w-7 h-7 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-xs">📖</span>
                     </div>
-                    <p className="text-2xl font-black text-[#00e676] font-mono mt-1">
+                    <p className="text-xl font-bold text-gray-800 mt-1">{savedRecipes.length}</p>
+                    <div className="flex items-center gap-1.5 mt-1 text-[11px] text-gray-500">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                        <span>Avg Food Cost: <strong className="text-emerald-700 font-semibold">{avgFoodCost}%</strong></span>
+                    </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Store Ingredients</span>
+                        <span className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xs">🧂</span>
+                    </div>
+                    <p className="text-xl font-bold text-gray-800 mt-1">{ingredients.length}</p>
+                    <p className="text-[11px] text-gray-500 mt-1">Tracked inventory items</p>
+                </div>
+
+                <div className="bg-white p-4 rounded-2xl border border-gray-200/80 shadow-sm hover:shadow-md transition-all">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider">Active Batches</span>
+                        <span className="w-7 h-7 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xs">🍳</span>
+                    </div>
+                    <p className="text-xl font-bold text-gray-800 mt-1">{batchesFinancials.activeBatchesCount}</p>
+                    <p className="text-[11px] text-emerald-600 font-medium mt-1">Ready for POS service</p>
+                </div>
+
+                <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-indigo-950 text-white p-4 rounded-2xl border border-purple-400/20 shadow-md hover:shadow-lg transition-all">
+                    <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-semibold text-purple-200 uppercase tracking-wider">Batches Potential Profit</span>
+                        <span className="text-[10px] font-medium bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/30">vs Cost</span>
+                    </div>
+                    <p className="text-xl font-bold text-emerald-400 font-mono mt-1">
                         +Ksh {batchesFinancials.totalActivePotentialProfit.toLocaleString()}
                     </p>
-                    <p className="text-[11px] text-emerald-200/80 font-medium mt-1 flex items-center justify-between">
+                    <div className="flex items-center justify-between text-[11px] text-gray-300 mt-1 pt-1 border-t border-white/10">
                         <span>Cost: Ksh {batchesFinancials.totalActiveCost.toLocaleString()}</span>
-                        <span className="font-bold text-white">Rev: Ksh {batchesFinancials.totalActivePotentialRevenue.toLocaleString()}</span>
-                    </p>
+                        <span className="text-white font-medium">Rev: Ksh {batchesFinancials.totalActivePotentialRevenue.toLocaleString()}</span>
+                    </div>
                 </div>
             </div>
 
             {/* TAB 1: RECIPE STUDIO */}
             {activeTab === 'studio' && (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
                     {/* Left 4 Cols: Dish Selector & Financial Margin Card */}
-                    <div className="lg:col-span-4 space-y-5">
+                    <div className="lg:col-span-4 space-y-4">
                         {/* Target Dish Selector */}
-                        <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-4">
-                            <h2 className="text-base font-black text-gray-900 flex items-center gap-2">
-                                <span>🍽️</span> 1. Select Target Dish
-                            </h2>
+                        <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-4 md:p-5 space-y-3.5 hover:shadow-md transition-all">
+                            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                                <h2 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
+                                    <span>🍽️</span> 1. Select Target Dish
+                                </h2>
+                            </div>
 
                             <div>
-                                <label className="text-xs font-bold uppercase text-gray-500 block mb-1.5">Menu Dish Item</label>
+                                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block mb-1.5">Menu Dish Item</label>
                                 <select
                                     value={selectedDish?.pid || ''}
                                     onChange={(e) => handleSelectDish(Number(e.target.value))}
-                                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-emerald-500"
+                                    className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-purple-600 focus:outline-none"
                                 >
                                     <option value="">Select menu dish...</option>
                                     {dishes.map(d => (
@@ -1153,60 +1175,60 @@ export default function RecipePage() {
                             </div>
 
                             {selectedDish && (
-                                <div className="p-3.5 bg-gradient-to-br from-emerald-50/90 to-teal-50/70 border border-emerald-200/80 rounded-2xl space-y-2 text-xs">
+                                <div className="p-3 bg-gradient-to-r from-purple-50/60 via-indigo-50/40 to-blue-50/50 border border-purple-200/70 rounded-xl space-y-2 text-xs">
                                     <div className="flex items-center justify-between">
-                                        <span className="text-emerald-950 font-bold flex items-center gap-1">
+                                        <span className="text-gray-700 font-semibold flex items-center gap-1.5 text-xs">
                                             <span>🏷️</span> Sale Price / Dish:
                                         </span>
                                         <div className="flex items-center gap-1.5">
-                                            <span className="text-xs font-bold text-gray-500">Ksh</span>
+                                            <span className="text-xs font-semibold text-gray-500">Ksh</span>
                                             <input
                                                 type="number"
                                                 min="0"
                                                 step="1"
                                                 value={customSellingPrice}
                                                 onChange={(e) => setCustomSellingPrice(e.target.value === '' ? '' : Math.max(0, parseFloat(e.target.value) || 0))}
-                                                className="w-24 px-2.5 py-1 bg-white border border-emerald-300 focus:border-emerald-500 rounded-xl text-xs font-black font-mono text-emerald-950 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-right shadow-sm"
+                                                className="w-24 px-2.5 py-1 bg-white border border-gray-300 focus:border-purple-600 rounded-xl text-xs font-bold font-mono text-gray-800 focus:outline-none focus:ring-1 focus:ring-purple-500 text-right shadow-sm"
                                                 title="Edit selling price to simulate recipe profit"
                                             />
                                         </div>
                                     </div>
-                                    <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-emerald-200/60 text-[11px]">
+                                    <div className="grid grid-cols-2 gap-2 pt-1.5 border-t border-purple-200/50 text-[11px]">
                                         <div>
                                             <span className="text-gray-500 block">Cost Per Plate:</span>
                                             <span className="font-mono font-bold text-gray-800">Ksh {portionCost.toFixed(2)}</span>
                                         </div>
                                         <div>
                                             <span className="text-gray-500 block">Profit Per Plate:</span>
-                                            <span className={`font-mono font-black ${profitPerDish >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                                            <span className={`font-mono font-bold ${profitPerDish >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                                                 {profitPerDish >= 0 ? `+Ksh ${profitPerDish.toFixed(2)}` : `-Ksh ${Math.abs(profitPerDish).toFixed(2)}`}
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex justify-between items-center text-[10px] text-gray-500 pt-1 border-t border-emerald-200/40">
+                                    <div className="flex justify-between items-center text-[10px] text-gray-500 pt-1 border-t border-purple-200/40">
                                         <span>Barcode: <strong className="font-mono text-gray-700">{selectedDish.barcode || 'N/A'}</strong></span>
-                                        <span>Ready Stock: <strong className="font-bold text-emerald-800">{selectedDish.current_stock || 0} Pax</strong></span>
+                                        <span>Ready Stock: <strong className="font-semibold text-purple-800">{selectedDish.current_stock || 0} Pax</strong></span>
                                     </div>
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-3 gap-2.5 pt-2">
+                            <div className="grid grid-cols-3 gap-2 pt-1 text-xs">
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-gray-600 block mb-1">Yield (Portions)</label>
+                                    <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block mb-1">Yield (Portions)</label>
                                     <input
                                         type="number"
                                         min="1"
                                         value={portionsYield}
                                         onChange={(e) => setPortionsYield(Math.max(1, parseInt(e.target.value) || 1))}
-                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-black"
+                                        className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-bold text-gray-800 focus:bg-white focus:border-purple-600 focus:outline-none"
                                     />
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-gray-600 block mb-1">No. of Ingredients</label>
+                                    <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block mb-1">Ingredients</label>
                                     <select
                                         value={numIngredients}
                                         onChange={(e) => setNumIngredients(Math.max(1, parseInt(e.target.value) || 1))}
-                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-black text-gray-900 cursor-pointer focus:border-emerald-500"
+                                        className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-bold text-gray-800 focus:bg-white focus:border-purple-600 focus:outline-none cursor-pointer"
                                     >
                                         {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 18, 20].map(n => (
                                             <option key={n} value={n}>{n} Items</option>
@@ -1214,108 +1236,108 @@ export default function RecipePage() {
                                     </select>
                                 </div>
                                 <div>
-                                    <label className="text-xs font-bold uppercase text-gray-600 block mb-1">Recipe Date</label>
+                                    <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block mb-1">Recipe Date</label>
                                     <input
                                         type="date"
                                         value={recipeDate}
                                         onChange={(e) => setRecipeDate(e.target.value)}
-                                        className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium"
+                                        className="w-full px-2.5 py-1.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-medium text-gray-800 focus:bg-white focus:border-purple-600 focus:outline-none"
                                     />
                                 </div>
                             </div>
                         </div>
 
                         {/* Portion Cost & Profit Performance Matrix */}
-                        <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-base font-black text-gray-900 flex items-center gap-2">
+                        <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-4 md:p-5 space-y-3.5 hover:shadow-md transition-all">
+                            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+                                <h2 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                                     <span>📊</span> Cost &amp; Profit Performance
                                 </h2>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-900 border border-emerald-300">
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
                                     Live Financials
                                 </span>
                             </div>
 
                             <div className="space-y-2.5">
                                 {/* 1. PER DISH BREAKDOWN */}
-                                <div className="p-3 bg-gradient-to-r from-amber-50 to-orange-50/60 rounded-2xl border border-amber-200/80 flex justify-between items-center">
+                                <div className="p-3 bg-gray-50/80 rounded-xl border border-gray-200 flex justify-between items-center">
                                     <div>
-                                        <span className="text-xs font-bold text-amber-950 flex items-center gap-1">
+                                        <span className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                                             <span>🏷️</span> Sale Price Per Dish
                                         </span>
-                                        <span className="text-[10px] text-amber-800 font-medium">Menu price at POS</span>
+                                        <span className="text-[10px] text-gray-400">Menu price at POS</span>
                                     </div>
-                                    <span className="text-lg font-black font-mono text-amber-950">
+                                    <span className="text-base font-bold font-mono text-gray-900">
                                         Ksh {effectiveSellingPrice.toLocaleString()}
                                     </span>
                                 </div>
 
-                                <div className="p-3 bg-slate-50 rounded-2xl border border-gray-200 flex justify-between items-center">
+                                <div className="p-3 bg-gray-50/80 rounded-xl border border-gray-200 flex justify-between items-center">
                                     <div>
-                                        <span className="text-xs font-bold text-gray-800 flex items-center gap-1">
+                                        <span className="text-xs font-semibold text-gray-700 flex items-center gap-1.5">
                                             <span>🥣</span> Production Cost / Dish (COGS)
                                         </span>
-                                        <span className="text-[10px] text-gray-500">Raw ingredient cost per portion</span>
+                                        <span className="text-[10px] text-gray-400">Raw ingredient cost per portion</span>
                                     </div>
-                                    <span className="text-base font-black font-mono text-gray-900">
+                                    <span className="text-base font-bold font-mono text-gray-900">
                                         Ksh {portionCost.toFixed(2)}
                                     </span>
                                 </div>
 
-                                <div className="p-3 bg-gradient-to-r from-blue-50 to-indigo-50/60 rounded-2xl border border-blue-200/80 flex justify-between items-center">
+                                <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-200/80 flex justify-between items-center">
                                     <div>
-                                        <span className="text-xs font-bold text-blue-950 flex items-center gap-1">
+                                        <span className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
                                             <span>💰</span> Profit Per Dish
                                         </span>
-                                        <span className="text-[10px] text-blue-800 font-semibold">
+                                        <span className="text-[10px] text-purple-700 font-medium">
                                             Margin: {profitMarginPercent.toFixed(1)}% per plate
                                         </span>
                                     </div>
                                     <div className="text-right">
-                                        <span className={`text-xl font-black font-mono ${profitPerDish >= 0 ? 'text-blue-900' : 'text-red-700'}`}>
+                                        <span className={`text-base font-bold font-mono ${profitPerDish >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                                             {profitPerDish >= 0 ? `+Ksh ${profitPerDish.toFixed(2)}` : `-Ksh ${Math.abs(profitPerDish).toFixed(2)}`}
                                         </span>
                                     </div>
                                 </div>
 
                                 {/* 2. TOTAL PROFIT IF ALL SOLD VERSUS PRODUCTION COST SHOWCASE */}
-                                <div className="mt-3 p-4 rounded-2xl bg-gradient-to-br from-[#0c161e] via-[#062c1e] to-[#041d14] text-white border-2 border-[#00e676]/60 shadow-xl shadow-emerald-950/20 space-y-3">
-                                    <div className="flex items-center justify-between pb-2 border-b border-emerald-500/30">
+                                <div className="mt-3 p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-purple-950 to-indigo-950 text-white border border-purple-400/20 shadow-md space-y-3">
+                                    <div className="flex items-center justify-between pb-2 border-b border-white/10">
                                         <div>
-                                            <span className="text-xs font-black uppercase tracking-wider text-emerald-300 flex items-center gap-1.5">
+                                            <span className="text-xs font-bold uppercase tracking-wider text-purple-200 flex items-center gap-1.5">
                                                 <span>🚀</span> Total Profit If All Sold
                                             </span>
                                             <p className="text-[10px] text-gray-300">Batch Yield: {portionsYield} Portions</p>
                                         </div>
-                                        <span className="px-2.5 py-1 rounded-full text-[10px] font-black bg-[#00e676]/20 text-[#00e676] border border-[#00e676]/40 uppercase tracking-wide">
-                                            vs Production Cost
+                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 uppercase tracking-wide">
+                                            vs Cost
                                         </span>
                                     </div>
 
-                                    {/* Big Total Profit Number */}
+                                    {/* Moderate Net Batch Profit Number (refined from oversized 4xl) */}
                                     <div className="text-center py-1">
-                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Net Batch Profit</p>
-                                        <p className="text-3xl sm:text-4xl font-black font-mono text-[#00e676] tracking-tight drop-shadow-[0_0_12px_rgba(0,230,118,0.4)]">
+                                        <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Net Batch Profit</p>
+                                        <p className="text-xl sm:text-2xl font-bold font-mono text-emerald-400 tracking-tight">
                                             {totalProfitIfAllSold >= 0 ? `+Ksh ${totalProfitIfAllSold.toLocaleString()}` : `-Ksh ${Math.abs(totalProfitIfAllSold).toLocaleString()}`}
                                         </p>
-                                        <p className="text-[11px] text-emerald-300 font-semibold mt-0.5">
+                                        <p className="text-[11px] text-purple-200 font-medium mt-0.5">
                                             {markupPercent >= 0 ? `+${markupPercent.toFixed(0)}% ROI on raw ingredients` : 'Loss-making formula'}
                                         </p>
                                     </div>
 
                                     {/* Side-by-side comparison: Cost vs Revenue vs Profit */}
-                                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-emerald-500/20 text-xs">
-                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/10">
-                                            <span className="text-[10px] text-gray-400 uppercase font-bold block">Production Cost</span>
-                                            <span className="text-sm font-black font-mono text-rose-300">
+                                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-white/10 text-xs">
+                                        <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                                            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Production Cost</span>
+                                            <span className="text-sm font-bold font-mono text-rose-300">
                                                 Ksh {totalProductionCost.toLocaleString()}
                                             </span>
                                             <span className="text-[9px] text-gray-400 block mt-0.5">{portionsYield} portions COGS</span>
                                         </div>
 
-                                        <div className="p-2.5 rounded-xl bg-black/40 border border-white/10">
-                                            <span className="text-[10px] text-gray-400 uppercase font-bold block">Total Sales Revenue</span>
-                                            <span className="text-sm font-black font-mono text-emerald-200">
+                                        <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                                            <span className="text-[10px] text-gray-400 uppercase font-semibold block">Total Revenue</span>
+                                            <span className="text-sm font-bold font-mono text-emerald-300">
                                                 Ksh {totalSalesRevenue.toLocaleString()}
                                             </span>
                                             <span className="text-[9px] text-gray-400 block mt-0.5">If all {portionsYield} sold</span>
@@ -1323,21 +1345,21 @@ export default function RecipePage() {
                                     </div>
 
                                     {/* Summary Callout Banner */}
-                                    <div className="p-2 bg-emerald-950/60 rounded-xl border border-emerald-500/30 text-[10px] text-emerald-200 leading-relaxed">
-                                        💡 Spend <strong className="text-white">Ksh {totalProductionCost.toLocaleString()}</strong> on raw ingredients ➔ Generate <strong className="text-white">Ksh {totalSalesRevenue.toLocaleString()}</strong> in POS revenue ➔ Keep <strong className="text-[#00e676] font-bold">+Ksh {totalProfitIfAllSold.toLocaleString()}</strong> in clear profit!
+                                    <div className="p-2 bg-white/5 rounded-xl border border-white/10 text-[10px] text-purple-200 leading-relaxed">
+                                        💡 Spend <strong className="text-white">Ksh {totalProductionCost.toLocaleString()}</strong> on raw ingredients ➔ Generate <strong className="text-white">Ksh {totalSalesRevenue.toLocaleString()}</strong> in POS revenue ➔ Keep <strong className="text-emerald-400 font-semibold">+Ksh {totalProfitIfAllSold.toLocaleString()}</strong> in clear profit!
                                     </div>
                                 </div>
 
                                 {/* Food Cost Benchmark Badge */}
-                                <div className={`p-3.5 rounded-2xl border text-center ${
+                                <div className={`p-3 rounded-xl border text-center ${
                                     foodCostPercentage <= 28
-                                        ? 'bg-green-50 border-green-200 text-green-900'
+                                        ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
                                         : foodCostPercentage <= 35
                                             ? 'bg-amber-50 border-amber-200 text-amber-900'
                                             : 'bg-red-50 border-red-200 text-red-900'
                                 }`}>
                                     <p className="text-[10px] font-bold uppercase tracking-wider text-gray-600">Theoretical Food Cost (COGS %)</p>
-                                    <p className="text-2xl font-black mt-0.5">{foodCostPercentage.toFixed(1)}%</p>
+                                    <p className="text-xl font-bold mt-0.5 text-gray-800">{foodCostPercentage.toFixed(1)}%</p>
                                     <p className="text-[10px] font-semibold mt-0.5">
                                         {foodCostPercentage <= 28 && '🟢 High Profit Margin (<28%)'}
                                         {foodCostPercentage > 28 && foodCostPercentage <= 35 && '🟡 Healthy Restaurant Benchmark (28% – 35%)'}
@@ -1349,49 +1371,49 @@ export default function RecipePage() {
                     </div>
 
                     {/* Right 8 Cols: Dynamic Ingredients Table & Studio Actions */}
-                    <div className="lg:col-span-8 bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 flex flex-col h-full space-y-5">
+                    <div className="lg:col-span-8 bg-white rounded-2xl border border-gray-200/80 shadow-sm p-5 flex flex-col h-full space-y-4 hover:shadow-md transition-all">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-gray-100 gap-2">
                             <div>
                                 <div className="flex items-center gap-2 flex-wrap">
-                                    <h2 className="text-lg font-black text-gray-900 flex items-center gap-2">
+                                    <h2 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                                         <span>🧂</span> 2. Recipe Formula Ingredients ({recipeIngredients.length} / {numIngredients})
                                     </h2>
-                                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-black ${
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
                                         recipeIngredients.length === numIngredients
-                                            ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                                            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
                                             : recipeIngredients.length > numIngredients
-                                                ? 'bg-blue-100 text-blue-900 border border-blue-300'
-                                                : 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse'
+                                                ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                                                : 'bg-amber-50 text-amber-700 border border-amber-200 animate-pulse'
                                     }`}>
                                         {recipeIngredients.length === numIngredients && `✓ Complete (${numIngredients}/${numIngredients})`}
                                         {recipeIngredients.length < numIngredients && `⚠️ ${recipeIngredients.length} of ${numIngredients} added`}
                                         {recipeIngredients.length > numIngredients && `✨ ${recipeIngredients.length} ingredients (target: ${numIngredients})`}
                                     </span>
                                 </div>
-                                <p className="text-xs text-gray-500 mt-0.5">
+                                <p className="text-gray-500 text-xs mt-0.5">
                                     Target formula: <strong className="text-gray-800">{numIngredients} ingredients</strong>. Add raw store ingredients with auto conversions.
                                 </p>
                             </div>
-                            <div className="flex items-center gap-2 text-xs font-bold flex-wrap">
+                            <div className="flex items-center gap-2 text-xs font-semibold flex-wrap">
                                 <span className="px-2.5 py-1 rounded-xl bg-gray-100 text-gray-700">
-                                    Yield: <strong className="text-emerald-900 font-mono">{portionsYield}</strong> Pax
+                                    Yield: <strong className="text-gray-900 font-mono">{portionsYield}</strong> Pax
                                 </span>
-                                <span className="px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-200 text-amber-950 font-mono">
-                                    🏷️ Sale Price: <strong>Ksh {effectiveSellingPrice.toLocaleString()}</strong>
+                                <span className="px-2.5 py-1 rounded-xl bg-purple-50 border border-purple-200 text-purple-800 font-mono">
+                                    🏷️ Price: <strong>Ksh {effectiveSellingPrice.toLocaleString()}</strong>
                                 </span>
-                                <span className="px-2.5 py-1 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 font-mono">
+                                <span className="px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-mono">
                                     💰 Profit/Dish: <strong>{profitPerDish >= 0 ? `+Ksh ${profitPerDish.toFixed(2)}` : `-Ksh ${Math.abs(profitPerDish).toFixed(2)}`}</strong>
                                 </span>
-                                <span className="px-2.5 py-1 rounded-xl bg-emerald-50 border border-emerald-300 text-emerald-900 font-mono">
-                                    🚀 Batch Profit: <strong>+Ksh {totalProfitIfAllSold.toLocaleString()}</strong> <span className="text-[10px] text-gray-500 font-normal">(vs Ksh {totalProductionCost.toLocaleString()} cost)</span>
+                                <span className="px-2.5 py-1 rounded-xl bg-slate-900 text-white font-mono shadow-sm">
+                                    🚀 Batch Profit: <strong className="text-emerald-400">+Ksh {totalProfitIfAllSold.toLocaleString()}</strong>
                                 </span>
                             </div>
                         </div>
 
                         {/* Add Ingredient Line Picker */}
-                        <div className="p-4 bg-gray-50 rounded-2xl border border-gray-200 grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                        <div className="p-3.5 bg-gray-50/80 rounded-xl border border-gray-200/80 grid grid-cols-1 sm:grid-cols-12 gap-2.5 items-end">
                             <div className="sm:col-span-5">
-                                <label className="text-xs font-bold uppercase text-gray-500 block mb-1">Select Ingredient from Store</label>
+                                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block mb-1">Select Ingredient from Store</label>
                                 <select
                                     value={selectedIngId}
                                     onChange={(e) => {
@@ -1404,19 +1426,19 @@ export default function RecipePage() {
                                             setInputUnit('');
                                         }
                                     }}
-                                    className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:outline-none focus:border-emerald-500"
+                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-purple-600 focus:outline-none"
                                 >
                                     <option value="">Pick raw ingredient...</option>
                                     {ingredients.map(i => (
                                         <option key={i.pid} value={i.pid}>
-                                            {i.product_name} (Store Stock: {i.current_stock} {i.base_unit} · Ksh {i.cost_per_base_unit.toFixed(1)}/{i.base_unit})
+                                            {i.product_name} (Stock: {i.current_stock} {i.base_unit} · Ksh {i.cost_per_base_unit.toFixed(1)}/{i.base_unit})
                                         </option>
                                     ))}
                                 </select>
                             </div>
 
                             <div className="sm:col-span-3">
-                                <label className="text-xs font-bold uppercase text-gray-500 block mb-1">Portion Qty</label>
+                                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block mb-1">Portion Qty</label>
                                 <input
                                     type="number"
                                     step="0.001"
@@ -1424,16 +1446,16 @@ export default function RecipePage() {
                                     placeholder="e.g. 250"
                                     value={inputQty}
                                     onChange={(e) => setInputQty(e.target.value)}
-                                    className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-900 focus:outline-none"
+                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-purple-600 focus:outline-none"
                                 />
                             </div>
 
                             <div className="sm:col-span-2">
-                                <label className="text-xs font-bold uppercase text-gray-500 block mb-1">Unit</label>
+                                <label className="text-[11px] font-semibold uppercase tracking-wider text-gray-500 block mb-1">Unit</label>
                                 <select
                                     value={inputUnit}
                                     onChange={(e) => setInputUnit(e.target.value)}
-                                    className="w-full p-2.5 bg-white border border-gray-300 rounded-xl text-xs font-bold text-gray-800 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                                    className="w-full px-3 py-2 bg-white border border-gray-300 rounded-xl text-xs font-semibold text-gray-800 focus:bg-white focus:border-purple-600 focus:outline-none cursor-pointer"
                                 >
                                     {!inputUnit && <option value="">Select unit...</option>}
                                     {availableUnits.map(u => (
@@ -1445,7 +1467,7 @@ export default function RecipePage() {
                             <div className="sm:col-span-2">
                                 <button
                                     onClick={handleAddIngredientRow}
-                                    className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black shadow-sm transition-all"
+                                    className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
                                 >
                                     + Add Line
                                 </button>
@@ -1453,16 +1475,16 @@ export default function RecipePage() {
                         </div>
 
                         {/* Ingredients Table */}
-                        <div className="flex-1 overflow-y-auto border border-gray-100 rounded-2xl">
+                        <div className="flex-1 overflow-y-auto border border-gray-200/80 rounded-xl">
                             <table className="w-full text-xs text-left">
-                                <thead className="bg-gray-50 text-[11px] font-bold uppercase text-gray-500 border-b border-gray-100 sticky top-0">
+                                <thead className="bg-gray-50 text-[11px] font-semibold uppercase tracking-wider text-gray-600 border-b border-gray-200/80 sticky top-0">
                                     <tr>
-                                        <th className="py-3 px-3">Ingredient Name</th>
-                                        <th className="py-3 px-3">Store Stock</th>
-                                        <th className="py-3 px-3 text-right">Recipe Quantity</th>
-                                        <th className="py-3 px-3 text-right">Unit Rate</th>
-                                        <th className="py-3 px-3 text-right">Total Line Cost</th>
-                                        <th className="py-3 px-3 text-center">Action</th>
+                                        <th className="py-2.5 px-3">Ingredient Name</th>
+                                        <th className="py-2.5 px-3">Store Stock</th>
+                                        <th className="py-2.5 px-3 text-right">Recipe Quantity</th>
+                                        <th className="py-2.5 px-3 text-right">Unit Rate</th>
+                                        <th className="py-2.5 px-3 text-right">Total Line Cost</th>
+                                        <th className="py-2.5 px-3 text-center">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-100 font-medium">
@@ -1474,22 +1496,22 @@ export default function RecipePage() {
                                         </tr>
                                     ) : (
                                         recipeIngredients.map(r => (
-                                            <tr key={r.ingredient_id} className="hover:bg-gray-50/80 transition-colors">
-                                                <td className="py-2.5 px-3 font-bold text-gray-900">{r.ingredient_name}</td>
+                                            <tr key={r.ingredient_id} className="hover:bg-purple-50/30 transition-colors">
+                                                <td className="py-2.5 px-3 font-semibold text-gray-800">{r.ingredient_name}</td>
                                                 <td className="py-2.5 px-3 text-gray-500">{r.current_stock} {r.base_unit}</td>
-                                                <td className="py-2.5 px-3 text-right font-bold font-mono">
+                                                <td className="py-2.5 px-3 text-right font-bold font-mono text-gray-800">
                                                     {r.qty_issued} {r.unit_measure}
                                                 </td>
                                                 <td className="py-2.5 px-3 text-right text-gray-500 font-mono">
                                                     Ksh {r.rate.toFixed(2)}/{r.base_unit}
                                                 </td>
-                                                <td className="py-2.5 px-3 text-right font-black font-mono text-emerald-800">
+                                                <td className="py-2.5 px-3 text-right font-bold font-mono text-emerald-600">
                                                     Ksh {r.total_cost.toFixed(2)}
                                                 </td>
                                                 <td className="py-2.5 px-3 text-center">
                                                     <button
                                                         onClick={() => handleRemoveIngredientRow(r.ingredient_id)}
-                                                        className="text-red-500 hover:text-red-700 font-bold p-1"
+                                                        className="text-gray-400 hover:text-red-600 transition-colors p-1"
                                                         title="Remove Ingredient"
                                                     >
                                                         🗑️
@@ -1508,7 +1530,7 @@ export default function RecipePage() {
                                 <button
                                     onClick={handlePrintRecipeCard}
                                     disabled={!selectedDish || recipeIngredients.length === 0}
-                                    className="px-4 py-2.5 bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-800 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                                    className="px-3.5 py-2 bg-white border border-gray-200 hover:bg-gray-50 disabled:opacity-40 text-gray-700 rounded-xl text-xs font-semibold shadow-sm transition-all flex items-center gap-1.5"
                                 >
                                     <span>🖨️</span>
                                     <span>Print Recipe Card</span>
@@ -1518,7 +1540,7 @@ export default function RecipePage() {
                                         setRecipeIngredients([]);
                                         setSelectedDish(null);
                                     }}
-                                    className="px-4 py-2.5 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-xl text-xs font-semibold"
+                                    className="px-3.5 py-2 bg-white border border-gray-200 hover:bg-gray-50 text-gray-500 rounded-xl text-xs font-medium transition-all"
                                 >
                                     ↺ Clear Studio
                                 </button>
@@ -1528,7 +1550,7 @@ export default function RecipePage() {
                                 <button
                                     disabled={isSaving || !selectedDish || recipeIngredients.length === 0}
                                     onClick={handleSaveRecipeSpec}
-                                    className="px-5 py-3 bg-white hover:bg-gray-50 text-emerald-800 border-2 border-emerald-600 disabled:opacity-40 rounded-2xl text-xs font-black transition-all shadow-sm flex items-center gap-2"
+                                    className="px-4 py-2 bg-white hover:bg-purple-50 text-purple-700 border border-purple-300 disabled:opacity-40 rounded-xl text-xs font-semibold transition-all shadow-sm flex items-center gap-2"
                                 >
                                     <span>💾</span>
                                     <span>{isSaving ? 'Saving...' : 'Save Recipe Spec'}</span>
@@ -1537,7 +1559,7 @@ export default function RecipePage() {
                                 <button
                                     disabled={isSaving || !selectedDish || recipeIngredients.length === 0}
                                     onClick={handleCookAndDepleteBatch}
-                                    className="px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white disabled:opacity-40 rounded-2xl text-xs font-black shadow-lg shadow-emerald-700/30 transition-all flex items-center gap-2"
+                                    className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white disabled:opacity-40 rounded-xl text-xs font-semibold shadow-md shadow-purple-500/20 transition-all flex items-center gap-2"
                                 >
                                     <span>🍳</span>
                                     <span>{isSaving ? 'Processing...' : `Cook Batch (${portionsYield} Pax) & Deplete Stock`}</span>
@@ -1550,24 +1572,24 @@ export default function RecipePage() {
 
             {/* TAB 2: SAVED RECIPES LIBRARY */}
             {activeTab === 'library' && (
-                <div className="bg-white/80 backdrop-blur-xl p-6 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-4">
+                <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-4 md:p-5 space-y-4 hover:shadow-md transition-all">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-gray-100">
                         <div>
-                            <h2 className="text-xl font-black text-gray-900">Culinary Recipe Master Library</h2>
-                            <p className="text-xs text-gray-500">All standard recipes with live portion costing &amp; profit margins</p>
+                            <h2 className="text-xs font-bold text-gray-800 uppercase tracking-wider">Culinary Recipe Master Library</h2>
+                            <p className="text-gray-500 text-xs mt-0.5">All standard recipes with live portion costing &amp; profit margins</p>
                         </div>
                         <input
                             type="text"
                             placeholder="Search dishes in library..."
                             value={searchLibrary}
                             onChange={(e) => setSearchLibrary(e.target.value)}
-                            className="px-4 py-2 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium w-64 focus:outline-none focus:border-emerald-500"
+                            className="px-3.5 py-2 bg-gray-50 border border-gray-300 rounded-xl text-xs font-medium w-64 focus:bg-white focus:border-purple-600 focus:outline-none"
                         />
                     </div>
 
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto rounded-xl border border-gray-200/80">
                         <table className="w-full text-xs text-left">
-                            <thead className="bg-gray-50 text-[11px] font-bold uppercase text-gray-500 border-b border-gray-100">
+                            <thead className="bg-gray-50 text-[11px] font-semibold uppercase tracking-wider text-gray-600 border-b border-gray-200/80">
                                 <tr>
                                     <th className="py-3 px-3">Recipe ID</th>
                                     <th className="py-3 px-3">Dish Name</th>
@@ -1600,40 +1622,40 @@ export default function RecipePage() {
                                         const totalProfit = totalRevenue - totalCost;
                                         const fcPct = sellPrice > 0 ? (cogs / sellPrice) * 100 : 0;
                                         return (
-                                            <tr key={r.recipe_id} className="hover:bg-gray-50/80 transition-colors">
+                                            <tr key={r.recipe_id} className="hover:bg-purple-50/30 transition-colors">
                                                 <td className="py-3 px-3 font-mono font-bold text-gray-500">#{r.recipe_id}</td>
-                                                <td className="py-3 px-3 font-bold text-gray-900 text-sm">{r.dish_name}</td>
+                                                <td className="py-3 px-3 font-semibold text-gray-800 text-xs">{r.dish_name}</td>
                                                 <td className="py-3 px-3 text-gray-600">{r.qty_produced} Portions</td>
-                                                <td className="py-3 px-3 text-right font-black font-mono text-emerald-800">
+                                                <td className="py-3 px-3 text-right font-bold font-mono text-gray-800">
                                                     Ksh {cogs.toFixed(2)}
                                                 </td>
-                                                <td className="py-3 px-3 text-right font-mono font-bold text-amber-950">
+                                                <td className="py-3 px-3 text-right font-mono font-semibold text-gray-700">
                                                     {sellPrice > 0 ? `Ksh ${sellPrice.toLocaleString()}` : 'Not Set'}
                                                 </td>
-                                                <td className="py-3 px-3 text-right font-mono font-black text-blue-700">
+                                                <td className="py-3 px-3 text-right font-mono font-bold text-emerald-600">
                                                     {sellPrice > 0 ? (profitPerDish >= 0 ? `+Ksh ${profitPerDish.toFixed(2)}` : `-Ksh ${Math.abs(profitPerDish).toFixed(2)}`) : '—'}
                                                 </td>
-                                                <td className="py-3 px-3 text-right font-mono text-gray-700 font-bold">
+                                                <td className="py-3 px-3 text-right font-mono text-gray-700 font-semibold">
                                                     Ksh {totalCost.toLocaleString()}
                                                 </td>
-                                                <td className="py-3 px-3 text-right font-mono text-gray-900 font-bold">
+                                                <td className="py-3 px-3 text-right font-mono text-gray-800 font-semibold">
                                                     {sellPrice > 0 ? `Ksh ${totalRevenue.toLocaleString()}` : '—'}
                                                 </td>
                                                 <td className="py-3 px-3 text-right">
                                                     {sellPrice > 0 ? (
                                                         <div>
-                                                            <span className={`font-mono font-black text-xs block ${totalProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                                                            <span className={`font-mono font-bold text-xs block ${totalProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                                 {totalProfit >= 0 ? `+Ksh ${totalProfit.toLocaleString()}` : `-Ksh ${Math.abs(totalProfit).toLocaleString()}`}
                                                             </span>
-                                                            <span className="text-[10px] text-gray-400 font-semibold block">
+                                                            <span className="text-[10px] text-gray-400 font-medium block">
                                                                 vs Ksh {totalCost.toLocaleString()} cost
                                                             </span>
                                                         </div>
                                                     ) : '—'}
                                                 </td>
                                                 <td className="py-3 px-3 text-center">
-                                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${
-                                                        fcPct <= 28 ? 'bg-green-100 text-green-800' : fcPct <= 35 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                                                        fcPct <= 28 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : fcPct <= 35 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-red-50 text-red-700 border border-red-200'
                                                     }`}>
                                                         {fcPct > 0 ? `${fcPct.toFixed(1)}%` : '—'}
                                                     </span>
@@ -1641,9 +1663,9 @@ export default function RecipePage() {
                                                 <td className="py-3 px-3 text-center">
                                                     <button
                                                         onClick={() => loadRecipeIntoStudio(r)}
-                                                        className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-xl text-xs font-bold transition-colors"
+                                                        className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-xs font-semibold transition-colors"
                                                     >
-                                                        ✏️ Edit in Studio
+                                                        ✏️ Edit
                                                     </button>
                                                 </td>
                                             </tr>
@@ -1664,7 +1686,7 @@ export default function RecipePage() {
                                 <button
                                     disabled={libraryCurrentPage <= 1}
                                     onClick={() => setLibraryCurrentPage(prev => Math.max(1, prev - 1))}
-                                    className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                    className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-semibold transition-all"
                                 >
                                     ‹ Prev
                                 </button>
@@ -1672,9 +1694,9 @@ export default function RecipePage() {
                                     <button
                                         key={i + 1}
                                         onClick={() => setLibraryCurrentPage(i + 1)}
-                                        className={`w-8 h-8 rounded-xl font-bold transition-all ${
+                                        className={`w-8 h-8 rounded-xl font-semibold transition-all ${
                                             libraryCurrentPage === i + 1
-                                                ? 'bg-emerald-600 text-white shadow-sm'
+                                                ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
                                                 : 'border border-gray-200 hover:bg-gray-100 text-gray-700'
                                         }`}
                                     >
@@ -1684,7 +1706,7 @@ export default function RecipePage() {
                                 <button
                                     disabled={libraryCurrentPage >= totalLibraryPages}
                                     onClick={() => setLibraryCurrentPage(prev => Math.min(totalLibraryPages, prev + 1))}
-                                    className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                    className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-semibold transition-all"
                                 >
                                     Next ›
                                 </button>
@@ -1696,16 +1718,16 @@ export default function RecipePage() {
 
             {/* TAB 3: KITCHEN PRODUCTION BATCHES & SIDE-BY-SIDE ANALYTICS COCKPIT */}
             {activeTab === 'batches' && (
-                <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+                <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
                     {/* Left 8 Cols: Paginated Batches DataGrid */}
-                    <div className="xl:col-span-8 bg-white/80 backdrop-blur-xl p-5 sm:p-6 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-4">
+                    <div className="xl:col-span-8 bg-white rounded-2xl border border-gray-200/80 shadow-sm p-4 md:p-5 space-y-4 hover:shadow-md transition-all">
                         {/* Header & Controls */}
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-gray-100">
                             <div>
-                                <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">
+                                <h2 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-2">
                                     <span>🏭</span> Kitchen Batches Ledger
                                 </h2>
-                                <p className="text-xs text-gray-500">
+                                <p className="text-gray-500 text-xs mt-0.5">
                                     Cooked dish portions decremented in real-time as POS orders are placed
                                 </p>
                             </div>
@@ -1718,7 +1740,7 @@ export default function RecipePage() {
                                         placeholder="Search dish or batch #..."
                                         value={batchSearch}
                                         onChange={(e) => setBatchSearch(e.target.value)}
-                                        className="pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-medium w-48 sm:w-56 focus:outline-none focus:border-emerald-500"
+                                        className="pl-8 pr-3 py-1.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-medium w-48 sm:w-56 focus:bg-white focus:border-purple-600 focus:outline-none"
                                     />
                                     <span className="absolute left-2.5 top-2 text-gray-400 text-xs">🔍</span>
                                     {batchSearch && (
@@ -1734,7 +1756,7 @@ export default function RecipePage() {
                                 <select
                                     value={batchPageSize}
                                     onChange={(e) => setBatchPageSize(Number(e.target.value))}
-                                    className="px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-xl text-xs font-bold text-gray-700 cursor-pointer focus:outline-none focus:border-emerald-500"
+                                    className="px-2.5 py-1.5 bg-gray-50 border border-gray-300 rounded-xl text-xs font-semibold text-gray-700 cursor-pointer focus:bg-white focus:border-purple-600 focus:outline-none"
                                     title="Rows per page"
                                 >
                                     <option value={6}>6 / page</option>
@@ -1750,7 +1772,7 @@ export default function RecipePage() {
                         <div className="flex items-center gap-1.5 flex-wrap">
                             <button
                                 onClick={() => setBatchStatusFilter('all')}
-                                className={`px-3 py-1 rounded-xl text-xs font-black transition-all ${
+                                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
                                     batchStatusFilter === 'all'
                                         ? 'bg-gray-900 text-white shadow-sm'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -1760,27 +1782,27 @@ export default function RecipePage() {
                             </button>
                             <button
                                 onClick={() => setBatchStatusFilter('in_stock')}
-                                className={`px-3 py-1 rounded-xl text-xs font-black transition-all ${
+                                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
                                     batchStatusFilter === 'in_stock'
                                         ? 'bg-emerald-600 text-white shadow-sm'
-                                        : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200'
+                                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
                                 }`}
                             >
                                 🟢 In Stock ({batchAnalytics.inStockCount})
                             </button>
                             <button
                                 onClick={() => setBatchStatusFilter('low_stock')}
-                                className={`px-3 py-1 rounded-xl text-xs font-black transition-all ${
+                                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
                                     batchStatusFilter === 'low_stock'
                                         ? 'bg-amber-600 text-white shadow-sm'
-                                        : 'bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200'
+                                        : 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
                                 }`}
                             >
                                 ⚠️ Low Stock &le;10 ({batchAnalytics.lowStockCount})
                             </button>
                             <button
                                 onClick={() => setBatchStatusFilter('depleted')}
-                                className={`px-3 py-1 rounded-xl text-xs font-black transition-all ${
+                                className={`px-3 py-1 rounded-xl text-xs font-semibold transition-all ${
                                     batchStatusFilter === 'depleted'
                                         ? 'bg-gray-700 text-white shadow-sm'
                                         : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
@@ -1791,9 +1813,9 @@ export default function RecipePage() {
                         </div>
 
                         {/* The DataGrid Table */}
-                        <div className="overflow-x-auto rounded-2xl border border-gray-100">
+                        <div className="overflow-x-auto rounded-xl border border-gray-200/80">
                             <table className="w-full text-xs text-left">
-                                <thead className="bg-gray-50 text-[11px] font-bold uppercase text-gray-500 border-b border-gray-100 sticky top-0">
+                                <thead className="bg-gray-50 text-[11px] font-semibold uppercase tracking-wider text-gray-600 border-b border-gray-200/80 sticky top-0">
                                     <tr>
                                         <th className="py-3 px-3">Batch Code</th>
                                         <th className="py-3 px-3">Dish Name</th>
@@ -1828,12 +1850,12 @@ export default function RecipePage() {
                                             const pctRem = Math.round((rem / prod) * 100);
 
                                             return (
-                                                <tr key={b.batch_id} className="hover:bg-gray-50/80 transition-colors">
-                                                    <td className="py-3 px-3 font-mono font-bold text-gray-700">
+                                                <tr key={b.batch_id} className="hover:bg-purple-50/30 transition-colors">
+                                                    <td className="py-3 px-3 font-mono font-bold text-gray-600">
                                                         <span className="text-[11px] text-gray-400">#</span>
                                                         {b.batch_number}
                                                     </td>
-                                                    <td className="py-3 px-3 font-bold text-gray-900">
+                                                    <td className="py-3 px-3 font-semibold text-gray-800 text-xs">
                                                         {b.product_name}
                                                     </td>
                                                     <td className="py-3 px-3 text-gray-500 whitespace-nowrap">
@@ -1842,7 +1864,7 @@ export default function RecipePage() {
                                                     <td className="py-3 px-3 text-right">
                                                         <div className="flex flex-col items-end">
                                                             <span className="font-mono text-xs">
-                                                                <strong className="text-emerald-800">{rem}</strong>
+                                                                <strong className="text-gray-800">{rem}</strong>
                                                                 <span className="text-gray-400"> / {prod} rem</span>
                                                             </span>
                                                             {/* Mini Progress Bar */}
@@ -1857,27 +1879,27 @@ export default function RecipePage() {
                                                     <td className="py-3 px-3 text-right font-mono text-gray-600">
                                                         Ksh {costUnit.toFixed(2)}
                                                     </td>
-                                                    <td className="py-3 px-3 text-right font-mono font-bold text-amber-950">
+                                                    <td className="py-3 px-3 text-right font-mono font-semibold text-gray-700">
                                                         {sPrice > 0 ? `Ksh ${sPrice.toLocaleString()}` : 'Not Set'}
                                                     </td>
-                                                    <td className="py-3 px-3 text-right font-mono font-black text-blue-700">
+                                                    <td className="py-3 px-3 text-right font-mono font-bold text-emerald-600">
                                                         {sPrice > 0 ? (profitUnit >= 0 ? `+Ksh ${profitUnit.toFixed(2)}` : `-Ksh ${Math.abs(profitUnit).toFixed(2)}`) : '—'}
                                                     </td>
                                                     <td className="py-3 px-3 text-right">
                                                         {sPrice > 0 ? (
                                                             <div>
-                                                                <span className={`font-mono font-black text-xs block ${totalBatchProfit >= 0 ? 'text-emerald-700' : 'text-rose-600'}`}>
+                                                                <span className={`font-mono font-bold text-xs block ${totalBatchProfit >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                                                                     {totalBatchProfit >= 0 ? `+Ksh ${totalBatchProfit.toLocaleString()}` : `-Ksh ${Math.abs(totalBatchProfit).toLocaleString()}`}
                                                                 </span>
-                                                                <span className="text-[10px] text-gray-400 font-semibold block">
+                                                                <span className="text-[10px] text-gray-400 font-medium block">
                                                                     vs Ksh {batchProdCost.toLocaleString()} cost
                                                                 </span>
                                                             </div>
                                                         ) : '—'}
                                                     </td>
                                                     <td className="py-3 px-3 text-center">
-                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                                                            rem > 10 ? 'bg-emerald-100 text-emerald-800' : rem > 0 ? 'bg-amber-100 text-amber-800 animate-pulse' : 'bg-gray-100 text-gray-500'
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                                                            rem > 10 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : rem > 0 ? 'bg-amber-50 text-amber-700 border border-amber-200 animate-pulse' : 'bg-gray-100 text-gray-500'
                                                         }`}>
                                                             {rem > 10 ? 'In Stock' : rem > 0 ? 'Low Stock' : 'Depleted'}
                                                         </span>
@@ -1885,7 +1907,7 @@ export default function RecipePage() {
                                                     <td className="py-3 px-3 text-center">
                                                         <button
                                                             onClick={() => quickCookDishInStudio(b.product_name)}
-                                                            className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-black transition-colors"
+                                                            className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 rounded-lg text-[11px] font-semibold transition-colors"
                                                             title="Cook another batch of this dish in Studio"
                                                         >
                                                             🍳 Cook
@@ -1909,7 +1931,7 @@ export default function RecipePage() {
                                     <button
                                         disabled={batchCurrentPage <= 1}
                                         onClick={() => setBatchCurrentPage(1)}
-                                        className="px-2 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                        className="px-2 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-semibold transition-all"
                                         title="First Page"
                                     >
                                         «
@@ -1917,7 +1939,7 @@ export default function RecipePage() {
                                     <button
                                         disabled={batchCurrentPage <= 1}
                                         onClick={() => setBatchCurrentPage(prev => Math.max(1, prev - 1))}
-                                        className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                        className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-semibold transition-all"
                                     >
                                         ‹ Prev
                                     </button>
@@ -1934,9 +1956,9 @@ export default function RecipePage() {
                                                 <button
                                                     key={pageNum}
                                                     onClick={() => setBatchCurrentPage(pageNum)}
-                                                    className={`w-8 h-8 rounded-xl font-bold transition-all ${
+                                                    className={`w-8 h-8 rounded-xl font-semibold transition-all ${
                                                         batchCurrentPage === pageNum
-                                                            ? 'bg-emerald-600 text-white shadow-sm'
+                                                            ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-sm'
                                                             : 'border border-gray-200 hover:bg-gray-100 text-gray-700'
                                                     }`}
                                                 >
@@ -1955,14 +1977,14 @@ export default function RecipePage() {
                                     <button
                                         disabled={batchCurrentPage >= totalBatchPages}
                                         onClick={() => setBatchCurrentPage(prev => Math.min(totalBatchPages, prev + 1))}
-                                        className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                        className="px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-semibold transition-all"
                                     >
                                         Next ›
                                     </button>
                                     <button
                                         disabled={batchCurrentPage >= totalBatchPages}
                                         onClick={() => setBatchCurrentPage(totalBatchPages)}
-                                        className="px-2 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-bold transition-all"
+                                        className="px-2 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-100 disabled:opacity-40 font-semibold transition-all"
                                         title="Last Page"
                                     >
                                         »
@@ -1973,45 +1995,45 @@ export default function RecipePage() {
                     </div>
 
                     {/* Right 4 Cols: Side-by-Side Analysis & Operations Cockpit */}
-                    <div className="xl:col-span-4 space-y-5">
+                    <div className="xl:col-span-4 space-y-4">
                         {/* 1. Financial Health & Depletion Velocity Card */}
-                        <div className="bg-gradient-to-br from-[#0c161e] via-[#062c1e] to-[#041d14] text-white p-5 rounded-3xl border-2 border-emerald-500/50 shadow-xl shadow-emerald-950/20 space-y-4">
-                            <div className="flex items-center justify-between pb-2 border-b border-emerald-500/30">
+                        <div className="bg-gradient-to-r from-slate-900 via-purple-950 to-indigo-950 text-white p-5 rounded-2xl border border-purple-400/20 shadow-md space-y-3.5">
+                            <div className="flex items-center justify-between pb-2 border-b border-white/10">
                                 <div>
-                                    <span className="text-[10px] font-black uppercase tracking-wider text-emerald-300">
+                                    <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-200">
                                         Kitchen Batches Ledger
                                     </span>
-                                    <h3 className="text-base font-black text-white flex items-center gap-1.5 mt-0.5">
+                                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5 mt-0.5">
                                         <span>📊</span> Yield &amp; Profit Matrix
                                     </h3>
                                 </div>
-                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-[#00e676]/20 text-[#00e676] border border-[#00e676]/40">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
                                     Live Kitchen
                                 </span>
                             </div>
 
-                            {/* Net Unrealized Profit */}
-                            <div className="p-3.5 rounded-2xl bg-black/40 border border-emerald-500/30 text-center">
-                                <span className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Unrealized Potential Profit</span>
-                                <p className="text-3xl font-black font-mono text-[#00e676] mt-0.5 drop-shadow-[0_0_10px_rgba(0,230,118,0.3)]">
+                            {/* Net Unrealized Profit - Refined font size */}
+                            <div className="p-3.5 rounded-xl bg-white/5 border border-white/10 text-center">
+                                <span className="text-[10px] uppercase font-semibold text-gray-400 tracking-wider">Unrealized Potential Profit</span>
+                                <p className="text-xl font-bold font-mono text-emerald-400 mt-0.5">
                                     +Ksh {batchAnalytics.totalProfit.toLocaleString()}
                                 </p>
-                                <span className="text-[11px] text-emerald-300 font-semibold mt-0.5 block">
+                                <span className="text-[11px] text-purple-200 font-medium mt-0.5 block">
                                     vs Ksh {batchAnalytics.totalCost.toLocaleString()} ingredient cost
                                 </span>
                             </div>
 
                             {/* Key Stats Row */}
                             <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div className="p-2.5 rounded-xl bg-black/30 border border-white/10">
-                                    <span className="text-[10px] text-gray-400 uppercase font-bold block">POS Revenue</span>
-                                    <span className="text-sm font-black font-mono text-emerald-200">
+                                <div className="p-2.5 rounded-xl bg-white/5 border border-white/10">
+                                    <span className="text-[10px] text-gray-400 uppercase font-semibold block">POS Revenue</span>
+                                    <span className="text-sm font-bold font-mono text-emerald-300">
                                         Ksh {batchAnalytics.totalRevenue.toLocaleString()}
                                     </span>
                                 </div>
-                                <div className="p-2.5 rounded-xl bg-black/30 border border-white/10">
-                                    <span className="text-[10px] text-gray-400 uppercase font-bold block">Average Margin</span>
-                                    <span className="text-sm font-black font-mono text-[#00e676]">
+                                <div className="p-2.5 rounded-xl bg-white/5 border border-white/10">
+                                    <span className="text-[10px] text-gray-400 uppercase font-semibold block">Average Margin</span>
+                                    <span className="text-sm font-bold font-mono text-emerald-400">
                                         {batchAnalytics.avgMargin.toFixed(1)}%
                                     </span>
                                 </div>
@@ -2020,12 +2042,12 @@ export default function RecipePage() {
                             {/* Depletion Velocity Progress */}
                             <div className="space-y-1.5 pt-1">
                                 <div className="flex justify-between text-[11px]">
-                                    <span className="text-gray-300 font-bold">Kitchen Depletion Velocity:</span>
-                                    <span className="font-mono font-black text-[#00e676]">{batchAnalytics.depletionRate.toFixed(1)}% Sold</span>
+                                    <span className="text-gray-300 font-semibold">Kitchen Depletion Velocity:</span>
+                                    <span className="font-mono font-bold text-emerald-400">{batchAnalytics.depletionRate.toFixed(1)}% Sold</span>
                                 </div>
-                                <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden flex">
+                                <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden flex">
                                     <div
-                                        className="h-full bg-[#00e676] transition-all"
+                                        className="h-full bg-emerald-400 transition-all"
                                         style={{ width: `${Math.min(100, Math.max(0, batchAnalytics.depletionRate))}%` }}
                                         title="Sold Portions"
                                     />
@@ -2037,21 +2059,21 @@ export default function RecipePage() {
                                 </div>
                                 <div className="flex justify-between text-[10px] text-gray-400">
                                     <span>{batchAnalytics.totalSold} sold at POS</span>
-                                    <span className="text-white font-bold">{batchAnalytics.totalRemaining} Portions in kitchen</span>
+                                    <span className="text-white font-medium">{batchAnalytics.totalRemaining} Portions in kitchen</span>
                                 </div>
                             </div>
                         </div>
 
                         {/* 2. Top Profit Generators in Stock Card */}
-                        <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-3">
+                        <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-4 space-y-3 hover:shadow-md transition-all">
                             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
                                 <div>
-                                    <h3 className="text-sm font-black text-gray-900 flex items-center gap-1.5">
+                                    <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
                                         <span>🏆</span> Top Profit Dishes in Stock
                                     </h3>
                                     <p className="text-[11px] text-gray-500">Highest margin contributors currently ready</p>
                                 </div>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                                <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
                                     Top 5
                                 </span>
                             </div>
@@ -2063,24 +2085,24 @@ export default function RecipePage() {
                                     batchAnalytics.topProfitDishes.map((d, idx) => (
                                         <div
                                             key={d.name}
-                                            className="p-2.5 rounded-2xl bg-gray-50 hover:bg-gray-100/80 border border-gray-200/70 transition-all flex items-center justify-between gap-2"
+                                            className="p-2 rounded-xl bg-gray-50/80 hover:bg-purple-50/40 border border-gray-200/70 transition-all flex items-center justify-between gap-2"
                                         >
                                             <div className="flex items-center gap-2">
-                                                <span className={`w-6 h-6 rounded-xl flex items-center justify-center text-xs font-black ${
-                                                    idx === 0 ? 'bg-amber-400 text-amber-950 shadow-sm' : idx === 1 ? 'bg-slate-300 text-slate-800' : 'bg-gray-200 text-gray-700'
+                                                <span className={`w-6 h-6 rounded-lg flex items-center justify-center text-xs font-bold ${
+                                                    idx === 0 ? 'bg-amber-400 text-amber-950 shadow-sm' : idx === 1 ? 'bg-slate-200 text-slate-800' : 'bg-gray-100 text-gray-700'
                                                 }`}>
                                                     #{idx + 1}
                                                 </span>
                                                 <div>
-                                                    <p className="text-xs font-bold text-gray-900 leading-tight">{d.name}</p>
+                                                    <p className="text-xs font-semibold text-gray-800 leading-tight">{d.name}</p>
                                                     <p className="text-[10px] text-gray-500 mt-0.5">
-                                                        <strong className="text-emerald-800">{d.readyPax}</strong> portions in stock
+                                                        <strong className="text-gray-700">{d.readyPax}</strong> portions in stock
                                                     </p>
                                                 </div>
                                             </div>
                                             <div className="text-right flex items-center gap-2">
                                                 <div>
-                                                    <span className="font-mono font-black text-xs text-emerald-700 block">
+                                                    <span className="font-mono font-bold text-xs text-emerald-600 block">
                                                         +Ksh {Math.round(d.potentialProfit).toLocaleString()}
                                                     </span>
                                                     <span className="text-[9px] text-gray-400 font-medium block">
@@ -2089,7 +2111,7 @@ export default function RecipePage() {
                                                 </div>
                                                 <button
                                                     onClick={() => quickCookDishInStudio(d.name)}
-                                                    className="p-1 px-1.5 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg text-[10px] font-black transition-all"
+                                                    className="p-1 px-1.5 bg-white hover:bg-purple-50 text-purple-700 border border-purple-200 rounded-lg text-[10px] font-semibold transition-all"
                                                     title={`Cook more ${d.name}`}
                                                 >
                                                     🍳+
@@ -2102,34 +2124,34 @@ export default function RecipePage() {
                         </div>
 
                         {/* 3. Freshness & Aging Radar Card */}
-                        <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-3">
+                        <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-4 space-y-3 hover:shadow-md transition-all">
                             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-                                <h3 className="text-sm font-black text-gray-900 flex items-center gap-1.5">
+                                <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
                                     <span>🕒</span> Freshness &amp; Aging Radar
                                 </h3>
-                                <span className="text-[10px] font-bold text-gray-500">Kitchen Rotation</span>
+                                <span className="text-[10px] font-semibold text-gray-500">Kitchen Rotation</span>
                             </div>
 
                             <div className="grid grid-cols-3 gap-2 text-center">
-                                <div className="p-2.5 rounded-2xl bg-emerald-50 border border-emerald-200">
-                                    <span className="text-[10px] font-bold text-emerald-900 uppercase block">Cooked Today</span>
-                                    <span className="text-lg font-black font-mono text-emerald-800 block mt-0.5">
+                                <div className="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80">
+                                    <span className="text-[10px] font-semibold text-emerald-900 uppercase block">Cooked Today</span>
+                                    <span className="text-base font-bold font-mono text-emerald-800 block mt-0.5">
                                         {batchAnalytics.todayBatchesCount}
                                     </span>
                                     <span className="text-[9px] text-emerald-600 block">Fresh</span>
                                 </div>
 
-                                <div className="p-2.5 rounded-2xl bg-blue-50 border border-blue-200">
-                                    <span className="text-[10px] font-bold text-blue-900 uppercase block">Active Rotation</span>
-                                    <span className="text-lg font-black font-mono text-blue-800 block mt-0.5">
+                                <div className="p-2.5 rounded-xl bg-purple-50/70 border border-purple-200/80">
+                                    <span className="text-[10px] font-semibold text-purple-900 uppercase block">Active Rotation</span>
+                                    <span className="text-base font-bold font-mono text-purple-800 block mt-0.5">
                                         {Math.max(0, batchAnalytics.inStockCount - batchAnalytics.agingBatchesCount)}
                                     </span>
-                                    <span className="text-[9px] text-blue-600 block">Ready</span>
+                                    <span className="text-[9px] text-purple-600 block">Ready</span>
                                 </div>
 
-                                <div className="p-2.5 rounded-2xl bg-amber-50 border border-amber-200">
-                                    <span className="text-[10px] font-bold text-amber-900 uppercase block">Aging &ge;3 Days</span>
-                                    <span className="text-lg font-black font-mono text-amber-800 block mt-0.5">
+                                <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200/80">
+                                    <span className="text-[10px] font-semibold text-amber-900 uppercase block">Aging &ge;3 Days</span>
+                                    <span className="text-base font-bold font-mono text-amber-800 block mt-0.5">
                                         {batchAnalytics.agingBatchesCount}
                                     </span>
                                     <span className="text-[9px] text-amber-600 block">Check</span>
@@ -2138,15 +2160,15 @@ export default function RecipePage() {
                         </div>
 
                         {/* 4. Quick Kitchen Actions Card */}
-                        <div className="bg-white/80 backdrop-blur-xl p-5 rounded-3xl border border-white/60 shadow-lg shadow-emerald-950/5 space-y-3">
-                            <h3 className="text-sm font-black text-gray-900 flex items-center gap-1.5">
+                        <div className="bg-white rounded-2xl border border-gray-200/80 shadow-sm p-4 space-y-2.5 hover:shadow-md transition-all">
+                            <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider flex items-center gap-1.5">
                                 <span>⚡</span> Quick Kitchen Operations
                             </h3>
 
                             <div className="space-y-2">
                                 <button
                                     onClick={() => setActiveTab('studio')}
-                                    className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-2xl text-xs font-black shadow-md shadow-emerald-700/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                    className="w-full py-2.5 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-semibold shadow-md shadow-purple-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
                                 >
                                     <span>🍳</span>
                                     <span>Cook New Batch in Studio</span>
@@ -2154,7 +2176,7 @@ export default function RecipePage() {
 
                                 <button
                                     onClick={handlePrintBatchesThermalSummary}
-                                    className="w-full py-2.5 px-4 bg-gray-100 hover:bg-gray-200 text-gray-800 rounded-2xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                    className="w-full py-2 px-4 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-sm"
                                 >
                                     <span>🖨️</span>
                                     <span>Print Batches Inventory Slip</span>
@@ -2162,7 +2184,7 @@ export default function RecipePage() {
 
                                 <button
                                     onClick={() => loadAllData()}
-                                    className="w-full py-2 px-4 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-2xl text-xs font-semibold transition-all flex items-center justify-center gap-2 cursor-pointer"
+                                    className="w-full py-2 px-4 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2 cursor-pointer"
                                 >
                                     <span>🔄</span>
                                     <span>Refresh Batches Data</span>
